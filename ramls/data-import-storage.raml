@@ -1,0 +1,49 @@
+#%RAML 0.8
+
+title: Data Import Storage Module
+baseUri: http://github.com/org/folio/mod-data-import-storage
+version: v1
+
+documentation:
+  - title: mod-data-import-storage API
+    content: This module provides endpoints to manage data import
+
+schemas:
+  - item: !include item.json
+
+/data-storage:
+ /items:
+   /{itemId}:
+     get:
+       description: Get item by id
+       responses:
+         200:
+           body:
+             application/json:
+               schema: item
+         404:
+           description: "Item not found"
+           body:
+             text/plain:
+               example: "Item not found"
+         500:
+           description: "Internal server error"
+           body:
+             text/plain:
+               example: "Internal server error"
+     delete:
+       description: Delete item by id
+       responses:
+         204:
+           body:
+             text/plain: !!null
+         404:
+           description: "Item not found"
+           body:
+             text/plain:
+               example: "Item not found"
+         500:
+           description: "Internal server error"
+           body:
+             text/plain:
+               example: "Internal server error"

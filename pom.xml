@@ -9,28 +9,18 @@
   <licenses>
     <license>
       <name>Apache License 2.0</name>
-      <url>http://spdx.org/licenses/Apache-2.0</url>
+      <url>https://spdx.org/licenses/Apache-2.0</url>
     </license>
   </licenses>
 
   <properties>
-    <aspectj.version>1.8.9</aspectj.version>
-    <module_name>mod-data-import-storage</module_name>
-    <http.port>8081</http.port>
+    <raml-module-builder.version>21.0.1</raml-module-builder.version>
+    <vertx.version>3.5.3</vertx.version>
+    <junit.version>4.12</junit.version>
+    <rest-assured.version>3.1.1</rest-assured.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <ramlfiles_util_path>${basedir}/raml-util</ramlfiles_util_path>
-    <raml-module-builder.version>19.4.1</raml-module-builder.version>
-    <vertx-version>3.5.3</vertx-version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
-
-
-  <repositories>
-    <repository>
-      <id>folio-nexus</id>
-      <name>FOLIO Maven Repository</name>
-      <url>https://repository.folio.org/repository/maven-folio</url>
-    </repository>
-  </repositories>
 
   <dependencies>
 
@@ -46,41 +36,32 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
+      <version>${vertx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+      <version>${vertx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
-      <version>3.5.0</version>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- test dependencies -->
-    <dependency>
-      <groupId>com.jayway.restassured</groupId>
-      <artifactId>rest-assured</artifactId>
-      <version>2.9.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.rest-assured</groupId>
-      <artifactId>json-schema-validator</artifactId>
-      <version>3.0.5</version>
+      <version>${vertx.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.12</version>
+      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.5.3</version>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${rest-assured.version}</version>
+      <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>pl.pragmatists</groupId>
-      <artifactId>JUnitParams</artifactId>
-      <version>1.0.4</version>
-    </dependency>
-
   </dependencies>
 
   <build>
@@ -93,26 +74,14 @@
 
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.5.1</version>
+        <version>3.8.0</version>
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
           <encoding>UTF-8</encoding>
         </configuration>
-        <executions>
-          <execution>
-            <id>default-compile</id>
-            <phase>process-sources</phase>
-          </execution>
-          <execution>
-            <id>build-generated-code</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
@@ -138,7 +107,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
+        <version>1.6.0</version>
         <executions>
           <execution>
             <id>generate_interfaces</id>
@@ -210,10 +179,9 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.8</version>
+        <version>1.11</version>
         <configuration>
           <verbose>true</verbose>
-          <showWeaveInfo>false</showWeaveInfo>
           <complianceLevel>1.8</complianceLevel>
           <includes>
             <include>**/impl/*.java</include>
@@ -240,19 +208,20 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>${aspectj.version}</version>
+            <version>1.8.9</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>${aspectj.version}</version>
+            <version>1.8.9</version>
           </dependency>
         </dependencies>
       </plugin>
 
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>3.0.1</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <id>copy-resources</id>
@@ -265,22 +234,6 @@
               <resources>
                 <resource>
                   <directory>${ramlfiles_path}</directory>
-                  <filtering>true</filtering>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-          <execution>
-            <id>copy-resources-2</id>
-            <phase>prepare-package</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <outputDirectory>${basedir}/target/classes/apidocs/raml-util</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${ramlfiles_util_path}</directory>
                   <filtering>true</filtering>
                 </resource>
               </resources>
@@ -333,83 +286,10 @@
         </executions>
       </plugin>
 
-      <!-- replace the baseuri and the protocol in the ramls that are in the
-        apidocs directory so that they can at least be used to check via the html
-        api console on IE -->
-      <plugin>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>1.8</version>
-        <executions>
-          <execution>
-            <phase>prepare-package</phase>
-            <configuration>
-              <tasks>
-                <replace token="baseUri: http://github.com/org/folio/lsp-apis"
-                         value="baseUri: http://localhost:${http.port}/apis"
-                         dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-                <replace token="protocols: [ HTTPS ]" value="protocols: [ HTTP ]"
-                         dir="${basedir}/target/classes/apidocs/raml">
-                  <include name="**/*.raml" />
-                </replace>
-              </tasks>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>properties-maven-plugin</artifactId>
-        <version>1.0.0</version>
-        <executions>
-          <execution>
-            <id>set-system-properties</id>
-            <goals>
-              <goal>set-system-properties</goal>
-            </goals>
-            <configuration>
-              <properties>
-                <property>
-                  <name>log4j.configuration</name>
-                  <value>${project.baseUri}src/main/resources/log4j.properties</value>
-                </property>
-              </properties>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>2.17</version>
-        <executions>
-          <execution>
-            <id>verify-style</id>
-            <phase>process-classes</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <failsOnError>false</failsOnError>
-          <failOnViolation>false</failOnViolation>
-          <logViolationsToConsole>true</logViolationsToConsole>
-          <configLocation>https://raw.githubusercontent.com/folio-org/raml-module-builder/master/codestyles.xml</configLocation>
-          <cacheFile>${basedir}/target/cachefile</cacheFile>
-        </configuration>
-      </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
+        <version>3.1.1</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -418,8 +298,7 @@
             </goals>
             <configuration>
               <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>org.folio.rest.RestLauncher</Main-Class>
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
@@ -444,8 +323,24 @@
           <localCheckout>true</localCheckout>
         </configuration>
       </plugin>
+
     </plugins>
   </build>
+
+  <scm>
+    <url>https://github.com/folio-org/mod-data-import-storage</url>
+    <connection>scm:git:git://github.com/folio-org/mod-data-import-storage</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/mod-data-import-storage.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven Repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </repository>
+  </repositories>
 
   <distributionManagement>
     <repository>

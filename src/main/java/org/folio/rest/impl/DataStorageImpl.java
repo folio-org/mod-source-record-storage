@@ -4,12 +4,12 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import org.folio.rest.jaxrs.resource.DataStorageResource;
+import org.folio.rest.jaxrs.resource.DataStorage;
 
 import javax.ws.rs.core.Response;
 import java.util.Map;
 
-public class DataStorageImpl implements DataStorageResource {
+public class DataStorageImpl implements DataStorage {
 
   private static final String ITEM_STUB_PATH = "ramls/examples/item.sample";
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
@@ -19,7 +19,7 @@ public class DataStorageImpl implements DataStorageResource {
   public void getDataStorageItemsByItemId(final String itemId,
                                           final Map<String, String> okapiHeaders,
                                           final Handler<AsyncResult<Response>> asyncResultHandler,
-                                          final Context vertxContext) throws Exception {
+                                          final Context vertxContext) {
     //TODO replace stub response
     vertxContext.owner().fileSystem().readFile(ITEM_STUB_PATH, event -> {
       if (event.succeeded()) {
@@ -29,7 +29,7 @@ public class DataStorageImpl implements DataStorageResource {
           ));
       } else {
         asyncResultHandler.handle(Future.succeededFuture(
-          GetDataStorageItemsByItemIdResponse.withPlainNotFound("Item not found")
+          GetDataStorageItemsByItemIdResponse.respond404WithTextPlain()
         ));
       }
     });
@@ -39,8 +39,8 @@ public class DataStorageImpl implements DataStorageResource {
   public void deleteDataStorageItemsByItemId(final String itemId,
                                              final Map<String, String> okapiHeaders,
                                              final Handler<AsyncResult<Response>> asyncResultHandler,
-                                             final Context vertxContext) throws Exception {
+                                             final Context vertxContext) {
     //TODO replace stub response
-    asyncResultHandler.handle(Future.succeededFuture(Response.noContent().build()));
+    asyncResultHandler.handle(Future.succeededFuture(DeleteDataStorageItemsByItemIdResponse.respond204WithTextPlain()));
   }
 }

@@ -4,19 +4,19 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import org.folio.rest.jaxrs.resource.DataStorage;
+import org.folio.rest.jaxrs.resource.RecordStorage;
 
 import javax.ws.rs.core.Response;
 import java.util.Map;
 
-public class DataStorageImpl implements DataStorage {
+public class RecordStorageImpl implements RecordStorage {
 
   private static final String ITEM_STUB_PATH = "ramls/examples/item.sample";
   private static final String HEADER_CONTENT_TYPE = "Content-Type";
   private static final String APPLICATION_JSON = "application/json";
 
   @Override
-  public void getDataStorageItemsByItemId(final String itemId,
+  public void getRecordStorageItemsByItemId(final String itemId,
                                           final Map<String, String> okapiHeaders,
                                           final Handler<AsyncResult<Response>> asyncResultHandler,
                                           final Context vertxContext) {
@@ -29,18 +29,18 @@ public class DataStorageImpl implements DataStorage {
           ));
       } else {
         asyncResultHandler.handle(Future.succeededFuture(
-          GetDataStorageItemsByItemIdResponse.respond404WithTextPlain()
+          GetRecordStorageItemsByItemIdResponse.respond404WithTextPlain()
         ));
       }
     });
   }
 
   @Override
-  public void deleteDataStorageItemsByItemId(final String itemId,
+  public void deleteRecordStorageItemsByItemId(final String itemId,
                                              final Map<String, String> okapiHeaders,
                                              final Handler<AsyncResult<Response>> asyncResultHandler,
                                              final Context vertxContext) {
     //TODO replace stub response
-    asyncResultHandler.handle(Future.succeededFuture(DeleteDataStorageItemsByItemIdResponse.respond204WithTextPlain()));
+    asyncResultHandler.handle(Future.succeededFuture(DeleteRecordStorageItemsByItemIdResponse.respond204WithTextPlain()));
   }
 }

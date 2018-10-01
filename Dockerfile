@@ -1,6 +1,6 @@
 FROM folioci/openjdk8-jre:latest
 
-ENV VERTICLE_FILE mod-data-import-storage-fat.jar
+ENV VERTICLE_FILE mod-source-record-storage-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /usr/verticles

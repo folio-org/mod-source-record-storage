@@ -1,17 +1,17 @@
 #%RAML 0.8
 
-title: Data Import Storage Module
-baseUri: http://github.com/org/folio/mod-data-import-storage
+title: Source Record Storage Module
+baseUri: http://github.com/org/folio/mod-source-record-storage
 version: v1
 
 documentation:
-  - title: mod-data-import-storage API
-    content: This module provides endpoints to manage data import
+  - title: mod-source-record-storage API
+    content: This module provides endpoints to manage source records
 
 schemas:
   - item: !include item.json
 
-/data-storage:
+/record-storage:
  /items:
    /{itemId}:
      get:

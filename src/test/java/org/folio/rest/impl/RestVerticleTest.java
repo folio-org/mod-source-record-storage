@@ -24,7 +24,7 @@ public class RestVerticleTest {
 
   private static final String HOST = "http://localhost:";
   private static final String HTTP_PORT = "http.port";
-  private static final String DATA_STORAGE_PATH = "/data-storage/items/test";
+  private static final String RECORD_STORAGE_PATH = "/record-storage/items/test";
   private static final String OKAPI_TENANT_HEADER = "x-okapi-tenant";
   private static final String TENANT = "diku";
   private static final String HEADER_ACCEPT = "Accept";
@@ -54,7 +54,7 @@ public class RestVerticleTest {
     //TODO Replace testing stub
     final Async async = context.async();
     String url = HOST + port;
-    String dataStorageTestUrl = url + DATA_STORAGE_PATH;
+    String dataStorageTestUrl = url + RECORD_STORAGE_PATH;
 
     Handler<HttpClientResponse> handler = response -> {
       context.assertEquals(response.statusCode(), 200);
@@ -71,7 +71,7 @@ public class RestVerticleTest {
     //TODO Replace testing stub
     final Async async = context.async();
     String url = HOST + port;
-    String dataStorageTestUrl = url + DATA_STORAGE_PATH;
+    String dataStorageTestUrl = url + RECORD_STORAGE_PATH;
 
     Handler<HttpClientResponse> handler = response -> {
       context.assertEquals(response.statusCode(), 204);

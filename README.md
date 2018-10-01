@@ -1,4 +1,4 @@
-# mod-data-import-storage
+# mod-source-record-storage
 
 Copyright (C) 2018 The Open Library Foundation
 
@@ -14,7 +14,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 ## Introduction
 
-FOLIO compatible data import storage module.
+FOLIO compatible source record storage module.
 
 Provides PostgreSQL based storage to complement the data import module. Written in Java, using the raml-module-builder and uses Maven as its build system.
 
@@ -31,13 +31,13 @@ See that it says "BUILD SUCCESS" near the end.
 Build the docker container with:
 
 ```
-   docker build -t mod-data-import-storage .
+   docker build -t mod-source-record-storage .
 ```
 
 Test that it runs with:
 
 ```
-   docker run -t -i -p 8081:8081 mod-data-import-storage
+   docker run -t -i -p 8081:8081 mod-source-record-storage
 ```
 
 ## Installing the module
@@ -92,5 +92,5 @@ curl -w '\n' -X POST -D -   \
 
 ### Issue tracker
 
-See project [MODDATAIMP](https://issues.folio.org/browse/MODDATAIMP)
+See project [MODSOURCE](https://issues.folio.org/browse/MODSOURCE)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).

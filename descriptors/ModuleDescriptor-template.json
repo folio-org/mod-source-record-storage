@@ -1,6 +1,6 @@
 {
   "id": "${artifactId}-${version}",
-  "name": "Data Import Storage Module",
+  "name": "Source Record Storage Module",
   "provides": [
     {
       "id": "${artifactId}",

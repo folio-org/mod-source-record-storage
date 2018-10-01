@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
-  <artifactId>mod-data-import-storage</artifactId>
+  <artifactId>mod-source-record-storage</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -328,9 +328,9 @@
   </build>
 
   <scm>
-    <url>https://github.com/folio-org/mod-data-import-storage</url>
-    <connection>scm:git:git://github.com/folio-org/mod-data-import-storage</connection>
-    <developerConnection>scm:git:git@github.com:folio-org/mod-data-import-storage.git</developerConnection>
+    <url>https://github.com/folio-org/mod-source-record-storage</url>
+    <connection>scm:git:git://github.com/folio-org/mod-source-record-storage</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/mod-source-record-storage.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 

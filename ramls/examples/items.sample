@@ -1,0 +1,16 @@
+{
+  "items": {
+    {
+        "id": "11111111111111",
+        "name": "first item"
+    },
+    {
+         "id": "2222222222222",
+         "name": "second item"
+    },
+    {
+         "id": "3333333333333",
+         "name": "third item"
+    }
+  }
+}

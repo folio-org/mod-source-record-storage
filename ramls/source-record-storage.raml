@@ -1,4 +1,4 @@
-#%RAML 0.8
+#%RAML 1.0
 
 title: Source Record Storage Module
 baseUri: http://github.com/org/folio/mod-source-record-storage
@@ -6,44 +6,117 @@ version: v1
 
 documentation:
   - title: mod-source-record-storage API
-    content: This module provides endpoints to manage source records
+    content: This module provides endpoints to manage source change jobs
 
-schemas:
-  - item: !include item.json
+types:
+  item: !include item.json
+  itemCollection: !include itemCollection.json
+  log: !include log.json
+  logCollection: !include logCollection.json
+
+traits:
+  sortable:
+    queryParameters:
+      sortBy:
+        description: "A comma-separated list of fieldnames to sort by"
+        required: false
+        type: string
+  queryable:
+    queryParameters:
+      query:
+        description: "A query string to filter records based on matching criteria in fields."
+        required: false
+        type: string
+  pageable: !include raml-util/traits/pageable.raml
 
 /record-storage:
- /items:
-   /{itemId}:
-     get:
-       description: Get item by id
-       responses:
-         200:
-           body:
-             application/json:
-               schema: item
-         404:
-           description: "Item not found"
-           body:
-             text/plain:
-               example: "Item not found"
-         500:
-           description: "Internal server error"
-           body:
-             text/plain:
-               example: "Internal server error"
-     delete:
-       description: Delete item by id
-       responses:
-         204:
-           body:
-             text/plain: !!null
-         404:
-           description: "Item not found"
-           body:
-             text/plain:
-               example: "Item not found"
-         500:
-           description: "Internal server error"
-           body:
-             text/plain:
-               example: "Internal server error"
+  /items:
+    get:
+      description: Get a list of source records based on criteria
+      is: [
+        sortable,
+        pageable,
+        queryable
+      ]
+      responses:
+        200:
+          body:
+            application/json:
+              schema: itemCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        403:
+          description: "Access denied"
+          body:
+            text/plain:
+              example: "Access denied"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+    /{itemId}:
+      get:
+        description: Get source record by id
+        responses:
+          200:
+            body:
+              application/json:
+                schema: item
+          404:
+            description: "Item not found"
+            body:
+              text/plain:
+                example: "Item not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      delete:
+        description: Delete item by id
+        responses:
+          204:
+            body:
+              text/plain: !!null
+          404:
+            description: "Item not found"
+            body:
+              text/plain:
+                example: "Item not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+  /logs:
+    get:
+      description: Get a list of logs for source records based on criteria
+      is: [
+        sortable,
+        pageable,
+        queryable
+      ]
+      responses:
+        200:
+          body:
+            application/json:
+              schema: logCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        403:
+          description: "Access denied"
+          body:
+            text/plain:
+              example: "Access denied"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"

@@ -1,7 +1,9 @@
 ## 2018-10-09 v1.0.0
  * Add endpoints to retrieve source change jobs and logs for that jobs
  * Implementation is currently stubbed
-
+ * Use RestAssured library for REST testing needs
+ * Use RAML 1.0
+ 
   API for jobs and logs: 
 
  | METHOD |             URL                | DESCRIPTION                                             |

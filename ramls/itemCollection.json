@@ -9,7 +9,7 @@
       "id": "recordList",
       "items": {
         "type": "object",
-        "$ref": "item"
+        "$ref": "item.json"
       }
     },
     "totalRecords": {

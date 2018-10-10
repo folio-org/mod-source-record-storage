@@ -1,13 +1,11 @@
 package org.folio.rest.impl;
 
+import io.restassured.RestAssured;
+import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientResponse;
-import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.RestVerticle;
@@ -17,23 +15,26 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import javax.ws.rs.core.MediaType;
 import java.io.IOException;
+
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 @RunWith(VertxUnitRunner.class)
 public class RestVerticleTest {
 
-  private static final String HOST = "http://localhost:";
   private static final String HTTP_PORT = "http.port";
-  private static final String RECORD_STORAGE_PATH = "/record-storage/items/test";
-  private static final String OKAPI_TENANT_HEADER = "x-okapi-tenant";
-  private static final String TENANT = "diku";
-  private static final String HEADER_ACCEPT = "Accept";
-  private static final String ACCEPT_VALUES = "application/json, text/plain";
-  private static final String APPLICATION_JSON = "application/json";
-  private static final String HEADER_CONTENT_TYPE = "content-type";
 
+  private static final String TENANT_ID = "diku";
+  private static final String ACCEPT_VALUES = "application/json, text/plain";
+  private static final String CONTENT_LENGTH = "Content-Length";
+  private static final int CONTENT_LENGTH_DEFAULT = 1000;
+  private static final String HOST = "http://localhost:";
+  private static final String RECORD_STORAGE_PATH = "/record-storage";
   private Vertx vertx;
   private int port;
+
+  private String baseServicePath;
 
   @Before
   public void setUp(TestContext context) throws IOException {
@@ -42,6 +43,7 @@ public class RestVerticleTest {
     DeploymentOptions options = new DeploymentOptions()
       .setConfig(new JsonObject().put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, context.asyncAssertSuccess());
+    baseServicePath = HOST + port + RECORD_STORAGE_PATH;
   }
 
   @After
@@ -50,46 +52,55 @@ public class RestVerticleTest {
   }
 
   @Test
-  public void testGetItemStub(TestContext context) {
+  public void testGetRecordStorageItems(TestContext context) {
     //TODO Replace testing stub
-    final Async async = context.async();
-    String url = HOST + port;
-    String dataStorageTestUrl = url + RECORD_STORAGE_PATH;
-
-    Handler<HttpClientResponse> handler = response -> {
-      context.assertEquals(response.statusCode(), 200);
-      context.assertEquals(response.headers().get(HEADER_CONTENT_TYPE), APPLICATION_JSON);
-      response.handler(body -> {
-        async.complete();
-      });
-    };
-    sendRequest(dataStorageTestUrl, HttpMethod.GET, handler);
+    String serviceUrl = "/items";
+    String dataStorageTestUrl = baseServicePath + serviceUrl;
+    getDefaultGiven()
+      .param("query", "query")
+      .when().get(dataStorageTestUrl)
+      .then().statusCode(200);
   }
 
   @Test
-  public void testDeleteItemStub(TestContext context) {
+  public void testDeleteRecordStorageItemsByItemId(TestContext context) {
     //TODO Replace testing stub
-    final Async async = context.async();
-    String url = HOST + port;
-    String dataStorageTestUrl = url + RECORD_STORAGE_PATH;
-
-    Handler<HttpClientResponse> handler = response -> {
-      context.assertEquals(response.statusCode(), 204);
-      async.complete();
-    };
-    sendRequest(dataStorageTestUrl, HttpMethod.DELETE, handler);
+    String serviceUrl = "/items/{itemId}";
+    String dataStorageTestUrl = baseServicePath + serviceUrl;
+    getDefaultGiven()
+      .pathParam("itemId", "999")
+      .when().delete(dataStorageTestUrl)
+      .then().statusCode(204);
   }
 
-  private void sendRequest(String url, HttpMethod method, Handler<HttpClientResponse> handler) {
-    sendRequest(url, method, handler, "");
+
+  @Test
+  public void testGetRecordStorageItemsByItemId(TestContext context) {
+    //TODO Replace testing stub
+    String serviceUrl = "/items/{itemId}";
+    String dataStorageTestUrl = baseServicePath + serviceUrl;
+    getDefaultGiven()
+      .pathParam("itemId", "777")
+      .when().get(dataStorageTestUrl)
+      .then().statusCode(200);
   }
 
-  private void sendRequest(String url, HttpMethod method, Handler<HttpClientResponse> handler, String content) {
-    Buffer buffer = Buffer.buffer(content);
-    vertx.createHttpClient()
-      .requestAbs(method, url, handler)
-      .putHeader(OKAPI_TENANT_HEADER, TENANT)
-      .putHeader(HEADER_ACCEPT, ACCEPT_VALUES)
-      .end(buffer);
+  @Test
+  public void testGetRecordStorageLogs(TestContext context) {
+    //TODO Replace testing stub
+    String serviceUrl = "/logs";
+    String dataStorageTestUrl = baseServicePath + serviceUrl;
+    getDefaultGiven()
+      .param("query", "query")
+      .when().get(dataStorageTestUrl)
+      .then().statusCode(200);
+  }
+
+  private RequestSpecification getDefaultGiven() {
+    return RestAssured.given()
+      .header(OKAPI_HEADER_TENANT, TENANT_ID)
+      .header(HttpHeaders.ACCEPT.toString(), ACCEPT_VALUES)
+      .header(HttpHeaders.CONTENT_TYPE.toString(), MediaType.APPLICATION_JSON)
+      .header(CONTENT_LENGTH, CONTENT_LENGTH_DEFAULT);
   }
 }

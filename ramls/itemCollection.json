@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Record collection",
+  "type": "object",
+  "properties": {
+    "items": {
+      "description": "List of records",
+      "type": "array",
+      "id": "recordList",
+      "items": {
+        "type": "object",
+        "$ref": "item.json"
+      }
+    },
+    "totalRecords": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "items",
+    "totalRecords"
+  ]
+}

@@ -1,18 +1,27 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Source Record Storage Module",
+  "requires": [],
   "provides": [
     {
-      "id": "${artifactId}",
+      "id": "source-record-storage",
       "version": "1.0",
       "handlers": [
         {
           "methods": ["GET"],
-          "pathPattern": "/data-storage/items/{itemId}"
+          "pathPattern": "/record-storage/items"
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/record-storage/items/{itemId}"
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/data-storage/items/{itemId}"
+          "pathPattern": "/record-storage/items/{itemId}"
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/record-storage/logs"
         }
       ]
     },
@@ -28,7 +37,6 @@
       ]
     }
   ],
-  "requires": [],
   "launchDescriptor": {
     "dockerImage": "${artifactId}:${version}",
     "dockerArgs": {

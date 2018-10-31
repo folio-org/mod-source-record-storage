@@ -1,3 +1,20 @@
+## 2018-10-31 v1.0.1
+ * Added schemas for Snapshot entity
+ * Added table for snapshots to the db
+ * Defined endpoints for managing CRUD operations over Snapshot entity
+ * Implemented the endpoints methods
+ * Created API tests for each added endpoint
+ 
+  CRUD API for snapshot: 
+
+ | METHOD |             URL                           | DESCRIPTION                                             |
+ |--------|-------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/snapshot                  | Get list of snapshots                                   |
+ | POST   | /source-storage/snapshot                  | Create new snapshot                                     |
+ | UPDATE | /source-storage/snapshot/{jobExecutionId} | Update snapshot                                         |
+ | GET    | /source-storage/snapshot/{jobExecutionId} | Get snapshot by JobExecution id                         |
+ | DELETE | /source-storage/snapshot/{jobExecutionId} | Delete snapshot by JobExecution id                      |
+
 ## 2018-10-09 v1.0.0
  * Add endpoints to retrieve source change jobs and logs for that jobs
  * Implementation is currently stubbed

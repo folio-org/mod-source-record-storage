@@ -1,122 +1,153 @@
 #%RAML 1.0
 
 title: Source Record Storage Module
-baseUri: http://github.com/org/folio/mod-source-record-storage
-version: v1
+version: v1.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
 
 documentation:
-  - title: mod-source-record-storage API
-    content: This module provides endpoints to manage source change jobs
+  - title: Source Record Storage API
+    content: API for managing records
 
 types:
-  item: !include item.json
-  itemCollection: !include itemCollection.json
-  log: !include log.json
-  logCollection: !include logCollection.json
+  snapshot: !include snapshot.json
+  snapshotCollection: !include snapshotCollection.json
+  errors: !include raml-util/schemas/errors.schema
 
 traits:
-  sortable:
-    queryParameters:
-      sortBy:
-        description: "A comma-separated list of fieldnames to sort by"
-        required: false
-        type: string
-  queryable:
-    queryParameters:
-      query:
-        description: "A query string to filter records based on matching criteria in fields."
-        required: false
-        type: string
-  pageable: !include raml-util/traits/pageable.raml
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
 
-/record-storage:
-  /items:
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+
+/source-storage:
+  /snapshot:
+    displayName: Snapshot
+    description: API for managing Snapshots
+    type:
+      collection:
+        schemaCollection: snapshotCollection
+        schemaItem: snapshot
+        exampleCollection: !include examples/snapshotCollection.sample
+        exampleItem: !include examples/snapshot.sample
     get:
-      description: Get a list of source records based on criteria
+      description: Get a list of snapshots
       is: [
-        sortable,
+        searchable: {
+          description:
+            "with valid searchable fields: for example status=NEW",
+          example:
+            "status=NEW"
+        },
         pageable,
-        queryable
+        validate
       ]
       responses:
         200:
           body:
             application/json:
-              schema: itemCollection
+              type: snapshotCollection
         400:
           description: "Bad request"
           body:
             text/plain:
               example: "Bad request"
-        403:
-          description: "Access denied"
-          body:
-            text/plain:
-              example: "Access denied"
         500:
           description: "Internal server error"
           body:
             text/plain:
               example: "Internal server error"
-    /{itemId}:
+    post:
+      description: "Create new snapshot"
+      is: [validate]
+      body:
+        application/json:
+          type: snapshot
+      responses:
+        201:
+          body:
+            application/json:
+              type: snapshot
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        422:
+          description: "Unprocessable Entity"
+          body:
+            application/json:
+              type: errors
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+    /{jobExecutionId}:
       get:
-        description: Get source record by id
+        description: Get snapshot by id
         responses:
           200:
             body:
               application/json:
-                schema: item
+                type: snapshot
           404:
-            description: "Item not found"
+            description: "Not found"
             body:
               text/plain:
-                example: "Item not found"
+                example: "Not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      put:
+        description: Update snapshot
+        body:
+          application/json:
+            type: snapshot
+        responses:
+          200:
+            body:
+              application/json:
+                type: snapshot
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          404:
+            description: "Not found"
+            body:
+              text/plain:
+                example: "Not found"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
           500:
             description: "Internal server error"
             body:
               text/plain:
                 example: "Internal server error"
       delete:
-        description: Delete item by id
+        description: Delete snapshot by id
         responses:
           204:
             body:
               text/plain: !!null
           404:
-            description: "Item not found"
+            description: "File not found"
             body:
               text/plain:
-                example: "Item not found"
+                example: "File not found"
           500:
             description: "Internal server error"
             body:
               text/plain:
                 example: "Internal server error"
-  /logs:
-    get:
-      description: Get a list of logs for source records based on criteria
-      is: [
-        sortable,
-        pageable,
-        queryable
-      ]
-      responses:
-        200:
-          body:
-            application/json:
-              schema: logCollection
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        403:
-          description: "Access denied"
-          body:
-            text/plain:
-              example: "Access denied"
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"

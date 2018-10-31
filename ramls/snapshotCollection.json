@@ -1,23 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "Record collection",
+  "description": "Snapshot collection",
   "type": "object",
   "properties": {
-    "items": {
-      "description": "List of records",
+    "snapshots": {
+      "description": "List of snapshots",
       "type": "array",
-      "id": "recordList",
+      "id": "snapshotList",
       "items": {
         "type": "object",
-        "$ref": "item.json"
+        "$ref": "snapshot.json"
       }
     },
     "totalRecords": {
+      "description": "Number of snapshots in the list",
       "type": "integer"
     }
   },
   "required": [
-    "items",
+    "snapshots",
     "totalRecords"
   ]
 }

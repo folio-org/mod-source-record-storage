@@ -1,0 +1,23 @@
+{
+  "tables": [
+    {
+      "tableName": "snapshots",
+      "withMetadata": true,
+      "pkColumnName": "_id",
+      "generateId": false,
+      "withAuditing": false,
+      "uniqueIndex": [
+        {
+          "fieldName": "jobExecutionId",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "jobExecutionId",
+          "tOps": "ADD"
+        }
+      ]
+    }
+  ]
+}

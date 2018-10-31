@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-source-record-storage</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -14,7 +14,7 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>21.0.4</raml-module-builder.version>
+    <raml-module-builder.version>23.0.0</raml-module-builder.version>
     <vertx.version>3.5.3</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>

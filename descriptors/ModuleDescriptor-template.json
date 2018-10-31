@@ -9,19 +9,28 @@
       "handlers": [
         {
           "methods": ["GET"],
-          "pathPattern": "/record-storage/items"
+          "pathPattern": "/source-storage/snapshot",
+          "permissionsRequired": ["source-storage.snapshot.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/source-storage/snapshot",
+          "permissionsRequired": ["source-storage.snapshot.post"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/record-storage/items/{itemId}"
+          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshot.get"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshot.put"]
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/record-storage/items/{itemId}"
-        },
-        {
-          "methods": ["GET"],
-          "pathPattern": "/record-storage/logs"
+          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshot.delete"]
         }
       ]
     },
@@ -35,6 +44,40 @@
           "pathPattern": "/_/tenant"
         }
       ]
+    }
+  ],
+  "permissionSets": [
+    {
+      "permissionName": "source-storage.snapshot.get",
+      "displayName": "Source Storage - get snapshot(s)",
+      "description": "Get Snapshot(s)"
+    },
+    {
+      "permissionName": "source-storage.snapshot.post",
+      "displayName": "Source Storage - create new snapshot",
+      "description": "Post Snapshot"
+    },
+    {
+      "permissionName": "source-storage.snapshot.put",
+      "displayName": "Source Storage - update snapshot",
+      "description": "Put Snapshot"
+    },
+    {
+      "permissionName": "source-storage.snapshot.delete",
+      "displayName": "Source Storage - delete snapshot",
+      "description": "Delete Snapshot"
+    },
+    {
+      "permissionName": "source-storage.snapshot.all",
+      "displayName": "Source Record Storage - all permissions",
+      "description": "Entire set of permissions needed to manage snapshots",
+      "subPermissions": [
+        "source-storage.snapshot.get",
+        "source-storage.snapshot.post",
+        "source-storage.snapshot.put",
+        "source-storage.snapshot.delete"
+      ],
+      "visible": false
     }
   ],
   "launchDescriptor": {

@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Error Record data model",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "UUID",
+      "type": "string"
+    },
+    "description" : {
+      "description": "Error description",
+      "type": "string"
+    },
+    "content": {
+      "description": "Record content",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "Metadata provided by the server",
+      "type": "object",
+      "$ref": "raml-util/schemas/metadata.schema",
+      "readonly": true
+    }
+  },
+  "required": [
+    "description",
+    "content"
+  ]
+}

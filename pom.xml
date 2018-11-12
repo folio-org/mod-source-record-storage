@@ -15,7 +15,7 @@
 
   <properties>
     <raml-module-builder.version>23.0.0</raml-module-builder.version>
-    <vertx.version>3.5.3</vertx.version>
+    <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
@@ -321,6 +321,19 @@
           <tagNameFormat>v@{project.version}</tagNameFormat>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.1</version>
+        <configuration>
+          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
+               https://issues.folio.org/browse/FOLIO-1609
+               https://issues.apache.org/jira/browse/SUREFIRE-1588
+          -->
+          <useSystemClassLoader>false</useSystemClassLoader>
         </configuration>
       </plugin>
 

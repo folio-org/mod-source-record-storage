@@ -1,0 +1,14 @@
+{
+  "results": {
+    {
+      "recordId": "67dfac11-1caf-4470-9ad1-d533f6360bdd",
+      "snapshotId": "11dfac11-1caf-4470-9ad1-d533f6360bdd",
+      "recordType": "MARC",
+      "parsedRecord": {
+        "id": "c9db5d7a-e1d4-11e8-9f32-f2801f1b9fd1",
+        "content": "Parsed content"
+      }
+    }
+  },
+  "totalRecords": 1
+}

@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Result;
 
 import java.util.List;
 import java.util.Optional;
@@ -52,5 +53,15 @@ public interface RecordDao {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteRecord(String id);
+
+  /**
+   * Searches for {@link Result} in the db view
+   *
+   * @param query  query string to filter results based on matching criteria in fields
+   * @param offset starting index in a list of results
+   * @param limit  maximum number of results to return
+   * @return future with list of {@link Result}
+   */
+  Future<List<Result>> getResults(String query, int offset, int limit);
 
 }

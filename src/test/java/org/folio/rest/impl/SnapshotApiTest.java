@@ -7,7 +7,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -39,7 +38,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     .put("status", "IMPORT_IN_PROGRESS");
 
 
-  @Before
+  @Override
   public void clearTables(TestContext context) {
     PostgresClient.getInstance(vertx, TENANT_ID).delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event -> {
       if (event.failed()) {

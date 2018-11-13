@@ -12,7 +12,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -22,11 +21,13 @@ import java.util.List;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordApiTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_RECORD_PATH = "/source-storage/record";
+  private static final String SOURCE_STORAGE_RESULT_PATH = "/source-storage/result";
   private static final String RECORDS_TABLE_NAME = "records";
   private static final String SOURCE_RECORDS_TABLE_NAME = "source_records";
   private static final String ERROR_RECORDS_TABLE_NAME = "error_records";
@@ -55,9 +56,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .put("recordType", "MARC")
     .put("sourceRecord", sourceRecord_1)
     .put("errorRecord", errorRecord);
+  private static JsonObject record_4 = new JsonObject()
+    .put("snapshotId", "11dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .put("recordType", "MARC")
+    .put("sourceRecord", sourceRecord_1)
+    .put("parsedRecord", marcRecord);
 
 
-  @Before
+  @Override
   public void clearTables(TestContext context) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(RECORDS_TABLE_NAME, new Criterion(), event -> {
@@ -295,6 +301,64 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .delete(SOURCE_STORAGE_RECORD_PATH + "/" + createdRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+  }
+
+  @Test
+  public void shouldReturnEmptyListOnGetResultsIfNoRecordsExist() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0))
+      .body("results", empty());
+  }
+
+  @Test
+  public void shouldReturnAllParsedResultsOnGetWhenNoQueryIsSpecified() {
+    List<JsonObject> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4);
+    for (JsonObject record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record.toString())
+        .when()
+        .post(SOURCE_STORAGE_RECORD_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(2))
+      .body("results*.parsedRecord", notNullValue());
+  }
+
+  @Test
+  public void shouldReturnResultsOnGetBySpecifiedSnapshotId() {
+    List<JsonObject> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4);
+    for (JsonObject record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record.toString())
+        .when()
+        .post(SOURCE_STORAGE_RECORD_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH + "?query=snapshotId=" + record_2.getString("snapshotId"))
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("results*.snapshotId", everyItem(is(record_2.getString("snapshotId"))));
   }
 
 }

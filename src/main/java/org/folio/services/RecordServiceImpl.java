@@ -7,6 +7,7 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Result;
 
 import javax.ws.rs.NotFoundException;
 import java.util.List;
@@ -68,6 +69,11 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Boolean> deleteRecord(String id) {
     return recordDao.deleteRecord(id);
+  }
+
+  @Override
+  public Future<List<Result>> getResults(String query, int offset, int limit) {
+    return recordDao.getResults(query, offset, limit);
   }
 
 }

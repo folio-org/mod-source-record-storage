@@ -9,6 +9,8 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Result;
+import org.folio.rest.jaxrs.model.ResultCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
@@ -237,4 +239,25 @@ public class SourceStorageImpl implements SourceStorage {
       }
     });
   }
+
+  @Override
+  public void getSourceStorageResult(String query, int offset, int limit, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getResults(query, offset, limit)
+          .map(results -> new ResultCollection()
+            .withResults(results)
+            .withTotalRecords(results.size())
+          ).map(GetSourceStorageResultResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get results", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
 }

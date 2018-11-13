@@ -1,3 +1,16 @@
+## 2018-11-13 v1.0.3
+ * Added schema for Result entity
+ * Added results_view to the db
+ * Defined endpoint for GETting the results
+ * Implemented the endpoint
+ * Created API tests for the added endpoint
+ 
+  API for result: 
+
+ | METHOD |             URL             | DESCRIPTION                                             |
+ |--------|-----------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/result      | Get list of results                                     |
+
 ## 2018-11-12 v1.0.2
  * Added schemas for Record entity
  * Added tables for records, source_records, error_records, marc_records and the records_view to the db

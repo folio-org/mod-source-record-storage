@@ -3,6 +3,8 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -25,6 +27,8 @@ import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.dao.util.DaoUtil.getCQL;
 
 public class RecordDaoImpl implements RecordDao {
+
+  private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
 
   private static final String RECORDS_VIEW = "records_view";
   private static final String RECORDS_TABLE = "records";
@@ -49,6 +53,7 @@ public class RecordDaoImpl implements RecordDao {
       CQLWrapper cql = getCQL(RECORDS_VIEW, query, limit, offset);
       pgClient.get(RECORDS_VIEW, Record.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
+      LOG.error("Error while querying records_view", e);
       future.fail(e);
     }
     return future.map(Results::getResults);
@@ -61,6 +66,7 @@ public class RecordDaoImpl implements RecordDao {
       Criteria idCrit = constructCriteria(ID_FIELD, id);
       pgClient.get(RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, future.completer());
     } catch (Exception e) {
+      LOG.error("Error while querying records_view by id", e);
       future.fail(e);
     }
     return future

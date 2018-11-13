@@ -2,6 +2,8 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.Criteria.Criteria;
@@ -17,6 +19,8 @@ import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.dao.util.DaoUtil.getCQL;
 
 public class SnapshotDaoImpl implements SnapshotDao {
+
+  private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
 
   private static final String SNAPSHOTS_TABLE = "snapshots";
   private static final String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
@@ -35,6 +39,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
       CQLWrapper cql = getCQL(SNAPSHOTS_TABLE, query, limit, offset);
       pgClient.get(SNAPSHOTS_TABLE, Snapshot.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
+      LOG.error("Error while querying snapshots", e);
       future.fail(e);
     }
     return future.map(Results::getResults);
@@ -47,6 +52,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
       Criteria idCrit = constructCriteria(SNAPSHOT_ID_FIELD, id);
       pgClient.get(SNAPSHOTS_TABLE, Snapshot.class, new Criterion(idCrit), true, false, future.completer());
     } catch (Exception e) {
+      LOG.error("Error querying snapshots by id", e);
       future.fail(e);
     }
     return future
@@ -68,6 +74,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
       Criteria idCrit = constructCriteria(SNAPSHOT_ID_FIELD, snapshot.getJobExecutionId());
       pgClient.update(SNAPSHOTS_TABLE, snapshot, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
+      LOG.error("Error updating snapshots", e);
       future.fail(e);
     }
     return future.map(updateResult -> updateResult.getUpdated() == 1);

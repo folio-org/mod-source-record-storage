@@ -7,10 +7,14 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.RecordService;
+import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
 import org.folio.services.SnapshotServiceImpl;
 import org.folio.util.SourceStorageHelper;
@@ -23,10 +27,12 @@ public class SourceStorageImpl implements SourceStorage {
 
   private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
   private SnapshotService snapshotService;
+  private RecordService recordService;
 
   public SourceStorageImpl(Vertx vertx, String tenantId) {
     String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
     this.snapshotService = new SnapshotServiceImpl(vertx, calculatedTenantId);
+    this.recordService = new RecordServiceImpl(vertx, calculatedTenantId);
   }
 
   @Override
@@ -128,6 +134,105 @@ public class SourceStorageImpl implements SourceStorage {
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to delete a snapshot", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getSourceStorageRecord(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getRecords(query, offset, limit)
+          .map(records -> new RecordCollection()
+            .withRecords(records)
+            .withTotalRecords(records.size())
+          ).map(GetSourceStorageRecordResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get all records", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void postSourceStorageRecord(String lang, Record entity, Map<String, String> okapiHeaders,
+                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.saveRecord(entity)
+          .map((Response) PostSourceStorageRecordResponse
+            .respond201WithApplicationJson(entity, PostSourceStorageRecordResponse.headersFor201()))
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to create a record", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getSourceStorageRecordById(String id, Map<String, String> okapiHeaders,
+                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getRecordById(id)
+          .map(optionalRecord -> optionalRecord.orElseThrow(() ->
+            new NotFoundException(String.format("Record with id '%s' was not found", id))))
+          .map(GetSourceStorageRecordByIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get record by id", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void putSourceStorageRecordById(String id, Record entity, Map<String, String> okapiHeaders,
+                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        entity.setId(id);
+        recordService.updateRecord(entity)
+          .map(updated -> updated ?
+            PutSourceStorageRecordByIdResponse.respond200WithApplicationJson(entity) :
+            PutSourceStorageRecordByIdResponse.respond404WithTextPlain(
+              String.format("Record with id '%s' was not found", id))
+          )
+          .map(Response.class::cast)
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to update a record", e);
+        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void deleteSourceStorageRecordById(String id, Map<String, String> okapiHeaders,
+                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.deleteRecord(id)
+          .map(deleted -> deleted ?
+            DeleteSourceStorageRecordByIdResponse.respond204WithTextPlain(
+              String.format("Record with id '%s' was successfully deleted", id)) :
+            DeleteSourceStorageRecordByIdResponse.respond404WithTextPlain(
+              String.format("Record with id '%s' was not found", id)))
+          .map(Response.class::cast)
+          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to delete a record", e);
         asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
       }
     });

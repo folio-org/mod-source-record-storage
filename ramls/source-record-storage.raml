@@ -12,7 +12,10 @@ documentation:
 types:
   snapshot: !include snapshot.json
   snapshotCollection: !include snapshotCollection.json
+  record: !include dto/record.json
+  recordCollection: !include dto/recordCollection.json
   errors: !include raml-util/schemas/errors.schema
+  recordModel: !include recordModel.json
 
 traits:
   validate: !include raml-util/traits/validation.raml
@@ -137,6 +140,132 @@ resourceTypes:
                 example: "Internal server error"
       delete:
         description: Delete snapshot by id
+        responses:
+          204:
+            body:
+              text/plain: !!null
+          404:
+            description: "File not found"
+            body:
+              text/plain:
+                example: "File not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+  /record:
+    displayName: Record
+    description: API for managing Records
+    type:
+      collection:
+        schemaCollection: recordCollection
+        schemaItem: record
+        exampleCollection: !include examples/recordCollection.sample
+        exampleItem: !include examples/record.sample
+    get:
+      description: Get a list of records
+      is: [
+        searchable: {
+          description:
+            "with valid searchable fields: for example recordType=MARC",
+          example:
+            "recordType=MARC"
+        },
+        pageable,
+        validate
+      ]
+      responses:
+        200:
+          body:
+            application/json:
+              type: recordCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+    post:
+      description: "Create new record"
+      is: [validate]
+      body:
+        application/json:
+          type: record
+      responses:
+        201:
+          body:
+            application/json:
+              type: record
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        422:
+          description: "Unprocessable Entity"
+          body:
+            application/json:
+              type: errors
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+    /{id}:
+      get:
+        description: Get record by id
+        responses:
+          200:
+            body:
+              application/json:
+                type: record
+          404:
+            description: "Not found"
+            body:
+              text/plain:
+                example: "Not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      put:
+        description: Update record
+        body:
+          application/json:
+            type: record
+        responses:
+          200:
+            body:
+              application/json:
+                type: record
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          404:
+            description: "Not found"
+            body:
+              text/plain:
+                example: "Not found"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+      delete:
+        description: Delete record by id
         responses:
           204:
             body:

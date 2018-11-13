@@ -1,3 +1,20 @@
+## 2018-11-12 v1.0.2
+ * Added schemas for Record entity
+ * Added tables for records, source_records, error_records, marc_records and the records_view to the db
+ * Defined endpoints for managing CRUD operations over Record entity
+ * Implemented the endpoints methods
+ * Created API tests for each added endpoint
+ 
+  CRUD API for record: 
+
+ | METHOD |             URL             | DESCRIPTION                                             |
+ |--------|-----------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/record      | Get list of records                                     |
+ | POST   | /source-storage/record      | Create new record                                       |
+ | UPDATE | /source-storage/record/{id} | Update record                                           |
+ | GET    | /source-storage/record/{id} | Get record by id                                        |
+ | DELETE | /source-storage/record/{id} | Delete record by id                                     |
+
 ## 2018-10-31 v1.0.1
  * Added schemas for Snapshot entity
  * Added table for snapshots to the db

@@ -56,6 +56,11 @@
           "methods": ["DELETE"],
           "pathPattern": "/source-storage/record/{id}",
           "permissionsRequired": ["source-storage.record.delete"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/source-storage/result",
+          "permissionsRequired": ["source-storage.result.get"]
         }
       ]
     },
@@ -113,6 +118,11 @@
       "description": "Delete Record"
     },
     {
+      "permissionName": "source-storage.result.get",
+      "displayName": "Source Storage - get results",
+      "description": "Get Results"
+    },
+    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -124,7 +134,8 @@
         "source-storage.record.get",
         "source-storage.record.post",
         "source-storage.record.put",
-        "source-storage.record.delete"
+        "source-storage.record.delete",
+        "source-storage.result.get"
       ],
       "visible": false
     }

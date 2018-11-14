@@ -14,6 +14,8 @@ types:
   snapshotCollection: !include snapshotCollection.json
   record: !include dto/record.json
   recordCollection: !include dto/recordCollection.json
+  result: !include dto/result.json
+  resultCollection: !include dto/resultCollection.json
   errors: !include raml-util/schemas/errors.schema
   recordModel: !include recordModel.json
 
@@ -280,3 +282,33 @@ resourceTypes:
             body:
               text/plain:
                 example: "Internal server error"
+  /result:
+    displayName: Result
+    description: API for getting Results
+    get:
+      description: Get a list of results
+      is: [
+        searchable: {
+          description:
+            "with valid searchable fields: for example recordType=MARC",
+          example:
+            "recordType=MARC"
+        },
+        pageable,
+        validate
+      ]
+      responses:
+        200:
+          body:
+            application/json:
+              type: resultCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"

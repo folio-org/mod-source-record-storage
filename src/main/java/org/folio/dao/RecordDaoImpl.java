@@ -10,6 +10,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordModel;
+import org.folio.rest.jaxrs.model.Result;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -31,6 +32,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
 
   private static final String RECORDS_VIEW = "records_view";
+  private static final String RESULTS_VIEW = "results_view";
   private static final String RECORDS_TABLE = "records";
   private static final String SOURCE_RECORDS_TABLE = "source_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
@@ -103,6 +105,20 @@ public class RecordDaoImpl implements RecordDao {
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Record with id '%s' was not found", id))))
       );
+  }
+
+  @Override
+  public Future<List<Result>> getResults(String query, int offset, int limit) {
+    Future<Results<Result>> future = Future.future();
+    try {
+      String[] fieldList = {"*"};
+      CQLWrapper cql = getCQL(RESULTS_VIEW, query, limit, offset);
+      pgClient.get(RESULTS_VIEW, Result.class, fieldList, cql, true, false, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error while querying results_view", e);
+      future.fail(e);
+    }
+    return future.map(Results::getResults);
   }
 
   private String constructInsertOrUpdateQuery(Record record) {

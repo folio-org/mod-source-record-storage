@@ -5,6 +5,7 @@ import io.vertx.core.Future;
 import java.util.List;
 import java.util.Optional;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Result;
 
 /**
  * Record Service
@@ -52,4 +53,14 @@ public interface RecordService {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteRecord(String id);
+
+  /**
+   * Searches for results
+   *
+   * @param query  query from URL
+   * @param offset starting index in a list of results
+   * @param limit  limit of records for pagination
+   * @return future with list of {@link Result}
+   */
+  Future<List<Result>> getResults(String query, int offset, int limit);
 }

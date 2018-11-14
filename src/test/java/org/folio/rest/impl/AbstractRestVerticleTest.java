@@ -13,6 +13,7 @@ import org.folio.rest.client.TenantClient;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 
 public abstract class AbstractRestVerticleTest {
@@ -84,5 +85,8 @@ public abstract class AbstractRestVerticleTest {
       async.complete();
     }));
   }
+
+  @Before
+  public abstract void clearTables(TestContext context);
 
 }

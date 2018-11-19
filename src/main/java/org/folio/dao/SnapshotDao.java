@@ -1,10 +1,10 @@
 package org.folio.dao;
 
-import java.util.List;
-import java.util.Optional;
-
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SnapshotCollection;
+
+import java.util.Optional;
 
 /**
  * Data access object for {@link Snapshot}
@@ -17,9 +17,9 @@ public interface SnapshotDao {
    * @param query  query string to filter snapshots based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
-   * @return future with list of {@link Snapshot}
+   * @return future with {@link SnapshotCollection}
    */
-  Future<List<Snapshot>> getSnapshots(String query, int offset, int limit);
+  Future<SnapshotCollection> getSnapshots(String query, int offset, int limit);
 
   /**
    * Searches for {@link Snapshot} by id

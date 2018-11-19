@@ -107,6 +107,29 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnLimitedCollectionOnGet() {
+    List<JsonObject> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
+    for (JsonObject snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot.toString())
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?limit=3")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("snapshots.size()", is(3))
+      .body("totalRecords", is(snapshotsToPost.size()));
+  }
+
+  @Test
   public void shouldReturnBadRequestOnPostWhenNoSnapshotPassedInBody() {
     RestAssured.given()
       .spec(spec)

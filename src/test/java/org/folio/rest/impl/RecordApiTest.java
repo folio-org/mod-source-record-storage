@@ -136,6 +136,29 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnLimitedCollectionOnGetWithLimit() {
+    List<JsonObject> recordsToPost = Arrays.asList(record_1, record_2, record_3);
+    for (JsonObject record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record.toString())
+        .when()
+        .post(SOURCE_STORAGE_RECORD_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORD_PATH + "?limit=2")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("records.size()", is(2))
+      .body("totalRecords", is(recordsToPost.size()));
+  }
+
+  @Test
   public void shouldReturnBadRequestOnPostWhenNoRecordPassedInBody() {
     RestAssured.given()
       .spec(spec)
@@ -360,4 +383,26 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("results*.snapshotId", everyItem(is(record_2.getString("snapshotId"))));
   }
 
+  @Test
+  public void shouldReturnLimitedResultCollectionOnGetWithLimit() {
+    List<JsonObject> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4);
+    for (JsonObject record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record.toString())
+        .when()
+        .post(SOURCE_STORAGE_RECORD_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH + "?limit=1")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("results.size()", is(1))
+      .body("totalRecords", is(2));
+  }
 }

@@ -2,8 +2,8 @@ package org.folio.services;
 
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SnapshotCollection;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,9 +17,9 @@ public interface SnapshotService {
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
-   * @return future with list of Snapshots
+   * @return future with {@link SnapshotCollection}
    */
-  Future<List<Snapshot>> getSnapshots(String query, int offset, int limit);
+  Future<SnapshotCollection> getSnapshots(String query, int offset, int limit);
 
   /**
    * Searches for {@link Snapshot} by id

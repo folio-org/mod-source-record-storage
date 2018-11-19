@@ -5,9 +5,9 @@ import io.vertx.core.Vertx;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SnapshotCollection;
 
 import javax.ws.rs.NotFoundException;
-import java.util.List;
 import java.util.Optional;
 
 public class SnapshotServiceImpl implements SnapshotService {
@@ -25,7 +25,7 @@ public class SnapshotServiceImpl implements SnapshotService {
   }
 
   @Override
-  public Future<List<Snapshot>> getSnapshots(String query, int offset, int limit) {
+  public Future<SnapshotCollection> getSnapshots(String query, int offset, int limit) {
     return snapshotDao.getSnapshots(query, offset, limit);
   }
 

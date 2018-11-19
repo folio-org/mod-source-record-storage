@@ -8,10 +8,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.ResultCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -44,10 +41,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.getSnapshots(query, offset, limit)
-          .map(snapshots -> new SnapshotCollection()
-            .withSnapshots(snapshots)
-            .withTotalRecords(snapshots.size())
-          ).map(GetSourceStorageSnapshotResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageSnapshotResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -147,10 +141,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecords(query, offset, limit)
-          .map(records -> new RecordCollection()
-            .withRecords(records)
-            .withTotalRecords(records.size())
-          ).map(GetSourceStorageRecordResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageRecordResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -246,10 +237,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getResults(query, offset, limit)
-          .map(results -> new ResultCollection()
-            .withResults(results)
-            .withTotalRecords(results.size())
-          ).map(GetSourceStorageResultResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageResultResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

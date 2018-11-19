@@ -7,10 +7,10 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Result;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.ResultCollection;
 
 import javax.ws.rs.NotFoundException;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,7 +23,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<List<Record>> getRecords(String query, int offset, int limit) {
+  public Future<RecordCollection> getRecords(String query, int offset, int limit) {
     return recordDao.getRecords(query, offset, limit);
   }
 
@@ -72,7 +72,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<List<Result>> getResults(String query, int offset, int limit) {
+  public Future<ResultCollection> getResults(String query, int offset, int limit) {
     return recordDao.getResults(query, offset, limit);
   }
 

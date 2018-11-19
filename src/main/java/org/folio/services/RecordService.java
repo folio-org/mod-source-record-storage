@@ -1,11 +1,11 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-
-import java.util.List;
-import java.util.Optional;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Result;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.ResultCollection;
+
+import java.util.Optional;
 
 /**
  * Record Service
@@ -18,9 +18,9 @@ public interface RecordService {
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
-   * @return future with list of {@link Record}
+   * @return future with {@link RecordCollection}
    */
-  Future<List<Record>> getRecords(String query, int offset, int limit);
+  Future<RecordCollection> getRecords(String query, int offset, int limit);
 
   /**
    * Searches for record by id
@@ -60,7 +60,7 @@ public interface RecordService {
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
-   * @return future with list of {@link Result}
+   * @return future with {@link ResultCollection}
    */
-  Future<List<Result>> getResults(String query, int offset, int limit);
+  Future<ResultCollection> getResults(String query, int offset, int limit);
 }

@@ -6,13 +6,13 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.folio.dao.util.DaoUtil.constructCriteria;
@@ -32,7 +32,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
   }
 
   @Override
-  public Future<List<Snapshot>> getSnapshots(String query, int offset, int limit) {
+  public Future<SnapshotCollection> getSnapshots(String query, int offset, int limit) {
     Future<Results<Snapshot>> future = Future.future();
     try {
       String[] fieldList = {"*"};
@@ -42,7 +42,9 @@ public class SnapshotDaoImpl implements SnapshotDao {
       LOG.error("Error while querying snapshots", e);
       future.fail(e);
     }
-    return future.map(Results::getResults);
+    return future.map(results -> new SnapshotCollection()
+      .withSnapshots(results.getResults())
+      .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
   @Override

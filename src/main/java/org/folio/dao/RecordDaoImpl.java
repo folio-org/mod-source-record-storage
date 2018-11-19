@@ -10,8 +10,10 @@ import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
 import org.folio.rest.jaxrs.model.Result;
+import org.folio.rest.jaxrs.model.ResultCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -47,7 +49,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<List<Record>> getRecords(String query, int offset, int limit) {
+  public Future<RecordCollection> getRecords(String query, int offset, int limit) {
     Future<Results<Record>> future = Future.future();
     try {
       String[] fieldList = {"*"};
@@ -57,7 +59,9 @@ public class RecordDaoImpl implements RecordDao {
       LOG.error("Error while querying records_view", e);
       future.fail(e);
     }
-    return future.map(Results::getResults);
+    return future.map(results -> new RecordCollection()
+      .withRecords(results.getResults())
+      .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
   @Override
@@ -127,7 +131,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<List<Result>> getResults(String query, int offset, int limit) {
+  public Future<ResultCollection> getResults(String query, int offset, int limit) {
     Future<Results<Result>> future = Future.future();
     try {
       String[] fieldList = {"*"};
@@ -137,7 +141,9 @@ public class RecordDaoImpl implements RecordDao {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
     }
-    return future.map(Results::getResults);
+    return future.map(results -> new ResultCollection()
+      .withResults(results.getResults())
+      .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
   private String constructInsertOrUpdateQuery(Record record) {

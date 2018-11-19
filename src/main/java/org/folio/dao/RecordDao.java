@@ -2,9 +2,10 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Result;
+import org.folio.rest.jaxrs.model.ResultCollection;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,9 +19,9 @@ public interface RecordDao {
    * @param query  query string to filter records based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
-   * @return future with list of {@link Record}
+   * @return future with {@link RecordCollection}
    */
-  Future<List<Record>> getRecords(String query, int offset, int limit);
+  Future<RecordCollection> getRecords(String query, int offset, int limit);
 
   /**
    * Searches for {@link Record} by id
@@ -60,8 +61,8 @@ public interface RecordDao {
    * @param query  query string to filter results based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
-   * @return future with list of {@link Result}
+   * @return future with {@link ResultCollection}
    */
-  Future<List<Result>> getResults(String query, int offset, int limit);
+  Future<ResultCollection> getResults(String query, int offset, int limit);
 
 }

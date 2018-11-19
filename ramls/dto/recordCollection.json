@@ -13,7 +13,7 @@
       }
     },
     "totalRecords": {
-      "description": "Number of records in the list",
+      "description": "Total number of records",
       "type": "integer"
     }
   },

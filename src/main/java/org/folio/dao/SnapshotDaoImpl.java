@@ -20,7 +20,7 @@ import static org.folio.dao.util.DaoUtil.getCQL;
 
 public class SnapshotDaoImpl implements SnapshotDao {
 
-  private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
+  private static final Logger LOG = LoggerFactory.getLogger(SnapshotDaoImpl.class);
 
   private static final String SNAPSHOTS_TABLE = "snapshots";
   private static final String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
@@ -57,7 +57,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
     }
     return future
       .map(Results::getResults)
-      .map(Snapshots -> Snapshots.isEmpty() ? Optional.empty() : Optional.of(Snapshots.get(0)));
+      .map(snapshots -> snapshots.isEmpty() ? Optional.empty() : Optional.of(snapshots.get(0)));
   }
 
   @Override

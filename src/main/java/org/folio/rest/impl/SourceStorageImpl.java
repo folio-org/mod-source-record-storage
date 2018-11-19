@@ -9,7 +9,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Result;
 import org.folio.rest.jaxrs.model.ResultCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -27,7 +26,8 @@ import java.util.Map;
 
 public class SourceStorageImpl implements SourceStorage {
 
-  private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
+  private static final Logger LOG = LoggerFactory.getLogger(SourceStorageImpl.class);
+  private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private SnapshotService snapshotService;
   private RecordService recordService;
 
@@ -83,7 +83,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         snapshotService.getSnapshotById(jobExecutionId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
-            new NotFoundException(String.format("Snapshot with id '%s' was not found", jobExecutionId))))
+            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
@@ -107,7 +107,7 @@ public class SourceStorageImpl implements SourceStorage {
           .map(updated -> updated ?
             PutSourceStorageSnapshotByJobExecutionIdResponse.respond200WithApplicationJson(entity) :
             PutSourceStorageSnapshotByJobExecutionIdResponse.respond404WithTextPlain(
-              String.format("Snapshot with id '%s' was not found", jobExecutionId))
+              String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))
           )
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
@@ -130,7 +130,7 @@ public class SourceStorageImpl implements SourceStorage {
             DeleteSourceStorageSnapshotByJobExecutionIdResponse.respond204WithTextPlain(
               String.format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
             DeleteSourceStorageSnapshotByJobExecutionIdResponse.respond404WithTextPlain(
-              String.format("Snapshot with id '%s' was not found", jobExecutionId)))
+              String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -185,7 +185,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         recordService.getRecordById(id)
           .map(optionalRecord -> optionalRecord.orElseThrow(() ->
-            new NotFoundException(String.format("Record with id '%s' was not found", id))))
+            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
@@ -207,7 +207,7 @@ public class SourceStorageImpl implements SourceStorage {
           .map(updated -> updated ?
             PutSourceStorageRecordByIdResponse.respond200WithApplicationJson(entity) :
             PutSourceStorageRecordByIdResponse.respond404WithTextPlain(
-              String.format("Record with id '%s' was not found", id))
+              String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))
           )
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
@@ -229,7 +229,7 @@ public class SourceStorageImpl implements SourceStorage {
             DeleteSourceStorageRecordByIdResponse.respond204WithTextPlain(
               String.format("Record with id '%s' was successfully deleted", id)) :
             DeleteSourceStorageRecordByIdResponse.respond404WithTextPlain(
-              String.format("Record with id '%s' was not found", id)))
+              String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id)))
           .map(Response.class::cast)
           .otherwise(SourceStorageHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);

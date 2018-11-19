@@ -62,7 +62,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .put("sourceRecord", sourceRecord_1)
     .put("parsedRecord", marcRecord);
 
-
   @Override
   public void clearTables(TestContext context) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
+import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -19,7 +20,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 
 import javax.ws.rs.NotFoundException;
-import javax.ws.rs.NotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,14 +29,13 @@ import static org.folio.dao.util.DaoUtil.getCQL;
 
 public class RecordDaoImpl implements RecordDao {
 
-  private static final Logger LOG = LoggerFactory.getLogger("mod-source-record-storage");
+  private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String RECORDS_VIEW = "records_view";
   private static final String RESULTS_VIEW = "results_view";
   private static final String RECORDS_TABLE = "records";
   private static final String SOURCE_RECORDS_TABLE = "source_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
-  private static final String MARC_RECORDS_TABLE = "marc_records";
   private static final String ID_FIELD = "'id'";
 
   private PostgresClient pgClient;
@@ -79,16 +78,26 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> saveRecord(Record record) {
     Future<UpdateResult> future = Future.future();
-    String insertQuery = constructInsertOrUpdateQuery(record);
-    pgClient.execute(insertQuery, future.completer());
+    try {
+      String insertQuery = constructInsertOrUpdateQuery(record);
+      pgClient.execute(insertQuery, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error while inserting new record", e);
+      future.fail(e);
+    }
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
   @Override
   public Future<Boolean> updateRecord(Record record) {
     Future<UpdateResult> future = Future.future();
-    String updateQuery = constructInsertOrUpdateQuery(record);
-    pgClient.execute(updateQuery, future.completer());
+    try {
+      String updateQuery = constructInsertOrUpdateQuery(record);
+      pgClient.execute(updateQuery, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error while updating a record", e);
+      future.fail(e);
+    }
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
@@ -98,8 +107,13 @@ public class RecordDaoImpl implements RecordDao {
     return getRecordById(id)
       .compose(optionalRecord -> optionalRecord
         .map(record -> {
-          String deleteQuery = constructDeleteQuery(record);
-          pgClient.execute(deleteQuery, future.completer());
+          try {
+            String deleteQuery = constructDeleteQuery(record);
+            pgClient.execute(deleteQuery, future.completer());
+          } catch (Exception e) {
+            LOG.error("Error while deleting a record", e);
+            future.fail(e);
+          }
           return future.map(updateResult -> updateResult.getUpdated() == 1);
         })
         .orElse(Future.failedFuture(new NotFoundException(
@@ -137,15 +151,8 @@ public class RecordDaoImpl implements RecordDao {
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
-      switch (record.getRecordType()) {
-        case MARC:
-          statements.add(
-            constructInsertOrUpdateStatement(MARC_RECORDS_TABLE, parsedRecord.getId(), JsonObject.mapFrom(parsedRecord)));
-          break;
-        default:
-          throw new NotSupportedException(
-            String.format("Unsupported record type '%s'", record.getRecordType().value()));
-      }
+      statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
+              parsedRecord.getId(), JsonObject.mapFrom(parsedRecord)));
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {
@@ -163,15 +170,8 @@ public class RecordDaoImpl implements RecordDao {
     List<String> statements = new ArrayList<>();
     statements.add(constructDeleteStatement(SOURCE_RECORDS_TABLE, record.getSourceRecord().getId()));
     if (record.getParsedRecord() != null) {
-      switch (record.getRecordType()) {
-        case MARC:
-          statements.add(
-            constructDeleteStatement(MARC_RECORDS_TABLE, record.getParsedRecord().getId()));
-          break;
-        default:
-          throw new NotSupportedException(
-            String.format("Unsupported record type '%s'", record.getRecordType().value()));
-      }
+      statements.add(constructDeleteStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
+        record.getParsedRecord().getId()));
     }
     if (record.getErrorRecord() != null) {
       statements.add(

@@ -101,6 +101,11 @@ public class RecordDaoImpl implements RecordDao {
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
+  /**
+   * currently the method is implemented allowing to delete the Record,
+   * this behavior will be changed
+   * (@link https://issues.folio.org/browse/MODSOURCE-16)
+   */
   @Override
   public Future<Boolean> deleteRecord(String id) {
     Future<UpdateResult> future = Future.future();

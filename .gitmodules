@@ -1,3 +1,3 @@
-[submodule "ramls/raml-util"]
-	path = ramls/raml-util
-	url = https://github.com/folio-org/raml
+[submodule "ramls/raml-storage"]
+	path = ramls/raml-storage
+	url = https://github.com/folio-org/data-import-raml-storage.git

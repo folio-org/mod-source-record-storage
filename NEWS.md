@@ -4,8 +4,8 @@
  * Defined endpoint for GETting the results
  * Implemented the endpoint
  * Created API tests for the added endpoint
- 
-  API for result: 
+
+  API for result:
 
  | METHOD |             URL             | DESCRIPTION                                             |
  |--------|-----------------------------|---------------------------------------------------------|
@@ -17,8 +17,8 @@
  * Defined endpoints for managing CRUD operations over Record entity
  * Implemented the endpoints methods
  * Created API tests for each added endpoint
- 
-  CRUD API for record: 
+
+  CRUD API for record:
 
  | METHOD |             URL             | DESCRIPTION                                             |
  |--------|-----------------------------|---------------------------------------------------------|
@@ -34,8 +34,8 @@
  * Defined endpoints for managing CRUD operations over Snapshot entity
  * Implemented the endpoints methods
  * Created API tests for each added endpoint
- 
-  CRUD API for snapshot: 
+
+  CRUD API for snapshot:
 
  | METHOD |             URL                           | DESCRIPTION                                             |
  |--------|-------------------------------------------|---------------------------------------------------------|
@@ -50,8 +50,8 @@
  * Implementation is currently stubbed
  * Use RestAssured library for REST testing needs
  * Use RAML 1.0
- 
-  API for jobs and logs: 
+
+  API for jobs and logs:
 
  | METHOD |             URL                | DESCRIPTION                                             |
  |--------|------------------------------- |---------------------------------------------------------|

@@ -2,7 +2,6 @@ package org.folio.dao;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
@@ -28,6 +27,7 @@ import java.util.Optional;
 
 import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.dao.util.DaoUtil.getCQL;
+import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 public class RecordDaoImpl implements RecordDao {
 
@@ -146,7 +146,7 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
-  private String constructInsertOrUpdateQuery(Record record) {
+  private String constructInsertOrUpdateQuery(Record record) throws Exception {
     List<String> statements = new ArrayList<>();
     RecordModel recordModel = new RecordModel()
       .withId(record.getId())
@@ -155,24 +155,25 @@ public class RecordDaoImpl implements RecordDao {
       .withMatchedId(record.getMatchedId())
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
-      .withSourceRecordId(record.getSourceRecord().getId());
+      .withSourceRecordId(record.getSourceRecord().getId())
+      .withMetadata(record.getMetadata());
     SourceRecord sourceRecord = record.getSourceRecord();
     statements.add(
-      constructInsertOrUpdateStatement(SOURCE_RECORDS_TABLE, sourceRecord.getId(), JsonObject.mapFrom(sourceRecord)));
+      constructInsertOrUpdateStatement(SOURCE_RECORDS_TABLE, sourceRecord.getId(), pojo2json(sourceRecord)));
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
       statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-              parsedRecord.getId(), JsonObject.mapFrom(parsedRecord)));
+              parsedRecord.getId(), pojo2json(parsedRecord)));
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {
       recordModel.setErrorRecordId(errorRecord.getId());
       statements.add(
-        constructInsertOrUpdateStatement(ERROR_RECORDS_TABLE, errorRecord.getId(), JsonObject.mapFrom(errorRecord)));
+        constructInsertOrUpdateStatement(ERROR_RECORDS_TABLE, errorRecord.getId(), pojo2json(errorRecord)));
     }
     statements.add(
-      constructInsertOrUpdateStatement(RECORDS_TABLE, recordModel.getId(), JsonObject.mapFrom(recordModel))
+      constructInsertOrUpdateStatement(RECORDS_TABLE, recordModel.getId(), pojo2json(recordModel))
     );
     return String.join("", statements);
   }
@@ -193,7 +194,7 @@ public class RecordDaoImpl implements RecordDao {
     return String.join("", statements);
   }
 
-  private String constructInsertOrUpdateStatement(String tableName, String id, JsonObject jsonData) {
+  private String constructInsertOrUpdateStatement(String tableName, String id, String jsonData) {
     return new StringBuilder()
       .append("INSERT INTO ")
       .append(schema).append(".").append(tableName)

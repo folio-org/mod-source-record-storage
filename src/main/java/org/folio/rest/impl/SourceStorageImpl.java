@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.dataImport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.resource.SourceStorage;
@@ -15,7 +16,6 @@ import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
 import org.folio.services.SnapshotServiceImpl;
-import org.folio.util.SourceStorageHelper;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -43,11 +43,11 @@ public class SourceStorageImpl implements SourceStorage {
         snapshotService.getSnapshots(query, offset, limit)
           .map(GetSourceStorageSnapshotResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get all snapshots", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -60,11 +60,11 @@ public class SourceStorageImpl implements SourceStorage {
         snapshotService.saveSnapshot(entity)
           .map((Response) PostSourceStorageSnapshotResponse
             .respond201WithApplicationJson(entity, PostSourceStorageSnapshotResponse.headersFor201()))
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to create a snapshot", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -80,11 +80,11 @@ public class SourceStorageImpl implements SourceStorage {
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get snapshot by jobExecutionId", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -104,11 +104,11 @@ public class SourceStorageImpl implements SourceStorage {
               String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))
           )
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to update a snapshot", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -126,11 +126,11 @@ public class SourceStorageImpl implements SourceStorage {
             DeleteSourceStorageSnapshotByJobExecutionIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to delete a snapshot", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -143,11 +143,11 @@ public class SourceStorageImpl implements SourceStorage {
         recordService.getRecords(query, offset, limit)
           .map(GetSourceStorageRecordResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get all records", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -160,11 +160,11 @@ public class SourceStorageImpl implements SourceStorage {
         recordService.saveRecord(entity)
           .map((Response) PostSourceStorageRecordResponse
             .respond201WithApplicationJson(entity, PostSourceStorageRecordResponse.headersFor201()))
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to create a record", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -179,11 +179,11 @@ public class SourceStorageImpl implements SourceStorage {
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get record by id", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -201,11 +201,11 @@ public class SourceStorageImpl implements SourceStorage {
               String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))
           )
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to update a record", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -222,11 +222,11 @@ public class SourceStorageImpl implements SourceStorage {
             DeleteSourceStorageRecordByIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id)))
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to delete a record", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
@@ -239,11 +239,11 @@ public class SourceStorageImpl implements SourceStorage {
         recordService.getResults(query, offset, limit)
           .map(GetSourceStorageResultResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
-          .otherwise(SourceStorageHelper::mapExceptionToResponse)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get results", e);
-        asyncResultHandler.handle(Future.succeededFuture(SourceStorageHelper.mapExceptionToResponse(e)));
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }

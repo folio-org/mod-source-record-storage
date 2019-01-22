@@ -1,50 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <artifactId>mod-source-record-storage-server</artifactId>
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
     <version>1.1.0-SNAPSHOT</version>
   </parent>
-  <artifactId>mod-source-record-storage-server</artifactId>
-  <packaging>jar</packaging>
 
   <properties>
-    <main.basedir>${project.basedir}/..</main.basedir>
+    <basedir>${project.parent.basedir}</basedir>
+    <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-api-interfaces</artifactId>
-      <version>${raml-module-builder.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-runtime</artifactId>
-      <version>${raml-module-builder.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-      <version>${vertx.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-web</artifactId>
-      <version>${vertx.version}</version>
-    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
@@ -56,6 +26,37 @@
       <artifactId>rest-assured</artifactId>
       <version>${rest-assured.version}</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-api-interfaces</artifactId>
+      <version>${raml-module-builder.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-runtime</artifactId>
+      <version>${raml-module-builder.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
+      <version>${vertx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+      <version>${vertx.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -76,15 +77,6 @@
   </dependencies>
 
   <build>
-    <directory>${main.basedir}/target</directory>
-    <outputDirectory>${main.basedir}/target/server/classes</outputDirectory>
-    <sourceDirectory>src/main/java</sourceDirectory>
-    <testResources>
-      <testResource>
-        <directory>src/test/resources</directory>
-        <filtering>true</filtering>
-      </testResource>
-    </testResources>
     <resources>
       <resource>
         <directory>src/main/resources</directory>
@@ -142,7 +134,7 @@
               <systemProperties>
                 <systemProperty>
                   <key>project.basedir</key>
-                  <value>${main.basedir}</value>
+                  <value>${basedir}</value>
                 </systemProperty>
                 <systemProperty>
                   <key>raml_files</key>
@@ -168,7 +160,7 @@
                 </systemProperty>
                 <systemProperty>
                   <key>project.basedir</key>
-                  <value>${main.basedir}</value>
+                  <value>${basedir}</value>
                 </systemProperty>
                 <systemProperty>
                   <key>json.type</key>
@@ -272,7 +264,7 @@
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${main.basedir}/target/classes/apidocs/raml</outputDirectory>
+              <outputDirectory>${basedir}/target/classes/apidocs/raml</outputDirectory>
               <resources>
                 <resource>
                   <directory>${ramlfiles_path}</directory>
@@ -291,38 +283,28 @@
               <outputDirectory>${project.build.directory}</outputDirectory>
               <resources>
                 <resource>
-                  <directory>${main.basedir}/descriptors</directory>
+                  <directory>${basedir}/descriptors</directory>
                   <include>*Descriptor*-template.json</include>
                   <filtering>true</filtering>
                 </resource>
               </resources>
             </configuration>
           </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>com.coderplus.maven.plugins</groupId>
-        <artifactId>copy-rename-maven-plugin</artifactId>
-        <version>1.0</version>
-        <executions>
           <execution>
-            <id>rename-descriptor-outputs</id>
-            <phase>generate-resources</phase>
+            <id>copy-jars</id>
+            <!-- here the phase you need -->
+            <phase>verify</phase>
             <goals>
-              <goal>rename</goal>
+              <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <fileSets>
-                <fileSet>
-                  <sourceFile>${project.build.directory}/ModuleDescriptor-template.json</sourceFile>
-                  <destinationFile>${project.build.directory}/ModuleDescriptor.json</destinationFile>
-                </fileSet>
-                <fileSet>
-                  <sourceFile>${project.build.directory}/DeploymentDescriptor-template.json</sourceFile>
-                  <destinationFile>${project.build.directory}/DeploymentDescriptor.json</destinationFile>
-                </fileSet>
-              </fileSets>
+              <outputDirectory>${project.parent.build.directory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.build.directory}</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
             </configuration>
           </execution>
         </executions>
@@ -347,7 +329,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet />
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>
@@ -383,32 +365,7 @@
           </systemPropertyVariables>
         </configuration>
       </plugin>
-      <plugin>
-        <artifactId>maven-clean-plugin</artifactId>
-        <version>2.6</version>
-        <executions>
-          <execution>
-            <phase>clean</phase>
-            <goals>
-              <goal>clean</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <excludeDefaultDirectories>true</excludeDefaultDirectories>
-          <filesets>
-            <fileset>
-              <directory>${project.build.directory}</directory>
-              <followSymlinks>false</followSymlinks>
-              <excludes>
-                <exclude>*.jar</exclude>
-                <exclude>*.json</exclude>
-              </excludes>
-            </fileset>
-          </filesets>
-          <verbose>true</verbose>
-        </configuration>
-      </plugin>
+
     </plugins>
   </build>
 

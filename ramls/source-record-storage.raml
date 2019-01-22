@@ -321,9 +321,10 @@ resourceTypes:
         application/json:
           type: testMarcRecordsCollection
       responses:
-        204:
+        201:
           body:
-            text/plain: !!null
+            application/json:
+              type: testMarcRecordsCollection
         400:
           description: "Bad request"
           body:

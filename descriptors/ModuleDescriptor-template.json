@@ -61,6 +61,10 @@
           "methods": ["GET"],
           "pathPattern": "/source-storage/result",
           "permissionsRequired": ["source-storage.result.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/source-storage/populate-test-marc-records"
         }
       ]
     },

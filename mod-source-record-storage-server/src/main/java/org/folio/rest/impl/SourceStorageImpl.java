@@ -269,23 +269,14 @@ public class SourceStorageImpl implements SourceStorage {
       if (Boolean.TRUE.equals(Boolean.valueOf(System.getenv(TEST_MODE)))) {
         List<Future> futures = new ArrayList<>();
         entity.getSourceRecords().stream()
-          .map(sourceRecord -> {
-            Record record = new Record()
-              .withId(sourceRecord.getId())
-              .withSourceRecord(sourceRecord)
-              .withSnapshotId(STUB_SNAPSHOT_ID)
-              .withRecordType(Record.RecordType.MARC);
-            if (sourceRecord.getSource().startsWith("{")) {
-              record.setParsedRecord(new ParsedRecord().withContent(sourceRecord.getSource()));
-            } else {
-              record = parseRecord(record);
-            }
-             return record;
-          })
+          .map(record -> parseRecord(new Record()
+            .withSourceRecord(record)
+            .withSnapshotId(STUB_SNAPSHOT_ID)
+            .withRecordType(Record.RecordType.MARC)))
           .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord)));
         CompositeFuture.all(futures).setHandler(result -> {
           if (result.succeeded()) {
-            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond201WithApplicationJson(entity)));
           } else {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
           }

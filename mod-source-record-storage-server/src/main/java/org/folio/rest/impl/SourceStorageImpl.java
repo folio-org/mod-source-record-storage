@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -8,23 +9,36 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataImport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
 import org.folio.services.SnapshotServiceImpl;
+import org.marc4j.MarcJsonWriter;
+import org.marc4j.MarcReader;
+import org.marc4j.MarcStreamReader;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class SourceStorageImpl implements SourceStorage {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageImpl.class);
+  private static final String TEST_MODE = "test.mode";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
+  private static final String STUB_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000000";
   private SnapshotService snapshotService;
   private RecordService recordService;
 
@@ -246,6 +260,48 @@ public class SourceStorageImpl implements SourceStorage {
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
+  }
+
+  @Override
+  public void postSourceStoragePopulateTestMarcRecords(TestMarcRecordsCollection entity, Map<String, String> okapiHeaders,
+                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      if (Boolean.TRUE.equals(Boolean.valueOf(System.getenv(TEST_MODE)))) {
+        List<Future> futures = new ArrayList<>();
+        entity.getSourceRecords().stream()
+          .map(record -> parseRecord(new Record()
+            .withSourceRecord(record)
+            .withSnapshotId(STUB_SNAPSHOT_ID)
+            .withRecordType(Record.RecordType.MARC)))
+          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord)));
+        CompositeFuture.all(futures).setHandler(result -> {
+          if (result.succeeded()) {
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond201WithApplicationJson(entity)));
+          } else {
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
+          }
+        });
+      } else {
+        asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond400WithTextPlain("Endpoint is available only in test mode")));
+      }
+    });
+  }
+
+  private Record parseRecord(Record record) {
+    try {
+      MarcReader reader = new MarcStreamReader(new ByteArrayInputStream(record.getSourceRecord().getSource().getBytes(StandardCharsets.UTF_8)));
+      if (reader.hasNext()) {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        MarcJsonWriter writer = new MarcJsonWriter(os);
+        org.marc4j.marc.Record marcRecord = reader.next();
+        writer.write(marcRecord);
+        record.setParsedRecord(new ParsedRecord().withContent(new String(os.toByteArray())));
+      }
+    } catch (Exception e) {
+      LOG.error("Error parsing MARC record", e);
+      record.setErrorRecord(new ErrorRecord().withContent(record.getSourceRecord().getSource()).withDescription("Error parsing marc record"));
+    }
+    return record;
   }
 
 }

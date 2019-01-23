@@ -1,0 +1,4 @@
+*
+!Dockerfile
+!docker*
+!mod-source-record-storage-server/target/*.jar

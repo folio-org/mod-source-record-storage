@@ -34,7 +34,9 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Boolean> saveRecord(Record record) {
-    record.setId(UUID.randomUUID().toString());
+    if (record.getId() == null) {
+      record.setId(UUID.randomUUID().toString());
+    }
     record.getSourceRecord().setId(UUID.randomUUID().toString());
     if (record.getParsedRecord() != null) {
       record.getParsedRecord().setId(UUID.randomUUID().toString());

@@ -11,6 +11,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
+* [How to fill module with data for testing purposes](https://wiki.folio.org/x/G6bc)
 
 ## Introduction
 

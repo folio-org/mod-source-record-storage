@@ -25,8 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.folio.dao.util.DaoUtil.constructCriteria;
-import static org.folio.dao.util.DaoUtil.getCQL;
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 public class RecordDaoImpl implements RecordDao {
@@ -53,7 +53,7 @@ public class RecordDaoImpl implements RecordDao {
     Future<Results<Record>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQL(RECORDS_VIEW, query, limit, offset);
+      CQLWrapper cql = getCQLWrapper(RECORDS_VIEW, query, limit, offset);
       pgClient.get(RECORDS_VIEW, Record.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view", e);
@@ -135,7 +135,7 @@ public class RecordDaoImpl implements RecordDao {
     Future<Results<Result>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQL(RESULTS_VIEW, query, limit, offset);
+      CQLWrapper cql = getCQLWrapper(RESULTS_VIEW, query, limit, offset);
       pgClient.get(RESULTS_VIEW, Result.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);

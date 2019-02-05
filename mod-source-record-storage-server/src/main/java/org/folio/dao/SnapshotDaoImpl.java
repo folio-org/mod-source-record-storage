@@ -15,8 +15,8 @@ import org.folio.rest.persist.interfaces.Results;
 
 import java.util.Optional;
 
-import static org.folio.dao.util.DaoUtil.constructCriteria;
-import static org.folio.dao.util.DaoUtil.getCQL;
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 public class SnapshotDaoImpl implements SnapshotDao {
 
@@ -36,7 +36,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
     Future<Results<Snapshot>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQL(SNAPSHOTS_TABLE, query, limit, offset);
+      CQLWrapper cql = getCQLWrapper(SNAPSHOTS_TABLE, query, limit, offset);
       pgClient.get(SNAPSHOTS_TABLE, Snapshot.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying snapshots", e);

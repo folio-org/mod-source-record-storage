@@ -280,7 +280,7 @@ public class SourceStorageImpl implements SourceStorage {
             } else {
               record = parseRecord(record);
             }
-             return record;
+            return record;
           })
           .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord)));
         CompositeFuture.all(futures).setHandler(result -> {
@@ -304,7 +304,7 @@ public class SourceStorageImpl implements SourceStorage {
         MarcJsonWriter writer = new MarcJsonWriter(os);
         org.marc4j.marc.Record marcRecord = reader.next();
         writer.write(marcRecord);
-        record.setParsedRecord(new ParsedRecord().withContent(new String(os.toByteArray())));
+        record.setParsedRecord(new ParsedRecord().withContent(os.toString(StandardCharsets.UTF_8.name())));
       }
     } catch (Exception e) {
       LOG.error("Error parsing MARC record", e);

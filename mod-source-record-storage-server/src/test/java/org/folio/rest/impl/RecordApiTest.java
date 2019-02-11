@@ -405,4 +405,49 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("results.size()", is(1))
       .body("totalRecords", is(2));
   }
+
+  @Test
+  public void shouldReturnErrorOnGet() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH + "?query=error!")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH + "?query=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RESULT_PATH + "?limit=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORD_PATH + "?query=error!")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORD_PATH + "?query=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORD_PATH + "?limit=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
 }

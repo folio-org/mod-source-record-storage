@@ -107,6 +107,30 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnErrorOnGet() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?query=error!")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?query=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?limit=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
   public void shouldReturnLimitedCollectionOnGet() {
     List<JsonObject> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
     for (JsonObject snapshot : snapshotsToPost) {

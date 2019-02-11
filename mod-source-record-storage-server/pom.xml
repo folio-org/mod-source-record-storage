@@ -134,7 +134,6 @@
             </goals>
             <configuration>
               <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <!-- <executable>java</executable> -->
               <cleanupDaemonThreads>false</cleanupDaemonThreads>
               <systemProperties>
                 <systemProperty>
@@ -156,7 +155,6 @@
             </goals>
             <configuration>
               <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <!-- <executable>java</executable> -->
               <cleanupDaemonThreads>false</cleanupDaemonThreads>
               <systemProperties>
                 <systemProperty>
@@ -341,10 +339,6 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.1</version>
         <configuration>
-          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
-               https://issues.folio.org/browse/FOLIO-1609
-               https://issues.apache.org/jira/browse/SUREFIRE-1588
-          -->
           <useSystemClassLoader>false</useSystemClassLoader>
           <systemPropertyVariables>
             <vertx.logger-delegate-factory-class-name>

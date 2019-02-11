@@ -97,7 +97,6 @@
             </goals>
             <configuration>
               <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <!-- <executable>java</executable> -->
               <cleanupDaemonThreads>false</cleanupDaemonThreads>
               <systemProperties>
                 <systemProperty>
@@ -119,7 +118,6 @@
             </goals>
             <configuration>
               <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <!-- <executable>java</executable> -->
               <cleanupDaemonThreads>false</cleanupDaemonThreads>
               <systemProperties>
                 <systemProperty>

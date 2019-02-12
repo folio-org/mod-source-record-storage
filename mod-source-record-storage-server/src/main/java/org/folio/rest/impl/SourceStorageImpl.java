@@ -49,13 +49,13 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageSnapshot(String query, int offset, int limit, String lang,
+  public void getSourceStorageSnapshots(String query, int offset, int limit, String lang,
                                        Map<String, String> okapiHeaders,
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.getSnapshots(query, offset, limit)
-          .map(GetSourceStorageSnapshotResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -67,13 +67,13 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void postSourceStorageSnapshot(String lang, Snapshot entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageSnapshots(String lang, Snapshot entity, Map<String, String> okapiHeaders,
                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.saveSnapshot(entity)
-          .map((Response) PostSourceStorageSnapshotResponse
-            .respond201WithApplicationJson(entity, PostSourceStorageSnapshotResponse.headersFor201()))
+          .map((Response) PostSourceStorageSnapshotsResponse
+            .respond201WithApplicationJson(entity, PostSourceStorageSnapshotsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -84,7 +84,7 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageSnapshotByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
+  public void getSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Map<String, String> okapiHeaders,
                                                        Handler<AsyncResult<Response>> asyncResultHandler,
                                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -92,7 +92,7 @@ public class SourceStorageImpl implements SourceStorage {
         snapshotService.getSnapshotById(jobExecutionId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
-          .map(GetSourceStorageSnapshotByJobExecutionIdResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageSnapshotsByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -104,7 +104,7 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void putSourceStorageSnapshotByJobExecutionId(String jobExecutionId, Snapshot entity,
+  public void putSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Snapshot entity,
                                                        Map<String, String> okapiHeaders,
                                                        Handler<AsyncResult<Response>> asyncResultHandler,
                                                        Context vertxContext) {
@@ -113,8 +113,8 @@ public class SourceStorageImpl implements SourceStorage {
         entity.setJobExecutionId(jobExecutionId);
         snapshotService.updateSnapshot(entity)
           .map(updated -> updated ?
-            PutSourceStorageSnapshotByJobExecutionIdResponse.respond200WithApplicationJson(entity) :
-            PutSourceStorageSnapshotByJobExecutionIdResponse.respond404WithTextPlain(
+            PutSourceStorageSnapshotsByJobExecutionIdResponse.respond200WithApplicationJson(entity) :
+            PutSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))
           )
           .map(Response.class::cast)
@@ -128,16 +128,16 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void deleteSourceStorageSnapshotByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
+  public void deleteSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Map<String, String> okapiHeaders,
                                                           Handler<AsyncResult<Response>> asyncResultHandler,
                                                           Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.deleteSnapshot(jobExecutionId)
           .map(deleted -> deleted ?
-            DeleteSourceStorageSnapshotByJobExecutionIdResponse.respond204WithTextPlain(
+            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204WithTextPlain(
               String.format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
-            DeleteSourceStorageSnapshotByJobExecutionIdResponse.respond404WithTextPlain(
+            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -150,12 +150,12 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageRecord(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
+  public void getSourceStorageRecords(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecords(query, offset, limit)
-          .map(GetSourceStorageRecordResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -167,13 +167,13 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void postSourceStorageRecord(String lang, Record entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageRecords(String lang, Record entity, Map<String, String> okapiHeaders,
                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecord(entity)
-          .map((Response) PostSourceStorageRecordResponse
-            .respond201WithApplicationJson(entity, PostSourceStorageRecordResponse.headersFor201()))
+          .map((Response) PostSourceStorageRecordsResponse
+            .respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -184,14 +184,14 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageRecordById(String id, Map<String, String> okapiHeaders,
+  public void getSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id)
           .map(optionalRecord -> optionalRecord.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-          .map(GetSourceStorageRecordByIdResponse::respond200WithApplicationJson)
+          .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -203,15 +203,15 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void putSourceStorageRecordById(String id, Record entity, Map<String, String> okapiHeaders,
+  public void putSourceStorageRecordsById(String id, String lang, Record entity, Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         entity.setId(id);
         recordService.updateRecord(entity)
           .map(updated -> updated ?
-            PutSourceStorageRecordByIdResponse.respond200WithApplicationJson(entity) :
-            PutSourceStorageRecordByIdResponse.respond404WithTextPlain(
+            PutSourceStorageRecordsByIdResponse.respond200WithApplicationJson(entity) :
+            PutSourceStorageRecordsByIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))
           )
           .map(Response.class::cast)
@@ -225,15 +225,15 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void deleteSourceStorageRecordById(String id, Map<String, String> okapiHeaders,
+  public void deleteSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.deleteRecord(id)
           .map(deleted -> deleted ?
-            DeleteSourceStorageRecordByIdResponse.respond204WithTextPlain(
+            DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
               String.format("Record with id '%s' was successfully deleted", id)) :
-            DeleteSourceStorageRecordByIdResponse.respond404WithTextPlain(
+            DeleteSourceStorageRecordsByIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -246,12 +246,12 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageResult(String query, int offset, int limit, Map<String, String> okapiHeaders,
+  public void getSourceStorageSourceRecords(String query, int offset, int limit, Map<String, String> okapiHeaders,
                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getResults(query, offset, limit)
-          .map(GetSourceStorageResultResponse::respond200WithApplicationJson)
+        recordService.getSourceRecords(query, offset, limit)
+          .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -268,15 +268,15 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       if (Boolean.TRUE.equals(Boolean.valueOf(System.getenv(TEST_MODE)))) {
         List<Future> futures = new ArrayList<>();
-        entity.getSourceRecords().stream()
-          .map(sourceRecord -> {
+        entity.getRawRecords().stream()
+          .map(rawRecord -> {
             Record record = new Record()
-              .withId(sourceRecord.getId())
-              .withSourceRecord(sourceRecord)
+              .withId(rawRecord.getId())
+              .withRawRecord(rawRecord)
               .withSnapshotId(STUB_SNAPSHOT_ID)
               .withRecordType(Record.RecordType.MARC);
-            if (sourceRecord.getSource().startsWith("{")) {
-              record.setParsedRecord(new ParsedRecord().withContent(sourceRecord.getSource()));
+            if (rawRecord.getContent().startsWith("{")) {
+              record.setParsedRecord(new ParsedRecord().withContent(rawRecord.getContent()));
             } else {
               record = parseRecord(record);
             }
@@ -298,7 +298,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   private Record parseRecord(Record record) {
     try {
-      MarcReader reader = new MarcStreamReader(new ByteArrayInputStream(record.getSourceRecord().getSource().getBytes(StandardCharsets.UTF_8)));
+      MarcReader reader = new MarcStreamReader(new ByteArrayInputStream(record.getRawRecord().getContent().getBytes(StandardCharsets.UTF_8)));
       if (reader.hasNext()) {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         MarcJsonWriter writer = new MarcJsonWriter(os);
@@ -308,7 +308,7 @@ public class SourceStorageImpl implements SourceStorage {
       }
     } catch (Exception e) {
       LOG.error("Error parsing MARC record", e);
-      record.setErrorRecord(new ErrorRecord().withContent(record.getSourceRecord().getSource()).withDescription("Error parsing marc record"));
+      record.setErrorRecord(new ErrorRecord().withContent(record.getRawRecord().getContent()).withDescription("Error parsing marc record"));
     }
     return record;
   }

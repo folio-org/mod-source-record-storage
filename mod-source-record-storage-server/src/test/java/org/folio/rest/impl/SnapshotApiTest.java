@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
@@ -21,22 +22,21 @@ import static org.hamcrest.Matchers.is;
 @RunWith(VertxUnitRunner.class)
 public class SnapshotApiTest extends AbstractRestVerticleTest {
 
-  private static final String SOURCE_STORAGE_SNAPSHOT_PATH = "/source-storage/snapshot";
+  private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
 
-  private static JsonObject snapshot_1 = new JsonObject()
-    .put("jobExecutionId", "67dfac11-1caf-4470-9ad1-d533f6360bdd")
-    .put("status", "NEW");
-  private static JsonObject snapshot_2 = new JsonObject()
-    .put("jobExecutionId", "17dfac11-1caf-4470-9ad1-d533f6360bdd")
-    .put("status", "NEW");
-  private static JsonObject snapshot_3 = new JsonObject()
-    .put("jobExecutionId", "27dfac11-1caf-4470-9ad1-d533f6360bdd")
-    .put("status", "PARSING_IN_PROGRESS");
-  private static JsonObject snapshot_4 = new JsonObject()
-    .put("jobExecutionId", "37dfac11-1caf-4470-9ad1-d533f6360bdd")
-    .put("status", "IMPORT_IN_PROGRESS");
-
+  private static Snapshot snapshot_1 = new Snapshot()
+    .withJobExecutionId("67dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withStatus(Snapshot.Status.NEW);
+  private static Snapshot snapshot_2 = new Snapshot()
+    .withJobExecutionId("17dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withStatus(Snapshot.Status.NEW);
+  private static Snapshot snapshot_3 = new Snapshot()
+    .withJobExecutionId("27dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_4 = new Snapshot()
+    .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withStatus(Snapshot.Status.IMPORT_IN_PROGRESS);
 
   @Override
   public void clearTables(TestContext context) {
@@ -52,7 +52,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(0))
@@ -61,22 +61,22 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified() {
-    List<JsonObject> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
-    for (JsonObject snapshot : snapshotsToPost) {
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
+    for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshot.toString())
+        .body(snapshot)
         .when()
-        .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
 
-    Object[] ids = snapshotsToPost.stream().map(r -> r.getString("jobExecutionId")).toArray();
+    Object[] ids = snapshotsToPost.stream().map(Snapshot::getJobExecutionId).toArray();
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(snapshotsToPost.size()))
@@ -85,13 +85,13 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnNewSnapshotsOnGetByStatusNew() {
-    List<JsonObject> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
-    for (JsonObject snapshot : snapshotsToPost) {
+    List<Snapshot> snapshotsToPost =  Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
+    for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshot.toString())
+        .body(snapshot)
         .when()
-        .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
@@ -99,11 +99,11 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?query=status=NEW")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=status=" + Snapshot.Status.NEW.name())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("snapshots*.status", everyItem(is("NEW")));
+      .body("snapshots*.status", everyItem(is(Snapshot.Status.NEW.name())));
   }
 
   @Test
@@ -111,34 +111,34 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?query=error!")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=error!")
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?query=select * from table")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=select * from table")
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?limit=select * from table")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?limit=select * from table")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
   }
 
   @Test
   public void shouldReturnLimitedCollectionOnGet() {
-    List<JsonObject> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
-    for (JsonObject snapshot : snapshotsToPost) {
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
+    for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshot.toString())
+        .body(snapshot)
         .when()
-        .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
@@ -146,7 +146,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "?limit=3")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?limit=3")
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("snapshots.size()", is(3))
@@ -159,7 +159,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -168,13 +168,13 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   public void shouldCreateSnapshotOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_1.toString())
+      .body(snapshot_1)
       .when()
-      .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("jobExecutionId", is(snapshot_1.getString("jobExecutionId")))
-      .body("status", is(snapshot_1.getString("status")));
+      .body("jobExecutionId", is(snapshot_1.getJobExecutionId()))
+      .body("status", is(snapshot_1.getStatus().name()));
   }
 
   @Test
@@ -183,7 +183,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_1.getString("jobExecutionId"))
+      .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -192,9 +192,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   public void shouldReturnNotFoundOnPutWhenSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_1.toString())
+      .body(snapshot_1)
       .when()
-      .put(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_1.getString("jobExecutionId"))
+      .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -203,24 +203,24 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   public void shouldUpdateExistingSnapshotOnPut() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_4.toString())
+      .body(snapshot_4)
       .when()
-      .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("jobExecutionId", is(snapshot_4.getString("jobExecutionId")))
-      .body("status", is(snapshot_4.getString("status")));
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()));
 
-    snapshot_4.put("status", "IMPORT_FINISHED");
+    snapshot_4.setStatus(Snapshot.Status.IMPORT_FINISHED);
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_4.toString())
+      .body(snapshot_4)
       .when()
-      .put(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_4.getString("jobExecutionId"))
+      .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_4.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("jobExecutionId", is(snapshot_4.getString("jobExecutionId")))
-      .body("status", is(snapshot_4.getString("status")));
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()));
   }
 
   @Test
@@ -228,7 +228,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_1.getString("jobExecutionId"))
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -237,22 +237,22 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   public void shouldReturnExistingSnapshotOnGetById() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_2.toString())
+      .body(snapshot_2)
       .when()
-      .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("jobExecutionId", is(snapshot_2.getString("jobExecutionId")))
-      .body("status", is(snapshot_2.getString("status")));
+      .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
+      .body("status", is(snapshot_2.getStatus().name()));
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_2.getString("jobExecutionId"))
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_2.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("jobExecutionId", is(snapshot_2.getString("jobExecutionId")))
-      .body("status", is(snapshot_2.getString("status")));
+      .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
+      .body("status", is(snapshot_2.getStatus().name()));
   }
 
   @Test
@@ -260,7 +260,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_3.getString("jobExecutionId"))
+      .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_3.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -269,18 +269,18 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   public void shouldDeleteExistingSnapshotOnDelete() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_3.toString())
+      .body(snapshot_3)
       .when()
-      .post(SOURCE_STORAGE_SNAPSHOT_PATH)
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("jobExecutionId", is(snapshot_3.getString("jobExecutionId")))
-      .body("status", is(snapshot_3.getString("status")));
+      .body("jobExecutionId", is(snapshot_3.getJobExecutionId()))
+      .body("status", is(snapshot_3.getStatus().name()));
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_SNAPSHOT_PATH + "/" + snapshot_3.getString("jobExecutionId"))
+      .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_3.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }

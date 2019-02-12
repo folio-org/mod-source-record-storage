@@ -3,8 +3,8 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Result;
-import org.folio.rest.jaxrs.model.ResultCollection;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 
 import java.util.Optional;
 
@@ -56,13 +56,13 @@ public interface RecordDao {
   Future<Boolean> deleteRecord(String id);
 
   /**
-   * Searches for {@link Result} in the db view
+   * Searches for {@link SourceRecord} in the db view
    *
    * @param query  query string to filter results based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
-   * @return future with {@link ResultCollection}
+   * @return future with {@link SourceRecordCollection}
    */
-  Future<ResultCollection> getResults(String query, int offset, int limit);
+  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit);
 
 }

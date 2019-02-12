@@ -5,62 +5,62 @@
   "provides": [
     {
       "id": "source-record-storage",
-      "version": "1.0",
+      "version": "2.0",
       "handlers": [
         {
           "methods": ["GET"],
-          "pathPattern": "/source-storage/snapshot",
-          "permissionsRequired": ["source-storage.snapshot.get"]
+          "pathPattern": "/source-storage/snapshots",
+          "permissionsRequired": ["source-storage.snapshots.get"]
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/source-storage/snapshot",
-          "permissionsRequired": ["source-storage.snapshot.post"]
+          "pathPattern": "/source-storage/snapshots",
+          "permissionsRequired": ["source-storage.snapshots.post"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshot.get"]
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshots.get"]
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshot.put"]
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshots.put"]
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/source-storage/snapshot/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshot.delete"]
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
+          "permissionsRequired": ["source-storage.snapshots.delete"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/source-storage/record",
-          "permissionsRequired": ["source-storage.record.get"]
+          "pathPattern": "/source-storage/records",
+          "permissionsRequired": ["source-storage.records.get"]
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/source-storage/record",
-          "permissionsRequired": ["source-storage.record.post"]
+          "pathPattern": "/source-storage/records",
+          "permissionsRequired": ["source-storage.records.post"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/source-storage/record/{id}",
-          "permissionsRequired": ["source-storage.record.get"]
+          "pathPattern": "/source-storage/records/{id}",
+          "permissionsRequired": ["source-storage.records.get"]
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/source-storage/record/{id}",
-          "permissionsRequired": ["source-storage.record.put"]
+          "pathPattern": "/source-storage/records/{id}",
+          "permissionsRequired": ["source-storage.records.put"]
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/source-storage/record/{id}",
-          "permissionsRequired": ["source-storage.record.delete"]
+          "pathPattern": "/source-storage/records/{id}",
+          "permissionsRequired": ["source-storage.records.delete"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/source-storage/result",
-          "permissionsRequired": ["source-storage.result.get"]
+          "pathPattern": "/source-storage/sourceRecords",
+          "permissionsRequired": ["source-storage.sourceRecords.get"]
         },
         {
           "methods": ["POST"],
@@ -82,47 +82,47 @@
   ],
   "permissionSets": [
     {
-      "permissionName": "source-storage.snapshot.get",
+      "permissionName": "source-storage.snapshots.get",
       "displayName": "Source Storage - get snapshot(s)",
       "description": "Get Snapshot(s)"
     },
     {
-      "permissionName": "source-storage.snapshot.post",
+      "permissionName": "source-storage.snapshots.post",
       "displayName": "Source Storage - create new snapshot",
       "description": "Post Snapshot"
     },
     {
-      "permissionName": "source-storage.snapshot.put",
+      "permissionName": "source-storage.snapshots.put",
       "displayName": "Source Storage - update snapshot",
       "description": "Put Snapshot"
     },
     {
-      "permissionName": "source-storage.snapshot.delete",
+      "permissionName": "source-storage.snapshots.delete",
       "displayName": "Source Storage - delete snapshot",
       "description": "Delete Snapshot"
     },
     {
-      "permissionName": "source-storage.record.get",
+      "permissionName": "source-storage.records.get",
       "displayName": "Source Storage - get record(s)",
       "description": "Get Record(s)"
     },
     {
-      "permissionName": "source-storage.record.post",
+      "permissionName": "source-storage.records.post",
       "displayName": "Source Storage - create new record",
       "description": "Post Record"
     },
     {
-      "permissionName": "source-storage.record.put",
+      "permissionName": "source-storage.records.put",
       "displayName": "Source Storage - update record",
       "description": "Put Record"
     },
     {
-      "permissionName": "source-storage.record.delete",
+      "permissionName": "source-storage.records.delete",
       "displayName": "Source Storage - delete record",
       "description": "Delete Record"
     },
     {
-      "permissionName": "source-storage.result.get",
+      "permissionName": "source-storage.sourceRecords.get",
       "displayName": "Source Storage - get results",
       "description": "Get Results"
     },
@@ -131,15 +131,15 @@
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
       "subPermissions": [
-        "source-storage.snapshot.get",
-        "source-storage.snapshot.post",
-        "source-storage.snapshot.put",
-        "source-storage.snapshot.delete",
-        "source-storage.record.get",
-        "source-storage.record.post",
-        "source-storage.record.put",
-        "source-storage.record.delete",
-        "source-storage.result.get"
+        "source-storage.snapshots.get",
+        "source-storage.snapshots.post",
+        "source-storage.snapshots.put",
+        "source-storage.snapshots.delete",
+        "source-storage.records.get",
+        "source-storage.records.post",
+        "source-storage.records.put",
+        "source-storage.records.delete",
+        "source-storage.sourceRecords.get"
       ],
       "visible": false
     }

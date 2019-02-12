@@ -8,7 +8,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.ResultCollection;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
@@ -37,7 +37,7 @@ public class RecordServiceImpl implements RecordService {
     if (record.getId() == null) {
       record.setId(UUID.randomUUID().toString());
     }
-    record.getSourceRecord().setId(UUID.randomUUID().toString());
+    record.getRawRecord().setId(UUID.randomUUID().toString());
     if (record.getParsedRecord() != null) {
       record.getParsedRecord().setId(UUID.randomUUID().toString());
     }
@@ -74,8 +74,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<ResultCollection> getResults(String query, int offset, int limit) {
-    return recordDao.getResults(query, offset, limit);
+  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit) {
+    return recordDao.getSourceRecords(query, offset, limit);
   }
 
 }

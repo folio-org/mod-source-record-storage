@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Source Record Storage Module
-version: v1.0
+version: v2.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -14,8 +14,8 @@ types:
   snapshotCollection: !include raml-storage/schemas/mod-source-record-storage/snapshotCollection.json
   record: !include raml-storage/schemas/dto/record.json
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
-  result: !include raml-storage/schemas/dto/result.json
-  resultCollection: !include raml-storage/schemas/dto/resultCollection.json
+  sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
+  sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
   recordModel: !include raml-storage/schemas/mod-source-record-storage/recordModel.json
   testMarcRecordsCollection: !include raml-storage/schemas/mod-source-record-storage/testMarcRecordsCollection.json
@@ -31,8 +31,8 @@ resourceTypes:
   collection-item: !include raml-storage/raml-util/rtypes/item-collection.raml
 
 /source-storage:
-  /snapshot:
-    displayName: Snapshot
+  /snapshots:
+    displayName: Snapshots
     description: API for managing Snapshots
     type:
       collection:
@@ -40,8 +40,9 @@ resourceTypes:
         schemaItem: snapshot
         exampleCollection: !include raml-storage/examples/mod-source-record-storage/snapshotCollection.sample
         exampleItem: !include raml-storage/examples/mod-source-record-storage/snapshot.sample
+    post:
+      is: [validate]
     get:
-      description: Get a list of snapshots
       is: [
         searchable: {
           description:
@@ -52,113 +53,27 @@ resourceTypes:
         pageable,
         validate
       ]
-      responses:
-        200:
-          body:
-            application/json:
-              type: snapshotCollection
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
-    post:
-      description: "Create new snapshot"
-      is: [validate]
-      body:
-        application/json:
-          type: snapshot
-      responses:
-        201:
-          body:
-            application/json:
-              type: snapshot
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        422:
-          description: "Unprocessable Entity"
-          body:
-            application/json:
-              type: errors
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
     /{jobExecutionId}:
-      get:
-        description: Get snapshot by id
-        responses:
-          200:
-            body:
-              application/json:
-                type: snapshot
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
+      displayName: Snapshot
+      description: Get, Delete or Update a specific Snapshot
+      type:
+        collection-item:
+          schema: snapshot
+          exampleItem: !include raml-storage/examples/mod-source-record-storage/snapshot.sample
       put:
-        description: Update snapshot
-        body:
-          application/json:
-            type: snapshot
+        is: [validate]
         responses:
           200:
             body:
               application/json:
                 type: snapshot
-          400:
-            description: "Bad request"
-            body:
-              text/plain:
-                example: "Bad request"
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          422:
-            description: "Unprocessable Entity"
-            body:
-              application/json:
-                type: errors
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
       delete:
-        description: Delete snapshot by id
         responses:
           204:
             body:
               text/plain: !!null
-          404:
-            description: "File not found"
-            body:
-              text/plain:
-                example: "File not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
-  /record:
-    displayName: Record
+  /records:
+    displayName: Records
     description: API for managing Records
     type:
       collection:
@@ -166,8 +81,9 @@ resourceTypes:
         schemaItem: record
         exampleCollection: !include raml-storage/examples/mod-source-record-storage/recordCollection.sample
         exampleItem: !include raml-storage/examples/mod-source-record-storage/record.sample
+    post:
+      is: [validate]
     get:
-      description: Get a list of records
       is: [
         searchable: {
           description:
@@ -178,116 +94,30 @@ resourceTypes:
         pageable,
         validate
       ]
-      responses:
-        200:
-          body:
-            application/json:
-              type: recordCollection
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
-    post:
-      description: "Create new record"
-      is: [validate]
-      body:
-        application/json:
-          type: record
-      responses:
-        201:
-          body:
-            application/json:
-              type: record
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
-        422:
-          description: "Unprocessable Entity"
-          body:
-            application/json:
-              type: errors
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
     /{id}:
-      get:
-        description: Get record by id
-        responses:
-          200:
-            body:
-              application/json:
-                type: record
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
+      displayName: Record
+      description: Get, Delete or Update a specific Record
+      type:
+        collection-item:
+          schema: record
+          exampleItem: !include raml-storage/examples/mod-source-record-storage/record.sample
       put:
-        description: Update record
-        body:
-          application/json:
-            type: record
+        is: [validate]
         responses:
           200:
             body:
               application/json:
                 type: record
-          400:
-            description: "Bad request"
-            body:
-              text/plain:
-                example: "Bad request"
-          404:
-            description: "Not found"
-            body:
-              text/plain:
-                example: "Not found"
-          422:
-            description: "Unprocessable Entity"
-            body:
-              application/json:
-                type: errors
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
       delete:
-        description: Delete record by id
         responses:
           204:
             body:
               text/plain: !!null
-          404:
-            description: "File not found"
-            body:
-              text/plain:
-                example: "File not found"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
-  /result:
-    displayName: Result
-    description: API for getting Results
+  /sourceRecords:
+    displayName: Source Records
+    description: API for getting Source Records
     get:
-      description: Get a list of results
+      description: Get a list of Source Records
       is: [
         searchable: {
           description:
@@ -302,7 +132,7 @@ resourceTypes:
         200:
           body:
             application/json:
-              type: resultCollection
+              type: sourceRecordCollection
         400:
           description: "Bad request"
           body:

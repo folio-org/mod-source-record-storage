@@ -3,7 +3,7 @@ package org.folio.services;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.ResultCollection;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 
 import java.util.Optional;
 
@@ -55,12 +55,12 @@ public interface RecordService {
   Future<Boolean> deleteRecord(String id);
 
   /**
-   * Searches for results
+   * Searches for source records
    *
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
-   * @return future with {@link ResultCollection}
+   * @return future with {@link SourceRecordCollection}
    */
-  Future<ResultCollection> getResults(String query, int offset, int limit);
+  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit);
 }

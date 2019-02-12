@@ -11,9 +11,9 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
-import org.folio.rest.jaxrs.model.Result;
-import org.folio.rest.jaxrs.model.ResultCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -34,9 +34,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String RECORDS_VIEW = "records_view";
-  private static final String RESULTS_VIEW = "results_view";
+  private static final String SOURCE_RECORDS_VIEW = "source_records_view";
   private static final String RECORDS_TABLE = "records";
-  private static final String SOURCE_RECORDS_TABLE = "source_records";
+  private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
 
@@ -131,18 +131,18 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ResultCollection> getResults(String query, int offset, int limit) {
-    Future<Results<Result>> future = Future.future();
+  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit) {
+    Future<Results<SourceRecord>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQLWrapper(RESULTS_VIEW, query, limit, offset);
-      pgClient.get(RESULTS_VIEW, Result.class, fieldList, cql, true, false, future.completer());
+      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, query, limit, offset);
+      pgClient.get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
     }
-    return future.map(results -> new ResultCollection()
-      .withResults(results.getResults())
+    return future.map(results -> new SourceRecordCollection()
+      .withSourceRecords(results.getResults())
       .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
@@ -155,11 +155,11 @@ public class RecordDaoImpl implements RecordDao {
       .withMatchedId(record.getMatchedId())
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
-      .withSourceRecordId(record.getSourceRecord().getId())
+      .withRawRecordId(record.getRawRecord().getId())
       .withMetadata(record.getMetadata());
-    SourceRecord sourceRecord = record.getSourceRecord();
+    RawRecord rawRecord = record.getRawRecord();
     statements.add(
-      constructInsertOrUpdateStatement(SOURCE_RECORDS_TABLE, sourceRecord.getId(), pojo2json(sourceRecord)));
+      constructInsertOrUpdateStatement(RAW_RECORDS_TABLE, rawRecord.getId(), pojo2json(rawRecord)));
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
@@ -180,7 +180,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private String constructDeleteQuery(Record record) {
     List<String> statements = new ArrayList<>();
-    statements.add(constructDeleteStatement(SOURCE_RECORDS_TABLE, record.getSourceRecord().getId()));
+    statements.add(constructDeleteStatement(RAW_RECORDS_TABLE, record.getRawRecord().getId()));
     if (record.getParsedRecord() != null) {
       statements.add(constructDeleteStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
         record.getParsedRecord().getId()));

@@ -10,11 +10,15 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+
+import java.util.Collections;
 
 public abstract class AbstractRestVerticleTest {
 
@@ -60,7 +64,12 @@ public abstract class AbstractRestVerticleTest {
       .setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
-        tenantClient.postTenant(null, res2 -> {
+        tenantClient.postTenant(new TenantAttributes()
+          .withModuleTo("1.0")
+          .withParameters(Collections.singletonList(
+            new Parameter()
+              .withKey("loadSample")
+              .withValue("true"))), res2 -> {
           async.complete();
         });
       } catch (Exception e) {

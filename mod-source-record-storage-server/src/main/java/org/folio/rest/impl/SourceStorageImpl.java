@@ -33,10 +33,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+
 public class SourceStorageImpl implements SourceStorage {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageImpl.class);
-  private static final String TEST_MODE = "test.mode";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final String STUB_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000000";
   private SnapshotService snapshotService;
@@ -50,8 +51,8 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void getSourceStorageSnapshots(String query, int offset, int limit, String lang,
-                                       Map<String, String> okapiHeaders,
-                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                        Map<String, String> okapiHeaders,
+                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.getSnapshots(query, offset, limit)
@@ -68,7 +69,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void postSourceStorageSnapshots(String lang, Snapshot entity, Map<String, String> okapiHeaders,
-                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.saveSnapshot(entity)
@@ -85,8 +86,8 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void getSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Map<String, String> okapiHeaders,
-                                                       Handler<AsyncResult<Response>> asyncResultHandler,
-                                                       Context vertxContext) {
+                                                        Handler<AsyncResult<Response>> asyncResultHandler,
+                                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.getSnapshotById(jobExecutionId)
@@ -105,9 +106,9 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void putSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Snapshot entity,
-                                                       Map<String, String> okapiHeaders,
-                                                       Handler<AsyncResult<Response>> asyncResultHandler,
-                                                       Context vertxContext) {
+                                                        Map<String, String> okapiHeaders,
+                                                        Handler<AsyncResult<Response>> asyncResultHandler,
+                                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         entity.setJobExecutionId(jobExecutionId);
@@ -129,8 +130,8 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void deleteSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Map<String, String> okapiHeaders,
-                                                          Handler<AsyncResult<Response>> asyncResultHandler,
-                                                          Context vertxContext) {
+                                                           Handler<AsyncResult<Response>> asyncResultHandler,
+                                                           Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.deleteSnapshot(jobExecutionId)
@@ -151,7 +152,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void getSourceStorageRecords(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecords(query, offset, limit)
@@ -168,7 +169,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void postSourceStorageRecords(String lang, Record entity, Map<String, String> okapiHeaders,
-                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecord(entity)
@@ -185,7 +186,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void getSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id)
@@ -204,7 +205,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void putSourceStorageRecordsById(String id, String lang, Record entity, Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         entity.setId(id);
@@ -226,7 +227,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void deleteSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
-                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.deleteRecord(id)
@@ -247,7 +248,7 @@ public class SourceStorageImpl implements SourceStorage {
 
   @Override
   public void getSourceStorageSourceRecords(String query, int offset, int limit, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getSourceRecords(query, offset, limit)
@@ -266,7 +267,7 @@ public class SourceStorageImpl implements SourceStorage {
   public void postSourceStoragePopulateTestMarcRecords(TestMarcRecordsCollection entity, Map<String, String> okapiHeaders,
                                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      if (Boolean.TRUE.equals(Boolean.valueOf(System.getenv(TEST_MODE)))) {
+      if (vertxContext.get(LOAD_SAMPLE_PARAMETER) != null && (Boolean) vertxContext.get(LOAD_SAMPLE_PARAMETER)) {
         List<Future> futures = new ArrayList<>();
         entity.getRawRecords().stream()
           .map(rawRecord -> {

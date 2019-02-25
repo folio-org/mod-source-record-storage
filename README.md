@@ -132,6 +132,9 @@ Example with sending request to the mod-source-record-storage for creating new R
       }
     });
 ```
+
+## Sample data for module testing
+To install the sample data during module initialization, you need to add a parameter to the TenantAttributes with the key "loadSample" and the value "true"
  
 ## Issue tracker
 

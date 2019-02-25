@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
@@ -40,10 +41,12 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
+    Async async = context.async();
     PostgresClient.getInstance(vertx, TENANT_ID).delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event -> {
       if (event.failed()) {
         context.fail(event.cause());
       }
+      async.complete();
     });
   }
 
@@ -85,7 +88,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnNewSnapshotsOnGetByStatusNew() {
-    List<Snapshot> snapshotsToPost =  Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
     for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
         .spec(spec)

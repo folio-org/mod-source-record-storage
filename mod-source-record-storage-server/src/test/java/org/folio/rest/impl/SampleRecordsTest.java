@@ -26,7 +26,7 @@ public class SampleRecordsTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(10))
+      .body("totalRecords", is(11))
       .body("sourceRecords", notNullValue());
   }
 }

@@ -26,11 +26,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public class ModTenantAPI extends TenantAPI {
 
@@ -109,7 +111,11 @@ public class ModTenantAPI extends TenantAPI {
       try {
         ClassLoader classLoader = getClass().getClassLoader();
         File sampleDir = new File(Objects.requireNonNull(classLoader.getResource("sampledata")).getFile());
-        List<Future> futures = new ArrayList<>();
+        int numberOfFiles;
+        try (Stream<Path> stream = Files.list(sampleDir.toPath())) {
+          numberOfFiles = (int) stream.count();
+        }
+        List<Future> futures = new ArrayList<>(numberOfFiles);
         Files.walk(sampleDir.toPath()).forEach(file -> { //NOSONAR
           if (file.toFile().getName().endsWith(JSON_EXTENSION)) {
             Record record = new Record();

@@ -23,7 +23,6 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
@@ -107,12 +106,12 @@ public class ModTenantAPI extends TenantAPI {
       try {
         ClassLoader classLoader = getClass().getClassLoader();
         File sampleDir = new File(Objects.requireNonNull(classLoader.getResource("sampledata")).getFile());
-        Files.walk(sampleDir.toPath()).forEach(file -> {
+        Files.walk(sampleDir.toPath()).forEach(file -> { //NOSONAR
           if (file.toFile().getName().endsWith(JSON_EXTENSION)) {
             Record record = new Record();
             record.setId(file.toFile().getName().split(JSON_EXTENSION)[0]);
             try {
-              String content = new String(Files.readAllBytes(file), Charset.forName("UTF-8"));
+              String content = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
               record.setParsedRecord(new ParsedRecord().withId(UUID.randomUUID().toString()).withContent(content));
               record.setRawRecord(new RawRecord().withId(UUID.randomUUID().toString()).withContent(content));
               record.setRecordType(Record.RecordType.MARC);

@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -101,11 +103,13 @@ public class ModTenantAPI extends TenantAPI {
     }
   }
 
-  private Future<Void> createStubData(TenantAttributes attributes) {
+  private Future<Void> createStubData(TenantAttributes attributes) { //NOSONAR
+    Future<Void> future = Future.future();
     if (isLoadSample(attributes)) {
       try {
         ClassLoader classLoader = getClass().getClassLoader();
         File sampleDir = new File(Objects.requireNonNull(classLoader.getResource("sampledata")).getFile());
+        List<Future> futures = new ArrayList<>();
         Files.walk(sampleDir.toPath()).forEach(file -> { //NOSONAR
           if (file.toFile().getName().endsWith(JSON_EXTENSION)) {
             Record record = new Record();
@@ -117,24 +121,27 @@ public class ModTenantAPI extends TenantAPI {
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
               record.setGeneration("0");
-              recordService.saveRecord(record).setHandler(h -> {
+              futures.add(recordService.saveRecord(record).setHandler(h -> {
                 if (h.succeeded()) {
                   LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
                 } else {
                   LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
                 }
-              });
+              }));
             } catch (IOException e) {
               LOGGER.error("Error during reading sample source records", e);
             }
           }
         });
+        CompositeFuture.all(futures).setHandler(r -> future.complete());
       } catch (Exception e) {
         LOGGER.error("Error during loading sample source records", e);
-        return Future.failedFuture(e);
+        future.fail(e);
       }
+    } else {
+      future.complete();
     }
-    return Future.succeededFuture();
+    return future;
   }
 
   private boolean isLoadSample(TenantAttributes attributes) {

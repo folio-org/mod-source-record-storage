@@ -62,7 +62,7 @@ public class ModTenantAPI extends TenantAPI {
         handlers.handle(ar);
       } else {
         setLoadSampleParameter(entity, context)
-          .compose(v -> createStubSnapshot(headers, context, entity))
+          .compose(v -> createStubSnapshot(context, entity))
           .compose(v -> createStubData(entity))
           .setHandler(event -> handlers.handle(ar));
       }
@@ -74,7 +74,7 @@ public class ModTenantAPI extends TenantAPI {
     return Future.succeededFuture();
   }
 
-  private Future<List<String>> createStubSnapshot(Map<String, String> headers, Context context, TenantAttributes attributes) {
+  private Future<List<String>> createStubSnapshot(Context context, TenantAttributes attributes) {
     try {
       if (!isLoadSample(attributes)) {
         LOGGER.info("Module is being deployed in production mode");

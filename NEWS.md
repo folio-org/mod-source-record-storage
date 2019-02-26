@@ -12,12 +12,12 @@
  |--------|--------------------------------------------|---------------------------------------------------------|
  | GET    | /source-storage/snapshots                  | Get list of snapshots                                   |
  | POST   | /source-storage/snapshots                  | Create new snapshot                                     |
- | UPDATE | /source-storage/snapshots/{jobExecutionId} | Update snapshot                                         |
+ | PUT    | /source-storage/snapshots/{jobExecutionId} | Update snapshot                                         |
  | GET    | /source-storage/snapshots/{jobExecutionId} | Get snapshot by JobExecution id                         |
  | DELETE | /source-storage/snapshots/{jobExecutionId} | Delete snapshot by JobExecution id                      |
  | GET    | /source-storage/records                    | Get list of records                                     |
  | POST   | /source-storage/records                    | Create new record                                       |
- | UPDATE | /source-storage/records/{id}               | Update record                                           |
+ | PUT    | /source-storage/records/{id}               | Update record                                           |
  | GET    | /source-storage/records/{id}               | Get record by id                                        |
  | DELETE | /source-storage/records/{id}               | Delete record by id                                     |
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
@@ -31,12 +31,12 @@
  |--------|-------------------------------------------|---------------------------------------------------------|
  | GET    | /source-storage/snapshot                  | Get list of snapshots                                   |
  | POST   | /source-storage/snapshot                  | Create new snapshot                                     |
- | UPDATE | /source-storage/snapshot/{jobExecutionId} | Update snapshot                                         |
+ | PUT    | /source-storage/snapshot/{jobExecutionId} | Update snapshot                                         |
  | GET    | /source-storage/snapshot/{jobExecutionId} | Get snapshot by JobExecution id                         |
  | DELETE | /source-storage/snapshot/{jobExecutionId} | Delete snapshot by JobExecution id                      |
  | GET    | /source-storage/record                    | Get list of records                                     |
  | POST   | /source-storage/record                    | Create new record                                       |
- | UPDATE | /source-storage/record/{id}               | Update record                                           |
+ | PUT    | /source-storage/record/{id}               | Update record                                           |
  | GET    | /source-storage/record/{id}               | Get record by id                                        |
  | DELETE | /source-storage/record/{id}               | Delete record by id                                     |
  | GET    | /source-storage/result                    | Get list of results                                     |

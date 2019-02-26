@@ -314,18 +314,33 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldDeleteExistingRecordOnDelete() {
-    Response createResponse = RestAssured.given()
+    Response createParsed = RestAssured.given()
       .spec(spec)
-      .body(record_1)
+      .body(record_2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    Record createdRecord = createResponse.body().as(Record.class);
+    Assert.assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsed = createParsed.body().as(Record.class);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId())
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    Response createErrorRecord = RestAssured.given()
+      .spec(spec)
+      .body(record_3)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createErrorRecord.statusCode(), is(HttpStatus.SC_CREATED));
+    Record errorRecord = createErrorRecord.body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }

@@ -18,7 +18,8 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
-import org.folio.services.RecordServiceImpl;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -43,11 +44,14 @@ public class ModTenantAPI extends TenantAPI {
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String JSON_EXTENSION = ".json";
 
+  @Autowired
   private RecordService recordService;
 
-  public ModTenantAPI(Vertx vertx, String tenantId) {
-    String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
-    this.recordService = new RecordServiceImpl(vertx, calculatedTenantId);
+  private String tenantId;
+
+  public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+    this.tenantId = TenantTool.calculateTenantId(tenantId);
   }
 
   @Validate
@@ -58,7 +62,7 @@ public class ModTenantAPI extends TenantAPI {
         handlers.handle(ar);
       } else {
         setLoadSampleParameter(entity, context)
-          .compose(v -> createStubSnapshot(headers, context, entity))
+          .compose(v -> createStubSnapshot(context, entity))
           .compose(v -> createStubData(entity))
           .setHandler(event -> handlers.handle(ar));
       }
@@ -70,7 +74,7 @@ public class ModTenantAPI extends TenantAPI {
     return Future.succeededFuture();
   }
 
-  private Future<List<String>> createStubSnapshot(Map<String, String> headers, Context context, TenantAttributes attributes) {
+  private Future<List<String>> createStubSnapshot(Context context, TenantAttributes attributes) {
     try {
       if (!isLoadSample(attributes)) {
         LOGGER.info("Module is being deployed in production mode");
@@ -89,7 +93,6 @@ public class ModTenantAPI extends TenantAPI {
         return Future.succeededFuture();
       }
 
-      String tenantId = TenantTool.calculateTenantId((String) headers.get("x-okapi-tenant"));
       String moduleName = PostgresClient.getModuleName();
 
       sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
@@ -127,13 +130,16 @@ public class ModTenantAPI extends TenantAPI {
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
               record.setGeneration("0");
-              futures.add(recordService.saveRecord(record).setHandler(h -> {
+              Future<Void> helperFuture = Future.future();
+              recordService.saveRecord(record, tenantId).setHandler(h -> {
                 if (h.succeeded()) {
                   LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
                 } else {
                   LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
                 }
-              }));
+                helperFuture.complete();
+              });
+              futures.add(helperFuture);
             } catch (IOException e) {
               LOGGER.error("Error during reading sample source records", e);
             }

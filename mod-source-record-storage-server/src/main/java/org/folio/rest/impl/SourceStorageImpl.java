@@ -17,12 +17,12 @@ import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
-import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
-import org.folio.services.SnapshotServiceImpl;
+import org.folio.spring.SpringContextUtil;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamReader;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -40,13 +40,17 @@ public class SourceStorageImpl implements SourceStorage {
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageImpl.class);
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final String STUB_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000000";
+
+  @Autowired
   private SnapshotService snapshotService;
+  @Autowired
   private RecordService recordService;
 
-  public SourceStorageImpl(Vertx vertx, String tenantId) {
-    String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
-    this.snapshotService = new SnapshotServiceImpl(vertx, calculatedTenantId);
-    this.recordService = new RecordServiceImpl(vertx, calculatedTenantId);
+  private String tenantId;
+
+  public SourceStorageImpl(Vertx vertx, String tenantId) { //NOSONAR
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+    this.tenantId = TenantTool.calculateTenantId(tenantId);
   }
 
   @Override
@@ -55,7 +59,7 @@ public class SourceStorageImpl implements SourceStorage {
                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.getSnapshots(query, offset, limit)
+        snapshotService.getSnapshots(query, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -72,7 +76,7 @@ public class SourceStorageImpl implements SourceStorage {
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.saveSnapshot(entity)
+        snapshotService.saveSnapshot(entity, tenantId)
           .map((Response) PostSourceStorageSnapshotsResponse
             .respond201WithApplicationJson(entity, PostSourceStorageSnapshotsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -90,7 +94,7 @@ public class SourceStorageImpl implements SourceStorage {
                                                         Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.getSnapshotById(jobExecutionId)
+        snapshotService.getSnapshotById(jobExecutionId, tenantId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotsByJobExecutionIdResponse::respond200WithApplicationJson)
@@ -112,7 +116,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         entity.setJobExecutionId(jobExecutionId);
-        snapshotService.updateSnapshot(entity)
+        snapshotService.updateSnapshot(entity, tenantId)
           .map(updated -> updated ?
             PutSourceStorageSnapshotsByJobExecutionIdResponse.respond200WithApplicationJson(entity) :
             PutSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
@@ -134,7 +138,7 @@ public class SourceStorageImpl implements SourceStorage {
                                                            Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.deleteSnapshot(jobExecutionId)
+        snapshotService.deleteSnapshot(jobExecutionId, tenantId)
           .map(deleted -> deleted ?
             DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204WithTextPlain(
               String.format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
@@ -155,7 +159,7 @@ public class SourceStorageImpl implements SourceStorage {
                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getRecords(query, offset, limit)
+        recordService.getRecords(query, offset, limit, tenantId)
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -172,7 +176,7 @@ public class SourceStorageImpl implements SourceStorage {
                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.saveRecord(entity)
+        recordService.saveRecord(entity, tenantId)
           .map((Response) PostSourceStorageRecordsResponse
             .respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -189,7 +193,7 @@ public class SourceStorageImpl implements SourceStorage {
                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getRecordById(id)
+        recordService.getRecordById(id, tenantId)
           .map(optionalRecord -> optionalRecord.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson)
@@ -209,7 +213,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         entity.setId(id);
-        recordService.updateRecord(entity)
+        recordService.updateRecord(entity, tenantId)
           .map(updated -> updated ?
             PutSourceStorageRecordsByIdResponse.respond200WithApplicationJson(entity) :
             PutSourceStorageRecordsByIdResponse.respond404WithTextPlain(
@@ -230,7 +234,7 @@ public class SourceStorageImpl implements SourceStorage {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.deleteRecord(id)
+        recordService.deleteRecord(id, tenantId)
           .map(deleted -> deleted ?
             DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
               String.format("Record with id '%s' was successfully deleted", id)) :
@@ -251,7 +255,7 @@ public class SourceStorageImpl implements SourceStorage {
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(query, offset, limit)
+        recordService.getSourceRecords(query, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -283,7 +287,7 @@ public class SourceStorageImpl implements SourceStorage {
             }
             return record;
           })
-          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord)));
+          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
         CompositeFuture.all(futures).setHandler(result -> {
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));

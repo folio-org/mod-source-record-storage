@@ -1,11 +1,12 @@
-## 2019-02-12 v1.2.0-SNAPSHOT
+## 2019-02-26 v2.0.0
 * Changed project structure to contain server and client parts. Client builds as a lightweight java library.
-* Added a non-production endpoint to populate MARC records for testing purposes, which is available only in case "test.mode" environment variable is set to true.
+* Used folio-di-support library for Spring Dependency Injection.
+* Added a non-production endpoint to populate MARC records for testing purposes, which is available only in case "loadSample" parameter of TenantAttributes is set to true.
 * Renamed entities sourceRecord -> rawRecord, result -> sourceRecord.
 * Updated sourceRecord to contain rawRecord as well as parsedRecord.
+* Added sample sourceRecords. Sample data is populated during module initialization only in case "loadSample" parameter of TenantAttributes is set to true.
+* Changed logging configuration to slf4j
 * Renamed endpoints
-* Sample source records was added. To install the sample data during module initialization, you need to add a parameter to the TenantAttributes with the key "loadSample" and the value "true"
-* Used folio-di-support library for Spring Dependency Injection
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|

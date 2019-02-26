@@ -130,13 +130,16 @@ public class ModTenantAPI extends TenantAPI {
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
               record.setGeneration("0");
-              futures.add(recordService.saveRecord(record, tenantId).setHandler(h -> {
+              Future<Void> helperFuture = Future.future();
+              recordService.saveRecord(record, tenantId).setHandler(h -> {
                 if (h.succeeded()) {
                   LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
                 } else {
                   LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
                 }
-              }));
+                helperFuture.complete();
+              });
+              futures.add(helperFuture);
             } catch (IOException e) {
               LOGGER.error("Error during reading sample source records", e);
             }

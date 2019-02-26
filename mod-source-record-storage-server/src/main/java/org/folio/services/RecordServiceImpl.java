@@ -1,39 +1,37 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import org.folio.dao.RecordDao;
-import org.folio.dao.RecordDaoImpl;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 
+@Component
 public class RecordServiceImpl implements RecordService {
 
+  @Autowired
   private RecordDao recordDao;
 
-  public RecordServiceImpl(Vertx vertx, String tenantId) {
-    this.recordDao = new RecordDaoImpl(vertx, tenantId);
+  @Override
+  public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
+    return recordDao.getRecords(query, offset, limit, tenantId);
   }
 
   @Override
-  public Future<RecordCollection> getRecords(String query, int offset, int limit) {
-    return recordDao.getRecords(query, offset, limit);
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return recordDao.getRecordById(id, tenantId);
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id) {
-    return recordDao.getRecordById(id);
-  }
-
-  @Override
-  public Future<Boolean> saveRecord(Record record) {
+  public Future<Boolean> saveRecord(Record record, String tenantId) {
     if (record.getId() == null) {
       record.setId(UUID.randomUUID().toString());
     }
@@ -44,13 +42,13 @@ public class RecordServiceImpl implements RecordService {
     if (record.getErrorRecord() != null) {
       record.getErrorRecord().setId(UUID.randomUUID().toString());
     }
-    return recordDao.saveRecord(record);
+    return recordDao.saveRecord(record, tenantId);
   }
 
 
   @Override
-  public Future<Boolean> updateRecord(Record record) {
-    return getRecordById(record.getId())
+  public Future<Boolean> updateRecord(Record record, String tenantId) {
+    return getRecordById(record.getId(), tenantId)
       .compose(optionalRecord -> optionalRecord
         .map(r -> {
           ParsedRecord parsedRecord = record.getParsedRecord();
@@ -61,7 +59,7 @@ public class RecordServiceImpl implements RecordService {
           if (errorRecord != null && (errorRecord.getId() == null || errorRecord.getId().isEmpty())) {
             errorRecord.setId(UUID.randomUUID().toString());
           }
-          return recordDao.updateRecord(record);
+          return recordDao.updateRecord(record, tenantId);
         })
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Record with id '%s' was not found", record.getId()))))
@@ -69,13 +67,13 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> deleteRecord(String id) {
-    return recordDao.deleteRecord(id);
+  public Future<Boolean> deleteRecord(String id, String tenantId) {
+    return recordDao.deleteRecord(id, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit) {
-    return recordDao.getSourceRecords(query, offset, limit);
+  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId) {
+    return recordDao.getSourceRecords(query, offset, limit, tenantId);
   }
 
 }

@@ -5,6 +5,7 @@
 * Updated sourceRecord to contain rawRecord as well as parsedRecord.
 * Renamed endpoints
 * Sample source records was added. To install the sample data during module initialization, you need to add a parameter to the TenantAttributes with the key "loadSample" and the value "true"
+* Used folio-di-support library for Spring Dependency Injection
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|

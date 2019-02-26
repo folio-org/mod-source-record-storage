@@ -1,24 +1,25 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
+@Component
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
@@ -40,21 +42,16 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
 
-  private PostgresClient pgClient;
-  private String schema;
-
-  public RecordDaoImpl(Vertx vertx, String tenantId) {
-    this.pgClient = PostgresClient.getInstance(vertx, tenantId);
-    this.schema = PostgresClient.convertToPsqlStandard(tenantId);
-  }
+  @Autowired
+  private PostgresClientFactory pgClientFactory;
 
   @Override
-  public Future<RecordCollection> getRecords(String query, int offset, int limit) {
+  public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
     Future<Results<Record>> future = Future.future();
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(RECORDS_VIEW, query, limit, offset);
-      pgClient.get(RECORDS_VIEW, Record.class, fieldList, cql, true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(RECORDS_VIEW, Record.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view", e);
       future.fail(e);
@@ -65,11 +62,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id) {
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
     Future<Results<Record>> future = Future.future();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClient.get(RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view by id", e);
       future.fail(e);
@@ -80,11 +77,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> saveRecord(Record record) {
+  public Future<Boolean> saveRecord(Record record, String tenantId) {
     Future<UpdateResult> future = Future.future();
     try {
-      String insertQuery = constructInsertOrUpdateQuery(record);
-      pgClient.execute(insertQuery, future.completer());
+      String insertQuery = constructInsertOrUpdateQuery(record, tenantId);
+      pgClientFactory.createInstance(tenantId).execute(insertQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while inserting new record", e);
       future.fail(e);
@@ -93,11 +90,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateRecord(Record record) {
+  public Future<Boolean> updateRecord(Record record, String tenantId) {
     Future<UpdateResult> future = Future.future();
     try {
-      String updateQuery = constructInsertOrUpdateQuery(record);
-      pgClient.execute(updateQuery, future.completer());
+      String updateQuery = constructInsertOrUpdateQuery(record, tenantId);
+      pgClientFactory.createInstance(tenantId).execute(updateQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while updating a record", e);
       future.fail(e);
@@ -111,14 +108,14 @@ public class RecordDaoImpl implements RecordDao {
    * (@link https://issues.folio.org/browse/MODSOURCE-16)
    */
   @Override
-  public Future<Boolean> deleteRecord(String id) {
+  public Future<Boolean> deleteRecord(String id, String tenantId) {
     Future<UpdateResult> future = Future.future();
-    return getRecordById(id)
+    return getRecordById(id, tenantId)
       .compose(optionalRecord -> optionalRecord
         .map(record -> {
           try {
-            String deleteQuery = constructDeleteQuery(record);
-            pgClient.execute(deleteQuery, future.completer());
+            String deleteQuery = constructDeleteQuery(record, tenantId);
+            pgClientFactory.createInstance(tenantId).execute(deleteQuery, future.completer());
           } catch (Exception e) {
             LOG.error("Error while deleting a record", e);
             future.fail(e);
@@ -131,12 +128,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit) {
+  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId) {
     Future<Results<SourceRecord>> future = Future.future();
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, query, limit, offset);
-      pgClient.get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
+      pgClientFactory.createInstance(tenantId).get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
@@ -146,7 +143,7 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
-  private String constructInsertOrUpdateQuery(Record record) throws Exception {
+  private String constructInsertOrUpdateQuery(Record record, String tenantId) throws Exception {
     List<String> statements = new ArrayList<>();
     RecordModel recordModel = new RecordModel()
       .withId(record.getId())
@@ -159,45 +156,45 @@ public class RecordDaoImpl implements RecordDao {
       .withMetadata(record.getMetadata());
     RawRecord rawRecord = record.getRawRecord();
     statements.add(
-      constructInsertOrUpdateStatement(RAW_RECORDS_TABLE, rawRecord.getId(), pojo2json(rawRecord)));
+      constructInsertOrUpdateStatement(RAW_RECORDS_TABLE, rawRecord.getId(), pojo2json(rawRecord), tenantId));
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
       statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-              parsedRecord.getId(), pojo2json(parsedRecord)));
+              parsedRecord.getId(), pojo2json(parsedRecord), tenantId));
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {
       recordModel.setErrorRecordId(errorRecord.getId());
       statements.add(
-        constructInsertOrUpdateStatement(ERROR_RECORDS_TABLE, errorRecord.getId(), pojo2json(errorRecord)));
+        constructInsertOrUpdateStatement(ERROR_RECORDS_TABLE, errorRecord.getId(), pojo2json(errorRecord), tenantId));
     }
     statements.add(
-      constructInsertOrUpdateStatement(RECORDS_TABLE, recordModel.getId(), pojo2json(recordModel))
+      constructInsertOrUpdateStatement(RECORDS_TABLE, recordModel.getId(), pojo2json(recordModel), tenantId)
     );
     return String.join("", statements);
   }
 
-  private String constructDeleteQuery(Record record) {
+  private String constructDeleteQuery(Record record, String tenantId) {
     List<String> statements = new ArrayList<>();
-    statements.add(constructDeleteStatement(RAW_RECORDS_TABLE, record.getRawRecord().getId()));
+    statements.add(constructDeleteStatement(RAW_RECORDS_TABLE, record.getRawRecord().getId(), tenantId));
     if (record.getParsedRecord() != null) {
       statements.add(constructDeleteStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-        record.getParsedRecord().getId()));
+        record.getParsedRecord().getId(), tenantId));
     }
     if (record.getErrorRecord() != null) {
       statements.add(
-        constructDeleteStatement(ERROR_RECORDS_TABLE, record.getErrorRecord().getId()));
+        constructDeleteStatement(ERROR_RECORDS_TABLE, record.getErrorRecord().getId(), tenantId));
     }
     statements.add(
-      constructDeleteStatement(RECORDS_TABLE, record.getId()));
+      constructDeleteStatement(RECORDS_TABLE, record.getId(), tenantId));
     return String.join("", statements);
   }
 
-  private String constructInsertOrUpdateStatement(String tableName, String id, String jsonData) {
+  private String constructInsertOrUpdateStatement(String tableName, String id, String jsonData, String tenantId) {
     return new StringBuilder()
       .append("INSERT INTO ")
-      .append(schema).append(".").append(tableName)
+      .append(PostgresClient.convertToPsqlStandard(tenantId)).append(".").append(tableName)
       .append("(_id, jsonb) VALUES ('")
       .append(id).append("', '")
       .append(jsonData).append("')")
@@ -205,10 +202,10 @@ public class RecordDaoImpl implements RecordDao {
       .append(jsonData).append("';").toString();
   }
 
-  private String constructDeleteStatement(String tableName, String id) {
+  private String constructDeleteStatement(String tableName, String id, String tenantId) {
     return new StringBuilder()
       .append("DELETE FROM ")
-      .append(schema).append(".").append(tableName)
+      .append(PostgresClient.convertToPsqlStandard(tenantId)).append(".").append(tableName)
       .append(" WHERE _id = '").append(id).append("';").toString();
   }
 

@@ -1,56 +1,48 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import org.folio.dao.SnapshotDao;
-import org.folio.dao.SnapshotDaoImpl;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 
+@Component
 public class SnapshotServiceImpl implements SnapshotService {
 
-  private Vertx vertx;
+  @Autowired
   private SnapshotDao snapshotDao;
 
-  public SnapshotServiceImpl(SnapshotDao snapshotDao) {
-    this.snapshotDao = snapshotDao;
-  }
-
-  public SnapshotServiceImpl(Vertx vertx, String tenantId) {
-    this.vertx = vertx;
-    snapshotDao = new SnapshotDaoImpl(vertx, tenantId);
+  @Override
+  public Future<SnapshotCollection> getSnapshots(String query, int offset, int limit, String tenantId) {
+    return snapshotDao.getSnapshots(query, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SnapshotCollection> getSnapshots(String query, int offset, int limit) {
-    return snapshotDao.getSnapshots(query, offset, limit);
+  public Future<Optional<Snapshot>> getSnapshotById(String id, String tenantId) {
+    return snapshotDao.getSnapshotById(id, tenantId);
   }
 
   @Override
-  public Future<Optional<Snapshot>> getSnapshotById(String id) {
-    return snapshotDao.getSnapshotById(id);
+  public Future<String> saveSnapshot(Snapshot snapshot, String tenantId) {
+    return snapshotDao.saveSnapshot(snapshot, tenantId);
   }
 
   @Override
-  public Future<String> saveSnapshot(Snapshot snapshot) {
-    return snapshotDao.saveSnapshot(snapshot);
-  }
-
-  @Override
-  public Future<Boolean> updateSnapshot(Snapshot snapshot) {
-    return getSnapshotById(snapshot.getJobExecutionId())
+  public Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId) {
+    return getSnapshotById(snapshot.getJobExecutionId(), tenantId)
       .compose(optionalSnapshot -> optionalSnapshot
-        .map(t -> snapshotDao.updateSnapshot(snapshot))
+        .map(t -> snapshotDao.updateSnapshot(snapshot, tenantId))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()))))
       );
   }
 
   @Override
-  public Future<Boolean> deleteSnapshot(String id) {
-    return snapshotDao.deleteSnapshot(id);
+  public Future<Boolean> deleteSnapshot(String id, String tenantId) {
+    return snapshotDao.deleteSnapshot(id, tenantId);
   }
 }

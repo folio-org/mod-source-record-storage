@@ -18,7 +18,8 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
-import org.folio.services.RecordServiceImpl;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -43,11 +44,14 @@ public class ModTenantAPI extends TenantAPI {
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String JSON_EXTENSION = ".json";
 
+  @Autowired
   private RecordService recordService;
 
-  public ModTenantAPI(Vertx vertx, String tenantId) {
-    String calculatedTenantId = TenantTool.calculateTenantId(tenantId);
-    this.recordService = new RecordServiceImpl(vertx, calculatedTenantId);
+  private String tenantId;
+
+  public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+    this.tenantId = TenantTool.calculateTenantId(tenantId);
   }
 
   @Validate
@@ -127,7 +131,7 @@ public class ModTenantAPI extends TenantAPI {
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
               record.setGeneration("0");
-              futures.add(recordService.saveRecord(record).setHandler(h -> {
+              futures.add(recordService.saveRecord(record, tenantId).setHandler(h -> {
                 if (h.succeeded()) {
                   LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
                 } else {

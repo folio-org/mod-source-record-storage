@@ -93,7 +93,6 @@ public class ModTenantAPI extends TenantAPI {
         return Future.succeededFuture();
       }
 
-      String tenantId = TenantTool.calculateTenantId((String) headers.get("x-okapi-tenant"));
       String moduleName = PostgresClient.getModuleName();
 
       sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);

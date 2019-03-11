@@ -122,11 +122,12 @@ public class ModTenantAPI extends TenantAPI {
         Files.walk(sampleDir.toPath()).forEach(file -> { //NOSONAR
           if (file.toFile().getName().endsWith(JSON_EXTENSION)) {
             Record record = new Record();
-            record.setId(file.toFile().getName().split(JSON_EXTENSION)[0]);
+            String recordUUID = file.toFile().getName().split(JSON_EXTENSION)[0];
+            record.setId(recordUUID);
             try {
               String content = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-              record.setParsedRecord(new ParsedRecord().withId(UUID.randomUUID().toString()).withContent(content));
-              record.setRawRecord(new RawRecord().withId(UUID.randomUUID().toString()).withContent(content));
+              record.setParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content));
+              record.setRawRecord(new RawRecord().withId(recordUUID).withContent(content));
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
               record.setGeneration("0");

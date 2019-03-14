@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import java.util.Collections;
+import java.util.UUID;
 
 public abstract class AbstractRestVerticleTest {
 
@@ -33,6 +34,7 @@ public abstract class AbstractRestVerticleTest {
     vertx = Vertx.vertx();
     int port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
+    String okapiUserId = UUID.randomUUID().toString();
 
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
@@ -81,6 +83,7 @@ public abstract class AbstractRestVerticleTest {
       .setContentType(ContentType.JSON)
       .setBaseUri(okapiUrl)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
+      .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
       .build();
   }
 

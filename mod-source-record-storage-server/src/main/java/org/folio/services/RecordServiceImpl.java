@@ -7,7 +7,6 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -19,8 +18,6 @@ import java.util.UUID;
 
 @Component
 public class RecordServiceImpl implements RecordService {
-
-  private static final String STUB_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000000";
 
   @Autowired
   private RecordDao recordDao;

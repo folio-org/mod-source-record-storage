@@ -70,9 +70,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldCalculateRecordsGeneration() {
+  public void shouldCalculateRecordsGeneration(TestContext testContext) {
     List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
     for (int i = 0; i < snapshots.size(); i++) {
+      Async async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -80,7 +81,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
+      async.complete();
 
+      async = testContext.async();
       Record record = new Record()
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
@@ -103,7 +106,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i).getJobExecutionId())
         .then()
         .statusCode(HttpStatus.SC_OK);
+      async.complete();
 
+      async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .when()
@@ -115,13 +120,15 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(i));
+      async.complete();
     }
   }
 
   @Test
-  public void shouldNotUpdateRecordsGenerationIfSnapshotsNotCommitted() {
+  public void shouldNotUpdateRecordsGenerationIfSnapshotsNotCommitted(TestContext testContext) {
     List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
     for (Snapshot snapshot : snapshots) {
+      Async async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .body(snapshot.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -129,7 +136,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
+      async.complete();
 
+      async = testContext.async();
       Record record = new Record()
         .withSnapshotId(snapshot.getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
@@ -143,7 +152,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .body().as(Record.class);
+      async.complete();
 
+      async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .when()
@@ -155,13 +166,15 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(0));
+      async.complete();
     }
   }
 
   @Test
-  public void shouldNotUpdateRecordsGenerationIfSnapshotsCommittedAfter() {
+  public void shouldNotUpdateRecordsGenerationIfSnapshotsCommittedAfter(TestContext testContext) {
     List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2);
     for (int i = 0; i < snapshots.size(); i++) {
+      Async async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -169,7 +182,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
+      async.complete();
 
+      async = testContext.async();
       Record record = new Record()
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
@@ -187,7 +202,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
           .then()
           .statusCode(HttpStatus.SC_OK);
       }
+      async.complete();
 
+      async = testContext.async();
       Record created = RestAssured.given()
         .spec(spec)
         .body(record)
@@ -206,11 +223,13 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(0));
+      async.complete();
     }
   }
 
   @Test
-  public void shouldReturnNotFoundIfSnapshotDoesNotExist() {
+  public void shouldReturnNotFoundIfSnapshotDoesNotExist(TestContext testContext) {
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -218,7 +237,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
 
+    async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
@@ -233,7 +254,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
 
+    async = testContext.async();
     Record record_2 = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
@@ -248,10 +271,12 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
   }
 
   @Test
-  public void shouldReturnBadRequestIfProcessingDateIsNull() {
+  public void shouldReturnBadRequestIfProcessingDateIsNull(TestContext testContext) {
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.NEW))
@@ -259,7 +284,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
 
+    async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
@@ -274,5 +301,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
   }
 }

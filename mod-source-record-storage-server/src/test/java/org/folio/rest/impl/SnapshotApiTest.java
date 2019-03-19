@@ -13,12 +13,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class SnapshotApiTest extends AbstractRestVerticleTest {
@@ -286,6 +289,46 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_3.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+  }
+
+  @Test
+  public void shouldSetProcessingStartedDateOnPost() {
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_3)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("jobExecutionId", is(snapshot_3.getJobExecutionId()))
+      .body("status", is(snapshot_3.getStatus().name()))
+      .body("processingStartedDate", notNullValue(Date.class));
+  }
+
+  @Test
+  public void shouldSetProcessingStartedDateOnPut() {
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_4)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()))
+      .body("processingStartedDate", nullValue(Date.class));
+
+    snapshot_4.setStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_4)
+      .when()
+      .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_4.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()))
+      .body("processingStartedDate", notNullValue(Date.class));
   }
 
 }

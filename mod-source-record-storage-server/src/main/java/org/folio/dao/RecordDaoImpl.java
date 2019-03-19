@@ -3,6 +3,7 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -41,6 +42,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
+  private static final String CALL_GET_HIGHEST_GENERATION_FUNCTION = "select get_highest_generation('%s', '%s');";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -143,6 +145,25 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
+  @Override
+  public Future<Integer> calculateGeneration(Record record, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String getHighestGeneration = String.format(CALL_GET_HIGHEST_GENERATION_FUNCTION, record.getMatchedId(), record.getSnapshotId());
+      pgClientFactory.createInstance(tenantId).select(getHighestGeneration, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error while searching for records highest generation", e);
+      future.fail(e);
+    }
+    return future.map(resultSet -> {
+      Integer generation = resultSet.getResults().get(0).getInteger(0);
+      if (generation == null) {
+        return 0;
+      }
+      return ++generation;
+    });
+  }
+
   private String constructInsertOrUpdateQuery(Record record, String tenantId) throws Exception {
     List<String> statements = new ArrayList<>();
     RecordModel recordModel = new RecordModel()
@@ -161,7 +182,7 @@ public class RecordDaoImpl implements RecordDao {
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
       statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-              parsedRecord.getId(), pojo2json(parsedRecord), tenantId));
+        parsedRecord.getId(), pojo2json(parsedRecord), tenantId));
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {

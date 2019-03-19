@@ -1,8 +1,6 @@
 package org.folio.services;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -14,14 +12,15 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class RecordServiceImpl implements RecordService {
+
+  private static final String STUB_SNAPSHOT_ID = "00000000-0000-0000-0000-000000000000";
 
   @Autowired
   private RecordDao recordDao;
@@ -50,8 +49,17 @@ public class RecordServiceImpl implements RecordService {
     if (record.getErrorRecord() != null) {
       record.getErrorRecord().setId(UUID.randomUUID().toString());
     }
-    return calculateGeneration(record, tenantId)
-      .compose(r -> recordDao.saveRecord(r, tenantId));
+    return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
+      .map(optionalRecordSnapshot -> optionalRecordSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+      .compose(snapshot -> {
+        if (snapshot.getProcessingStartedDate() == null) {
+          return Future.failedFuture(new BadRequestException(
+            String.format("Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s", snapshot.getStatus())));
+        }
+        return Future.succeededFuture();
+      })
+      .compose(f -> recordDao.calculateGeneration(record, tenantId))
+      .compose(generation -> recordDao.saveRecord(record.withGeneration(generation), tenantId));
   }
 
   @Override
@@ -82,46 +90,6 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(query, offset, limit, tenantId);
-  }
-
-  /**
-   * Incrementes generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing of the current one started
-   *
-   * @param record   - record
-   * @param tenantId - tenant id
-   * @return record with generation set wrapped in future
-   */
-  private Future<Record> calculateGeneration(Record record, String tenantId) {
-    Future<Record> future = Future.future();
-    return recordDao.getRecords("matchedId=" + record.getMatchedId(), 0, Integer.MAX_VALUE, tenantId)
-      .compose(collection -> {
-        if (collection.getRecords().isEmpty()) {
-          return Future.succeededFuture(0);
-        } else {
-          MutableInt generation = new MutableInt();
-          return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
-            .map(optionalRecordSnapshot -> optionalRecordSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
-            .compose(recordSnapshot -> {
-              List<Future> futures = new ArrayList<>();
-              collection.getRecords().forEach(r -> futures.add(snapshotDao.getSnapshotById(r.getSnapshotId(), tenantId)
-                .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + r.getSnapshotId())))
-                .compose(snapshot -> {
-                  if (Snapshot.Status.COMMITTED.equals(snapshot.getStatus())
-                    && snapshot.getMetadata().getUpdatedDate().before(recordSnapshot.getMetadata().getUpdatedDate())) {
-                    generation.increment();
-                  }
-                  return Future.succeededFuture();
-                }))
-              );
-              return CompositeFuture.all(futures);
-            })
-            .compose(compositeFuture -> Future.succeededFuture(generation.getValue()));
-        }
-      }).compose(generation -> {
-        future.complete(record.withGeneration(generation));
-        return future;
-      });
   }
 
 }

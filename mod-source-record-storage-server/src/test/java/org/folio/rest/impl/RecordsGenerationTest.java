@@ -75,7 +75,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     for (int i = 0; i < snapshots.size(); i++) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshots.get(i).withStatus(Snapshot.Status.NEW))
+        .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
         .when()
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
@@ -124,7 +124,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     for (Snapshot snapshot : snapshots) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshot.withStatus(Snapshot.Status.NEW))
+        .body(snapshot.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
         .when()
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
@@ -164,7 +164,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     for (int i = 0; i < snapshots.size(); i++) {
       RestAssured.given()
         .spec(spec)
-        .body(snapshots.get(i).withStatus(Snapshot.Status.NEW))
+        .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
         .when()
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
@@ -213,7 +213,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   public void shouldReturnNotFoundIfSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_1.withStatus(Snapshot.Status.NEW))
+      .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
       .when()
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
@@ -251,7 +251,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundIfSnapshotWasDeleted() {
+  public void shouldReturnBadRequestIfProcessingDateIsNull() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.NEW))
@@ -273,37 +273,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_2.withStatus(Snapshot.Status.NEW))
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    Record record_2 = new Record()
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
-      .withMatchedId(matchedId);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(record_2)
-      .when()
-      .post(SOURCE_STORAGE_RECORDS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
   }
-
 }

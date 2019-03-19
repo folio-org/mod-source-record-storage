@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
+import java.util.Date;
 import java.util.Optional;
 
 @Component
@@ -28,14 +29,14 @@ public class SnapshotServiceImpl implements SnapshotService {
 
   @Override
   public Future<String> saveSnapshot(Snapshot snapshot, String tenantId) {
-    return snapshotDao.saveSnapshot(snapshot, tenantId);
+    return snapshotDao.saveSnapshot(setProcessingStartedDate(snapshot), tenantId);
   }
 
   @Override
   public Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId) {
     return getSnapshotById(snapshot.getJobExecutionId(), tenantId)
       .compose(optionalSnapshot -> optionalSnapshot
-        .map(t -> snapshotDao.updateSnapshot(snapshot, tenantId))
+        .map(t -> snapshotDao.updateSnapshot(setProcessingStartedDate(snapshot), tenantId))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()))))
       );
@@ -44,5 +45,18 @@ public class SnapshotServiceImpl implements SnapshotService {
   @Override
   public Future<Boolean> deleteSnapshot(String id, String tenantId) {
     return snapshotDao.deleteSnapshot(id, tenantId);
+  }
+
+  /**
+   *  Sets processing start date if snapshot status is PARSING_IN_PROGRESS
+   *
+   * @param snapshot snapshot
+   * @return snapshot with populated processingStartedDate field if snapshot status is PARSING_IN_PROGRESS
+   */
+  private Snapshot setProcessingStartedDate(Snapshot snapshot) {
+    if (Snapshot.Status.PARSING_IN_PROGRESS.equals(snapshot.getStatus())) {
+      snapshot.setProcessingStartedDate(new Date());
+    }
+    return snapshot;
   }
 }

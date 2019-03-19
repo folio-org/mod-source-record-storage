@@ -129,7 +129,8 @@ public class ModTenantAPI extends TenantAPI {
               record.setRawRecord(new RawRecord().withId(recordUUID).withContent(content));
               record.setRecordType(Record.RecordType.MARC);
               record.setSnapshotId("00000000-0000-0000-0000-000000000000");
-              record.setGeneration("0");
+              record.setGeneration(0);
+              record.setMatchedId(recordUUID);
               Future<Void> helperFuture = Future.future();
               recordService.saveRecord(record, tenantId).setHandler(h -> {
                 if (h.succeeded()) {

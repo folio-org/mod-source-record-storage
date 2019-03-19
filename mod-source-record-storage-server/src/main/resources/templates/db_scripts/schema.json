@@ -106,6 +106,11 @@
       "run": "after",
       "snippet": "CREATE OR REPLACE VIEW source_records_view AS SELECT records._id, json_build_object('recordId', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'recordType', records.jsonb->>'recordType', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb)) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;",
       "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE OR REPLACE FUNCTION get_highest_generation(matchedId uuid, snapshotId uuid) RETURNS integer AS $generation$ DECLARE generation integer; BEGIN SELECT MAX(records.jsonb ->> 'generation') into generation FROM records INNER JOIN snapshots ON records.jsonb ->> 'snapshotId' = snapshots.jsonb ->> 'jobExecutionId' WHERE (records.jsonb ->> 'matchedId')::uuid = matchedId AND snapshots.jsonb ->> 'status' = 'COMMITTED' AND (snapshots.jsonb -> 'metadata' ->> 'updatedDate')::timestamp with time zone < (SELECT snapshots.jsonb ->> 'processingStartedDate' FROM snapshots WHERE (snapshots.jsonb ->> 'jobExecutionId')::uuid = snapshotId)::timestamp with time zone; RETURN generation; END; $generation$ LANGUAGE plpgsql;",
+      "fromModuleVersion": "2.0"
     }
   ]
 }

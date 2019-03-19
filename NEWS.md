@@ -1,3 +1,6 @@
+## 2019-03-19 v2.1.0-SNAPSHOT
+* Implemented calculation of generation numbers for Records.
+
 ## 2019-02-26 v2.0.0
 * Changed project structure to contain server and client parts. Client builds as a lightweight java library.
 * Used folio-di-support library for Spring Dependency Injection.

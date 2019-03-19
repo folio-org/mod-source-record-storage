@@ -13,12 +13,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class SnapshotApiTest extends AbstractRestVerticleTest {
@@ -75,19 +77,18 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_CREATED);
     }
 
-    Object[] ids = snapshotsToPost.stream().map(Snapshot::getJobExecutionId).toArray();
     RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(snapshotsToPost.size()))
-      .body("snapshots*.jobExecutionId", contains(ids));
+      .body("totalRecords", is(snapshotsToPost.size()));
   }
 
   @Test
-  public void shouldReturnNewSnapshotsOnGetByStatusNew() {
+  public void shouldReturnNewSnapshotsOnGetByStatusNew(TestContext testContext) {
+    Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
     for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
@@ -98,7 +99,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
+    async.complete();
 
+    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -107,6 +110,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
       .body("snapshots*.status", everyItem(is(Snapshot.Status.NEW.name())));
+    async.complete();
   }
 
   @Test
@@ -134,7 +138,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnLimitedCollectionOnGet() {
+  public void shouldReturnLimitedCollectionOnGet(TestContext testContext) {
+    Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
     for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
@@ -145,7 +150,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
+    async.complete();
 
+    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -154,6 +161,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("snapshots.size()", is(3))
       .body("totalRecords", is(snapshotsToPost.size()));
+    async.complete();
   }
 
   @Test
@@ -203,7 +211,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldUpdateExistingSnapshotOnPut() {
+  public void shouldUpdateExistingSnapshotOnPut(TestContext testContext) {
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_4)
@@ -213,7 +222,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()));
+    async.complete();
 
+    async = testContext.async();
     snapshot_4.setStatus(Snapshot.Status.IMPORT_FINISHED);
     RestAssured.given()
       .spec(spec)
@@ -224,6 +235,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()));
+    async.complete();
   }
 
   @Test
@@ -237,7 +249,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnExistingSnapshotOnGetById() {
+  public void shouldReturnExistingSnapshotOnGetById(TestContext testContext) {
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_2)
@@ -247,7 +260,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
       .body("status", is(snapshot_2.getStatus().name()));
+    async.complete();
 
+    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -256,6 +271,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
       .body("status", is(snapshot_2.getStatus().name()));
+    async.complete();
   }
 
   @Test
@@ -269,7 +285,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldDeleteExistingSnapshotOnDelete() {
+  public void shouldDeleteExistingSnapshotOnDelete(TestContext testContext) {
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_3)
@@ -279,13 +296,60 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_3.getJobExecutionId()))
       .body("status", is(snapshot_3.getStatus().name()));
+    async.complete();
 
+    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_3.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+  }
+
+  @Test
+  public void shouldSetProcessingStartedDateOnPost() {
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_3)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("jobExecutionId", is(snapshot_3.getJobExecutionId()))
+      .body("status", is(snapshot_3.getStatus().name()))
+      .body("processingStartedDate", notNullValue(Date.class));
+  }
+
+  @Test
+  public void shouldSetProcessingStartedDateOnPut(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_4)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()))
+      .body("processingStartedDate", nullValue(Date.class));
+    async.complete();
+
+    async = testContext.async();
+    snapshot_4.setStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_4)
+      .when()
+      .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_4.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
+      .body("status", is(snapshot_4.getStatus().name()))
+      .body("processingStartedDate", notNullValue(Date.class));
+    async.complete();
   }
 
 }

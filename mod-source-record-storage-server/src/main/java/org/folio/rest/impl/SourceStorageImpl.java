@@ -279,7 +279,8 @@ public class SourceStorageImpl implements SourceStorage {
               .withId(rawRecord.getId())
               .withRawRecord(rawRecord)
               .withSnapshotId(STUB_SNAPSHOT_ID)
-              .withRecordType(Record.RecordType.MARC);
+              .withRecordType(Record.RecordType.MARC)
+              .withMatchedId(rawRecord.getId());
             if (rawRecord.getContent().startsWith("{")) {
               record.setParsedRecord(new ParsedRecord().withContent(rawRecord.getContent()));
             } else {

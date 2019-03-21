@@ -1,3 +1,6 @@
+## 2019-03-21 2.1.1-SNAPSHOT
+* Updated tenant API version
+
 ## 2019-03-20 v2.1.0
 * Implemented calculation of generation numbers for Records.
 

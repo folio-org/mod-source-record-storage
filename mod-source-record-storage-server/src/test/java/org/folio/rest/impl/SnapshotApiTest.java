@@ -39,7 +39,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_4 = new Snapshot()
     .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
-    .withStatus(Snapshot.Status.IMPORT_IN_PROGRESS);
+    .withStatus(Snapshot.Status.PARSING_FINISHED);
 
   @Override
   public void clearTables(TestContext context) {
@@ -225,7 +225,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    snapshot_4.setStatus(Snapshot.Status.IMPORT_FINISHED);
+    snapshot_4.setStatus(Snapshot.Status.COMMIT_IN_PROGRESS);
     RestAssured.given()
       .spec(spec)
       .body(snapshot_4)

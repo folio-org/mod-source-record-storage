@@ -1,5 +1,6 @@
-## 2019-03-21 2.1.1-SNAPSHOT
+## 2019-03-25 2.1.1
 * Updated tenant API version
+* Removed IMPORT_IN_PROGRESS and IMPORT_FINISHED statuses for Snapshot entity
 
 ## 2019-03-20 v2.1.0
 * Implemented calculation of generation numbers for Records.

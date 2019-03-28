@@ -1,6 +1,8 @@
 package org.folio.dao;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
@@ -181,8 +183,11 @@ public class RecordDaoImpl implements RecordDao {
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
+      parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
+      JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
       statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-        parsedRecord.getId(), pojo2json(parsedRecord), tenantId));
+        parsedRecord.getId(), pojo2json(jsonData), tenantId));
+      record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {

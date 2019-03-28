@@ -26,10 +26,50 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
 
   private static RawRecord rawRecord_1 = new RawRecord()
     .withId("9b0ae8c4-2e0c-11e9-b210-d663bd873d93")
-    .withContent("01240cas a2200397   4500001000700000005001700007008004100024010001700065022001400082035002600096035002200122035001100144035001900155040004400174050001500218082001100233222004200244245004300286260004700329265003800376300001500414310002200429321002500451362002300476570002900499650003300528650004500561655004200606700004500648853001800693863002300711902001600734905002100750948003700771950003400808\u001E366832\u001E20141106221425.0\u001E750907c19509999enkqr p       0   a0eng d\u001E  \u001Fa   58020553 \u001E  \u001Fa0022-0469\u001E  \u001Fa(CStRLIN)NYCX1604275S\u001E  \u001Fa(NIC)notisABP6388\u001E  \u001Fa366832\u001E  \u001Fa(OCoLC)1604275\u001E  \u001FdCtY\u001FdMBTI\u001FdCtY\u001FdMBTI\u001FdNIC\u001FdCStRLIN\u001FdNIC\u001E0 \u001FaBR140\u001Fb.J6\u001E  \u001Fa270.05\u001E04\u001FaThe Journal of ecclesiastical history\u001E04\u001FaThe Journal of ecclesiastical history.\u001E  \u001FaLondon,\u001FbCambridge University Press [etc.]\u001E  \u001Fa32 East 57th St., New York, 10022\u001E  \u001Fav.\u001Fb25 cm.\u001E  \u001FaQuarterly,\u001Fb1970-\u001E  \u001FaSemiannual,\u001Fb1950-69\u001E0 \u001Fav. 1-   Apr. 1950-\u001E  \u001FaEditor:   C. W. Dugmore.\u001E 0\u001FaChurch history\u001FxPeriodicals.\u001E 7\u001FaChurch history\u001F2fast\u001F0(OCoLC)fst00860740\u001E 7\u001FaPeriodicals\u001F2fast\u001F0(OCoLC)fst01411641\u001E1 \u001FaDugmore, C. W.\u001Fq(Clifford William),\u001Feed.\u001E03\u001F81\u001Fav.\u001Fi(year)\u001E40\u001F81\u001Fa1-49\u001Fi1950-1998\u001E  \u001Fapfnd\u001FbLintz\u001E  \u001Fa19890510120000.0\u001E2 \u001Fa20141106\u001Fbm\u001Fdbatch\u001Felts\u001Fxaddfast\u001E  \u001FlOLIN\u001FaBR140\u001Fb.J86\u001Fh01/01/01 N\u001E\u001D01542ccm a2200361   ");
+    .withContent("01542ccm a2200361   450000100070000000500170000700800410002401000190006503500200008403500110010404" +
+      "0002300115041001900138045000900157047007500166050001400241100004200255240001000297245016700307246002400474260" +
+      "0036004983000025005345050314005596500016008736500023008896500049009126500042009619020023010039050021010269480" +
+      "04201047948002701089948002701116948003701143\u001e393893\u001e20141107001016.0\u001e830419m19559999gw mua   hiz" +
+      "   n    lat  \u001e  \u001fa   55001156/M \u001e  \u001fa(OCoLC)63611770\u001e  \u001fa393893\u001e  \u001fcUPB" +
+      "\u001fdUPB\u001fdNIC\u001fdNIC\u001e0 \u001falatitager\u001fgger\u001e  \u001fav6v9\u001e  \u001facn\u001fact" +
+      "\u001faco\u001fadf\u001fadv\u001faft\u001fafg\u001fams\u001fami\u001fanc\u001faop\u001faov\u001farq\u001fasn" +
+      "\u001fasu\u001fasy\u001favr\u001fazz\u001e0 \u001faM3\u001fb.M896\u001e1 \u001faMozart, Wolfgang Amadeus,\u001f" +
+      "d1756-1791.\u001e10\u001faWorks\u001e10\u001faNeue Ausgabe sämtlicher Werke,\u001fbin Verbindung mit den Mozartstädten," +
+      " Augsburg, Salzburg und Wien.\u001fcHrsg. von der Internationalen Stiftung Mozarteum, Salzburg.\u001e33\u001f" +
+      "aNeue Mozart-Ausgabe\u001e  \u001faKassel,\u001fbBärenreiter,\u001fcc1955-\u001e  \u001fav.\u001fbfacsims.\u001fc33 cm." +
+      "\u001e0 \u001faSer. I. Geistliche Gesangswerke -- Ser. II. Opern -- Ser. III. Lieder, mehrstimmige Gesänge, Kanons" +
+      " -- Ser. IV. Orchesterwerke -- Ser. V. Konzerte -- Ser. VI. Kirchensonaten -- Ser. VII. Ensemblemusik für grössere " +
+      "Solobesetzungen -- Ser. VIII. Kammermusik -- Ser. IX. Klaviermusik -- Ser. X. Supplement.\u001e 0\u001faVocal music" +
+      "\u001e 0\u001faInstrumental music\u001e 7\u001faInstrumental music\u001f2fast\u001f0(OCoLC)fst00974414\u001e 7\u001f" +
+      "aVocal music\u001f2fast\u001f0(OCoLC)fst01168379\u001e  \u001fapfnd\u001fbAustin Music\u001e  \u001fa19980728120000.0" +
+      "\u001e1 \u001fa20100622\u001fbs\u001fdlap11\u001felts\u001fxToAddCatStat\u001e0 \u001fa20110818\u001fbr\u001fdnp55" +
+      "\u001felts\u001e2 \u001fa20130128\u001fbm\u001fdbmt1\u001felts\u001e2 \u001fa20141106\u001fbm\u001fdbatch\u001felts\u001fxaddfast\u001e\u001d");
   private static RawRecord rawRecord_2 = new RawRecord()
     .withId("9b0aec8e-2e0c-11e9-b210-d663bd873d93")
-    .withContent("{ \\\"leader\\\": \\\"00508cjm a22001813 4500\\\", \\\"fields\\\": [ { \\\"001\\\": \\\"10062588\\\" }, { \\\"005\\\": \\\"20171013073237.0\\\" }, { \\\"007\\\": \\\"sd fsngnnmmneu\\\" }, { \\\"008\\\": \\\"170825s2017 xx nn n zxx d\\\" }, { \\\"024\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"00190295755553\\\" }, { \\\"2\\\": \\\"gtin-14\\\" } ], \\\"ind1\\\": \\\"7\\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"024\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"190295755553\\\" } ], \\\"ind1\\\": \\\"1\\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"035\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"(OCoLC)1002130878\\\" } ], \\\"ind1\\\": \\\" \\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"035\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"10062588\\\" } ], \\\"ind1\\\": \\\" \\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"040\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"BTCTA\\\" }, { \\\"b\\\": \\\"eng\\\" }, { \\\"c\\\": \\\"BTCTA\\\" } ], \\\"ind1\\\": \\\" \\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"100\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"Rossi, Daniele\\\" } ], \\\"ind1\\\": \\\"1\\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"245\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"Saint-Saens: Organ Symphony and Carnival of The Animals\\\" } ], \\\"ind1\\\": \\\"0\\\", \\\"ind2\\\": \\\"0\\\" } }, { \\\"260\\\": { \\\"subfields\\\": [ { \\\"b\\\": \\\"Wea Corp\\\" }, { \\\"c\\\": \\\"2017.\\\" } ], \\\"ind1\\\": \\\" \\\", \\\"ind2\\\": \\\" \\\" } }, { \\\"948\\\": { \\\"subfields\\\": [ { \\\"a\\\": \\\"20171013\\\" }, { \\\"b\\\": \\\"m\\\" }, { \\\"d\\\": \\\"batch\\\" }, { \\\"e\\\": \\\"lts\\\" }, { \\\"x\\\": \\\"deloclcprefix\\\" } ], \\\"ind1\\\": \\\"2\\\", \\\"ind2\\\": \\\" \\\" } } ] }");
+    .withContent("{\"leader\":\"01542ccm a2200361   4500\",\"fields\":[{\"001\":\"393893\"},{\"005\":\"20141107001016.0\"}," +
+      "{\"008\":\"830419m19559999gw mua   hiz   n    lat  \"},{\"010\":{\"subfields\":[{\"a\":\"   55001156/M \"}],\"ind1\":\"" +
+      " \",\"ind2\":\" \"}},{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)63611770\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"035\":{\"subfields\"" +
+      ":[{\"a\":\"393893\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"040\":{\"subfields\":[{\"c\":\"UPB\"},{\"d\":\"UPB\"},{\"d\":\"NIC\"}," +
+      "{\"d\":\"NIC\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"041\":{\"subfields\":[{\"a\":\"latitager\"},{\"g\":\"ger\"}],\"ind1\":\"0\"," +
+      "\"ind2\":\" \"}},{\"045\":{\"subfields\":[{\"a\":\"v6v9\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"047\":{\"subfields\":[{\"a\":\"cn\"}," +
+      "{\"a\":\"ct\"},{\"a\":\"co\"},{\"a\":\"df\"},{\"a\":\"dv\"},{\"a\":\"ft\"},{\"a\":\"fg\"},{\"a\":\"ms\"},{\"a\":\"mi\"},{\"a\":\"nc\"}," +
+      "{\"a\":\"op\"},{\"a\":\"ov\"},{\"a\":\"rq\"},{\"a\":\"sn\"},{\"a\":\"su\"},{\"a\":\"sy\"},{\"a\":\"vr\"},{\"a\":\"zz\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"050\":{\"subfields\":[{\"a\":\"M3\"},{\"b\":\".M896\"}],\"ind1\":\"0\",\"ind2\":\" \"}},{\"100\":{\"subfields\":[{\"a\":\"Mozart, Wolfgang Amadeus,\"}," +
+      "{\"d\":\"1756-1791.\"}],\"ind1\":\"1\",\"ind2\":\" \"}},{\"240\":{\"subfields\":[{\"a\":\"Works\"}],\"ind1\":\"1\",\"ind2\":\"0\"}},{\"245\":{\"subfields\"" +
+      ":[{\"a\":\"Neue Ausgabe sa\\u0308mtlicher Werke,\"},{\"b\":\"in Verbindung mit den Mozartsta\\u0308dten, Augsburg, Salzburg und Wien.\"},{\"c\":\"Hrsg. von der" +
+      " Internationalen Stiftung Mozarteum, Salzburg.\"}],\"ind1\":\"1\",\"ind2\":\"0\"}},{\"246\":{\"subfields\":[{\"a\":\"Neue Mozart-Ausgabe\"}],\"ind1\":\"3\"," +
+      "\"ind2\":\"3\"}},{\"260\":{\"subfields\":[{\"a\":\"Kassel,\"},{\"b\":\"Ba\\u0308renreiter,\"},{\"c\":\"c1955-\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"300\":" +
+      "{\"subfields\":[{\"a\":\"v.\"},{\"b\":\"facsims.\"},{\"c\":\"33 cm.\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"505\":{\"subfields\":[{\"a\":\"Ser. I. Geistliche" +
+      " Gesangswerke -- Ser. II. Opern -- Ser. III. Lieder, mehrstimmige Gesa\\u0308nge, Kanons -- Ser. IV. Orchesterwerke -- Ser. V. Konzerte -- Ser. VI. Kirchensonaten " +
+      "-- Ser. VII. Ensemblemusik fu\\u0308r gro\\u0308ssere Solobesetzungen -- Ser. VIII. Kammermusik -- Ser. IX. Klaviermusik -- Ser. X. Supplement.\"}],\"ind1\":\"0\"," +
+      "\"ind2\":\" \"}},{\"650\":{\"subfields\":[{\"a\":\"Vocal music\"}],\"ind1\":\" \",\"ind2\":\"0\"}},{\"650\":{\"subfields\":[{\"a\":\"Instrumental music\"}],\"ind1\":" +
+      "\" \",\"ind2\":\"0\"}},{\"650\":{\"subfields\":[{\"a\":\"Instrumental music\"},{\"2\":\"fast\"},{\"0\":\"(OCoLC)fst00974414\"}],\"ind1\":\" \",\"ind2\":\"7\"}},{\"650\"" +
+      ":{\"subfields\":[{\"a\":\"Vocal music\"},{\"2\":\"fast\"},{\"0\":\"(OCoLC)fst01168379\"}],\"ind1\":\" \",\"ind2\":\"7\"}},{\"902\":{\"subfields\":[{\"a\":\"pfnd\"},{\"b\"" +
+      ":\"Austin Music\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"905\":{\"subfields\":[{\"a\":\"19980728120000.0\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\"" +
+      ":\"20100622\"},{\"b\":\"s\"},{\"d\":\"lap11\"},{\"e\":\"lts\"},{\"x\":\"ToAddCatStat\"}],\"ind1\":\"1\",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\":\"20110818\"}," +
+      "{\"b\":\"r\"},{\"d\":\"np55\"},{\"e\":\"lts\"}],\"ind1\":\"0\",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\":\"20130128\"},{\"b\":\"m\"},{\"d\":\"bmt1\"},{\"e\":\"lts\"}]," +
+      "\"ind1\":\"2\",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\":\"20141106\"},{\"b\":\"m\"},{\"d\":\"batch\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}],\"ind1\":\"2\",\"ind2\":\"" +
+      " \"}}]}\n");
   private static TestMarcRecordsCollection recordCollection = new TestMarcRecordsCollection()
     .withRawRecords(Arrays.asList(rawRecord_1, rawRecord_2));
 

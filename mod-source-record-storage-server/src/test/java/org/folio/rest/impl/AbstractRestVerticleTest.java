@@ -26,6 +26,8 @@ public abstract class AbstractRestVerticleTest {
   static final String TENANT_ID = "diku";
   static Vertx vertx;
   static RequestSpecification spec;
+  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
+  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static String useExternalDatabase;
 
   @BeforeClass

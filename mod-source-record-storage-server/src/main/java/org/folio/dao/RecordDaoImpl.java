@@ -28,6 +28,7 @@ import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
@@ -183,11 +184,22 @@ public class RecordDaoImpl implements RecordDao {
     ParsedRecord parsedRecord = record.getParsedRecord();
     if (parsedRecord != null) {
       recordModel.setParsedRecordId(parsedRecord.getId());
-      parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
-      JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
-      statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-        parsedRecord.getId(), pojo2json(jsonData), tenantId));
-      record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
+      try {
+        parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
+        JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
+        statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
+          parsedRecord.getId(), pojo2json(jsonData), tenantId));
+        record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
+      } catch (Exception e) {
+        LOG.error("Error mapping ParsedRecord to JsonObject", e.getMessage());
+        ErrorRecord error = new ErrorRecord()
+          .withId(UUID.randomUUID().toString())
+          // replace with e.getMessage() after the (https://issues.folio.org/browse/MODSOURCE-43) is fixed
+          .withDescription("Cannot map ParsedRecord content to JsonObject")
+          .withContent(parsedRecord.getContent().toString());
+        record.setErrorRecord(error);
+        record.setParsedRecord(null);
+      }
     }
     ErrorRecord errorRecord = record.getErrorRecord();
     if (errorRecord != null) {

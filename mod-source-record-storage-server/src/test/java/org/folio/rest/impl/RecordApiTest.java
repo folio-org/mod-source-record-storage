@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -29,6 +28,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordApiTest extends AbstractRestVerticleTest {
@@ -86,6 +86,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       "{\"b\":\"r\"},{\"d\":\"np55\"},{\"e\":\"lts\"}],\"ind1\":\"0\",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\":\"20130128\"},{\"b\":\"m\"},{\"d\":\"bmt1\"},{\"e\":\"lts\"}]," +
       "\"ind1\":\"2\",\"ind2\":\" \"}},{\"948\":{\"subfields\":[{\"a\":\"20141106\"},{\"b\":\"m\"},{\"d\":\"batch\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}],\"ind1\":\"2\",\"ind2\":\"" +
       " \"}}]}\n");
+  private static ParsedRecord invalidParsedRecord = new ParsedRecord()
+  .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
@@ -118,7 +120,12 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withRawRecord(rawRecord_1)
     .withParsedRecord(marcRecord)
     .withMatchedId(UUID.randomUUID().toString());
-
+  private static Record record_5 = new Record()
+    .withSnapshotId(snapshot_2.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord_1)
+    .withMatchedId(UUID.randomUUID().toString())
+    .withParsedRecord(invalidParsedRecord);
   @Override
   public void clearTables(TestContext context) {
     Async async = context.async();
@@ -667,6 +674,42 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", greaterThanOrEqualTo(1));
+    async.complete();
+  }
+
+  @Test
+  public void shouldCreateErrorRecordIfParsedContentIsInvalid(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_5)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    Response getResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId());
+    Assert.assertThat(getResponse.statusCode(), is(HttpStatus.SC_OK));
+    Record getRecord = getResponse.body().as(Record.class);
+    Assert.assertThat(getRecord.getId(), is(createdRecord.getId()));
+    Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord_1.getContent()));
+    Assert.assertThat(getRecord.getParsedRecord(), nullValue());
+    Assert.assertThat(getRecord.getErrorRecord(), notNullValue());
     async.complete();
   }
 

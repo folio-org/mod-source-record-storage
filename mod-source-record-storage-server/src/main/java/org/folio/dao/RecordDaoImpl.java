@@ -196,7 +196,7 @@ public class RecordDaoImpl implements RecordDao {
           .withId(UUID.randomUUID().toString())
           // replace with e.getMessage() after the (https://issues.folio.org/browse/MODSOURCE-43) is fixed
           .withDescription("Cannot map ParsedRecord content to JsonObject")
-          .withContent(parsedRecord.getContent().toString());
+          .withContent(parsedRecord.getContent());
         record.setErrorRecord(error);
         record.setParsedRecord(null);
       }

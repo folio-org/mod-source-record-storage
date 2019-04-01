@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -14,6 +16,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -31,11 +34,21 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   private static final String ERROR_RECORDS_TABLE_NAME = "error_records";
   private static final String MARC_RECORDS_TABLE_NAME = "marc_records";
 
+  private static RawRecord rawRecord;
+  private static ParsedRecord marcRecord;
+
+  static {
+    try {
+      rawRecord = new RawRecord()
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      marcRecord = new ParsedRecord()
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
   private static String matchedId = UUID.randomUUID().toString();
-  private static RawRecord rawRecord = new RawRecord()
-    .withContent("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.");
-  private static ParsedRecord marcRecord = new ParsedRecord()
-    .withContent("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.");
   private static Snapshot snapshot_1 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
@@ -117,7 +130,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_OK)
         .body("id", is(created.getId()))
         .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(i));
       async.complete();
@@ -163,7 +175,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_OK)
         .body("id", is(created.getId()))
         .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(0));
       async.complete();
@@ -220,7 +231,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_OK)
         .body("id", is(created.getId()))
         .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("parsedRecord.content", is(marcRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(0));
       async.complete();

@@ -9,6 +9,7 @@ CREATE OR REPLACE VIEW records_view AS
 					'matchedId', records.jsonb->>'matchedId',
 					'generation', records.jsonb->>'generation',
 					'recordType', records.jsonb->>'recordType',
+					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
  					'rawRecord', raw_records.jsonb,
  					'parsedRecord', COALESCE(marc_records.jsonb),
@@ -47,6 +48,7 @@ CREATE OR REPLACE VIEW source_records_view AS
   json_build_object('recordId', records.jsonb->>'id',
           'snapshotId', records.jsonb->>'snapshotId',
 					'recordType', records.jsonb->>'recordType',
+					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
 					'rawRecord', raw_records.jsonb,
  					'parsedRecord', COALESCE(marc_records.jsonb))

@@ -8,11 +8,14 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -204,7 +207,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("records*.snapshotId", everyItem(is(record_2.getSnapshotId())));
+      .body("records*.snapshotId", everyItem(is(record_2.getSnapshotId())))
+      .body("records*.additionalInfo.suppressDiscovery", everyItem(nullValue()));
     async.complete();
   }
 
@@ -281,7 +285,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("snapshotId", is(record_1.getSnapshotId()))
       .body("recordType", is(record_1.getRecordType().name()))
-      .body("rawRecord.content", is(rawRecord.getContent()));
+      .body("rawRecord.content", is(rawRecord.getContent()))
+      .body("additionalInfo.suppressDiscovery", nullValue());
     async.complete();
   }
 
@@ -308,7 +313,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("snapshotId", is(record_3.getSnapshotId()))
       .body("recordType", is(record_3.getRecordType().name()))
       .body("rawRecord.content", is(rawRecord.getContent()))
-      .body("errorRecord.content", is(errorRecord.getContent()));
+      .body("errorRecord.content", is(errorRecord.getContent()))
+      .body("additionalInfo.suppressDiscovery", nullValue());
     async.complete();
   }
 
@@ -369,6 +375,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(updatedRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = updatedRecord.getParsedRecord();
     Assert.assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    Assert.assertThat(updatedRecord.getAdditionalInfo(), nullValue());
     async.complete();
   }
 
@@ -405,7 +412,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("id", is(createdRecord.getId()))
       .body("rawRecord.content", is(createdRecord.getRawRecord().getContent()))
-      .body("errorRecord.content", is(createdRecord.getErrorRecord().getContent()));
+      .body("errorRecord.content", is(createdRecord.getErrorRecord().getContent()))
+      .body("additionalInfo.suppressDiscovery", nullValue());
     async.complete();
   }
 
@@ -452,6 +460,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = getRecord.getParsedRecord();
     Assert.assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    Assert.assertThat(getRecord.getAdditionalInfo(), nullValue());
     async.complete();
   }
 
@@ -604,7 +613,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())));
+      .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())))
+      .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(nullValue()));
     async.complete();
   }
 
@@ -681,6 +691,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     Assert.assertThat(getRecord.getParsedRecord(), nullValue());
     Assert.assertThat(getRecord.getErrorRecord(), notNullValue());
+    Assert.assertThat(getRecord.getAdditionalInfo(), nullValue());
     async.complete();
   }
 
@@ -727,5 +738,97 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_RECORDS_PATH + "?limit=select * from table")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+  @Test
+  public void shouldReturnCreatedRecordWithAdditionalInfoOnGetById(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    Record newRecord = new Record()
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withAdditionalInfo(
+        new AdditionalInfo().withSuppressDiscovery(false));
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    Response getResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId());
+    Assert.assertThat(getResponse.statusCode(), is(HttpStatus.SC_OK));
+    Record getRecord = getResponse.body().as(Record.class);
+    Assert.assertThat(getRecord.getId(), is(createdRecord.getId()));
+    Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
+    ParsedRecord parsedRecord = getRecord.getParsedRecord();
+    Assert.assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    Assert.assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(newRecord.getAdditionalInfo().getSuppressDiscovery()));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSourceRecordWithAdditionalInfoOnGetBySpecifiedSnapshotId(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    Record newRecord = new Record()
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withAdditionalInfo(
+        new AdditionalInfo().withSuppressDiscovery(false));
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    Response getResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?query=snapshotId=" + newRecord.getSnapshotId());
+    Assert.assertThat(getResponse.statusCode(), is(HttpStatus.SC_OK));
+    SourceRecordCollection sourceRecordCollection = getResponse.body().as(SourceRecordCollection.class);
+    Assert.assertThat(sourceRecordCollection.getSourceRecords().size(), is(1));
+    SourceRecord sourceRecord = sourceRecordCollection.getSourceRecords().get(0);
+    Assert.assertThat(sourceRecord.getRecordId(), is(createdRecord.getId()));
+    Assert.assertThat(sourceRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
+    Assert.assertThat(sourceRecord.getAdditionalInfo().getSuppressDiscovery(), is(createdRecord.getAdditionalInfo().getSuppressDiscovery()));
+    async.complete();
   }
 }

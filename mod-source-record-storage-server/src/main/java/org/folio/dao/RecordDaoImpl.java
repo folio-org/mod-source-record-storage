@@ -1,16 +1,18 @@
 package org.folio.dao;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
@@ -25,8 +27,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,6 +46,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
   private static final String CALL_GET_HIGHEST_GENERATION_FUNCTION = "select get_highest_generation('%s', '%s');";
+  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -83,28 +84,12 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Boolean> saveRecord(Record record, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    try {
-      String insertQuery = constructInsertOrUpdateQuery(record, tenantId);
-      pgClientFactory.createInstance(tenantId).execute(insertQuery, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while inserting new record", e);
-      future.fail(e);
-    }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    return insertOrUpdateRecord(record, tenantId);
   }
 
   @Override
   public Future<Boolean> updateRecord(Record record, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    try {
-      String updateQuery = constructInsertOrUpdateQuery(record, tenantId);
-      pgClientFactory.createInstance(tenantId).execute(updateQuery, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while updating a record", e);
-      future.fail(e);
-    }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    return insertOrUpdateRecord(record, tenantId);
   }
 
   /**
@@ -114,20 +99,55 @@ public class RecordDaoImpl implements RecordDao {
    */
   @Override
   public Future<Boolean> deleteRecord(String id, String tenantId) {
-    Future<UpdateResult> future = Future.future();
+    Future<Boolean> future = Future.future();
     return getRecordById(id, tenantId)
       .compose(optionalRecord -> optionalRecord
         .map(record -> {
-          try {
-            String deleteQuery = constructDeleteQuery(record, tenantId);
-            pgClientFactory.createInstance(tenantId).execute(deleteQuery, future.completer());
-          } catch (Exception e) {
-            LOG.error("Error while deleting a record", e);
-            future.fail(e);
-          }
-          return future.map(updateResult -> updateResult.getUpdated() == 1);
-        })
-        .orElse(Future.failedFuture(new NotFoundException(
+          Future<SQLConnection> tx = Future.future(); //NOSONAR
+          Future.succeededFuture()
+            .compose(v -> {
+              pgClientFactory.createInstance(tenantId).startTx(tx.completer());
+              return tx;
+            }).compose(v -> {
+            Future<UpdateResult> rawRecordDeleteFuture = Future.future(); //NOSONAR
+            Criteria idCrit = constructCriteria(ID_FIELD, record.getRawRecord().getId()); //NOSONAR
+            pgClientFactory.createInstance(tenantId).delete(tx, RAW_RECORDS_TABLE, new Criterion(idCrit), rawRecordDeleteFuture.completer());
+            return rawRecordDeleteFuture;
+          }).compose(v -> {
+            if (record.getParsedRecord() != null) {
+              Future<UpdateResult> parsedRecordDeleteFuture = Future.future(); //NOSONAR
+              Criteria idCrit = constructCriteria(ID_FIELD, record.getParsedRecord().getId()); //NOSONAR
+              pgClientFactory.createInstance(tenantId).delete(tx, RecordType.valueOf(record.getRecordType().value()).getTableName(),
+                new Criterion(idCrit), parsedRecordDeleteFuture.completer());
+              return parsedRecordDeleteFuture;
+            }
+            return Future.succeededFuture();
+          }).compose(v -> {
+            if (record.getErrorRecord() != null) {
+              Future<UpdateResult> errorRecordDeleteFuture = Future.future(); //NOSONAR
+              Criteria idCrit = constructCriteria(ID_FIELD, record.getErrorRecord().getId()); //NOSONAR
+              pgClientFactory.createInstance(tenantId).delete(tx, ERROR_RECORDS_TABLE, new Criterion(idCrit), errorRecordDeleteFuture.completer());
+              return errorRecordDeleteFuture;
+            }
+            return Future.succeededFuture();
+          }).compose(v -> {
+            Future<UpdateResult> recordModelDeleteFuture = Future.future(); //NOSONAR
+            Criteria idCrit = constructCriteria(ID_FIELD, record.getId()); //NOSONAR
+            pgClientFactory.createInstance(tenantId).delete(tx, RECORDS_TABLE, new Criterion(idCrit), recordModelDeleteFuture.completer());
+            return recordModelDeleteFuture;
+          }).setHandler(result -> {
+            if (result.succeeded()) {
+              pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
+                future.complete(true));
+            } else {
+              pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
+                LOG.error("Failed to delete Record with id {}. Rollback transaction", record.getId(), result.cause());
+                future.fail(result.cause());
+              });
+            }
+          });
+          return future;
+        }).orElse(Future.failedFuture(new NotFoundException(
           String.format("Record with id '%s' was not found", id))))
       );
   }
@@ -167,9 +187,9 @@ public class RecordDaoImpl implements RecordDao {
     });
   }
 
-  private String constructInsertOrUpdateQuery(Record record, String tenantId) throws Exception {
-    List<String> statements = new ArrayList<>();
-    RecordModel recordModel = new RecordModel()
+  private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
+    Future<Boolean> future = Future.future();
+    RecordModel recordModel = new RecordModel() //NOSONAR
       .withId(record.getId())
       .withSnapshotId(record.getSnapshotId())
       .withMatchedProfileId(record.getMatchedProfileId())
@@ -178,73 +198,76 @@ public class RecordDaoImpl implements RecordDao {
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
       .withRawRecordId(record.getRawRecord().getId())
       .withMetadata(record.getMetadata());
-    RawRecord rawRecord = record.getRawRecord();
-    statements.add(
-      constructInsertOrUpdateStatement(RAW_RECORDS_TABLE, rawRecord.getId(), pojo2json(rawRecord), tenantId));
+    Future<SQLConnection> tx = Future.future(); //NOSONAR
+    Future.succeededFuture()
+      .compose(v -> {
+        pgClientFactory.createInstance(tenantId).startTx(tx.completer());
+        return tx;
+      }).compose(v -> insertOrUpdate(tx, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
+      .compose(v -> {
+        if (record.getParsedRecord() != null) {
+          recordModel.setParsedRecordId(record.getParsedRecord().getId());
+          return insertOrUpdateParsedRecord(tx, record, tenantId);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> {
+        if (record.getErrorRecord() != null) {
+          recordModel.setErrorRecordId(record.getErrorRecord().getId());
+          return insertOrUpdate(tx, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId))
+      .setHandler(result -> {
+        if (result.succeeded()) {
+          pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
+            future.complete(true));
+        } else {
+          pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
+            LOG.error("Failed to insert or update Record with id {}. Rollback transaction", record.getId(), result.cause());
+            future.fail(result.cause());
+          });
+        }
+      });
+    return future;
+  }
+
+  private Future<Boolean> insertOrUpdate(AsyncResult<SQLConnection> tx, Object rawRecord, String id, String tableName, String tenantId) {
+    Future<UpdateResult> future = Future.future();
+    try {
+      JsonArray params = new JsonArray().add(id).add(pojo2json(rawRecord)).add(pojo2json(rawRecord));
+      String query = String.format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), tableName);
+      pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
+      return future.map(result -> result.getUpdated() == 1);
+    } catch (Exception e) {
+      LOG.error("Error updating Record", e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  private Future<Boolean> insertOrUpdateParsedRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
+    Future<UpdateResult> future = Future.future();
     ParsedRecord parsedRecord = record.getParsedRecord();
-    if (parsedRecord != null) {
-      recordModel.setParsedRecordId(parsedRecord.getId());
-      try {
-        parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
-        JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
-        statements.add(constructInsertOrUpdateStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-          parsedRecord.getId(), pojo2json(jsonData), tenantId));
-        record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
-      } catch (Exception e) {
-        LOG.error("Error mapping ParsedRecord to JsonObject", e.getMessage());
-        ErrorRecord error = new ErrorRecord()
-          .withId(UUID.randomUUID().toString())
-          // replace with e.getMessage() after the (https://issues.folio.org/browse/MODSOURCE-43) is fixed
-          .withDescription("Cannot map ParsedRecord content to JsonObject")
-          .withContent(parsedRecord.getContent());
-        record.setErrorRecord(error);
-        record.setParsedRecord(null);
-      }
+    try {
+      parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
+      JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
+      JsonArray params = new JsonArray().add(
+        parsedRecord.getId()).add(pojo2json(jsonData)).add(pojo2json(jsonData));
+      String query = String.format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), RecordType.valueOf(record.getRecordType().value()).getTableName());
+      record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
+      pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
+      return future.map(result -> result.getUpdated() == 1);
+    } catch (Exception e) {
+      LOG.error("Error mapping ParsedRecord to JsonObject", e.getMessage());
+      ErrorRecord error = new ErrorRecord()
+        .withId(UUID.randomUUID().toString())
+        .withDescription(e.getMessage())
+        .withContent(parsedRecord.getContent());
+      record.setErrorRecord(error);
+      record.setParsedRecord(null);
+      return Future.succeededFuture(false);
     }
-    ErrorRecord errorRecord = record.getErrorRecord();
-    if (errorRecord != null) {
-      recordModel.setErrorRecordId(errorRecord.getId());
-      statements.add(
-        constructInsertOrUpdateStatement(ERROR_RECORDS_TABLE, errorRecord.getId(), pojo2json(errorRecord), tenantId));
-    }
-    statements.add(
-      constructInsertOrUpdateStatement(RECORDS_TABLE, recordModel.getId(), pojo2json(recordModel), tenantId)
-    );
-    return String.join("", statements);
-  }
-
-  private String constructDeleteQuery(Record record, String tenantId) {
-    List<String> statements = new ArrayList<>();
-    statements.add(constructDeleteStatement(RAW_RECORDS_TABLE, record.getRawRecord().getId(), tenantId));
-    if (record.getParsedRecord() != null) {
-      statements.add(constructDeleteStatement(RecordType.valueOf(record.getRecordType().value()).getTableName(),
-        record.getParsedRecord().getId(), tenantId));
-    }
-    if (record.getErrorRecord() != null) {
-      statements.add(
-        constructDeleteStatement(ERROR_RECORDS_TABLE, record.getErrorRecord().getId(), tenantId));
-    }
-    statements.add(
-      constructDeleteStatement(RECORDS_TABLE, record.getId(), tenantId));
-    return String.join("", statements);
-  }
-
-  private String constructInsertOrUpdateStatement(String tableName, String id, String jsonData, String tenantId) {
-    return new StringBuilder()
-      .append("INSERT INTO ")
-      .append(PostgresClient.convertToPsqlStandard(tenantId)).append(".").append(tableName)
-      .append("(_id, jsonb) VALUES ('")
-      .append(id).append("', '")
-      .append(jsonData).append("')")
-      .append(" ON CONFLICT (_id) DO UPDATE SET jsonb = '")
-      .append(jsonData).append("';").toString();
-  }
-
-  private String constructDeleteStatement(String tableName, String id, String tenantId) {
-    return new StringBuilder()
-      .append("DELETE FROM ")
-      .append(PostgresClient.convertToPsqlStandard(tenantId)).append(".").append(tableName)
-      .append(" WHERE _id = '").append(id).append("';").toString();
   }
 
 }

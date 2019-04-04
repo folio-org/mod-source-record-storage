@@ -208,7 +208,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
       .body("records*.snapshotId", everyItem(is(record_2.getSnapshotId())))
-      .body("records*.additionalInfo.suppressDiscovery", everyItem(nullValue()));
+      .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)));
     async.complete();
   }
 
@@ -286,7 +286,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("snapshotId", is(record_1.getSnapshotId()))
       .body("recordType", is(record_1.getRecordType().name()))
       .body("rawRecord.content", is(rawRecord.getContent()))
-      .body("additionalInfo.suppressDiscovery", nullValue());
+      .body("additionalInfo.suppressDiscovery", is(false));
     async.complete();
   }
 
@@ -314,7 +314,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("recordType", is(record_3.getRecordType().name()))
       .body("rawRecord.content", is(rawRecord.getContent()))
       .body("errorRecord.content", is(errorRecord.getContent()))
-      .body("additionalInfo.suppressDiscovery", nullValue());
+      .body("additionalInfo.suppressDiscovery", is(false));
     async.complete();
   }
 
@@ -375,7 +375,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(updatedRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = updatedRecord.getParsedRecord();
     Assert.assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
-    Assert.assertThat(updatedRecord.getAdditionalInfo(), nullValue());
+    Assert.assertThat(updatedRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
 
@@ -413,7 +413,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("id", is(createdRecord.getId()))
       .body("rawRecord.content", is(createdRecord.getRawRecord().getContent()))
       .body("errorRecord.content", is(createdRecord.getErrorRecord().getContent()))
-      .body("additionalInfo.suppressDiscovery", nullValue());
+      .body("additionalInfo.suppressDiscovery", is(false));
     async.complete();
   }
 
@@ -460,7 +460,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = getRecord.getParsedRecord();
     Assert.assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
-    Assert.assertThat(getRecord.getAdditionalInfo(), nullValue());
+    Assert.assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
 
@@ -614,7 +614,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())))
-      .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(nullValue()));
+      .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(is(false)));
     async.complete();
   }
 
@@ -691,7 +691,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     Assert.assertThat(getRecord.getParsedRecord(), nullValue());
     Assert.assertThat(getRecord.getErrorRecord(), notNullValue());
-    Assert.assertThat(getRecord.getAdditionalInfo(), nullValue());
+    Assert.assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
 
@@ -759,7 +759,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withAdditionalInfo(
-        new AdditionalInfo().withSuppressDiscovery(false));
+        new AdditionalInfo().withSuppressDiscovery(true));
 
     async = testContext.async();
     Response createResponse = RestAssured.given()
@@ -805,7 +805,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withAdditionalInfo(
-        new AdditionalInfo().withSuppressDiscovery(false));
+        new AdditionalInfo().withSuppressDiscovery(true));
 
     async = testContext.async();
     Response createResponse = RestAssured.given()

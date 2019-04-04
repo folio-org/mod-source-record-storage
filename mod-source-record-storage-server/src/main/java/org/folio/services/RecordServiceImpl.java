@@ -3,6 +3,7 @@ package org.folio.services;
 import io.vertx.core.Future;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -45,6 +46,9 @@ public class RecordServiceImpl implements RecordService {
     }
     if (record.getErrorRecord() != null) {
       record.getErrorRecord().setId(UUID.randomUUID().toString());
+    }
+    if (record.getAdditionalInfo() == null) {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
     return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
       .map(optionalRecordSnapshot -> optionalRecordSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))

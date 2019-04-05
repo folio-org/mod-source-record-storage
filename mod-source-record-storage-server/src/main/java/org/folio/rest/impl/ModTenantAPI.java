@@ -6,6 +6,8 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
@@ -22,17 +24,12 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 public class ModTenantAPI extends TenantAPI {
 
@@ -41,7 +38,7 @@ public class ModTenantAPI extends TenantAPI {
   private static final String CREATE_STUB_SNAPSHOT_SQL = "templates/db_scripts/create_stub_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
-  private static final String JSON_EXTENSION = ".json";
+  private static final String SAMPLE_DATA = "sampledata/sampleMarcRecords.json";
 
   @Autowired
   private RecordService recordService;
@@ -107,44 +104,43 @@ public class ModTenantAPI extends TenantAPI {
     }
   }
 
-  private Future<Void> createStubData(TenantAttributes attributes) { //NOSONAR
+  private Future<Void> createStubData(TenantAttributes attributes) {
     Future<Void> future = Future.future();
     if (isLoadSample(attributes)) {
       try {
-        ClassLoader classLoader = getClass().getClassLoader();
-        File sampleDir = new File(Objects.requireNonNull(classLoader.getResource("sampledata")).getFile());
-        int numberOfFiles;
-        try (Stream<Path> stream = Files.list(sampleDir.toPath())) {
-          numberOfFiles = (int) stream.count();
+        InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(SAMPLE_DATA);
+        if (inputStream == null) {
+          LOGGER.info("Module is being deployed in test mode, but stub data was not populated: no resources found: {}", SAMPLE_DATA);
+          return Future.succeededFuture();
         }
-        List<Future> futures = new ArrayList<>(numberOfFiles);
-        Files.walk(sampleDir.toPath()).forEach(file -> { //NOSONAR
-          if (file.toFile().getName().endsWith(JSON_EXTENSION)) {
-            Record record = new Record();
-            String recordUUID = file.toFile().getName().split(JSON_EXTENSION)[0];
-            record.setId(recordUUID);
-            try {
-              String content = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-              record.setParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content));
-              record.setRawRecord(new RawRecord().withId(recordUUID).withContent(content));
-              record.setRecordType(Record.RecordType.MARC);
-              record.setSnapshotId("00000000-0000-0000-0000-000000000000");
-              record.setGeneration(0);
-              record.setMatchedId(recordUUID);
-              Future<Void> helperFuture = Future.future();
-              recordService.saveRecord(record, tenantId).setHandler(h -> {
-                if (h.succeeded()) {
-                  LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
-                } else {
-                  LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
-                }
-                helperFuture.complete();
-              });
-              futures.add(helperFuture);
-            } catch (IOException e) {
-              LOGGER.error("Error during reading sample source records", e);
+        String sampleData = IOUtils.toString(inputStream, StandardCharsets.UTF_8.name());
+        if (StringUtils.isBlank(sampleData)) {
+          return Future.succeededFuture();
+        }
+        JsonArray marcRecords = new JsonArray(sampleData);
+        List<Future> futures = new ArrayList<>(marcRecords.size());
+        marcRecords.forEach(jsonRecord -> {
+          Record record = new Record();
+          JsonObject marcRecordJson = JsonObject.mapFrom(jsonRecord);
+          String recordUUID = marcRecordJson.getString("id");
+          record.setId(recordUUID);
+          JsonObject content = marcRecordJson.getJsonObject("content");
+          record.setParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content));
+          record.setRawRecord(new RawRecord().withId(recordUUID).withContent(content.toString()));
+          record.setRecordType(Record.RecordType.MARC);
+          record.setSnapshotId("00000000-0000-0000-0000-000000000000");
+          record.setGeneration(0);
+          record.setMatchedId(recordUUID);
+          Future<Void> helperFuture = Future.future();
+          recordService.saveRecord(record, tenantId).setHandler(h -> {
+            if (h.succeeded()) {
+              LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
+            } else {
+              LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
             }
-          }
+            helperFuture.complete();
+          });
+          futures.add(helperFuture);
         });
         CompositeFuture.all(futures).setHandler(r -> future.complete());
       } catch (Exception e) {

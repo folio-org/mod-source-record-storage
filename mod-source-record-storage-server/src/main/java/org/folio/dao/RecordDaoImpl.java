@@ -197,6 +197,7 @@ public class RecordDaoImpl implements RecordDao {
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
       .withRawRecordId(record.getRawRecord().getId())
+      .withDeleted(record.getDeleted())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
     Future<SQLConnection> tx = Future.future(); //NOSONAR

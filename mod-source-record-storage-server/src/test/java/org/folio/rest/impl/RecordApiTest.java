@@ -506,6 +506,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("deleted", is(true));
+    async.complete();
+
+    async = testContext.async();
     Response createErrorRecord = RestAssured.given()
       .spec(spec)
       .body(record_3)
@@ -522,6 +532,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("deleted", is(true));
     async.complete();
   }
 

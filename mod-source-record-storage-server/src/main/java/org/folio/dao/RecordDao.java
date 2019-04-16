@@ -66,10 +66,11 @@ public interface RecordDao {
    * @param query  query string to filter results based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
+   * @param deletedRecords indicates to return records marked as deleted or not
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 
   /**
    * Increments generation in case a record with the same matchedId exists

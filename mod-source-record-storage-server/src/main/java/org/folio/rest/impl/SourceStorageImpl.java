@@ -257,7 +257,7 @@ public class SourceStorageImpl implements SourceStorage {
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(query, offset, limit, tenantId)
+        recordService.getSourceRecords(query, offset, limit, deleted, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

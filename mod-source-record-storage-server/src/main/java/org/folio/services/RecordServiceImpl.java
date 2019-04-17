@@ -84,11 +84,6 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> deleteRecord(String id, String tenantId) {
-    return recordDao.deleteRecord(id, tenantId);
-  }
-
-  @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     return recordDao.getSourceRecords(query, offset, limit, deletedRecords, tenantId);
   }

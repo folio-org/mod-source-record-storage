@@ -51,15 +51,6 @@ public interface RecordService {
   Future<Boolean> updateRecord(Record record, String tenantId);
 
   /**
-   * Deletes record by id
-   *
-   * @param id record id
-   * @param tenantId tenant id
-   * @return future with true if succeeded
-   */
-  Future<Boolean> deleteRecord(String id, String tenantId);
-
-  /**
    * Searches for source records
    *
    * @param query  query from URL

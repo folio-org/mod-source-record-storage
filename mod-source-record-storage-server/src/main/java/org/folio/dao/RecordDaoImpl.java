@@ -11,8 +11,11 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
@@ -30,6 +33,7 @@ import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.stream.Collectors.toList;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
@@ -154,18 +158,33 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId) {
-    Future<Results<SourceRecord>> future = Future.future();
+
+    Future<ResultSet> future = Future.future();
     try {
-      String[] fieldList = {"*"};
-      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, query, limit, offset);
-      pgClientFactory.createInstance(tenantId).get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
-    } catch (Exception e) {
+      pgClientFactory.createInstance(tenantId).select("SELECT * FROM source_records_view " + query, future.completer());
+    }
+    catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
     }
-    return future.map(results -> new SourceRecordCollection()
-      .withSourceRecords(results.getResults())
-      .withTotalRecords(results.getResultInfo().getTotalRecords()));
+
+    return future.map(resultSet ->
+            resultSet.getRows().stream().map(it ->
+                    {
+                      JsonObject record = new JsonObject(it.getString("jsonb"));
+                      return new SourceRecord()
+                              .withRecordId(record.getString("recordId"))
+                              .withSnapshotId(record.getString("snapshotId"))
+                              .withRecordType(SourceRecord.RecordType.valueOf(record.getString("recordType")))
+                              .withAdditionalInfo(record.getJsonObject("additionalInfo").mapTo(AdditionalInfo.class))
+                              .withMetadata(record.getJsonObject("metadata").mapTo(Metadata.class))
+                              .withRawRecord(record.getJsonObject("rawRecord").mapTo(RawRecord.class))
+                              .withParsedRecord(record.getJsonObject("parsedRecord").mapTo(ParsedRecord.class));
+                    }
+
+            ).collect(toList()))
+            .map(list -> new SourceRecordCollection().withSourceRecords(list));
+
   }
 
   @Override

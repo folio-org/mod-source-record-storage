@@ -830,7 +830,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     Assert.assertThat(getRecord.getParsedRecord(), nullValue());
     Assert.assertThat(getRecord.getErrorRecord(), notNullValue());
-    Assert.assertThat(getRecord.getDeleted(), is(false));
+    Assert.assertFalse(getRecord.getDeleted());
     Assert.assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }

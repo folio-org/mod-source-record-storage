@@ -234,12 +234,14 @@ public class SourceStorageImpl implements SourceStorage {
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.deleteRecord(id, tenantId)
-          .map(deleted -> deleted ?
-            DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
-              String.format("Record with id '%s' was successfully deleted", id)) :
-            DeleteSourceStorageRecordsByIdResponse.respond404WithTextPlain(
-              String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id)))
+        recordService.getRecordById(id, tenantId)
+          .map(recordOptional -> recordOptional.orElseThrow(() ->
+            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+          .compose(record -> record.getDeleted()
+            ? Future.succeededFuture(true)
+            : recordService.updateRecord(record.withDeleted(true), tenantId))
+          .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
+            String.format("Record with id '%s' was successfully deleted", id)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -251,11 +253,11 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageSourceRecords(String query, int offset, int limit, Map<String, String> okapiHeaders,
+  public void getSourceStorageSourceRecords(boolean deleted, String query, int offset, int limit, Map<String, String> okapiHeaders,
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(query, offset, limit, tenantId)
+        recordService.getSourceRecords(query, offset, limit, deleted, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

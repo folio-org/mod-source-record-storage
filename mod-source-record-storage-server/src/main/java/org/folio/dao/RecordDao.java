@@ -52,24 +52,16 @@ public interface RecordDao {
   Future<Boolean> updateRecord(Record record, String tenantId);
 
   /**
-   * Deletes {@link Record} from the db
-   *
-   * @param id id of the {@link Record} to delete
-   * @param tenantId tenant id
-   * @return future with true if succeeded
-   */
-  Future<Boolean> deleteRecord(String id, String tenantId);
-
-  /**
    * Searches for {@link SourceRecord} in the db view
    *
    * @param query  query string to filter results based on matching criteria in fields
    * @param offset starting index in a list of results
    * @param limit  maximum number of results to return
+   * @param deletedRecords indicates to return records marked as deleted or not
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 
   /**
    * Increments generation in case a record with the same matchedId exists

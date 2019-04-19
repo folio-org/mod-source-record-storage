@@ -506,6 +506,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("deleted", is(true));
+    async.complete();
+
+    async = testContext.async();
     Response createErrorRecord = RestAssured.given()
       .spec(spec)
       .body(record_3)
@@ -522,6 +532,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("deleted", is(true));
     async.complete();
   }
 
@@ -573,7 +593,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("sourceRecords*.parsedRecord", notNullValue());
+      .body("sourceRecords*.parsedRecord", notNullValue())
+      .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
   }
 
@@ -614,6 +635,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())))
+      .body("sourceRecords*.deleted", everyItem(is(false)))
       .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(is(false)));
     async.complete();
   }
@@ -654,7 +676,124 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
-      .body("totalRecords", greaterThanOrEqualTo(1));
+      .body("totalRecords", greaterThanOrEqualTo(1))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnAllSourceRecordsMarkedAsDeletedOnGetWhenParameterDeletedIsTrue(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+   async = testContext.async();
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsedRecord = createParsed.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    createParsed = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    parsedRecord = createParsed.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .param("deleted", true)
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", greaterThanOrEqualTo(2))
+      .body("sourceRecords*.deleted", everyItem(is(true)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnOnlyUnmarkedAsDeletedSourceRecordOnGetWhenParameterDeletedIsNotPassed(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(is(HttpStatus.SC_CREATED));
+    async.complete();
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record recordToDelete = createResponse.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + recordToDelete.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", greaterThanOrEqualTo(1))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
   }
 
@@ -691,6 +830,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     Assert.assertThat(getRecord.getParsedRecord(), nullValue());
     Assert.assertThat(getRecord.getErrorRecord(), notNullValue());
+    Assert.assertFalse(getRecord.getDeleted());
     Assert.assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }

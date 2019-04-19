@@ -118,6 +118,13 @@ resourceTypes:
     description: API for getting Source Records
     get:
       description: Get a list of Source Records
+      queryParameters:
+        deleted:
+          description: selection condition of sourceRecords by field 'deleted'
+          example: false
+          type: boolean
+          default: false
+          required: false
       is: [
         searchable: {
           description:

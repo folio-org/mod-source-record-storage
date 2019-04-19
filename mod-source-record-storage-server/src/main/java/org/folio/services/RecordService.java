@@ -51,22 +51,14 @@ public interface RecordService {
   Future<Boolean> updateRecord(Record record, String tenantId);
 
   /**
-   * Deletes record by id
-   *
-   * @param id record id
-   * @param tenantId tenant id
-   * @return future with true if succeeded
-   */
-  Future<Boolean> deleteRecord(String id, String tenantId);
-
-  /**
    * Searches for source records
    *
    * @param query  query from URL
    * @param offset starting index in a list of results
    * @param limit  limit of records for pagination
+   * @param deletedRecords indicates to return records marked as deleted or not
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 }

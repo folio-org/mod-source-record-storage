@@ -6,8 +6,6 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
-import javax.ws.rs.NotFoundException;
-
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,7 +34,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -96,73 +93,14 @@ public class RecordDaoImpl implements RecordDao {
     return insertOrUpdateRecord(record, tenantId);
   }
 
-  /**
-   * currently the method is implemented allowing to delete the Record,
-   * this behavior will be changed
-   * (@link https://issues.folio.org/browse/MODSOURCE-16)
-   */
   @Override
-  public Future<Boolean> deleteRecord(String id, String tenantId) {
-    Future<Boolean> future = Future.future();
-    return getRecordById(id, tenantId)
-      .compose(optionalRecord -> optionalRecord
-        .map(record -> {
-          Future<SQLConnection> tx = Future.future(); //NOSONAR
-          Future.succeededFuture()
-            .compose(v -> {
-              pgClientFactory.createInstance(tenantId).startTx(tx.completer());
-              return tx;
-            }).compose(v -> {
-            Future<UpdateResult> rawRecordDeleteFuture = Future.future(); //NOSONAR
-            Criteria idCrit = constructCriteria(ID_FIELD, record.getRawRecord().getId()); //NOSONAR
-            pgClientFactory.createInstance(tenantId).delete(tx, RAW_RECORDS_TABLE, new Criterion(idCrit), rawRecordDeleteFuture.completer());
-            return rawRecordDeleteFuture;
-          }).compose(v -> {
-            if (record.getParsedRecord() != null) {
-              Future<UpdateResult> parsedRecordDeleteFuture = Future.future(); //NOSONAR
-              Criteria idCrit = constructCriteria(ID_FIELD, record.getParsedRecord().getId()); //NOSONAR
-              pgClientFactory.createInstance(tenantId).delete(tx, RecordType.valueOf(record.getRecordType().value()).getTableName(),
-                new Criterion(idCrit), parsedRecordDeleteFuture.completer());
-              return parsedRecordDeleteFuture;
-            }
-            return Future.succeededFuture();
-          }).compose(v -> {
-            if (record.getErrorRecord() != null) {
-              Future<UpdateResult> errorRecordDeleteFuture = Future.future(); //NOSONAR
-              Criteria idCrit = constructCriteria(ID_FIELD, record.getErrorRecord().getId()); //NOSONAR
-              pgClientFactory.createInstance(tenantId).delete(tx, ERROR_RECORDS_TABLE, new Criterion(idCrit), errorRecordDeleteFuture.completer());
-              return errorRecordDeleteFuture;
-            }
-            return Future.succeededFuture();
-          }).compose(v -> {
-            Future<UpdateResult> recordModelDeleteFuture = Future.future(); //NOSONAR
-            Criteria idCrit = constructCriteria(ID_FIELD, record.getId()); //NOSONAR
-            pgClientFactory.createInstance(tenantId).delete(tx, RECORDS_TABLE, new Criterion(idCrit), recordModelDeleteFuture.completer());
-            return recordModelDeleteFuture;
-          }).setHandler(result -> {
-            if (result.succeeded()) {
-              pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
-                future.complete(true));
-            } else {
-              pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
-                LOG.error("Failed to delete Record with id {}. Rollback transaction", record.getId(), result.cause());
-                future.fail(result.cause());
-              });
-            }
-          });
-          return future;
-        }).orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", id))))
-      );
-  }
-
-  @Override
-  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, String tenantId) {
-
+  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
       //Selects records from records table based on query and then retrieves data from source_records_view based on records.ids
-      String sql = format(SELECT_FROM_SOURCE_RECORDS_SUBQUERY_SQL, getCQLWrapper(RECORDS_TABLE, query, limit, offset).toString());
+      CQLWrapper cql = getCQLWrapper(RECORDS_TABLE, query, limit, offset);
+      cql.addWrapper(getCQLWrapper(RECORDS_TABLE, "deleted=" + deletedRecords));
+      String sql = format(SELECT_FROM_SOURCE_RECORDS_SUBQUERY_SQL, cql.toString());
       pgClientFactory.createInstance(tenantId).select(sql, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying source_records_view", e);
@@ -209,6 +147,7 @@ public class RecordDaoImpl implements RecordDao {
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
       .withRawRecordId(record.getRawRecord().getId())
+      .withDeleted(record.getDeleted())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
     Future<SQLConnection> tx = Future.future(); //NOSONAR

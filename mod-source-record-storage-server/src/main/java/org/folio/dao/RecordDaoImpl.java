@@ -26,7 +26,6 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 

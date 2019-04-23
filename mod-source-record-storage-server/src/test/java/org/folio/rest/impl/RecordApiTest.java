@@ -592,7 +592,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(2))
+      .body("totalRecords", is(4))
       .body("sourceRecords*.parsedRecord", notNullValue())
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
@@ -633,7 +633,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?query=snapshotId=" + record_2.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
+      .body("totalRecords", is(2))
       .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())))
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(is(false)));
@@ -656,6 +656,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
+    record_1.setParsedRecord(marcRecord);
     List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4);
     for (Record record : recordsToPost) {
       RestAssured.given()
@@ -666,6 +667,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
+    record_1.setParsedRecord(null);
     async.complete();
 
     async = testContext.async();

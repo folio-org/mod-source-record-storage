@@ -59,3 +59,10 @@ CREATE OR REPLACE VIEW source_records_view AS
      JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
      LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
      WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;
+
+
+CREATE INDEX idx_btree_raw_record_id ON records USING BTREE ((jsonb ->> 'rawRecordId'));
+CREATE INDEX idx_btree_parsed_record_id ON records USING BTREE ((jsonb ->> 'parsedRecordId'));
+
+CREATE INDEX idx_btree_raw_records_id ON raw_records USING BTREE ((jsonb ->> 'id'));
+CREATE INDEX idx_btree_marc_records_id ON marc_records USING BTREE ((jsonb ->> 'id'));

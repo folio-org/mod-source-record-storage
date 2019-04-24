@@ -109,6 +109,26 @@
     },
     {
       "run": "after",
+      "snippet": "CREATE INDEX idx_btree_raw_record_id ON records USING BTREE ((jsonb ->> 'rawRecordId'));",
+      "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE INDEX idx_btree_parsed_record_id ON records USING BTREE ((jsonb ->> 'parsedRecordId'));",
+      "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE INDEX idx_btree_raw_records_id ON raw_records USING BTREE ((jsonb ->> 'id'));",
+      "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE INDEX idx_btree_marc_records_id ON marc_records USING BTREE ((jsonb ->> 'id'));",
+      "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
       "snippet": "CREATE OR REPLACE FUNCTION get_highest_generation(matchedId uuid, snapshotId uuid) RETURNS integer AS $generation$ DECLARE generation integer; BEGIN SELECT MAX(records.jsonb ->> 'generation') into generation FROM records INNER JOIN snapshots ON records.jsonb ->> 'snapshotId' = snapshots.jsonb ->> 'jobExecutionId' WHERE (records.jsonb ->> 'matchedId')::uuid = matchedId AND snapshots.jsonb ->> 'status' = 'COMMITTED' AND (snapshots.jsonb -> 'metadata' ->> 'updatedDate')::timestamp with time zone < (SELECT snapshots.jsonb ->> 'processingStartedDate' FROM snapshots WHERE (snapshots.jsonb ->> 'jobExecutionId')::uuid = snapshotId)::timestamp with time zone; RETURN generation; END; $generation$ LANGUAGE plpgsql;",
       "fromModuleVersion": "2.0"
     }

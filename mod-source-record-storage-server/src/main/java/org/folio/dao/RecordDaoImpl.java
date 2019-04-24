@@ -1,16 +1,5 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-import static java.util.Objects.isNull;
-import static java.util.stream.Collectors.toList;
-import static org.folio.dataimport.util.DaoUtil.constructCriteria;
-import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
-import static org.folio.rest.persist.PostgresClient.pojo2json;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -37,20 +26,26 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.folio.dataimport.util.DaoUtil.constructCriteria;
+import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.persist.PostgresClient.pojo2json;
+
 @Component
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String RECORDS_VIEW = "records_view";
+  private static final String SOURCE_RECORDS_VIEW = "source_records_view";
   private static final String RECORDS_TABLE = "records";
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
   private static final String CALL_GET_HIGHEST_GENERATION_FUNCTION = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
-  private static final String SELECT_FROM_SOURCE_RECORDS_SUBQUERY_SQL = "SELECT *, (SELECT count(records._id) FROM records %s) as total_count FROM source_records_view WHERE source_records_view._id in (SELECT records._id FROM records %s)";
-  private static final String TOTAL_COUNT_FIELD = "total_count";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -98,36 +93,19 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
-    Future<ResultSet> future = Future.future();
+    Future<Results<SourceRecord>> future = Future.future();
     try {
-      //Selects records from records table based on query and then retrieves data from source_records_view based on records.ids
-      CQLWrapper recordFilter = getCQLWrapper(RECORDS_TABLE, query, limit, offset);
-      recordFilter.addWrapper(getCQLWrapper(RECORDS_TABLE, "deleted=" + deletedRecords));
-      CQLWrapper countFilter = getCQLWrapper(RECORDS_TABLE, query);
-      String sql = format(SELECT_FROM_SOURCE_RECORDS_SUBQUERY_SQL, countFilter.toString(), recordFilter.toString());
-      pgClientFactory.createInstance(tenantId).select(sql, future.completer());
+      String[] fieldList = {"*"};
+      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, query, limit, offset);
+      cql.addWrapper(getCQLWrapper(SOURCE_RECORDS_VIEW, "deleted=" + deletedRecords));
+      pgClientFactory.createInstance(tenantId).get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
     }
-
-    return future
-      .map(resultSet -> {
-        List<SourceRecord> records = extractRecords(resultSet);
-        Integer totalCount = extractTotalCount(resultSet);
-        return new SourceRecordCollection().withSourceRecords(records).withTotalRecords(isNull(totalCount) ? 0 : totalCount);
-      });
-  }
-
-  private List<SourceRecord> extractRecords(ResultSet resultSet) {
-    return resultSet.getRows().stream()
-      .map(it -> new JsonObject(it.getString("jsonb")).mapTo(SourceRecord.class))
-      .collect(toList());
-  }
-
-  private Integer extractTotalCount(ResultSet resultSet) {
-    Optional<JsonObject> first = resultSet.getRows().stream().findFirst();
-    return first.orElse(new JsonObject().put(TOTAL_COUNT_FIELD, 0)).getInteger(TOTAL_COUNT_FIELD);
+    return future.map(results -> new SourceRecordCollection()
+      .withSourceRecords(results.getResults())
+      .withTotalRecords(results.getResultInfo().getTotalRecords()));
   }
 
   @Override

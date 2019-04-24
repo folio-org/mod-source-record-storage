@@ -109,22 +109,27 @@
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX idx_btree_raw_record_id ON records USING BTREE ((jsonb ->> 'rawRecordId'));",
+      "snippet": "CREATE INDEX records_raw_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'rawRecordId'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX idx_btree_parsed_record_id ON records USING BTREE ((jsonb ->> 'parsedRecordId'));",
+      "snippet": "CREATE INDEX records_parsed_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'parsedRecordId'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX idx_btree_raw_records_id ON raw_records USING BTREE ((jsonb ->> 'id'));",
+      "snippet": "CREATE INDEX raw_records_id_idx_btree ON raw_records USING BTREE ((jsonb ->> 'id'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX idx_btree_marc_records_id ON marc_records USING BTREE ((jsonb ->> 'id'));",
+      "snippet": "CREATE INDEX marc_records_id_idx_btree ON marc_records USING BTREE ((jsonb ->> 'id'));",
+      "fromModuleVersion": "1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE INDEX error_records_id_idx_btree ON error_records USING BTREE ((jsonb ->> 'id'));",
       "fromModuleVersion": "1.0"
     },
     {

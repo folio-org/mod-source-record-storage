@@ -61,8 +61,8 @@ CREATE OR REPLACE VIEW source_records_view AS
      WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;
 
 
-CREATE INDEX idx_btree_raw_record_id ON records USING BTREE ((jsonb ->> 'rawRecordId'));
-CREATE INDEX idx_btree_parsed_record_id ON records USING BTREE ((jsonb ->> 'parsedRecordId'));
-
-CREATE INDEX idx_btree_raw_records_id ON raw_records USING BTREE ((jsonb ->> 'id'));
-CREATE INDEX idx_btree_marc_records_id ON marc_records USING BTREE ((jsonb ->> 'id'));
+CREATE INDEX records_raw_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'rawRecordId'));
+CREATE INDEX records_parsed_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'parsedRecordId'));
+CREATE INDEX raw_records_id_idx_btree ON raw_records USING BTREE ((jsonb ->> 'id'));
+CREATE INDEX marc_records_id_idx_btree ON marc_records USING BTREE ((jsonb ->> 'id'));
+CREATE INDEX error_records_id_idx_btree ON error_records USING BTREE ((jsonb ->> 'id'));

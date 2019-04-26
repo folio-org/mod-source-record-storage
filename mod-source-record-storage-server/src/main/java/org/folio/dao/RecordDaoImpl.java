@@ -101,9 +101,11 @@ public class RecordDaoImpl implements RecordDao {
     Future<ResultSet> future = Future.future();
     try {
       //Selects records from records table based on query and then retrieves data from source_records_view based on records.ids
-      CQLWrapper recordFilter = getCQLWrapper(RECORDS_TABLE, query, limit, offset);
-      recordFilter.addWrapper(getCQLWrapper(RECORDS_TABLE, "deleted=" + deletedRecords));
-      CQLWrapper countFilter = getCQLWrapper(RECORDS_TABLE, query);
+      CQLWrapper recordFilter = getCQLWrapper(RECORDS_TABLE, "deleted=" + deletedRecords, limit, offset);
+      recordFilter.addWrapper(getCQLWrapper(RECORDS_TABLE, query));
+
+      // trim sorting parameter from query for count filter to avoid invalid sql building
+      CQLWrapper countFilter = getCQLWrapper(RECORDS_TABLE, trimSortingParameter(query));
       String sql = format(SELECT_FROM_SOURCE_RECORDS_SUBQUERY_SQL, countFilter.toString(), recordFilter.toString());
       pgClientFactory.createInstance(tenantId).select(sql, future.completer());
     } catch (Exception e) {
@@ -117,6 +119,13 @@ public class RecordDaoImpl implements RecordDao {
         Integer totalCount = extractTotalCount(resultSet);
         return new SourceRecordCollection().withSourceRecords(records).withTotalRecords(isNull(totalCount) ? 0 : totalCount);
       });
+  }
+
+  private String trimSortingParameter(String query) {
+    if (query != null && !query.isEmpty() && query.contains("sortBy")) {
+      return query.substring(0, query.indexOf("sortBy"));
+    }
+    return query;
   }
 
   private List<SourceRecord> extractRecords(ResultSet resultSet) {

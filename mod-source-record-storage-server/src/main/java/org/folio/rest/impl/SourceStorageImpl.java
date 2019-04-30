@@ -306,16 +306,15 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void postSourceStorageRecordsBulk(RecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageRecordsCollection(RecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecords(entity, tenantId)
-          .map((Response) PostSourceStorageRecordsResponse
-            .respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
+          .map((Response) PostSourceStorageRecordsCollectionResponse.respond201WithApplicationJson(entity))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to create a record", e);
+        LOG.error("Failed to create records from collection", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

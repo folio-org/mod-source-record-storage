@@ -176,17 +176,18 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-  /recordsBulk:
+  /recordsCollection:
     post:
-      description: "sdf"
+      description: "Create records from record collection"
       is: [validate]
       body:
         application/json:
           type: recordCollection
       responses:
-        204:
+        201:
           body:
-            text/plain: !!null
+            application/json:
+              type: recordCollection
         400:
           description: "Bad request"
           body:

@@ -41,7 +41,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
-  private static final String SOURCE_STORAGE_RECORDS_BULK_PATH = "/source-storage/recordsBulk";
+  private static final String SOURCE_STORAGE_RECORDS_COLLECTION_PATH = "/source-storage/recordsCollection";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
@@ -977,7 +977,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldCreateRecordsOnPostRecordsInBulk(TestContext testContext) {
+  public void shouldCreateRecordsOnPostRecordCollection(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -997,7 +997,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_CREATED)
       .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
@@ -1008,19 +1008,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostWhenNoRecordsPassedInBulk() {
+  public void shouldReturnBadRequestOnPostWhenNoRecordsInRecordCollection() {
     RecordCollection recordCollection = new RecordCollection();
     RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
   @Test
-  public void shouldCreateRawRecordAndErrorRecordOnPostInBulk(TestContext testContext) {
+  public void shouldCreateRawRecordAndErrorRecordOnPostThemInRecordCollection(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1040,7 +1040,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .extract().response().body().as(RecordCollection.class);

@@ -67,21 +67,10 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Boolean> saveRecords(RecordCollection recordCollection, String tenantId) {
-    Future<Boolean> resultFuture = Future.future();
     ArrayList<Future> saveFutures = new ArrayList<>();
-
-    for (Record record : recordCollection.getRecords()) {
-      saveFutures.add(saveRecord(record, tenantId));
-    }
-    CompositeFuture compositeFuture = CompositeFuture.all(saveFutures);
-    compositeFuture.setHandler(ar -> {
-      if (ar.succeeded()) {
-        resultFuture.complete(true);
-      } else {
-        resultFuture.fail(ar.cause());
-      }
-    });
-    return resultFuture;
+    recordCollection.getRecords()
+      .forEach(record -> saveFutures.add(saveRecord(record, tenantId)));
+    return CompositeFuture.all(saveFutures).map(Future::succeeded);
   }
 
   @Override

@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
@@ -40,6 +41,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
+  private static final String SOURCE_STORAGE_RECORDS_BULK_PATH = "/source-storage/recordsBulk";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
@@ -971,6 +973,92 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(sourceRecord.getRecordId(), is(createdRecord.getId()));
     Assert.assertThat(sourceRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     Assert.assertThat(sourceRecord.getAdditionalInfo().getSuppressDiscovery(), is(createdRecord.getAdditionalInfo().getSuppressDiscovery()));
+    async.complete();
+  }
+
+  @Test
+  public void shouldCreateRecordsOnPostRecordsInBulk(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record_1, record_4))
+      .withTotalRecords(2);
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
+      .body("records*.recordType", everyItem(is(record_1.getRecordType().name())))
+      .body("records*.rawRecord.content", notNullValue())
+      .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPostWhenNoRecordsPassedInBulk() {
+    RecordCollection recordCollection = new RecordCollection();
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void shouldCreateRawRecordAndErrorRecordOnPostInBulk(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record_2, record_3))
+      .withTotalRecords(2);
+
+    async = testContext.async();
+    RecordCollection createdRecordCollection = RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_BULK_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().response().body().as(RecordCollection.class);
+
+    Record createdRecord = createdRecordCollection.getRecords().get(0);
+    Assert.assertThat(createdRecord.getId(), notNullValue());
+    Assert.assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
+    Assert.assertThat(createdRecord.getRecordType(), is(record_2.getRecordType()));
+    Assert.assertThat(createdRecord.getRawRecord().getContent(), is(record_2.getRawRecord().getContent()));
+    Assert.assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
+
+    createdRecord = createdRecordCollection.getRecords().get(1);
+    Assert.assertThat(createdRecord.getId(), notNullValue());
+    Assert.assertThat(createdRecord.getSnapshotId(), is(record_3.getSnapshotId()));
+    Assert.assertThat(createdRecord.getRecordType(), is(record_3.getRecordType()));
+    Assert.assertThat(createdRecord.getRawRecord().getContent(), is(record_3.getRawRecord().getContent()));
+    Assert.assertThat(createdRecord.getErrorRecord().getContent(), is(record_3.getErrorRecord().getContent()));
+    Assert.assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
 }

@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,6 +63,25 @@ public class RecordServiceImpl implements RecordService {
       })
       .compose(f -> recordDao.calculateGeneration(record, tenantId))
       .compose(generation -> recordDao.saveRecord(record.withGeneration(generation), tenantId));
+  }
+
+  @Override
+  public Future<Boolean> saveRecords(RecordCollection recordCollection, String tenantId) {
+    Future<Boolean> resultFuture = Future.future();
+    ArrayList<Future> saveFutures = new ArrayList<>();
+
+    for (Record record : recordCollection.getRecords()) {
+      saveFutures.add(saveRecord(record, tenantId));
+    }
+    CompositeFuture compositeFuture = CompositeFuture.all(saveFutures);
+    compositeFuture.setHandler(ar -> {
+      if (ar.succeeded()) {
+        resultFuture.complete(true);
+      } else {
+        resultFuture.fail(ar.cause());
+      }
+    });
+    return resultFuture;
   }
 
   @Override

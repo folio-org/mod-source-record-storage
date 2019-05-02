@@ -1,5 +1,6 @@
 ## 2019-04-01 v2.2.0-SNAPSHOT
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
+* Added endpoint to create new records from records collection.
 
 ## 2019-03-20 v2.1.0
 * Implemented calculation of generation numbers for Records.

@@ -1,5 +1,22 @@
 ## 2019-04-01 v2.2.0-SNAPSHOT
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
+* Added endpoint to create new records from records collection.
+
+ | METHOD |             URL                            | DESCRIPTION                                             |
+ |--------|--------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/snapshots                  | Get list of snapshots                                   |
+ | POST   | /source-storage/snapshots                  | Create new snapshot                                     |
+ | PUT    | /source-storage/snapshots/{jobExecutionId} | Update snapshot                                         |
+ | GET    | /source-storage/snapshots/{jobExecutionId} | Get snapshot by JobExecution id                         |
+ | DELETE | /source-storage/snapshots/{jobExecutionId} | Delete snapshot by JobExecution id                      |
+ | GET    | /source-storage/records                    | Get list of records                                     |
+ | POST   | /source-storage/records                    | Create new record                                       |
+ | PUT    | /source-storage/records/{id}               | Update record                                           |
+ | GET    | /source-storage/records/{id}               | Get record by id                                        |
+ | DELETE | /source-storage/records/{id}               | Delete record by id                                     |
+ | GET    | /source-storage/sourceRecords              | Get list of source records                              |
+ | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
+ | POST   | /source-storage/recordsCollection          | Create new records                                      |
 
 ## 2019-03-20 v2.1.0
 * Implemented calculation of generation numbers for Records.

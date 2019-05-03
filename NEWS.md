@@ -1,6 +1,8 @@
 ## 2019-04-01 v2.2.0-SNAPSHOT
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
+* Changed delete logic for Records. Records are being marked as deleted and not deleted permanently from storage.
 * Added endpoint to create new records from records collection.
+* Improved performance for querying sourceRecords on GET /source-storage/sourceRecords.
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|
@@ -13,10 +15,14 @@
  | POST   | /source-storage/records                    | Create new record                                       |
  | PUT    | /source-storage/records/{id}               | Update record                                           |
  | GET    | /source-storage/records/{id}               | Get record by id                                        |
- | DELETE | /source-storage/records/{id}               | Delete record by id                                     |
+ | DELETE | /source-storage/records/{id}               | Mark record deleted                                     |
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
  | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
  | POST   | /source-storage/recordsCollection          | Create new records                                      |
+
+## 2019-03-25 2.1.1
+* Updated tenant API version.
+* Removed IMPORT_IN_PROGRESS and IMPORT_FINISHED statuses for Snapshot entity.
 
 ## 2019-03-20 v2.1.0
 * Implemented calculation of generation numbers for Records.

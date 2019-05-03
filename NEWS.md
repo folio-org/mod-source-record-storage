@@ -1,5 +1,8 @@
-## 2019-04-01 v2.2.0-SNAPSHOT
+## 2019-05-03 v2.2.0
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
+* Updated saving and updating a Record using PreparedStatement.
+* Fixed issues with sample data population.
+* Added "suppressDiscovery" field for Records.
 * Changed delete logic for Records. Records are being marked as deleted and not deleted permanently from storage.
 * Added endpoint to create new records from records collection.
 * Improved performance for querying sourceRecords on GET /source-storage/sourceRecords.
@@ -52,7 +55,6 @@
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
  | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          |
  
-
 ## 2018-11-29 v1.0.0
 * Created API for managing Snapshot, Record and Result entities
 

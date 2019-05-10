@@ -109,27 +109,27 @@
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX records_raw_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'rawRecordId'));",
+      "snippet": "CREATE INDEX IF NOT EXISTS records_raw_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'rawRecordId'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX records_parsed_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'parsedRecordId'));",
+      "snippet": "CREATE INDEX IF NOT EXISTS records_parsed_record_id_idx_btree ON records USING BTREE ((jsonb ->> 'parsedRecordId'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX raw_records_id_idx_btree ON raw_records USING BTREE ((jsonb ->> 'id'));",
+      "snippet": "CREATE INDEX IF NOT EXISTS raw_records_id_idx_btree ON raw_records USING BTREE ((jsonb ->> 'id'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX marc_records_id_idx_btree ON marc_records USING BTREE ((jsonb ->> 'id'));",
+      "snippet": "CREATE INDEX IF NOT EXISTS marc_records_id_idx_btree ON marc_records USING BTREE ((jsonb ->> 'id'));",
       "fromModuleVersion": "1.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE INDEX error_records_id_idx_btree ON error_records USING BTREE ((jsonb ->> 'id'));",
+      "snippet": "CREATE INDEX IF NOT EXISTS error_records_id_idx_btree ON error_records USING BTREE ((jsonb ->> 'id'));",
       "fromModuleVersion": "1.0"
     },
     {

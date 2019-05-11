@@ -150,7 +150,7 @@
     <url>https://github.com/folio-org/mod-source-record-storage</url>
     <connection>scm:git:git://github.com/folio-org/mod-source-record-storage</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-source-record-storage.git</developerConnection>
-    <tag>2.3.0</tag>
+    <tag>v2.3.0</tag>
   </scm>
 
   <repositories>

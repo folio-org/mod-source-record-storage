@@ -1,3 +1,7 @@
+## 2019-05-10 v2.3.0
+* Fixed indexes creation for Source Records
+* Optimized performance for a records search
+
 ## 2019-05-03 v2.2.0
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
 * Updated saving and updating a Record using PreparedStatement.

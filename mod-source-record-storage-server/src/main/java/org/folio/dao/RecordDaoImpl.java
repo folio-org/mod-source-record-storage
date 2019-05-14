@@ -96,8 +96,8 @@ public class RecordDaoImpl implements RecordDao {
     Future<Results<SourceRecord>> future = Future.future();
     try {
       String[] fieldList = {"*"};
-      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, query, limit, offset);
-      cql.addWrapper(getCQLWrapper(SOURCE_RECORDS_VIEW, "deleted=" + deletedRecords));
+      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, "deleted=" + deletedRecords, limit, offset);
+      cql.addWrapper(getCQLWrapper(SOURCE_RECORDS_VIEW, query));
       pgClientFactory.createInstance(tenantId).get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);

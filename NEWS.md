@@ -1,6 +1,5 @@
-## 2019-05-10 v2.4.0-SNAPSHOT
-* Fixed sorting works GET /source-storage/sourceRecords
-
+## 2019-05-16 v2.3.1
+* Fixed sorting on GET /source-storage/sourceRecords
 
 ## 2019-05-10 v2.3.0
 * Fixed indexes creation for Source Records

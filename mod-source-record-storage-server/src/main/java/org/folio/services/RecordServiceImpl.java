@@ -42,7 +42,9 @@ public class RecordServiceImpl implements RecordService {
     if (record.getId() == null) {
       record.setId(UUID.randomUUID().toString());
     }
-    record.getRawRecord().setId(UUID.randomUUID().toString());
+    if (record.getRawRecord() != null && record.getRawRecord().getId() == null) {
+      record.getRawRecord().setId(UUID.randomUUID().toString());
+    }
     if (record.getParsedRecord() != null) {
       record.getParsedRecord().setId(UUID.randomUUID().toString());
     }

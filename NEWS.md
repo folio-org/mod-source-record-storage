@@ -1,3 +1,6 @@
+## 2019-05-17 v2.3.2-SNAPSHOT
+* Added generation of rawRecord id only if it is null
+
 ## 2019-05-16 v2.3.1
 * Fixed sorting on GET /source-storage/sourceRecords
 

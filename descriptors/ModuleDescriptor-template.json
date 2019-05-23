@@ -70,6 +70,11 @@
           "methods": ["POST"],
           "pathPattern": "/source-storage/recordsCollection",
           "permissionsRequired": ["source-storage.records.post"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/source-storage/parsedRecordsCollection",
+          "permissionsRequired": ["source-storage.records.put"]
         }
       ]
     },

@@ -1,6 +1,8 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -72,5 +74,15 @@ public interface RecordDao {
    * @return future with generation
    */
   Future<Integer> calculateGeneration(Record record, String tenantId);
+
+  /**
+   * Updates {@link ParsedRecord} in the db
+   *
+   * @param parsedRecord {@link ParsedRecord} to update
+   * @param recordType type of ParsedRecord
+   * @param tenantId tenant id
+   * @return future with true if succeeded
+   */
+  Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
 
 }

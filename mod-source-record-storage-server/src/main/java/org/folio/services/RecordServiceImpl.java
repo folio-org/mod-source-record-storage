@@ -7,6 +7,7 @@ import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
@@ -98,6 +99,18 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     return recordDao.getSourceRecords(query, offset, limit, deletedRecords, tenantId);
+  }
+
+  @Override
+  public Future<Boolean> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
+    if (parsedRecordCollection.getParsedRecords().stream().anyMatch(parsedRecord -> parsedRecord.getId() == null)) {
+      return Future.failedFuture(new BadRequestException("Each parsed record should contain an id"));
+    } else {
+      ArrayList<Future> updateFutures = new ArrayList<>();
+      parsedRecordCollection.getParsedRecords().forEach(parsedRecord ->
+        updateFutures.add(recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId)));
+      return CompositeFuture.all(updateFutures).map(Future::succeeded);
+    }
   }
 
 }

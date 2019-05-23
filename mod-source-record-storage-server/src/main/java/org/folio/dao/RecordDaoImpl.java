@@ -134,7 +134,7 @@ public class RecordDaoImpl implements RecordDao {
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, parsedRecord.getId());
       pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
-        JsonObject.mapFrom(parsedRecord), new Criterion(idCrit), true, future.completer());
+        convertParsedRecordToJsonObject(parsedRecord), new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
       LOG.error("Error updating ParsedRecord with id {}", parsedRecord.getId(), e);
       future.fail(e);
@@ -207,8 +207,7 @@ public class RecordDaoImpl implements RecordDao {
     Future<UpdateResult> future = Future.future();
     ParsedRecord parsedRecord = record.getParsedRecord();
     try {
-      parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
-      JsonObject jsonData = JsonObject.mapFrom(parsedRecord);
+      JsonObject jsonData = convertParsedRecordToJsonObject(parsedRecord);
       JsonArray params = new JsonArray().add(
         parsedRecord.getId()).add(pojo2json(jsonData)).add(pojo2json(jsonData));
       String query = String.format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), RecordType.valueOf(record.getRecordType().value()).getTableName());
@@ -225,6 +224,18 @@ public class RecordDaoImpl implements RecordDao {
       record.setParsedRecord(null);
       return Future.succeededFuture(false);
     }
+  }
+
+  /**
+   * Maps parsedRecord to JsonObject, will be refactored in scope of (@link https://issues.folio.org/browse/MODSOURCE-53)
+   *
+   * @param parsedRecord parsed record
+   * @return JsonObject containing parsed record data
+   */
+  private JsonObject convertParsedRecordToJsonObject(ParsedRecord parsedRecord) {
+    // parsedRecord.content() contains an Object that should be converted to json itself
+    parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
+    return JsonObject.mapFrom(parsedRecord);
   }
 
 }

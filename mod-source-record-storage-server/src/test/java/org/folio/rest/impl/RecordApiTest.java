@@ -43,7 +43,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   private static final String SOURCE_STORAGE_RECORDS_COLLECTION_PATH = "/source-storage/recordsCollection";
-  private static final String SOURCE_STORAGE_PARSED_RECORDS_PATH = "/source-storage/parsedRecords";
+  private static final String SOURCE_STORAGE_PARSED_RECORDS_PATH = "/source-storage/parsedRecordsCollection";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";

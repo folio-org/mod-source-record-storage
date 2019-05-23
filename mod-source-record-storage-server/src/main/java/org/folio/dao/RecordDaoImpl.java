@@ -142,7 +142,6 @@ public class RecordDaoImpl implements RecordDao {
     return future.map(updateResult -> updateResult.getUpdated() == 1);
   }
 
-
   private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
     Future<Boolean> future = Future.future();
     RecordModel recordModel = new RecordModel() //NOSONAR

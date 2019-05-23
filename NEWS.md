@@ -16,7 +16,7 @@
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
  | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
  | POST   | /source-storage/recordsCollection          | Create new records                                      |
- | PUT    | /source-storage/parsedRecords              | Update a collection of ParsedRecords                    |
+ | PUT    | /source-storage/parsedRecordsCollection    | Update a collection of ParsedRecords                    |
 
 ## 2019-05-17 v2.3.2
 * Added generation of rawRecord id only if it is null

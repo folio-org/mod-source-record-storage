@@ -73,7 +73,7 @@
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/source-storage/parsedRecords",
+          "pathPattern": "/source-storage/parsedRecordsCollection",
           "permissionsRequired": ["source-storage.records.put"]
         }
       ]

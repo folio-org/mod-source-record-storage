@@ -322,12 +322,12 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void putSourceStorageParsedRecords(ParsedRecordCollection entity, Map<String, String> okapiHeaders,
+  public void putSourceStorageParsedRecordsCollection(ParsedRecordCollection entity, Map<String, String> okapiHeaders,
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.updateParsedRecords(entity, tenantId)
-          .map((Response) PutSourceStorageParsedRecordsResponse.respond200WithApplicationJson(entity))
+          .map((Response) PutSourceStorageParsedRecordsCollectionResponse.respond200WithApplicationJson(entity))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {

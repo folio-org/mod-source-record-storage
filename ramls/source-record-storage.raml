@@ -19,6 +19,7 @@ types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
   recordModel: !include raml-storage/schemas/mod-source-record-storage/recordModel.json
   testMarcRecordsCollection: !include raml-storage/schemas/mod-source-record-storage/testMarcRecordsCollection.json
+  parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -188,6 +189,33 @@ resourceTypes:
           body:
             application/json:
               type: recordCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        422:
+          description: "Unprocessable Entity"
+          body:
+            application/json:
+              type: errors
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /parsedRecords:
+    put:
+      description: "Update parsedRecords"
+      is: [validate]
+      body:
+        application/json:
+          type: parsedRecordCollection
+      responses:
+        200:
+          body:
+            application/json:
+              type: parsedRecordCollection
         400:
           description: "Bad request"
           body:

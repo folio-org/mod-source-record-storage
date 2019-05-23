@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
@@ -70,4 +71,14 @@ public interface RecordService {
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
+
+  /**
+   * Update parsed records
+   *
+   * @param parsedRecordCollection collection of parsed records to update
+   * @param tenantId tenant id
+   * @return future with true if succeeded
+   */
+  Future<Boolean> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);
+
 }

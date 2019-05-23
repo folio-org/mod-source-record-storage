@@ -13,6 +13,7 @@ import io.vertx.ext.sql.UpdateResult;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
@@ -126,6 +127,21 @@ public class RecordDaoImpl implements RecordDao {
       return ++generation;
     });
   }
+
+  @Override
+  public Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId) {
+    Future<UpdateResult> future = Future.future();
+    try {
+      Criteria idCrit = constructCriteria(ID_FIELD, parsedRecord.getId());
+      pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
+        JsonObject.mapFrom(parsedRecord), new Criterion(idCrit), true, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error updating ParsedRecord with id {}", parsedRecord.getId(), e);
+      future.fail(e);
+    }
+    return future.map(updateResult -> updateResult.getUpdated() == 1);
+  }
+
 
   private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
     Future<Boolean> future = Future.future();

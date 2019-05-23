@@ -11,6 +11,7 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -42,6 +43,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   private static final String SOURCE_STORAGE_RECORDS_COLLECTION_PATH = "/source-storage/recordsCollection";
+  private static final String SOURCE_STORAGE_PARSED_RECORDS_PATH = "/source-storage/parsedRecords";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
@@ -1103,6 +1105,73 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertThat(createdRecord.getRawRecord().getContent(), is(record_3.getRawRecord().getContent()));
     Assert.assertThat(createdRecord.getErrorRecord().getContent(), is(record_3.getErrorRecord().getContent()));
     Assert.assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
+    async.complete();
+  }
+
+  @Test
+  public void shouldUpdateParsedRecords(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
+      .withRecordType(ParsedRecordCollection.RecordType.MARC)
+      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
+        new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
+      .withTotalRecords(2);
+
+    async = testContext.async();
+    ParsedRecordCollection updatedParsedRecordCollection = RestAssured.given()
+      .spec(spec)
+      .body(parsedRecordCollection)
+      .when()
+      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().body().as(ParsedRecordCollection.class);
+
+    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
+    Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
+    Assert.assertThat(updatedParsedRecord.getContent(), is(marcRecord.getContent()));
+
+    updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(1);
+    Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
+    Assert.assertThat(updatedParsedRecord.getContent(), is(marcRecord.getContent()));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnUpdateParsedRecordsIfNoIdPassed(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
+      .withRecordType(ParsedRecordCollection.RecordType.MARC)
+      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
+        new ParsedRecord().withContent(marcRecord.getContent()).withId(null)))
+      .withTotalRecords(2);
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(parsedRecordCollection)
+      .when()
+      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
   }
 }

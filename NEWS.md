@@ -1,3 +1,23 @@
+## 2019-05-22 v2.4.0-SNAPSHOT
+* Added endpoint to update a collection of ParsedRecords.
+
+ | METHOD |             URL                            | DESCRIPTION                                             |
+ |--------|--------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/snapshots                  | Get list of snapshots                                   |
+ | POST   | /source-storage/snapshots                  | Create new snapshot                                     |
+ | PUT    | /source-storage/snapshots/{jobExecutionId} | Update snapshot                                         |
+ | GET    | /source-storage/snapshots/{jobExecutionId} | Get snapshot by JobExecution id                         |
+ | DELETE | /source-storage/snapshots/{jobExecutionId} | Delete snapshot by JobExecution id                      |
+ | GET    | /source-storage/records                    | Get list of records                                     |
+ | POST   | /source-storage/records                    | Create new record                                       |
+ | PUT    | /source-storage/records/{id}               | Update record                                           |
+ | GET    | /source-storage/records/{id}               | Get record by id                                        |
+ | DELETE | /source-storage/records/{id}               | Mark record deleted                                     |
+ | GET    | /source-storage/sourceRecords              | Get list of source records                              |
+ | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
+ | POST   | /source-storage/recordsCollection          | Create new records                                      |
+ | PUT    | /source-storage/parsedRecords              | Update a collection of ParsedRecords                    |
+
 ## 2019-05-17 v2.3.2
 * Added generation of rawRecord id only if it is null
 

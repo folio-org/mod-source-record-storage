@@ -1,4 +1,5 @@
 ## 2019-05-22 v2.4.0-SNAPSHOT
+* Removed ParsedRecord and ErrorRecord id overriding on save.
 * Added endpoint to update a collection of ParsedRecords.
 
  | METHOD |             URL                            | DESCRIPTION                                             |
@@ -19,14 +20,14 @@
  | PUT    | /source-storage/parsedRecordsCollection    | Update a collection of ParsedRecords                    |
 
 ## 2019-05-17 v2.3.2
-* Added generation of rawRecord id only if it is null
+* Added generation of rawRecord id only if it is null.
 
 ## 2019-05-16 v2.3.1
-* Fixed sorting on GET /source-storage/sourceRecords
+* Fixed sorting on GET /source-storage/sourceRecords.
 
 ## 2019-05-10 v2.3.0
-* Fixed indexes creation for Source Records
-* Optimized performance for a records search
+* Fixed indexes creation for Source Records.
+* Optimized performance for a records search.
 
 ## 2019-05-03 v2.2.0
 * Updated parsedRecord.content and errorRecord.content to contain an object instead of String.
@@ -67,7 +68,7 @@
 * Renamed entities sourceRecord -> rawRecord, result -> sourceRecord.
 * Updated sourceRecord to contain rawRecord as well as parsedRecord.
 * Added sample sourceRecords. Sample data is populated during module initialization only in case "loadSample" parameter of TenantAttributes is set to true.
-* Changed logging configuration to slf4j
+* Changed logging configuration to slf4j.
 * Renamed endpoints
 
  | METHOD |             URL                            | DESCRIPTION                                             |

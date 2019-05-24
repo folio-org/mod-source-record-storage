@@ -1138,11 +1138,11 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
-    Assert.assertThat(updatedParsedRecord.getContent(), is(marcRecord.getContent()));
+    Assert.assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
 
     updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(1);
     Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
-    Assert.assertThat(updatedParsedRecord.getContent(), is(marcRecord.getContent()));
+    Assert.assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
   }
 

@@ -1,6 +1,7 @@
 ## 2019-05-22 v2.4.0-SNAPSHOT
 * Removed ParsedRecord and ErrorRecord id overriding on save.
 * Added endpoint to update a collection of ParsedRecords.
+* Added support for ParsedRecord.content represented in json.
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|

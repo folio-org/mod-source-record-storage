@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -26,6 +27,7 @@ import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,7 +59,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   static {
     try {
       rawRecord = new RawRecord()
-          .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
     } catch (IOException e) {
@@ -1120,11 +1122,29 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
+    Record newRecord = new Record()
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withAdditionalInfo(
+        new AdditionalInfo().withSuppressDiscovery(false));
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+    async.complete();
+
     ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
       .withRecordType(ParsedRecordCollection.RecordType.MARC)
-      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
-        new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
-      .withTotalRecords(2);
+      .withParsedRecords(Collections.singletonList(new ParsedRecord().withContent(marcRecord.getContent()).withId(createdRecord.getParsedRecord().getId())))
+      .withTotalRecords(1);
 
     async = testContext.async();
     ParsedRecordCollection updatedParsedRecordCollection = RestAssured.given()
@@ -1139,15 +1159,30 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
     Assert.assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
-
-    updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(1);
-    Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
-    Assert.assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
   }
 
   @Test
   public void shouldReturnBadRequestOnUpdateParsedRecordsIfNoIdPassed(TestContext testContext) {
+    Async async = testContext.async();
+    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
+      .withRecordType(ParsedRecordCollection.RecordType.MARC)
+      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
+        new ParsedRecord().withContent(marcRecord.getContent()).withId(null)))
+      .withTotalRecords(2);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(parsedRecordCollection)
+      .when()
+      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+  @Test
+  public void shouldUpdateParsedRecordsWithJsonContent(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1158,20 +1193,67 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
+    Record newRecord = new Record()
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withAdditionalInfo(
+        new AdditionalInfo().withSuppressDiscovery(false));
+
+    async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+    async.complete();
+
+    ParsedRecord parsedRecordJson = new ParsedRecord().withId(createdRecord.getParsedRecord().getId())
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500").put("fields", new JsonArray()));
+
+    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
+      .withRecordType(ParsedRecordCollection.RecordType.MARC)
+      .withParsedRecords(Collections.singletonList(parsedRecordJson))
+      .withTotalRecords(1);
+
+    async = testContext.async();
+    ParsedRecordCollection updatedParsedRecordCollection = RestAssured.given()
+      .spec(spec)
+      .body(parsedRecordCollection)
+      .when()
+      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().body().as(ParsedRecordCollection.class);
+
+    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
+    Assert.assertThat(updatedParsedRecord.getId(), notNullValue());
+    Assert.assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnNotFoundOnUpdateParsedRecordsIfIdIsNotFound(TestContext testContext) {
+    Async async = testContext.async();
     ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
       .withRecordType(ParsedRecordCollection.RecordType.MARC)
       .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
-        new ParsedRecord().withContent(marcRecord.getContent()).withId(null)))
+        new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
       .withTotalRecords(2);
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
       .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
       .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST);
+      .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
   }
+
+
 }

@@ -1,6 +1,5 @@
 package org.folio.dao;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -27,6 +26,7 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -130,16 +130,27 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId) {
-    Future<UpdateResult> future = Future.future();
+    Future<Boolean> future = Future.future();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, parsedRecord.getId());
       pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
-        convertParsedRecordToJsonObject(parsedRecord), new Criterion(idCrit), true, future.completer());
+        convertParsedRecordToJsonObject(parsedRecord), new Criterion(idCrit), true, updateResult -> {
+          if (updateResult.failed()) {
+            LOG.error("Could not update ParsedRecord with id {}", parsedRecord.getId(), updateResult.cause());
+            future.fail(updateResult.cause());
+          } else if (updateResult.result().getUpdated() != 1) {
+            String errorMessage = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+            LOG.error(errorMessage);
+            future.fail(new NotFoundException(errorMessage));
+          } else {
+            future.complete(true);
+          }
+        });
     } catch (Exception e) {
       LOG.error("Error updating ParsedRecord with id {}", parsedRecord.getId(), e);
       future.fail(e);
     }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    return future;
   }
 
   private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
@@ -227,14 +238,15 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   /**
-   * Maps parsedRecord to JsonObject, will be refactored in scope of (@link https://issues.folio.org/browse/MODSOURCE-53)
+   * Maps parsedRecord to JsonObject
    *
    * @param parsedRecord parsed record
    * @return JsonObject containing parsed record data
    */
   private JsonObject convertParsedRecordToJsonObject(ParsedRecord parsedRecord) {
-    // parsedRecord.content() contains an Object that should be converted to json itself
-    parsedRecord.setContent(new ObjectMapper().convertValue(parsedRecord.getContent(), JsonObject.class));
+    if (parsedRecord.getContent() instanceof String) {
+      parsedRecord.setContent(new JsonObject(parsedRecord.getContent().toString()));
+    }
     return JsonObject.mapFrom(parsedRecord);
   }
 

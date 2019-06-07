@@ -1,11 +1,10 @@
 package org.folio.services;
 
-import static java.util.stream.Collectors.toMap;
-
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -77,7 +76,7 @@ public class RecordServiceImpl implements RecordService {
   public Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId) {
     Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
       .map(record -> Pair.of(record, saveRecord(record, tenantId)))
-      .collect(toMap(Pair::getKey, Pair::getValue));
+      .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
 
     Future<RecordCollection> result = Future.future();
 

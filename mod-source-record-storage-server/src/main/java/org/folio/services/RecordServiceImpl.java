@@ -1,7 +1,18 @@
 package org.folio.services;
 
+import static java.util.stream.Collectors.toMap;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -13,12 +24,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.util.ArrayList;
-import java.util.Optional;
-import java.util.UUID;
 
 @Component
 public class RecordServiceImpl implements RecordService {
@@ -69,11 +74,27 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> saveRecords(RecordCollection recordCollection, String tenantId) {
-    ArrayList<Future> saveFutures = new ArrayList<>();
-    recordCollection.getRecords()
-      .forEach(record -> saveFutures.add(saveRecord(record, tenantId)));
-    return CompositeFuture.all(saveFutures).map(Future::succeeded);
+  public Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId) {
+    Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
+      .map(record -> Pair.of(record, saveRecord(record, tenantId)))
+      .collect(toMap(Pair::getKey, Pair::getValue));
+
+    Future<RecordCollection> result = Future.future();
+
+    CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
+        RecordCollection records = new RecordCollection();
+        savedRecords.forEach((record, future) -> {
+          if (future.failed()) {
+            records.getErrorMessages().add(future.cause().getMessage());
+          } else {
+            records.getRecords().add(record);
+          }
+        });
+        records.setTotalRecords(records.getRecords().size());
+        result.complete(records);
+      }
+    );
+    return result;
   }
 
   @Override

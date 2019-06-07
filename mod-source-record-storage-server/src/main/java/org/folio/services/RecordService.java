@@ -49,7 +49,7 @@ public interface RecordService {
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> saveRecords(RecordCollection recordCollection, String tenantId);
+  Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId);
 
   /**
    * Updates record with given id

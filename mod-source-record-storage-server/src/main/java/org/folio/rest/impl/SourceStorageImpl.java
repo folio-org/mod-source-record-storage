@@ -1,5 +1,17 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
@@ -25,17 +37,6 @@ import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamReader;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public class SourceStorageImpl implements SourceStorage {
 
@@ -311,7 +312,13 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecords(entity, tenantId)
-          .map((Response) PostSourceStorageRecordsCollectionResponse.respond201WithApplicationJson(entity))
+          .map((RecordCollection it) -> {
+            if (it.getErrorMessages().isEmpty()) {
+              return (Response) PostSourceStorageRecordsCollectionResponse.respond201WithApplicationJson(it);
+            } else {
+              return (Response) PostSourceStorageRecordsCollectionResponse.respond500WithApplicationJson(it);
+            }
+          })
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {

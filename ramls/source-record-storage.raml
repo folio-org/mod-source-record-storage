@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Source Record Storage Module
-version: v2.0
+version: v2.2
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -226,6 +226,38 @@ resourceTypes:
           body:
             application/json:
               type: errors
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+  /formattedRecords/{id}:
+    displayName: Formatted Record
+    description: API for getting a Record either by sourceRecordId, or by instanceId
+    get:
+      description: Get Formatted Record by sourceRecordId or by instanceId
+      queryParameters:
+        identifier:
+          description: specifies by which id the record should be retrieved
+          example: INSTANCE
+          enum: [INSTANCE, SRS]
+          default: SRS
+          required: false
+      responses:
+        200:
+          body:
+            application/json:
+              type: record
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        404:
+          description: "Not found"
+          body:
+            text/plain:
+              example: "Not found"
         500:
           description: "Internal server error"
           body:

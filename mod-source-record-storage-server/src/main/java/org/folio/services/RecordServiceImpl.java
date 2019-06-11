@@ -2,6 +2,9 @@ package org.folio.services;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -11,17 +14,24 @@ import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
+import org.marc4j.MarcJsonReader;
+import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class RecordServiceImpl implements RecordService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);
 
   @Autowired
   private RecordDao recordDao;
@@ -111,6 +121,32 @@ public class RecordServiceImpl implements RecordService {
         updateFutures.add(recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId)));
       return CompositeFuture.all(updateFutures).map(Future::succeeded);
     }
+  }
+
+  @Override
+  public Future<Record> getFormattedRecordBySrsOrInstanceId(SourceStorageFormattedRecordsIdGetIdentifier identifier,
+                                                                            String id, String tenantId) {
+    Future<Optional<Record>> future;
+    if (identifier == SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE) {
+      future = recordDao.getRecordByInstanceId(id, tenantId);
+    } else {
+      future = getRecordById(id, tenantId);
+    }
+    return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
+      String.format("Couldn't find Record with %s id %s", identifier, id)))));
+  }
+
+  private Record formatMarcRecord(Record record) {
+    try {
+      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(JsonObject.mapFrom(record.getParsedRecord().getContent()).toString().getBytes(StandardCharsets.UTF_8)));
+      if (reader.hasNext()) {
+        org.marc4j.marc.impl.RecordImpl marcRecord = (org.marc4j.marc.impl.RecordImpl) reader.next();
+        record.setParsedRecord(record.getParsedRecord().withFormattedContent(marcRecord.toString()));
+      }
+    } catch (Exception e) {
+      LOG.error("Couldn't format MARC record", e);
+    }
+    return record;
   }
 
 }

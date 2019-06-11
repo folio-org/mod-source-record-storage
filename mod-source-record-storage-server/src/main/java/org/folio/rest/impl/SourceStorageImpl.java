@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
 import org.folio.rest.tools.utils.TenantTool;
@@ -332,6 +333,23 @@ public class SourceStorageImpl implements SourceStorage {
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to update parsed records", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getSourceStorageFormattedRecordsById(String id, SourceStorageFormattedRecordsIdGetIdentifier identifier,
+                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getFormattedRecordBySrsOrInstanceId(identifier, id, tenantId)
+          .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get record by {} id {}", e, identifier.name(), id);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

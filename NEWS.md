@@ -2,6 +2,7 @@
 * Removed ParsedRecord and ErrorRecord id overriding on save.
 * Added endpoint to update a collection of ParsedRecords.
 * Added support for ParsedRecord.content represented in json.
+* Added endpoint for getting a formatted Record either by sourceRecordId or instanceId
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|
@@ -19,6 +20,7 @@
  | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
  | POST   | /source-storage/recordsCollection          | Create new records                                      |
  | PUT    | /source-storage/parsedRecordsCollection    | Update a collection of ParsedRecords                    |
+ | GET    | /source-storage/formattedRecords/{id}      | Get Formatted Record by sourceRecordId or by instanceId |
 
 ## 2019-05-17 v2.3.2
 * Added generation of rawRecord id only if it is null.

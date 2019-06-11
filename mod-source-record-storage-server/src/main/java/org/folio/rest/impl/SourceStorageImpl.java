@@ -343,7 +343,7 @@ public class SourceStorageImpl implements SourceStorage {
                                                    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getFormattedRecordBySrsOrInstanceId(identifier, id, tenantId)
+        recordService.getFormattedRecord(identifier, id, tenantId)
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

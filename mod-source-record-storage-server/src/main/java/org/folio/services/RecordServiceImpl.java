@@ -124,8 +124,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> getFormattedRecordBySrsOrInstanceId(SourceStorageFormattedRecordsIdGetIdentifier identifier,
-                                                                            String id, String tenantId) {
+  public Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId) {
     Future<Optional<Record>> future;
     if (identifier == SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE) {
       future = recordDao.getRecordByInstanceId(id, tenantId);
@@ -138,7 +137,8 @@ public class RecordServiceImpl implements RecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(JsonObject.mapFrom(record.getParsedRecord().getContent()).toString().getBytes(StandardCharsets.UTF_8)));
+      String parsedRecordContent = JsonObject.mapFrom(record.getParsedRecord().getContent()).toString();
+      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(parsedRecordContent.getBytes(StandardCharsets.UTF_8)));
       if (reader.hasNext()) {
         org.marc4j.marc.impl.RecordImpl marcRecord = (org.marc4j.marc.impl.RecordImpl) reader.next();
         record.setParsedRecord(record.getParsedRecord().withFormattedContent(marcRecord.toString()));

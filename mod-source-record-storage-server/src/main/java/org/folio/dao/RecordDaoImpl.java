@@ -45,9 +45,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
-  private static final String CALL_GET_HIGHEST_GENERATION_FUNCTION = "select get_highest_generation('%s', '%s');";
+  private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
-  private static final String CALL_GET_RECORD_BY_INSTANCE_ID_FUNCTION = "select get_record_by_instance_id('%s');";
+  private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s');";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -114,7 +114,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String getHighestGeneration = String.format(CALL_GET_HIGHEST_GENERATION_FUNCTION, record.getMatchedId(), record.getSnapshotId());
+      String getHighestGeneration = String.format(GET_HIGHEST_GENERATION_QUERY, record.getMatchedId(), record.getSnapshotId());
       pgClientFactory.createInstance(tenantId).select(getHighestGeneration, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for records highest generation", e);
@@ -158,7 +158,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query = String.format(CALL_GET_RECORD_BY_INSTANCE_ID_FUNCTION, instanceId);
+      String query = String.format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId);
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for Record by instance id {}", e, instanceId);
@@ -166,10 +166,7 @@ public class RecordDaoImpl implements RecordDao {
     }
     return future.map(resultSet -> {
       String record = resultSet.getResults().get(0).getString(0);
-      if (record == null) {
-        return Optional.empty();
-      }
-      return Optional.of(new JsonObject(record).mapTo(Record.class));
+      return Optional.ofNullable(record).map(it -> new JsonObject(it).mapTo(Record.class));
     });
   }
 

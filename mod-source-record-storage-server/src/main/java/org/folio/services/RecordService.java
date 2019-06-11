@@ -90,6 +90,6 @@ public interface RecordService {
    * @param tenantId tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecordBySrsOrInstanceId(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);
+  Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);
 
 }

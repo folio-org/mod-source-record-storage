@@ -45,8 +45,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
-  private static final String CALL_GET_HIGHEST_GENERATION_FUNCTION = "select get_highest_generation('%s', '%s');";
+  private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
+  private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s');";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -113,7 +114,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String getHighestGeneration = String.format(CALL_GET_HIGHEST_GENERATION_FUNCTION, record.getMatchedId(), record.getSnapshotId());
+      String getHighestGeneration = String.format(GET_HIGHEST_GENERATION_QUERY, record.getMatchedId(), record.getSnapshotId());
       pgClientFactory.createInstance(tenantId).select(getHighestGeneration, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for records highest generation", e);
@@ -136,7 +137,7 @@ public class RecordDaoImpl implements RecordDao {
       pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
         convertParsedRecordToJsonObject(parsedRecord), new Criterion(idCrit), true, updateResult -> {
           if (updateResult.failed()) {
-            LOG.error("Could not update ParsedRecord with id {}", parsedRecord.getId(), updateResult.cause());
+            LOG.error("Could not update ParsedRecord with id {}", updateResult.cause(), parsedRecord.getId());
             future.fail(updateResult.cause());
           } else if (updateResult.result().getUpdated() != 1) {
             String errorMessage = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
@@ -147,10 +148,26 @@ public class RecordDaoImpl implements RecordDao {
           }
         });
     } catch (Exception e) {
-      LOG.error("Error updating ParsedRecord with id {}", parsedRecord.getId(), e);
+      LOG.error("Error updating ParsedRecord with id {}", e, parsedRecord.getId());
       future.fail(e);
     }
     return future;
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId);
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Error while searching for Record by instance id {}", e, instanceId);
+      future.fail(e);
+    }
+    return future.map(resultSet -> {
+      String record = resultSet.getResults().get(0).getString(0);
+      return Optional.ofNullable(record).map(it -> new JsonObject(it).mapTo(Record.class));
+    });
   }
 
   private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
@@ -193,7 +210,7 @@ public class RecordDaoImpl implements RecordDao {
             future.complete(true));
         } else {
           pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
-            LOG.error("Failed to insert or update Record with id {}. Rollback transaction", record.getId(), result.cause());
+            LOG.error("Failed to insert or update Record with id {}. Rollback transaction", result.cause(), record.getId());
             future.fail(result.cause());
           });
         }
@@ -226,7 +243,7 @@ public class RecordDaoImpl implements RecordDao {
       pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
       return future.map(result -> result.getUpdated() == 1);
     } catch (Exception e) {
-      LOG.error("Error mapping ParsedRecord to JsonObject", e.getMessage());
+      LOG.error("Error mapping ParsedRecord to JsonObject", e);
       ErrorRecord error = new ErrorRecord()
         .withId(UUID.randomUUID().toString())
         .withDescription(e.getMessage())

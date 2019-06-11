@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 
 import java.util.Optional;
 
@@ -80,5 +81,15 @@ public interface RecordService {
    * @return future with true if succeeded
    */
   Future<Boolean> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);
+
+  /**
+   * Searches for Record either by SRS id or Instance id
+   *
+   * @param identifier specifies whether search should be performed by SRS or Instance id
+   * @param id either SRS id or Instance id
+   * @param tenantId tenant id
+   * @return future with {@link Record}
+   */
+  Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);
 
 }

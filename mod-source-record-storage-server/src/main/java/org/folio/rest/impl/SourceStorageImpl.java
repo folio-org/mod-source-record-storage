@@ -1,5 +1,17 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
@@ -13,7 +25,6 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
@@ -26,17 +37,6 @@ import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamReader;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public class SourceStorageImpl implements SourceStorage {
 
@@ -303,21 +303,6 @@ public class SourceStorageImpl implements SourceStorage {
         });
       } else {
         asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond400WithTextPlain("Endpoint is available only in test mode")));
-      }
-    });
-  }
-
-  @Override
-  public void postSourceStorageRecordsCollection(RecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        recordService.saveRecords(entity, tenantId)
-          .map((Response) PostSourceStorageRecordsCollectionResponse.respond201WithApplicationJson(entity))
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
-      } catch (Exception e) {
-        LOG.error("Failed to create records from collection", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }

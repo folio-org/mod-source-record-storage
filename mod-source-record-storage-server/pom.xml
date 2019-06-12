@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>mod-source-record-storage-server</artifactId>
   <parent>
@@ -148,6 +149,18 @@
                 <systemProperty>
                   <key>raml_files</key>
                   <value>${ramlfiles_path}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>jsonschema2pojo.config.includeToString</key>
+                  <value>true</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>jsonschema2pojo.config.includeHashcodeAndEquals</key>
+                  <value>true</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>jsonschema2pojo.config.useCommonsLang3</key>
+                  <value>true</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
@@ -320,7 +333,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet />
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>

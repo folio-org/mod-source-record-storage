@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
@@ -45,7 +46,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
-  private static final String SOURCE_STORAGE_RECORDS_COLLECTION_PATH = "/source-storage/recordsCollection";
+  private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
   private static final String SOURCE_STORAGE_PARSED_RECORDS_PATH = "/source-storage/parsedRecordsCollection";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
@@ -1048,7 +1049,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
+      .post(BATCH_RECORDS_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_CREATED)
       .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
@@ -1065,7 +1066,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
+      .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -1091,7 +1092,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
+      .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .extract().response().body().as(RecordCollection.class);
@@ -1134,7 +1135,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordCollection)
       .when()
-      .post(SOURCE_STORAGE_RECORDS_COLLECTION_PATH)
+      .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
       .extract().response().body().as(RecordCollection.class);

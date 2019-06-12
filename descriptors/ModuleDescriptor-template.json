@@ -67,14 +67,24 @@
           "pathPattern": "/source-storage/populate-test-marc-records"
         },
         {
-          "methods": ["POST"],
-          "pathPattern": "/source-storage/recordsCollection",
-          "permissionsRequired": ["source-storage.records.post"]
-        },
-        {
           "methods": ["PUT"],
           "pathPattern": "/source-storage/parsedRecordsCollection",
           "permissionsRequired": ["source-storage.records.put"]
+        }
+      ]
+    },
+    {
+      "id": "source-record-storage-batch",
+      "version": "0.1",
+      "handlers": [
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/batch/records",
+          "permissionsRequired": [
+            "source-storage.records.post"
+          ]
         }
       ]
     },

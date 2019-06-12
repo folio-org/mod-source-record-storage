@@ -1,12 +1,12 @@
 package org.folio.services;
 
+import java.util.Optional;
+
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-
-import java.util.Optional;
 
 /**
  * Record Service
@@ -16,9 +16,9 @@ public interface RecordService {
   /**
    * Searches for records
    *
-   * @param query  query from URL
-   * @param offset starting index in a list of results
-   * @param limit  limit of records for pagination
+   * @param query    query from URL
+   * @param offset   starting index in a list of results
+   * @param limit    limit of records for pagination
    * @param tenantId tenant id
    * @return future with {@link RecordCollection}
    */
@@ -27,7 +27,7 @@ public interface RecordService {
   /**
    * Searches for record by id
    *
-   * @param id Record id
+   * @param id       Record id
    * @param tenantId tenant id
    * @return future with optional {@link Record}
    */
@@ -36,25 +36,25 @@ public interface RecordService {
   /**
    * Saves record
    *
-   * @param record Record to save
+   * @param record   Record to save
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
   Future<Boolean> saveRecord(Record record, String tenantId);
 
   /**
-   * Saves records collection
+   * Saves collection of records
    *
-   * @param recordCollection Record to save
-   * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @param recordCollection Records to save
+   * @param tenantId         tenant id
+   * @return future with collection both saved records and errors messages if any records were not saved.
    */
   Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId);
 
   /**
    * Updates record with given id
    *
-   * @param record Record to update
+   * @param record   Record to update
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -63,11 +63,11 @@ public interface RecordService {
   /**
    * Searches for source records
    *
-   * @param query  query from URL
-   * @param offset starting index in a list of results
-   * @param limit  limit of records for pagination
+   * @param query          query from URL
+   * @param offset         starting index in a list of results
+   * @param limit          limit of records for pagination
    * @param deletedRecords indicates to return records marked as deleted or not
-   * @param tenantId tenant id
+   * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
@@ -76,7 +76,7 @@ public interface RecordService {
    * Update parsed records
    *
    * @param parsedRecordCollection collection of parsed records to update
-   * @param tenantId tenant id
+   * @param tenantId               tenant id
    * @return future with true if succeeded
    */
   Future<Boolean> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);

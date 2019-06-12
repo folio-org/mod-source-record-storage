@@ -1,0 +1,48 @@
+#%RAML 1.0
+
+title: Source Record Storage Batch API
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Batch API
+    content: Batch API for managing records
+
+types:
+  recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+
+/source-storage/batch:
+  /records:
+    post:
+      description: "Creates records from a record collection. It returns both saved records and error messages (if some record is not saved)."
+      is: [validate]
+      body:
+        application/json:
+          type: recordCollection
+      responses:
+        201:
+          body:
+            application/json:
+              type: recordCollection
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        422:
+          description: "Unprocessable Entity"
+          body:
+            application/json:
+              type: errors
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
+            application/json:
+              type: recordCollection

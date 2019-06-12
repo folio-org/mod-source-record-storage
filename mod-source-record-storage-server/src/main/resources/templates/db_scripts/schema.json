@@ -136,6 +136,11 @@
       "run": "after",
       "snippet": "CREATE OR REPLACE FUNCTION get_highest_generation(matchedId uuid, snapshotId uuid) RETURNS integer AS $generation$ DECLARE generation integer; BEGIN SELECT MAX(records.jsonb ->> 'generation') into generation FROM records INNER JOIN snapshots ON records.jsonb ->> 'snapshotId' = snapshots.jsonb ->> 'jobExecutionId' WHERE (records.jsonb ->> 'matchedId')::uuid = matchedId AND snapshots.jsonb ->> 'status' = 'COMMITTED' AND (snapshots.jsonb -> 'metadata' ->> 'updatedDate')::timestamp with time zone < (SELECT snapshots.jsonb ->> 'processingStartedDate' FROM snapshots WHERE (snapshots.jsonb ->> 'jobExecutionId')::uuid = snapshotId)::timestamp with time zone; RETURN generation; END; $generation$ LANGUAGE plpgsql;",
       "fromModuleVersion": "2.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE OR REPLACE FUNCTION get_record_by_instance_id(instanceId uuid) RETURNS jsonb AS $rcrd$ DECLARE rcrd jsonb; BEGIN WITH rslt AS (SELECT * FROM (SELECT * FROM (SELECT * FROM records_view WHERE records_view.jsonb ->> 'recordType' = 'MARC')  AS mrc CROSS JOIN LATERAL json_array_elements(jsonb -> 'parsedRecord' -> 'content' -> 'fields') fields(field) WHERE field ->> '999' IS NOT null) AS tmp CROSS JOIN LATERAL json_array_elements(field -> '999' -> 'subfields') ids(identifier) WHERE (identifier ->> 'i')::uuid = instanceId) SELECT jsonb into rcrd FROM rslt WHERE (jsonb ->> 'generation')::int = (SELECT MAX((jsonb ->> 'generation')::int) FROM rslt); RETURN rcrd; END; $rcrd$ LANGUAGE plpgsql;",
+      "fromModuleVersion": "2.0"
     }
   ]
 }

@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -13,6 +14,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -21,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)
@@ -28,6 +31,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
+  private static final String SOURCE_STORAGE_FORMATTED_RECORDS_PATH = "/source-storage/formattedRecords";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
   private static final String RAW_RECORDS_TABLE_NAME = "raw_records";
@@ -313,4 +317,133 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
   }
+
+  @Test
+  public void shouldReturnNotFoundOnGetFormattedBySRSIdWhenRecordDoesNotExist() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + UUID.randomUUID().toString())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+  }
+
+  @Test
+  public void shouldReturnNotFoundOnGetFormattedByInstanceIdWhenRecordDoesNotExist() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "?identifier=INSTANCE")
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+  }
+
+  @Test
+  public void shouldReturnSameRecordOnGetByIdAndGetBySRSId(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    String srsId = UUID.randomUUID().toString();
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)))))));
+
+    Record newRecord = new Record()
+      .withId(srsId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord)
+      .withMatchedId(matchedId);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("id", is(srsId));
+    async.complete();
+
+    async = testContext.async();
+    Record getByIdRecord = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + srsId)
+      .body().as(Record.class);
+
+    Record getBySRSIdRecord = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + srsId)
+      .body().as(Record.class);
+
+    Assert.assertThat(getByIdRecord.getId(), is(getBySRSIdRecord.getId()));
+    Assert.assertThat(getByIdRecord.getRawRecord().getContent(), is(getBySRSIdRecord.getRawRecord().getContent()));
+    Assert.assertNotNull(getBySRSIdRecord.getParsedRecord().getFormattedContent());
+    Assert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), containsString("LEADER 01542ccm a2200361   4500"));
+    async.complete();
+  }
+
+  /**
+   * Dumb test that should be fixed in scope of (@link https://issues.folio.org/browse/MODSOURCE-62)
+   */
+  @Test
+  public void shouldReturnRecordOnGetByInstanceId(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    String srsId = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+
+    Record newRecord = new Record()
+      .withId(srsId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord)
+      .withMatchedId(matchedId);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("id", is(srsId));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + instanceId + "?identifier=INSTANCE");
+    async.complete();
+  }
+
 }

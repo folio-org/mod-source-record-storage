@@ -85,4 +85,13 @@ public interface RecordDao {
    */
   Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
 
+  /**
+   * Searches for {@link Record} by instance id
+   *
+   * @param instanceId Instance id
+   * @param tenantId tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId);
+
 }

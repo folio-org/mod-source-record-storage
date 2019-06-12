@@ -23,7 +23,6 @@ import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
@@ -303,22 +302,6 @@ public class SourceStorageImpl implements SourceStorage {
         });
       } else {
         asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond400WithTextPlain("Endpoint is available only in test mode")));
-      }
-    });
-  }
-
-  @Override
-  public void putSourceStorageParsedRecordsCollection(ParsedRecordCollection entity, Map<String, String> okapiHeaders,
-                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        recordService.updateParsedRecords(entity, tenantId)
-          .map((Response) PutSourceStorageParsedRecordsCollectionResponse.respond200WithApplicationJson(entity))
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
-      } catch (Exception e) {
-        LOG.error("Failed to update parsed records", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }

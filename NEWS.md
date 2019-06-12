@@ -1,8 +1,10 @@
-## 2019-05-22 v2.4.0-SNAPSHOT
+## 2019-06-12 v2.4.0
 * Removed ParsedRecord and ErrorRecord id overriding on save.
 * Added endpoint to update a collection of ParsedRecords.
 * Added support for ParsedRecord.content represented in json.
 * Added endpoint for getting a formatted Record either by sourceRecordId or instanceId
+* Moved endpoint for saved record collection from /source-storage/recordsCollection to /source-storage/batch/records 
+* Changed response. List of error messages was added that is filled if some record was not saved
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|
@@ -18,7 +20,7 @@
  | DELETE | /source-storage/records/{id}               | Mark record deleted                                     |
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
  | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
- | POST   | /source-storage/recordsCollection          | Create new records                                      |
+ | POST   | /source-storage/batch/records              | Create new records                                      |
  | PUT    | /source-storage/parsedRecordsCollection    | Update a collection of ParsedRecords                    |
  | GET    | /source-storage/formattedRecords/{id}      | Get Formatted Record by sourceRecordId or by instanceId |
 

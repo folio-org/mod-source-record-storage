@@ -1,3 +1,25 @@
+## 2019-06-12 v2.5.0
+* Changed url of updating parsed records from "/source-storage/parsedRecordsCollection" to "/source-storage/batch/parsed-records"
+* Added error message list to ParsedRecords DTO 
+
+ | METHOD |             URL                            | DESCRIPTION                                             |
+ |--------|--------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/snapshots                  | Get list of snapshots                                   |
+ | POST   | /source-storage/snapshots                  | Create new snapshot                                     |
+ | PUT    | /source-storage/snapshots/{jobExecutionId} | Update snapshot                                         |
+ | GET    | /source-storage/snapshots/{jobExecutionId} | Get snapshot by JobExecution id                         |
+ | DELETE | /source-storage/snapshots/{jobExecutionId} | Delete snapshot by JobExecution id                      |
+ | GET    | /source-storage/records                    | Get list of records                                     |
+ | POST   | /source-storage/records                    | Create new record                                       |
+ | PUT    | /source-storage/records/{id}               | Update record                                           |
+ | GET    | /source-storage/records/{id}               | Get record by id                                        |
+ | DELETE | /source-storage/records/{id}               | Mark record deleted                                     |
+ | GET    | /source-storage/sourceRecords              | Get list of source records                              |
+ | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
+ | POST   | /source-storage/batch/records              | Create new records                                      |
+ | PUT    | /source-storage/batch/parsed-records       | Update a collection of ParsedRecords                    |
+ | GET    | /source-storage/formattedRecords/{id}      | Get Formatted Record by sourceRecordId or by instanceId |
+
 ## 2019-06-12 v2.4.0
 * Removed ParsedRecord and ErrorRecord id overriding on save.
 * Added endpoint to update a collection of ParsedRecords.

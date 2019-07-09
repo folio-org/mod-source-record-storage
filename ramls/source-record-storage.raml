@@ -152,7 +152,7 @@ resourceTypes:
               example: "Internal server error"
   /populate-test-marc-records:
     post:
-      description: A non-production endpoint to populate MARC records for testing purposes. Available only in case "test.mode" environment variable is set to true
+      description: A non-production endpoint to populate MARC records for testing purposes. Available only in case deployment tenant parameter "loadSample" is set to true
       is: [validate]
       body:
         application/json:

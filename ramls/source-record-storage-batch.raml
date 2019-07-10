@@ -11,6 +11,7 @@ documentation:
 
 types:
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  recordBatch: !include raml-storage/schemas/mod-source-record-storage/recordBatch.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
 traits:
@@ -23,12 +24,12 @@ traits:
       is: [validate]
       body:
         application/json:
-          type: recordCollection
+          type: recordBatch
       responses:
-        201:
+        207:
           body:
             application/json:
-              type: recordCollection
+              type: recordBatch
         400:
           description: "Bad request"
           body:
@@ -44,5 +45,3 @@ traits:
           body:
             text/plain:
               example: "Internal server error"
-            application/json:
-              type: recordCollection

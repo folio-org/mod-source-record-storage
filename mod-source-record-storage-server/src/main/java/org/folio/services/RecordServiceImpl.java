@@ -1,41 +1,37 @@
 package org.folio.services;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
+import org.folio.rest.jaxrs.model.*;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.UUID;
+
+import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 @Component
 public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);
+  public static final String PROCESSING_START_DATE_IS_NOT_SET_MSG = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
 
   @Autowired
   private RecordDao recordDao;
@@ -54,6 +50,34 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Boolean> saveRecord(Record record, String tenantId) {
+    return checkAssociationWithSnapshot(initFields(record), tenantId)
+      .compose(it -> fillGeneration(it, tenantId))
+      .compose(it -> recordDao.saveRecord(it, tenantId));
+  }
+
+  private Future<Record> checkAssociationWithSnapshot(Record record, String tenantId) {
+    return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
+      .map(Optional::get)
+      .compose(snapshot -> validateSnapshot(snapshot, record));
+  }
+
+  private Future<Record> fillGeneration(Record record, String tenantId) {
+    return recordDao.calculateGeneration(record, tenantId)
+      .map(record::withGeneration);
+  }
+
+  private Future<Record> validateSnapshot(Snapshot snapshot, Record record) {
+    Future<Record> future = Future.future();
+    if (isNull(snapshot)) {
+      future.fail(new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId()));
+    }
+    if (nonNull(snapshot) && isNull(snapshot.getProcessingStartedDate())) {
+      future.fail(new BadRequestException(format(PROCESSING_START_DATE_IS_NOT_SET_MSG, snapshot.getStatus())));
+    }
+    return future.isComplete() ? future : Future.succeededFuture(record);
+  }
+
+  private Record initFields(Record record) {
     if (record.getId() == null) {
       record.setId(UUID.randomUUID().toString());
     }
@@ -69,41 +93,49 @@ public class RecordServiceImpl implements RecordService {
     if (record.getAdditionalInfo() == null) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
-      .map(optionalRecordSnapshot -> optionalRecordSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
-      .compose(snapshot -> {
-        if (snapshot.getProcessingStartedDate() == null) {
-          return Future.failedFuture(new BadRequestException(
-            String.format("Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s", snapshot.getStatus())));
-        }
-        return Future.succeededFuture();
-      })
-      .compose(f -> recordDao.calculateGeneration(record, tenantId))
-      .compose(generation -> recordDao.saveRecord(record.withGeneration(generation), tenantId));
+    return record;
   }
 
   @Override
-  public Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId) {
-    Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
-      .map(record -> Pair.of(record, saveRecord(record, tenantId)))
-      .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
+  public Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId) {
 
-    Future<RecordCollection> result = Future.future();
+    recordBatch.getItems().forEach(item -> {
+      initFields(item.getRecord());
+      preProcessItem(item, tenantId)
+        .compose(it -> insertOrUpdate(it, tenantId))
+        .setHandler(ar -> postProcessItem(item, ar));
+    });
 
-    CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
-        RecordCollection records = new RecordCollection();
-        savedRecords.forEach((record, future) -> {
-          if (future.failed()) {
-            records.getErrorMessages().add(future.cause().getMessage());
-          } else {
-            records.getRecords().add(record);
-          }
-        });
-        records.setTotalRecords(records.getRecords().size());
-        result.complete(records);
-      }
-    );
-    return result;
+    return Future.succeededFuture(recordBatch);
+  }
+
+  private Future<Boolean> insertOrUpdate(Item item, String tenantId) {
+    Future<Boolean> future = Future.future();
+    if (StringUtils.isNotBlank(item.getErrorMessage())) {
+      future = saveRecord(item.getRecord(), tenantId);
+    } else {
+      //todo log
+      future.fail(item.getErrorMessage());
+    }
+    return future;
+  }
+
+  private Future<Item> preProcessItem(Item item, String tenantId) {
+    return checkAssociationWithSnapshot(item.getRecord(), tenantId)
+      .compose(record -> fillGeneration(record, tenantId))
+      .map(item::withRecord)
+      .otherwise(ex -> item.withErrorMessage(ex.getMessage()));
+  }
+
+  private void postProcessItem(Item item, AsyncResult<Boolean> ar) {
+    if (ar.succeeded()) {
+      item.setStatus(200);
+      item.setHref("/source-storage/batch/records/" + item.getRecord().getId());
+    } else {
+      //todo log
+      item.setStatus(422);
+      item.setErrorMessage(ar.cause().getMessage());
+    }
   }
 
   @Override
@@ -122,7 +154,7 @@ public class RecordServiceImpl implements RecordService {
           return recordDao.updateRecord(record, tenantId);
         })
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", record.getId()))))
+          format("Record with id '%s' was not found", record.getId()))))
       );
   }
 
@@ -152,7 +184,7 @@ public class RecordServiceImpl implements RecordService {
       future = getRecordById(id, tenantId);
     }
     return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
-      String.format("Couldn't find Record with %s id %s", identifier, id)))));
+      format("Couldn't find Record with %s id %s", identifier, id)))));
   }
 
   private Record formatMarcRecord(Record record) {

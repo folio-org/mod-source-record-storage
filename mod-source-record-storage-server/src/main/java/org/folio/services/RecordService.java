@@ -1,13 +1,9 @@
 package org.folio.services;
 
-import java.util.Optional;
-
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
+import org.folio.rest.jaxrs.model.*;
+
+import java.util.Optional;
 
 /**
  * Record Service
@@ -46,11 +42,11 @@ public interface RecordService {
   /**
    * Saves collection of records
    *
-   * @param recordCollection Records to save
-   * @param tenantId         tenant id
+   * @param recordBatch Records to save
+   * @param tenantId    tenant id
    * @return future with collection both saved records and errors messages if any records were not saved.
    */
-  Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId);
+  Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId);
 
   /**
    * Updates record with given id
@@ -86,8 +82,8 @@ public interface RecordService {
    * Searches for Record either by SRS id or Instance id
    *
    * @param identifier specifies whether search should be performed by SRS or Instance id
-   * @param id either SRS id or Instance id
-   * @param tenantId tenant id
+   * @param id         either SRS id or Instance id
+   * @param tenantId   tenant id
    * @return future with {@link Record}
    */
   Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);

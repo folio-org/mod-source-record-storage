@@ -9,7 +9,17 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.Item;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -23,7 +33,14 @@ import java.util.List;
 import java.util.UUID;
 
 import static java.util.Arrays.asList;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 @RunWith(VertxUnitRunner.class)
@@ -32,7 +49,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
-  private static final String SOURCE_STORAGE_PARSED_RECORDS_PATH = "/source-storage/parsedRecordsCollection";
+  private static final String BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
@@ -1195,7 +1212,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
-      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().body().as(ParsedRecordCollection.class);
@@ -1219,7 +1236,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
-      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
@@ -1269,7 +1286,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
-      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().body().as(ParsedRecordCollection.class);
@@ -1281,7 +1298,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundOnUpdateParsedRecordsIfIdIsNotFound(TestContext testContext) {
+  public void shouldReturnErrorMessagesOnUpdateParsedRecordsIfIdIsNotFound(TestContext testContext) {
     Async async = testContext.async();
     ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
       .withRecordType(ParsedRecordCollection.RecordType.MARC)
@@ -1289,13 +1306,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
       .withTotalRecords(2);
 
-    RestAssured.given()
+    ParsedRecordCollection result = RestAssured.given()
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
-      .put(SOURCE_STORAGE_PARSED_RECORDS_PATH)
+      .put(BATCH_PARSED_RECORDS_PATH)
       .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .extract().response().body().as(ParsedRecordCollection.class);
+
+    assertThat(result.getErrorMessages(), hasSize(2));
     async.complete();
   }
 

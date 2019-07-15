@@ -8,6 +8,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.resource.SourceStorageBatch;
 import org.folio.rest.tools.utils.TenantTool;
@@ -41,6 +43,28 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to create records from collection", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void putSourceStorageBatchParsedRecords(ParsedRecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.updateParsedRecords(entity, tenantId)
+                .map((ParsedRecordCollection it) -> {
+                  if (it.getErrorMessages().isEmpty()) {
+                    return (Response) PutSourceStorageBatchParsedRecordsResponse.respond200WithApplicationJson(it);
+                  } else {
+                    LOG.error("Some records were not saved! Here is the list of errors: {}", it.getErrorMessages());
+                    return (Response) PutSourceStorageBatchParsedRecordsResponse.respond500WithApplicationJson(it);
+                  }
+                })
+                .otherwise(ExceptionHelper::mapExceptionToResponse)
+                .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to update parsed records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

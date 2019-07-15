@@ -5,19 +5,10 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.Item;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordBatch;
-import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
+import org.folio.rest.jaxrs.model.*;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +18,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -48,6 +36,7 @@ public class RecordServiceImpl implements RecordService {
   private RecordDao recordDao;
   @Autowired
   private SnapshotDao snapshotDao;
+
 
   @Override
   public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
@@ -180,15 +169,29 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
-    if (parsedRecordCollection.getParsedRecords().stream().anyMatch(parsedRecord -> parsedRecord.getId() == null)) {
-      return Future.failedFuture(new BadRequestException("Each parsed record should contain an id"));
-    } else {
-      ArrayList<Future> updateFutures = new ArrayList<>();
-      parsedRecordCollection.getParsedRecords().forEach(parsedRecord ->
-        updateFutures.add(recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId)));
-      return CompositeFuture.all(updateFutures).map(Future::succeeded);
-    }
+  public Future<ParsedRecordCollection> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
+
+    Map<ParsedRecord, Future<Boolean>> updatedRecords = parsedRecordCollection.getParsedRecords().stream()
+      .peek(this::validateParsedRecordId)
+      .map(it -> Pair.of(it, recordDao.updateParsedRecord(it, parsedRecordCollection.getRecordType(), tenantId)))
+      .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
+
+    Future<ParsedRecordCollection> result = Future.future();
+
+    CompositeFuture.join(new ArrayList<>(updatedRecords.values())).setHandler(ar -> {
+        ParsedRecordCollection records = new ParsedRecordCollection();
+        updatedRecords.forEach((record, future) -> {
+          if (future.failed()) {
+            records.getErrorMessages().add(future.cause().getMessage());
+          } else {
+            records.getParsedRecords().add(record);
+          }
+        });
+        records.setTotalRecords(records.getParsedRecords().size());
+        result.complete(records);
+      }
+    );
+    return result;
   }
 
   @Override
@@ -215,6 +218,12 @@ public class RecordServiceImpl implements RecordService {
       LOG.error("Couldn't format MARC record", e);
     }
     return record;
+  }
+
+  private void validateParsedRecordId(ParsedRecord record) {
+    if (Objects.isNull(record.getId())) {
+      throw new BadRequestException("Each parsed record should contain an id");
+    }
   }
 
 }

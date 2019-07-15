@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
@@ -396,9 +397,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
-  /**
-   * Dumb test that should be fixed in scope of (@link https://issues.folio.org/browse/MODSOURCE-62)
-   */
   @Test
   public void shouldReturnRecordOnGetByInstanceId(TestContext testContext) {
     Async async = testContext.async();
@@ -430,7 +428,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(newRecord)
+      .body(JsonObject.mapFrom(newRecord).toString())
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
@@ -442,7 +440,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + instanceId + "?identifier=INSTANCE");
+      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + instanceId + "?identifier=INSTANCE")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("parsedRecord.content", notNullValue());
     async.complete();
   }
 

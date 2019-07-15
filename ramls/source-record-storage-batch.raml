@@ -10,8 +10,7 @@ documentation:
     content: Batch API for managing records
 
 types:
-  recordCollection: !include raml-storage/schemas/dto/recordCollection.json
-  recordBatch: !include raml-storage/schemas/mod-source-record-storage/recordBatch.json
+  recordBatch: !include raml-storage/schemas/dto/recordBatch.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
 traits:
@@ -20,7 +19,7 @@ traits:
 /source-storage/batch:
   /records:
     post:
-      description: "Creates records from a record collection. It returns both saved records and error messages (if some record is not saved)."
+      description: "Creates records. It returns both saved records and error messages (if some record is not saved)."
       is: [validate]
       body:
         application/json:

@@ -1,15 +1,23 @@
 package org.folio.services;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.Item;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,12 +28,15 @@ import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 @Component
 public class RecordServiceImpl implements RecordService {
@@ -55,9 +66,27 @@ public class RecordServiceImpl implements RecordService {
       .compose(it -> recordDao.saveRecord(it, tenantId));
   }
 
+  @Override
+  public Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId) {
+    List<Future> items = recordBatch.getItems().stream()
+      .map(it -> it.withRecord(initFields(it.getRecord())))
+      .map(it -> checkAssociationWithSnapshot(it, tenantId))
+      .map(future -> future.compose(it -> insertOrUpdate(it, tenantId)))
+      .collect(Collectors.toList());
+
+    return CompositeFuture.all(items).compose(future -> Future.succeededFuture(recordBatch.withItems(future.list())));
+  }
+
+  private Future<Item> checkAssociationWithSnapshot(Item item, String tenantId) {
+    return checkAssociationWithSnapshot(item.getRecord(), tenantId)
+      .compose(record -> fillGeneration(record, tenantId))
+      .map(item::withRecord)
+      .otherwise(ex -> handleException(item, ex));
+  }
+
   private Future<Record> checkAssociationWithSnapshot(Record record, String tenantId) {
     return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
-      .map(Optional::get)
+      .map(optional-> optional.orElse(null))
       .compose(snapshot -> validateSnapshot(snapshot, record));
   }
 
@@ -96,46 +125,33 @@ public class RecordServiceImpl implements RecordService {
     return record;
   }
 
-  @Override
-  public Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId) {
-
-    recordBatch.getItems().forEach(item -> {
-      initFields(item.getRecord());
-      preProcessItem(item, tenantId)
-        .compose(it -> insertOrUpdate(it, tenantId))
-        .setHandler(ar -> postProcessItem(item, ar));
-    });
-
-    return Future.succeededFuture(recordBatch);
-  }
-
-  private Future<Boolean> insertOrUpdate(Item item, String tenantId) {
-    Future<Boolean> future = Future.future();
-    if (StringUtils.isNotBlank(item.getErrorMessage())) {
-      future = saveRecord(item.getRecord(), tenantId);
+  private Future<Item> insertOrUpdate(Item item, String tenantId) {
+    Future<Item> future = Future.future();
+    if (isBlank(item.getErrorMessage())) {
+      saveRecord(item.getRecord(), tenantId)
+        .map(handleSuccess(item))
+        .otherwise(ex -> handleException(item, ex))
+        .setHandler(future.completer());
     } else {
-      //todo log
-      future.fail(item.getErrorMessage());
+      LOG.error("An error has occurred during saving a record: " + item.getErrorMessage());
+      future.complete(item);
     }
     return future;
   }
 
-  private Future<Item> preProcessItem(Item item, String tenantId) {
-    return checkAssociationWithSnapshot(item.getRecord(), tenantId)
-      .compose(record -> fillGeneration(record, tenantId))
-      .map(item::withRecord)
-      .otherwise(ex -> item.withErrorMessage(ex.getMessage()));
+  private Item handleException(Item item, Throwable ex) {
+    if (ex instanceof NotFoundException) {
+      item.withStatus(404);
+    } else if (ex instanceof BadRequestException) {
+      item.withStatus(400);
+    } else {
+      item.withStatus(500);
+    }
+    return item.withErrorMessage(ex.getMessage());
   }
 
-  private void postProcessItem(Item item, AsyncResult<Boolean> ar) {
-    if (ar.succeeded()) {
-      item.setStatus(200);
-      item.setHref("/source-storage/batch/records/" + item.getRecord().getId());
-    } else {
-      //todo log
-      item.setStatus(422);
-      item.setErrorMessage(ar.cause().getMessage());
-    }
+  private Item handleSuccess(Item item) {
+    return item.withStatus(200).withHref("/source-storage/batch/records/" + item.getRecord().getId());
   }
 
   @Override

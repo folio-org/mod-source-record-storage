@@ -34,11 +34,11 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void postSourceStorageBatchRecords(RecordBatch entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageBatchRecordsCreate(RecordBatch entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecords(entity, tenantId)
-          .map((RecordBatch it) -> (Response) PostSourceStorageBatchRecordsResponse.respond207WithApplicationJson(it))
+          .map((RecordBatch it) -> (Response) PostSourceStorageBatchRecordsCreateResponse.respond207WithApplicationJson(it))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {

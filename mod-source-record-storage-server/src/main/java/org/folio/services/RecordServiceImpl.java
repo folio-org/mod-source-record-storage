@@ -8,7 +8,17 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.Item;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +28,23 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.HttpStatus.HTTP_BAD_REQUEST;
+import static org.folio.HttpStatus.HTTP_INTERNAL_SERVER_ERROR;
+import static org.folio.HttpStatus.HTTP_NOT_FOUND;
+import static org.folio.HttpStatus.HTTP_OK;
 
 @Component
 public class RecordServiceImpl implements RecordService {
@@ -118,7 +138,7 @@ public class RecordServiceImpl implements RecordService {
     Future<Item> future = Future.future();
     if (isBlank(item.getErrorMessage())) {
       saveRecord(item.getRecord(), tenantId)
-        .map(handleSuccess(item))
+        .map(item.withStatus(HTTP_OK.toInt()))
         .otherwise(ex -> handleException(item, ex))
         .setHandler(future.completer());
     } else {
@@ -130,17 +150,13 @@ public class RecordServiceImpl implements RecordService {
 
   private Item handleException(Item item, Throwable ex) {
     if (ex instanceof NotFoundException) {
-      item.withStatus(404);
+      item.withStatus(HTTP_NOT_FOUND.toInt());
     } else if (ex instanceof BadRequestException) {
-      item.withStatus(400);
+      item.withStatus(HTTP_BAD_REQUEST.toInt());
     } else {
-      item.withStatus(500);
+      item.withStatus(HTTP_INTERNAL_SERVER_ERROR.toInt());
     }
     return item.withErrorMessage(ex.getMessage());
-  }
-
-  private Item handleSuccess(Item item) {
-    return item.withStatus(200).withHref("/source-storage/batch/records/" + item.getRecord().getId());
   }
 
   @Override

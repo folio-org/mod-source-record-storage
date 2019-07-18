@@ -48,7 +48,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
-  private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
+  private static final String CREATE_BATCH_RECORDS_PATH = "/source-storage/batch/records/create";
   private static final String BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
@@ -1051,7 +1051,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(batch)
       .when()
-      .post(BATCH_RECORDS_PATH)
+      .post(CREATE_BATCH_RECORDS_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_MULTI_STATUS)
       .body("items*.status", everyItem(is(200)))
@@ -1070,7 +1070,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new RecordBatch())
       .when()
-      .post(BATCH_RECORDS_PATH)
+      .post(CREATE_BATCH_RECORDS_PATH)
       .then()
       .log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
@@ -1097,14 +1097,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordBatch)
       .when()
-      .post(BATCH_RECORDS_PATH)
+      .post(CREATE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_MULTI_STATUS)
       .extract().response().body().as(RecordBatch.class);
 
     Item item = createdRecords.getItems().get(0);
     Record createdRecord = item.getRecord();
-    assertThat(item.getHref(), is("/source-storage/batch/records/" + createdRecord.getId()));
     assertThat(item.getStatus(), is(200));
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
@@ -1115,7 +1114,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     item = createdRecords.getItems().get(1);
     assertThat(item.getStatus(), is(200));
     createdRecord = item.getRecord();
-    assertThat(item.getHref(), is("/source-storage/batch/records/" + createdRecord.getId()));
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_3.getSnapshotId()));
     assertThat(createdRecord.getRecordType(), is(record_3.getRecordType()));
@@ -1145,7 +1143,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(recordBatch)
       .when()
-      .post(BATCH_RECORDS_PATH)
+      .post(CREATE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_MULTI_STATUS)
       .extract().response().body().as(RecordBatch.class);
@@ -1156,7 +1154,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record createdRecord = createdRecords.getItems().get(0).getRecord();
 
     assertThat(item.getStatus(), is(200));
-    assertThat(item.getHref(), is("/source-storage/batch/records/" + createdRecord.getId()));
 
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));

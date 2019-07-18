@@ -1,0 +1,42 @@
+
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Response of batch processed items",
+  "type": "object",
+  "excludedFromEqualsAndHashCode": [
+    "additionalProperties"
+  ],
+  "properties": {
+    "items": {
+      "description": "List of items",
+      "type": "array",
+      "id": "itemList",
+      "items": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "A http status of the item",
+            "type": "integer",
+            "default": "0"
+          },
+          "record": {
+            "description": "An item body",
+            "type": "object",
+            "$ref": "raml-storage/schemas/dto/record.json"
+          },
+          "errorMessage": {
+            "description": "A message of failure cause.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "record"
+        ]
+      }
+    }
+  },
+  "required": [
+    "items"
+  ]
+}

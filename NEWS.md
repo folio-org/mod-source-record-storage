@@ -1,6 +1,8 @@
-## 2019-06-12 v2.5.0
-* Changed url of updating parsed records from "/source-storage/parsedRecordsCollection" to "/source-storage/batch/parsed-records"
-* Added error message list to ParsedRecords DTO 
+## 2019-07-23 v2.5.0
+* Added endpoint for updating parsed records
+* Moved endpoint for updating parsed records into the new API interface for batch operations
+(URL is changed from '/parsedRecordsCollection' to '/batch/parsed-records')
+* Added error message list to ParsedRecords DTO
 
  | METHOD |             URL                            | DESCRIPTION                                             |
  |--------|--------------------------------------------|---------------------------------------------------------|

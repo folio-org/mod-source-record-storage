@@ -31,6 +31,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -1083,19 +1084,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
-    RecordCollection recordCollection = new RecordCollection()
+    RecordBatch recordCollection = new RecordBatch()
       .withRecords(Arrays.asList(record_2, record_3))
       .withTotalRecords(2);
 
     async = testContext.async();
-    RecordCollection createdRecordCollection = RestAssured.given()
+    RecordBatch createdRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
       .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .extract().response().body().as(RecordCollection.class);
+      .extract().response().body().as(RecordBatch.class);
 
     Record createdRecord = createdRecordCollection.getRecords().get(0);
     assertThat(createdRecord.getId(), notNullValue());
@@ -1131,26 +1132,26 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(2);
 
     async = testContext.async();
-    RecordCollection createdRecordCollection = RestAssured.given()
+    RecordBatch recordBatch = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
       .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
-      .extract().response().body().as(RecordCollection.class);
+      .extract().response().body().as(RecordBatch.class);
 
-    assertThat(createdRecordCollection.getRecords().size(), is(1));
+    assertThat(recordBatch.getRecords().size(), is(1));
 
-    Record createdRecord = createdRecordCollection.getRecords().get(0);
+    Record createdRecord = recordBatch.getRecords().get(0);
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
     assertThat(createdRecord.getRecordType(), is(record_2.getRecordType()));
     assertThat(createdRecord.getRawRecord().getContent(), is(record_2.getRawRecord().getContent()));
     assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
 
-    assertThat(createdRecordCollection.getErrorMessages().size(), is(1));
-    assertThat(createdRecordCollection.getErrorMessages().get(0), notNullValue());
+    assertThat(recordBatch.getErrorMessages().size(), is(1));
+    assertThat(recordBatch.getErrorMessages().get(0), notNullValue());
     async.complete();
   }
 

@@ -10,7 +10,7 @@ documentation:
     content: Batch API for managing records
 
 types:
-  recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  recordBatch: !include raml-storage/schemas/dto/recordBatch.json
   parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
@@ -24,12 +24,12 @@ traits:
       is: [validate]
       body:
         application/json:
-          type: recordCollection
+          type: recordBatch
       responses:
         201:
           body:
             application/json:
-              type: recordCollection
+              type: recordBatch
         400:
           description: "Bad request"
           body:
@@ -46,7 +46,7 @@ traits:
             text/plain:
               example: "Internal server error"
             application/json:
-              type: recordCollection
+              type: recordBatch
   /parsed-records:
     put:
       description: "Updates parsed records from a collection. It returns both updated records and error messages (if some record was not updated)."

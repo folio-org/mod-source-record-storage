@@ -5,6 +5,7 @@ import java.util.Optional;
 import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
@@ -46,11 +47,11 @@ public interface RecordService {
     /**
      * Saves collection of records
      *
-     * @param recordCollection Records to save
+     * @param recordBatch Records to save
      * @param tenantId         tenant id
      * @return future with collection both saved records and errors messages if any records were not saved.
      */
-    Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId);
+    Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId);
 
     /**
      * Updates record with given id

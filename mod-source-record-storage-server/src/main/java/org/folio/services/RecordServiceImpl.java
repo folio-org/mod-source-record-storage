@@ -25,6 +25,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
@@ -85,15 +86,15 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordCollection> saveRecords(RecordCollection recordCollection, String tenantId) {
-    Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
+  public Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId) {
+    Map<Record, Future<Boolean>> savedRecords = recordBatch.getRecords().stream()
       .map(record -> Pair.of(record, saveRecord(record, tenantId)))
       .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
 
-    Future<RecordCollection> result = Future.future();
+    Future<RecordBatch> result = Future.future();
 
     CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
-        RecordCollection records = new RecordCollection();
+      RecordBatch records = new RecordBatch();
         savedRecords.forEach((record, future) -> {
           if (future.failed()) {
             records.getErrorMessages().add(future.cause().getMessage());

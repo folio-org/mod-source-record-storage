@@ -25,7 +25,6 @@
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
-    <jackson.version>2.9.8</jackson.version>
   </properties>
 
   <build>

@@ -1,3 +1,6 @@
+## 2019-08-02 v2.6.0-SNAPSHOT 
+* Fixed security vulnerability with jackson databind
+
 ## 2019-07-23 v2.5.0
 * Added endpoint for updating parsed records
 * Moved endpoint for updating parsed records into the new API interface for batch operations

@@ -1,21 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -29,10 +13,11 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
@@ -41,6 +26,22 @@ import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertThat;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordApiTest extends AbstractRestVerticleTest {
@@ -1084,19 +1085,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
-    RecordBatch recordCollection = new RecordBatch()
+    RecordCollection recordCollection = new RecordCollection()
       .withRecords(Arrays.asList(record_2, record_3))
       .withTotalRecords(2);
 
     async = testContext.async();
-    RecordBatch createdRecordCollection = RestAssured.given()
+    RecordsBatchResponse createdRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
       .post(BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .extract().response().body().as(RecordBatch.class);
+      .extract().response().body().as(RecordsBatchResponse.class);
 
     Record createdRecord = createdRecordCollection.getRecords().get(0);
     assertThat(createdRecord.getId(), notNullValue());
@@ -1116,7 +1117,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldCreatePartOfRawRecordsOnBatchSaveOperation(TestContext testContext) {
+  public void shouldCreatePartOfRecordsOnBatchSaveOperation(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1132,26 +1133,26 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(2);
 
     async = testContext.async();
-    RecordBatch recordBatch = RestAssured.given()
+    RecordsBatchResponse recordsBatchResponse = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
       .post(BATCH_RECORDS_PATH)
       .then()
-      .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
-      .extract().response().body().as(RecordBatch.class);
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().response().body().as(RecordsBatchResponse.class);
 
-    assertThat(recordBatch.getRecords().size(), is(1));
+    assertThat(recordsBatchResponse.getRecords().size(), is(1));
 
-    Record createdRecord = recordBatch.getRecords().get(0);
+    Record createdRecord = recordsBatchResponse.getRecords().get(0);
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
     assertThat(createdRecord.getRecordType(), is(record_2.getRecordType()));
     assertThat(createdRecord.getRawRecord().getContent(), is(record_2.getRawRecord().getContent()));
     assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
 
-    assertThat(recordBatch.getErrorMessages().size(), is(1));
-    assertThat(recordBatch.getErrorMessages().get(0), notNullValue());
+    assertThat(recordsBatchResponse.getErrorMessages().size(), is(1));
+    assertThat(recordsBatchResponse.getErrorMessages().get(0), notNullValue());
     async.complete();
   }
 
@@ -1193,14 +1194,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(1);
 
     async = testContext.async();
-    ParsedRecordCollection updatedParsedRecordCollection = RestAssured.given()
+    ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .extract().response().body().as(ParsedRecordCollection.class);
+      .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
@@ -1267,14 +1268,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(1);
 
     async = testContext.async();
-    ParsedRecordCollection updatedParsedRecordCollection = RestAssured.given()
+    ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .extract().response().body().as(ParsedRecordCollection.class);
+      .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
@@ -1291,18 +1292,17 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
       .withTotalRecords(2);
 
-    ParsedRecordCollection result = RestAssured.given()
+    ParsedRecordsBatchResponse result = RestAssured.given()
       .spec(spec)
       .body(parsedRecordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
-      .extract().response().body().as(ParsedRecordCollection.class);
+      .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
     assertThat(result.getErrorMessages(), hasSize(2));
     async.complete();
   }
-
 
 }

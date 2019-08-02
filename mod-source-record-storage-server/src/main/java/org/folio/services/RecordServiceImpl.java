@@ -1,17 +1,5 @@
 package org.folio.services;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
@@ -24,15 +12,27 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
+import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordBatch;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class RecordServiceImpl implements RecordService {
@@ -86,24 +86,24 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordBatch> saveRecords(RecordBatch recordBatch, String tenantId) {
-    Map<Record, Future<Boolean>> savedRecords = recordBatch.getRecords().stream()
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
       .map(record -> Pair.of(record, saveRecord(record, tenantId)))
       .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
 
-    Future<RecordBatch> result = Future.future();
+    Future<RecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
-      RecordBatch records = new RecordBatch();
+      RecordsBatchResponse response = new RecordsBatchResponse();
         savedRecords.forEach((record, future) -> {
           if (future.failed()) {
-            records.getErrorMessages().add(future.cause().getMessage());
+            response.getErrorMessages().add(future.cause().getMessage());
           } else {
-            records.getRecords().add(record);
+            response.getRecords().add(record);
           }
         });
-        records.setTotalRecords(records.getRecords().size());
-        result.complete(records);
+        response.setTotalRecords(response.getRecords().size());
+        result.complete(response);
       }
     );
     return result;
@@ -135,26 +135,26 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<ParsedRecordCollection> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
 
     Map<ParsedRecord, Future<Boolean>> updatedRecords = parsedRecordCollection.getParsedRecords().stream()
       .peek(this::validateParsedRecordId)
       .map(it -> Pair.of(it, recordDao.updateParsedRecord(it, parsedRecordCollection.getRecordType(), tenantId)))
       .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
 
-    Future<ParsedRecordCollection> result = Future.future();
+    Future<ParsedRecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(new ArrayList<>(updatedRecords.values())).setHandler(ar -> {
-        ParsedRecordCollection records = new ParsedRecordCollection();
+      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
         updatedRecords.forEach((record, future) -> {
           if (future.failed()) {
-            records.getErrorMessages().add(future.cause().getMessage());
+            response.getErrorMessages().add(future.cause().getMessage());
           } else {
-            records.getParsedRecords().add(record);
+            response.getParsedRecords().add(record);
           }
         });
-        records.setTotalRecords(records.getParsedRecords().size());
-        result.complete(records);
+        response.setTotalRecords(response.getParsedRecords().size());
+        result.complete(response);
       }
     );
     return result;

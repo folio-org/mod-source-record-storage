@@ -10,8 +10,10 @@ documentation:
     content: Batch API for managing records
 
 types:
-  recordBatch: !include raml-storage/schemas/dto/recordBatch.json
+  recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  recordsBatchResponse: !include raml-storage/schemas/dto/recordsBatchResponse.json
   parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
+  parsedRecordsBatchResponse: !include raml-storage/schemas/dto/parsedRecordsBatchResponse.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
 traits:
@@ -20,16 +22,16 @@ traits:
 /source-storage/batch:
   /records:
     post:
-      description: "Creates records from a record collection. It returns both saved records and error messages (if some record was not saved)."
+      description: "Creates records from a record collection. It returns both saved records and error messages for records that were not saved."
       is: [validate]
       body:
         application/json:
-          type: recordBatch
+          type: recordCollection
       responses:
         201:
           body:
             application/json:
-              type: recordBatch
+              type: recordsBatchResponse
         400:
           description: "Bad request"
           body:
@@ -46,10 +48,10 @@ traits:
             text/plain:
               example: "Internal server error"
             application/json:
-              type: recordBatch
+              type: recordsBatchResponse
   /parsed-records:
     put:
-      description: "Updates parsed records from a collection. It returns both updated records and error messages (if some record was not updated)."
+      description: "Updates parsed records from a collection. It returns both updated records and error messages for records that were not updated."
       is: [validate]
       body:
         application/json:
@@ -58,7 +60,7 @@ traits:
         200:
           body:
             application/json:
-              type: parsedRecordCollection
+              type: parsedRecordsBatchResponse
         400:
           description: "Bad request"
           body:
@@ -75,4 +77,4 @@ traits:
             text/plain:
               example: "Internal server error"
             application/json:
-              type: parsedRecordCollection
+              type: parsedRecordsBatchResponse

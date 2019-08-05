@@ -9,7 +9,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.jaxrs.model.RecordBatch;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.resource.SourceStorageBatch;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -33,18 +33,19 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void postSourceStorageBatchRecords(RecordBatch entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecords(entity, tenantId)
-          .map((RecordBatch it) -> {
-            if (it.getErrorMessages().isEmpty()) {
-              return (Response) PostSourceStorageBatchRecordsResponse.respond201WithApplicationJson(it);
+          .map(recordsBatchResponse -> {
+            if (!recordsBatchResponse.getRecords().isEmpty()) {
+              return PostSourceStorageBatchRecordsResponse.respond201WithApplicationJson(recordsBatchResponse);
             } else {
-              LOG.error("Some records were not saved! Here is the list of errors: {}", it.getErrorMessages());
-              return (Response) PostSourceStorageBatchRecordsResponse.respond500WithApplicationJson(it);
+              LOG.error("Batch of records was processed, but records were not saved, error messages: {}", recordsBatchResponse.getErrorMessages());
+              return PostSourceStorageBatchRecordsResponse.respond500WithApplicationJson(recordsBatchResponse);
             }
           })
+          .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
@@ -59,16 +60,17 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
     vertxContext.runOnContext(v -> {
       try {
         recordService.updateParsedRecords(entity, tenantId)
-                .map((ParsedRecordCollection it) -> {
-                  if (it.getErrorMessages().isEmpty()) {
-                    return (Response) PutSourceStorageBatchParsedRecordsResponse.respond200WithApplicationJson(it);
-                  } else {
-                    LOG.error("Some records were not saved! Here is the list of errors: {}", it.getErrorMessages());
-                    return (Response) PutSourceStorageBatchParsedRecordsResponse.respond500WithApplicationJson(it);
-                  }
-                })
-                .otherwise(ExceptionHelper::mapExceptionToResponse)
-                .setHandler(asyncResultHandler);
+          .map(parsedRecordsBatchResponse -> {
+            if (!parsedRecordsBatchResponse.getParsedRecords().isEmpty()) {
+              return PutSourceStorageBatchParsedRecordsResponse.respond200WithApplicationJson(parsedRecordsBatchResponse);
+            } else {
+              LOG.error("Batch of parsed records was processed, but records were not updated, error messages: {}", parsedRecordsBatchResponse.getErrorMessages());
+              return PutSourceStorageBatchParsedRecordsResponse.respond500WithApplicationJson(parsedRecordsBatchResponse);
+            }
+          })
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to update parsed records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));

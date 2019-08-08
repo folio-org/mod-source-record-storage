@@ -7,6 +7,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
 import java.util.Optional;
 
@@ -18,9 +19,9 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} in the db view
    *
-   * @param query  query string to filter records based on matching criteria in fields
-   * @param offset starting index in a list of results
-   * @param limit  maximum number of results to return
+   * @param query    query string to filter records based on matching criteria in fields
+   * @param offset   starting index in a list of results
+   * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with {@link RecordCollection}
    */
@@ -29,7 +30,7 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by id
    *
-   * @param id Record id
+   * @param id       Record id
    * @param tenantId tenant id
    * @return future with optional {@link Record}
    */
@@ -38,7 +39,7 @@ public interface RecordDao {
   /**
    * Saves {@link Record} to the db
    *
-   * @param record {@link Record} to save
+   * @param record   {@link Record} to save
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -47,7 +48,7 @@ public interface RecordDao {
   /**
    * Updates {{@link Record} in the db
    *
-   * @param record {@link Record} to update
+   * @param record   {@link Record} to update
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -56,11 +57,11 @@ public interface RecordDao {
   /**
    * Searches for {@link SourceRecord} in the db view
    *
-   * @param query  query string to filter results based on matching criteria in fields
-   * @param offset starting index in a list of results
-   * @param limit  maximum number of results to return
+   * @param query          query string to filter results based on matching criteria in fields
+   * @param offset         starting index in a list of results
+   * @param limit          maximum number of results to return
    * @param deletedRecords indicates to return records marked as deleted or not
-   * @param tenantId tenant id
+   * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
@@ -79,8 +80,8 @@ public interface RecordDao {
    * Updates {@link ParsedRecord} in the db
    *
    * @param parsedRecord {@link ParsedRecord} to update
-   * @param recordType type of ParsedRecord
-   * @param tenantId tenant id
+   * @param recordType   type of ParsedRecord
+   * @param tenantId     tenant id
    * @return future with true if succeeded
    */
   Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
@@ -89,9 +90,18 @@ public interface RecordDao {
    * Searches for {@link Record} by instance id
    *
    * @param instanceId Instance id
-   * @param tenantId tenant id
+   * @param tenantId   tenant id
    * @return future with optional {@link Record}
    */
   Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId);
+
+  /**
+   * Change suppress from discovery flag for record by external relation id
+   *
+   * @param suppressFromDiscoveryDto - dto that contains new value and id
+   * @param tenantId                 - tenant id
+   * @return - future with true if succeeded
+   */
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
 
 }

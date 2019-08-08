@@ -1,6 +1,11 @@
 ## 2019-08-02 v2.6.0-SNAPSHOT 
 * Fixed security vulnerability with jackson databind
 * Changed response status on partial success of batch save/update - return 201/200 if at least one of the records was saved/updated, 500 if none of the records was saved/updated
+* Added suppress from discovery endpoint for change records value
+
+| METHOD |             URL                                       | DESCRIPTION                                      |
+|--------|-------------------------------------------------------|--------------------------------------------------|
+| POST   | /source-storage/record/suppressFromDiscovery         | Change suppress from discovery flag for record   |
 
 ## 2019-07-23 v2.5.0
 * Added endpoint for updating parsed records

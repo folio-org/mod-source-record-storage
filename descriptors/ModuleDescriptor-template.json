@@ -70,6 +70,11 @@
           "methods": ["GET"],
           "pathPattern": "/source-storage/formattedRecords/{id}",
           "permissionsRequired": ["source-storage.records.get"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/source-storage/record/suppressFromDiscovery",
+          "permissionsRequired": ["source-storage.record.update"]
         }
       ]
     },
@@ -144,6 +149,11 @@
       "permissionName": "source-storage.records.put",
       "displayName": "Source Storage - update record",
       "description": "Put Record"
+    },
+    {
+      "permissionName": "source-storage.record.update",
+      "displayName": "Source Storage - update record",
+      "description": "Update Record's fields"
     },
     {
       "permissionName": "source-storage.records.delete",

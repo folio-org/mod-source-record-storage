@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,7 +95,7 @@ public class RecordServiceImpl implements RecordService {
     Future<RecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
-      RecordsBatchResponse response = new RecordsBatchResponse();
+        RecordsBatchResponse response = new RecordsBatchResponse();
         savedRecords.forEach((record, future) -> {
           if (future.failed()) {
             response.getErrorMessages().add(future.cause().getMessage());
@@ -145,7 +146,7 @@ public class RecordServiceImpl implements RecordService {
     Future<ParsedRecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(new ArrayList<>(updatedRecords.values())).setHandler(ar -> {
-      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
+        ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
         updatedRecords.forEach((record, future) -> {
           if (future.failed()) {
             response.getErrorMessages().add(future.cause().getMessage());
@@ -170,6 +171,11 @@ public class RecordServiceImpl implements RecordService {
     }
     return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
       String.format("Couldn't find Record with %s id %s", identifier, id)))));
+  }
+
+  @Override
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
   }
 
   private Record formatMarcRecord(Record record) {

@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -25,11 +26,14 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.z3950.zing.cql.cql2pgjson.FieldException;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
@@ -114,7 +118,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String getHighestGeneration = String.format(GET_HIGHEST_GENERATION_QUERY, record.getMatchedId(), record.getSnapshotId());
+      String getHighestGeneration = format(GET_HIGHEST_GENERATION_QUERY, record.getMatchedId(), record.getSnapshotId());
       pgClientFactory.createInstance(tenantId).select(getHighestGeneration, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for records highest generation", e);
@@ -140,7 +144,7 @@ public class RecordDaoImpl implements RecordDao {
             LOG.error("Could not update ParsedRecord with id {}", updateResult.cause(), parsedRecord.getId());
             future.fail(updateResult.cause());
           } else if (updateResult.result().getUpdated() != 1) {
-            String errorMessage = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+            String errorMessage = format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
             LOG.error(errorMessage);
             future.fail(new NotFoundException(errorMessage));
           } else {
@@ -158,7 +162,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query = String.format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId);
+      String query = format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId);
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for Record by instance id {}", e, instanceId);
@@ -168,6 +172,75 @@ public class RecordDaoImpl implements RecordDao {
       String record = resultSet.getResults().get(0).getString(0);
       return Optional.ofNullable(record).map(it -> new JsonObject(it).mapTo(Record.class));
     });
+  }
+
+  @Override
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
+                                                              String tenantId) {
+    Future<Boolean> future = Future.future();
+    String rollBackMessage = format("Record with %s id: %s was not found", suppressFromDiscoveryDto.getIncomingIdType().name(), suppressFromDiscoveryDto.getId());
+    try {
+      String queryForRecordSearchByExternalId;
+      if (suppressFromDiscoveryDto.getIncomingIdType().equals(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)) {
+        queryForRecordSearchByExternalId = format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
+      } else {
+        throw new BadRequestException("Selected IncomingIdType is not supported");
+      }
+      Future<SQLConnection> tx = Future.future(); //NOSONAR
+      Future.succeededFuture()
+        .compose(v -> {
+          pgClientFactory.createInstance(tenantId).startTx(tx.completer());
+          return tx;
+        }).compose(v -> {
+        Future<ResultSet> resultSetFuture = Future.future();
+        pgClientFactory.createInstance(tenantId).select(tx, queryForRecordSearchByExternalId, resultSetFuture);
+        return resultSetFuture;
+      }).compose(resultSet -> {
+        if (resultSet.getResults() == null
+          || resultSet.getResults().isEmpty()
+          || resultSet.getResults().get(0) == null
+          || resultSet.getResults().get(0).getString(0) == null
+        ) {
+          throw new NotFoundException(rollBackMessage);
+        }
+        Record record = new JsonObject(resultSet.getResults().get(0).getString(0)).mapTo(Record.class);
+        Future<Results<RecordModel>> resultSetFuture = Future.future();
+        Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
+        pgClientFactory.createInstance(tenantId).get(tx, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
+        return resultSetFuture.map(recordModelResults -> recordModelResults.getResults().get(0));
+      }).compose(recordModel -> {
+        recordModel.getAdditionalInfo().setSuppressDiscovery(suppressFromDiscoveryDto.getSuppressFromDiscovery());
+        CQLWrapper filter; //NOSONAR
+        try {
+          filter = getCQLWrapper(RECORDS_TABLE, "id==" + recordModel.getId());
+        } catch (FieldException e) {
+          throw new RuntimeException(e);
+        }
+        Future<UpdateResult> updateHandler = Future.future();
+        pgClientFactory.createInstance(tenantId).update(tx, RECORDS_TABLE, recordModel, filter, true, updateHandler);
+        return updateHandler;
+      }).compose(updateHandler -> {
+        if (updateHandler.getUpdated() != 1) {
+          throw new NotFoundException(rollBackMessage);
+        }
+        Future<Void> endTxFuture = Future.future(); //NOSONAR
+        pgClientFactory.createInstance(tenantId).endTx(tx, endTxFuture);
+        return endTxFuture;
+      }).setHandler(v -> {
+        if (v.failed()) {
+          pgClientFactory.createInstance(tenantId).rollbackTx(tx, rollback -> future.fail(v.cause()));
+          return;
+        }
+        future.complete(true);
+      });
+      return future;
+    } catch (
+      Exception e) {
+      LOG.error("Error while updating Record's suppress from discovery flag by {} id {}",
+        e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
+      future.fail(e);
+    }
+    return future;
   }
 
   private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
@@ -222,7 +295,7 @@ public class RecordDaoImpl implements RecordDao {
     Future<UpdateResult> future = Future.future();
     try {
       JsonArray params = new JsonArray().add(id).add(pojo2json(rawRecord)).add(pojo2json(rawRecord));
-      String query = String.format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), tableName);
+      String query = format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), tableName);
       pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
       return future.map(result -> result.getUpdated() == 1);
     } catch (Exception e) {
@@ -238,7 +311,7 @@ public class RecordDaoImpl implements RecordDao {
       JsonObject jsonData = convertParsedRecordToJsonObject(parsedRecord);
       JsonArray params = new JsonArray().add(
         parsedRecord.getId()).add(pojo2json(jsonData)).add(pojo2json(jsonData));
-      String query = String.format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), RecordType.valueOf(record.getRecordType().value()).getTableName());
+      String query = format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), RecordType.valueOf(record.getRecordType().value()).getTableName());
       record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
       pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
       return future.map(result -> result.getUpdated() == 1);

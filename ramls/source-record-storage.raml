@@ -19,6 +19,7 @@ types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
   recordModel: !include raml-storage/schemas/mod-source-record-storage/recordModel.json
   testMarcRecordsCollection: !include raml-storage/schemas/mod-source-record-storage/testMarcRecordsCollection.json
+  suppressFromDiscoveryDto: !include raml-storage/schemas/mod-source-record-storage/suppressFromDiscoveryDto.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -208,3 +209,31 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
+  /record:
+    displayName: Records
+    description: API for managing Records
+    /suppressFromDiscovery:
+          put:
+            description: Change suppress from discovery flag for record
+            body:
+              application/json:
+                type: suppressFromDiscoveryDto
+            responses:
+              200:
+                body:
+                  text/plain: !!null
+              400:
+                description: "Bad request"
+                body:
+                  text/plain:
+                    example: "Bad request"
+              422:
+                description: "Unprocessable Entity"
+                body:
+                  application/json:
+                    type: errors
+              500:
+                description: "Internal server error"
+                body:
+                  text/plain:
+                    example: "Internal server error"

@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -48,6 +49,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
+  private static final String SOURCE_STORAGE_RECORDS_SUPPRESS_FROM_DISC_PATH = "/source-storage/record/suppressFromDiscovery";
   private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
   private static final String BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
@@ -1304,5 +1306,94 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     assertThat(result.getErrorMessages(), hasSize(2));
     async.complete();
   }
+
+  @Test
+  public void suppressFromDiscoveryByInstanceIdSuccess(TestContext context) {
+    Async async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = context.async();
+    String srsId = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+
+    SuppressFromDiscoveryDto dto = new SuppressFromDiscoveryDto()
+      .withId(instanceId)
+      .withIncomingIdType(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)
+      .withSuppressFromDiscovery(true);
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+
+    Record newRecord = new Record()
+      .withId(srsId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord)
+      .withMatchedId(UUID.randomUUID().toString());
+
+    RestAssured.given()
+      .spec(spec)
+      .body(JsonObject.mapFrom(newRecord).toString())
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("id", is(srsId));
+    async.complete();
+
+    async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(dto).log().all()
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_SUPPRESS_FROM_DISC_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK);
+    async.complete();
+  }
+
+  @Test
+  public void suppressFromDiscoveryByInstanceIdNotFound(TestContext context) {
+    SuppressFromDiscoveryDto dto = new SuppressFromDiscoveryDto()
+      .withId(UUID.randomUUID().toString())
+      .withIncomingIdType(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)
+      .withSuppressFromDiscovery(true);
+    Async async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(dto).log().all()
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_SUPPRESS_FROM_DISC_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+  }
+
+  @Test
+  public void suppressFromDiscoveryByInstanceIdInvalidRequest(TestContext context) {
+    SuppressFromDiscoveryDto dto = new SuppressFromDiscoveryDto()
+      .withId(UUID.randomUUID().toString())
+      .withSuppressFromDiscovery(true);
+    Async async = context.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(dto)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_SUPPRESS_FROM_DISC_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    async.complete();
+  }
+
 
 }

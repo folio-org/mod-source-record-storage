@@ -13,8 +13,10 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
@@ -61,23 +63,34 @@ public class SnapshotDaoImpl implements SnapshotDao {
   }
 
   @Override
-  public Future<String> saveSnapshot(Snapshot snapshot, String tenantId) {
-    Future<String> future = Future.future();
-    pgClientFactory.createInstance(tenantId).save(SNAPSHOTS_TABLE, snapshot.getJobExecutionId(), snapshot, future.completer());
+  public Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId) {
+    Future<Snapshot> future = Future.future();
+    pgClientFactory.createInstance(tenantId).save(SNAPSHOTS_TABLE, snapshot.getJobExecutionId(), snapshot, save -> {
+      if (save.failed()) {
+        LOG.error("Failed to create snapshot {}", save.cause(), snapshot.getJobExecutionId());
+        future.fail(save.cause());
+        return;
+      }
+      snapshot.setJobExecutionId(save.result());
+      future.complete(snapshot);
+    });
     return future;
   }
 
   @Override
-  public Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId) {
+  public Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId) {
     Future<UpdateResult> future = Future.future();
     try {
       Criteria idCrit = constructCriteria(SNAPSHOT_ID_FIELD, snapshot.getJobExecutionId());
       pgClientFactory.createInstance(tenantId).update(SNAPSHOTS_TABLE, snapshot, new Criterion(idCrit), true, future.completer());
     } catch (Exception e) {
-      LOG.error("Error updating snapshots", e);
+      LOG.error("Failed to update snapshot {}", e, snapshot.getJobExecutionId());
       future.fail(e);
     }
-    return future.map(updateResult -> updateResult.getUpdated() == 1);
+    return future
+      .compose(updateResult ->
+        updateResult.getUpdated() == 1 ? Future.succeededFuture(snapshot) :
+          Future.failedFuture(new NotFoundException(format("Snapshot %s was not updated", snapshot.getJobExecutionId()))));
   }
 
   @Override

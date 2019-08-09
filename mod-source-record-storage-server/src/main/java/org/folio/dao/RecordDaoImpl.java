@@ -88,12 +88,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> saveRecord(Record record, String tenantId) {
+  public Future<Record> saveRecord(Record record, String tenantId) {
     return insertOrUpdateRecord(record, tenantId);
   }
 
   @Override
-  public Future<Boolean> updateRecord(Record record, String tenantId) {
+  public Future<Record> updateRecord(Record record, String tenantId) {
     return insertOrUpdateRecord(record, tenantId);
   }
 
@@ -134,8 +134,8 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId) {
-    Future<Boolean> future = Future.future();
+  public Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId) {
+    Future<ParsedRecord> future = Future.future();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, parsedRecord.getId());
       pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
@@ -148,7 +148,7 @@ public class RecordDaoImpl implements RecordDao {
             LOG.error(errorMessage);
             future.fail(new NotFoundException(errorMessage));
           } else {
-            future.complete(true);
+            future.complete(parsedRecord);
           }
         });
     } catch (Exception e) {
@@ -200,7 +200,7 @@ public class RecordDaoImpl implements RecordDao {
           || resultSet.getResults().isEmpty()
           || resultSet.getResults().get(0) == null
           || resultSet.getResults().get(0).getString(0) == null
-        ) {
+          ) {
           throw new NotFoundException(rollBackMessage);
         }
         Record record = new JsonObject(resultSet.getResults().get(0).getString(0)).mapTo(Record.class);
@@ -234,8 +234,7 @@ public class RecordDaoImpl implements RecordDao {
         future.complete(true);
       });
       return future;
-    } catch (
-      Exception e) {
+    } catch (Exception e) {
       LOG.error("Error while updating Record's suppress from discovery flag by {} id {}",
         e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
       future.fail(e);
@@ -243,8 +242,8 @@ public class RecordDaoImpl implements RecordDao {
     return future;
   }
 
-  private Future<Boolean> insertOrUpdateRecord(Record record, String tenantId) {
-    Future<Boolean> future = Future.future();
+  private Future<Record> insertOrUpdateRecord(Record record, String tenantId) {
+    Future<Record> future = Future.future();
     RecordModel recordModel = new RecordModel() //NOSONAR
       .withId(record.getId())
       .withSnapshotId(record.getSnapshotId())
@@ -280,7 +279,7 @@ public class RecordDaoImpl implements RecordDao {
       .setHandler(result -> {
         if (result.succeeded()) {
           pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
-            future.complete(true));
+            future.complete(record));
         } else {
           pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
             LOG.error("Failed to insert or update Record with id {}. Rollback transaction", result.cause(), record.getId());

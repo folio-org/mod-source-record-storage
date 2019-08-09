@@ -14,9 +14,9 @@ public interface SnapshotService {
   /**
    * Searches for {@link Snapshot}
    *
-   * @param query  query from URL
-   * @param offset starting index in a list of results
-   * @param limit  limit of records for pagination
+   * @param query    query from URL
+   * @param offset   starting index in a list of results
+   * @param limit    limit of records for pagination
    * @param tenantId tenant id
    * @return future with {@link SnapshotCollection}
    */
@@ -25,7 +25,7 @@ public interface SnapshotService {
   /**
    * Searches for {@link Snapshot} by id
    *
-   * @param id Snapshot id
+   * @param id       Snapshot id
    * @param tenantId tenant id
    * @return future with optional {@link Snapshot}
    */
@@ -36,23 +36,23 @@ public interface SnapshotService {
    *
    * @param snapshot Snapshot to save
    * @param tenantId tenant id
-   * @return future
+   * @return future with saved Snapshot
    */
-  Future<String> saveSnapshot(Snapshot snapshot, String tenantId);
+  Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId);
 
   /**
    * Updates {@link Snapshot} with given id
    *
    * @param snapshot Snapshot to update
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with updated Snapshot
    */
-  Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId);
+  Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId);
 
   /**
    * Deletes {@link Snapshot} by id
    *
-   * @param id Snapshot id
+   * @param id       Snapshot id
    * @param tenantId tenant id
    * @return future with true if succeeded
    */

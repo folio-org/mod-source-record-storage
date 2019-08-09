@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.String.format;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public class SourceStorageImpl implements SourceStorage {
@@ -98,7 +99,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         snapshotService.getSnapshotById(jobExecutionId, tenantId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotsByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -119,11 +120,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         entity.setJobExecutionId(jobExecutionId);
         snapshotService.updateSnapshot(entity, tenantId)
-          .map(updated -> updated ?
-            PutSourceStorageSnapshotsByJobExecutionIdResponse.respond200WithApplicationJson(entity) :
-            PutSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
-              String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))
-          )
+          .map(updated -> PutSourceStorageSnapshotsByJobExecutionIdResponse.respond200WithApplicationJson(entity))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -143,9 +140,9 @@ public class SourceStorageImpl implements SourceStorage {
         snapshotService.deleteSnapshot(jobExecutionId, tenantId)
           .map(deleted -> deleted ?
             DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204WithTextPlain(
-              String.format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
+              format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
             DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
-              String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
+              format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -197,7 +194,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         recordService.getRecordById(id, tenantId)
           .map(optionalRecord -> optionalRecord.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -235,11 +232,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         entity.setId(id);
         recordService.updateRecord(entity, tenantId)
-          .map(updated -> updated ?
-            PutSourceStorageRecordsByIdResponse.respond200WithApplicationJson(entity) :
-            PutSourceStorageRecordsByIdResponse.respond404WithTextPlain(
-              String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))
-          )
+          .map(updated -> PutSourceStorageRecordsByIdResponse.respond200WithApplicationJson(entity))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -257,12 +250,12 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         recordService.getRecordById(id, tenantId)
           .map(recordOptional -> recordOptional.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .compose(record -> record.getDeleted()
             ? Future.succeededFuture(true)
-            : recordService.updateRecord(record.withDeleted(true), tenantId))
+            : recordService.updateRecord(record.withDeleted(true), tenantId).map(r -> true))
           .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
-            String.format("Record with id '%s' was successfully deleted", id)))
+            format("Record with id '%s' was successfully deleted", id)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -312,6 +305,7 @@ public class SourceStorageImpl implements SourceStorage {
             return record;
           })
           .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
+
         CompositeFuture.all(futures).setHandler(result -> {
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));

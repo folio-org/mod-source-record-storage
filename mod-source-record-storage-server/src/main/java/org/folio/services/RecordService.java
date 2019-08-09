@@ -42,9 +42,9 @@ public interface RecordService {
    *
    * @param record   Record to save
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with saved Record
    */
-  Future<Boolean> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, String tenantId);
 
   /**
    * Saves collection of records
@@ -60,9 +60,9 @@ public interface RecordService {
    *
    * @param record   Record to update
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with updated Record
    */
-  Future<Boolean> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, String tenantId);
 
   /**
    * Searches for source records

@@ -33,7 +33,8 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders,
+                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.saveRecords(entity, tenantId)
@@ -56,7 +57,8 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void putSourceStorageBatchParsedRecords(ParsedRecordCollection entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putSourceStorageBatchParsedRecords(ParsedRecordCollection entity, Map<String, String> okapiHeaders,
+                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.updateParsedRecords(entity, tenantId)

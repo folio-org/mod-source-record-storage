@@ -11,6 +11,8 @@ import javax.ws.rs.NotFoundException;
 import java.util.Date;
 import java.util.Optional;
 
+import static java.lang.String.format;
+
 @Component
 public class SnapshotServiceImpl implements SnapshotService {
 
@@ -28,17 +30,17 @@ public class SnapshotServiceImpl implements SnapshotService {
   }
 
   @Override
-  public Future<String> saveSnapshot(Snapshot snapshot, String tenantId) {
+  public Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId) {
     return snapshotDao.saveSnapshot(setProcessingStartedDate(snapshot), tenantId);
   }
 
   @Override
-  public Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId) {
+  public Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId) {
     return getSnapshotById(snapshot.getJobExecutionId(), tenantId)
       .compose(optionalSnapshot -> optionalSnapshot
-        .map(t -> snapshotDao.updateSnapshot(setProcessingStartedDate(snapshot), tenantId))
+        .map(s -> snapshotDao.updateSnapshot(setProcessingStartedDate(snapshot), tenantId))
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()))))
+          format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()))))
       );
   }
 
@@ -48,7 +50,7 @@ public class SnapshotServiceImpl implements SnapshotService {
   }
 
   /**
-   *  Sets processing start date if snapshot status is PARSING_IN_PROGRESS
+   * Sets processing start date if snapshot status is PARSING_IN_PROGRESS
    *
    * @param snapshot snapshot
    * @return snapshot with populated processingStartedDate field if snapshot status is PARSING_IN_PROGRESS

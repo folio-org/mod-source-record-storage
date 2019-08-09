@@ -184,7 +184,7 @@ public class RecordDaoImpl implements RecordDao {
       if (suppressFromDiscoveryDto.getIncomingIdType().equals(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)) {
         queryforRecordSearchByExternalId = format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
       } else {
-        throw new BadRequestException("Selected IncomingIdType doesn't supported");
+        throw new BadRequestException("Selected IncomingIdType is not supported");
       }
       Future<SQLConnection> tx = Future.future(); //NOSONAR
       Future.succeededFuture()

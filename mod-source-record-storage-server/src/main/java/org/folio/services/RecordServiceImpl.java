@@ -5,7 +5,6 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -28,12 +27,13 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 @Component
 public class RecordServiceImpl implements RecordService {
@@ -57,7 +57,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> saveRecord(Record record, String tenantId) {
+  public Future<Record> saveRecord(Record record, String tenantId) {
     if (record.getId() == null) {
       record.setId(UUID.randomUUID().toString());
     }
@@ -78,7 +78,7 @@ public class RecordServiceImpl implements RecordService {
       .compose(snapshot -> {
         if (snapshot.getProcessingStartedDate() == null) {
           return Future.failedFuture(new BadRequestException(
-            String.format("Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s", snapshot.getStatus())));
+            format("Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s", snapshot.getStatus())));
         }
         return Future.succeededFuture();
       })
@@ -88,19 +88,20 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
-    Map<Record, Future<Boolean>> savedRecords = recordCollection.getRecords().stream()
-      .map(record -> Pair.of(record, saveRecord(record, tenantId)))
-      .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
+
+    List<Future> futures = recordCollection.getRecords().stream()
+      .map(record -> saveRecord(record, tenantId))
+      .collect(Collectors.toList());
 
     Future<RecordsBatchResponse> result = Future.future();
 
-    CompositeFuture.join(new ArrayList<>(savedRecords.values())).setHandler(ar -> {
+    CompositeFuture.join(futures).setHandler(ar -> {
         RecordsBatchResponse response = new RecordsBatchResponse();
-        savedRecords.forEach((record, future) -> {
-          if (future.failed()) {
-            response.getErrorMessages().add(future.cause().getMessage());
+        futures.forEach(save -> {
+          if (save.failed()) {
+            response.getErrorMessages().add(save.cause().getMessage());
           } else {
-            response.getRecords().add(record);
+            response.getRecords().add((Record) save.result());
           }
         });
         response.setTotalRecords(response.getRecords().size());
@@ -111,7 +112,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> updateRecord(Record record, String tenantId) {
+  public Future<Record> updateRecord(Record record, String tenantId) {
     return getRecordById(record.getId(), tenantId)
       .compose(optionalRecord -> optionalRecord
         .map(r -> {
@@ -126,7 +127,7 @@ public class RecordServiceImpl implements RecordService {
           return recordDao.updateRecord(record, tenantId);
         })
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", record.getId()))))
+          format("Record with id '%s' was not found", record.getId()))))
       );
   }
 
@@ -138,20 +139,20 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
 
-    Map<ParsedRecord, Future<Boolean>> updatedRecords = parsedRecordCollection.getParsedRecords().stream()
+    List<Future> futures = parsedRecordCollection.getParsedRecords().stream()
       .peek(this::validateParsedRecordId)
-      .map(it -> Pair.of(it, recordDao.updateParsedRecord(it, parsedRecordCollection.getRecordType(), tenantId)))
-      .collect(LinkedHashMap::new, (map, pair) -> map.put(pair.getKey(), pair.getValue()), Map::putAll);
+      .map(parsedRecord -> recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId))
+      .collect(Collectors.toList());
 
     Future<ParsedRecordsBatchResponse> result = Future.future();
 
-    CompositeFuture.join(new ArrayList<>(updatedRecords.values())).setHandler(ar -> {
+    CompositeFuture.join(futures).setHandler(ar -> {
         ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-        updatedRecords.forEach((record, future) -> {
-          if (future.failed()) {
-            response.getErrorMessages().add(future.cause().getMessage());
+        futures.forEach(update -> {
+          if (update.failed()) {
+            response.getErrorMessages().add(update.cause().getMessage());
           } else {
-            response.getParsedRecords().add(record);
+            response.getParsedRecords().add((ParsedRecord) update.result());
           }
         });
         response.setTotalRecords(response.getParsedRecords().size());
@@ -170,7 +171,7 @@ public class RecordServiceImpl implements RecordService {
       future = getRecordById(id, tenantId);
     }
     return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
-      String.format("Couldn't find Record with %s id %s", identifier, id)))));
+      format("Couldn't find Record with %s id %s", identifier, id)))));
   }
 
   @Override

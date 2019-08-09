@@ -14,9 +14,9 @@ public interface SnapshotDao {
   /**
    * Searches for {@link Snapshot} in database
    *
-   * @param query  query string to filter snapshots based on matching criteria in fields
-   * @param offset starting index in a list of results
-   * @param limit  maximum number of results to return
+   * @param query    query string to filter snapshots based on matching criteria in fields
+   * @param offset   starting index in a list of results
+   * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with {@link SnapshotCollection}
    */
@@ -25,7 +25,7 @@ public interface SnapshotDao {
   /**
    * Searches for {@link Snapshot} by id
    *
-   * @param id Snapshot id
+   * @param id       Snapshot id
    * @param tenantId tenant id
    * @return future with optional {@link Snapshot}
    */
@@ -36,23 +36,23 @@ public interface SnapshotDao {
    *
    * @param snapshot {@link Snapshot} to save
    * @param tenantId tenant id
-   * @return future
+   * @return future with saved entity
    */
-  Future<String> saveSnapshot(Snapshot snapshot, String tenantId);
+  Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId);
 
   /**
    * Updates {@link Snapshot} in database
    *
    * @param snapshot {@link Snapshot} to update
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with updated entity
    */
-  Future<Boolean> updateSnapshot(Snapshot snapshot, String tenantId);
+  Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId);
 
   /**
    * Deletes {@link Snapshot} from database
    *
-   * @param id id of {@link Snapshot} to delete
+   * @param id       id of {@link Snapshot} to delete
    * @param tenantId tenant id
    * @return future with true if succeeded
    */

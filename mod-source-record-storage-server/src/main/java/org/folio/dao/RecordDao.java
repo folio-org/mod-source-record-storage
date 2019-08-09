@@ -41,18 +41,18 @@ public interface RecordDao {
    *
    * @param record   {@link Record} to save
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with saved Record
    */
-  Future<Boolean> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, String tenantId);
 
   /**
    * Updates {{@link Record} in the db
    *
    * @param record   {@link Record} to update
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with updated Record
    */
-  Future<Boolean> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} in the db view
@@ -82,9 +82,9 @@ public interface RecordDao {
    * @param parsedRecord {@link ParsedRecord} to update
    * @param recordType   type of ParsedRecord
    * @param tenantId     tenant id
-   * @return future with true if succeeded
+   * @return future with updated ParsedRecord
    */
-  Future<Boolean> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
 
   /**
    * Searches for {@link Record} by instance id

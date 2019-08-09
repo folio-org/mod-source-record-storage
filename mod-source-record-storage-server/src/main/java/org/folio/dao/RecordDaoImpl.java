@@ -236,7 +236,7 @@ public class RecordDaoImpl implements RecordDao {
       return future;
     } catch (
       Exception e) {
-      LOG.error("Error updating Record's suppress from discovery flag by {} id {}",
+      LOG.error("Error while updating Record's suppress from discovery flag by {} id {}",
         e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
       future.fail(e);
     }

@@ -5,7 +5,7 @@
 
 | METHOD |             URL                                       | DESCRIPTION                                      |
 |--------|-------------------------------------------------------|--------------------------------------------------|
-| POST   | /source-storage/record/suppressFromDiscovery         | Change suppress from discovery flag for record   |
+| PUT    | /source-storage/record/suppressFromDiscovery         | Change suppress from discovery flag for record   |
 
 ## 2019-07-23 v2.5.0
 * Added endpoint for updating parsed records

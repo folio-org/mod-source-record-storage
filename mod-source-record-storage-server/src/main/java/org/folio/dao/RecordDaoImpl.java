@@ -184,7 +184,7 @@ public class RecordDaoImpl implements RecordDao {
       if (suppressFromDiscoveryDto.getIncomingIdType().equals(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)) {
         queryForRecordSearchByExternalId = format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
       } else {
-        throw new BadRequestException("Selected IncomingIdType doesn't supported");
+        throw new BadRequestException("Selected IncomingIdType is not supported");
       }
       Future<SQLConnection> tx = Future.future(); //NOSONAR
       Future.succeededFuture()
@@ -236,7 +236,7 @@ public class RecordDaoImpl implements RecordDao {
       return future;
     } catch (
       Exception e) {
-      LOG.error("Error updating Record's suppress from discovery flag by {} id {}",
+      LOG.error("Error while updating Record's suppress from discovery flag by {} id {}",
         e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
       future.fail(e);
     }

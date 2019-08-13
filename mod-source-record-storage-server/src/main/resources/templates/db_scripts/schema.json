@@ -93,6 +93,13 @@
           "fieldName": "id",
           "tOps": "ADD"
         }
+      ],
+      "foreignKeys": [
+        {
+          "fieldName": "jobExecutionId",
+          "targetTable": "snapshots",
+          "tOps": "ADD"
+        }
       ]
     }
   ],

@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
@@ -49,6 +50,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
+  private static final String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
+  private static final String SNAPSHOT_FIELD = "'snapshotId'";
+  private static final String SNAPSHOTS_TABLE = "snapshots";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s');";
@@ -239,6 +243,106 @@ public class RecordDaoImpl implements RecordDao {
         e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
       future.fail(e);
     }
+    return future;
+  }
+
+  @Override
+  public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
+    Future<Boolean> future = Future.future();
+    PostgresClient postgresClient = pgClientFactory.createInstance(tenantId); //NOSONAR
+    try {
+      Future<SQLConnection> tx = Future.future(); //NOSONAR
+      Future.succeededFuture()
+        .compose(v -> {
+          postgresClient.startTx(tx.completer());
+          return tx;
+        })
+        .compose(v -> {
+          Future<Results<Snapshot>> snapshotFuture = Future.future();
+          Criteria idCrit = constructCriteria(SNAPSHOT_ID_FIELD, snapshotId);
+          postgresClient.get(tx, SNAPSHOTS_TABLE, Snapshot.class, new Criterion(idCrit), true, false, null, snapshotFuture.completer());
+          return snapshotFuture.map(results -> results.getResults().get(0));
+        })
+        .compose(snapshot -> {
+          Future<Results<Record>> recordsFuture = Future.future();
+          Criteria idCrit = constructCriteria(SNAPSHOT_FIELD, snapshotId);
+          postgresClient.get(tx, RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, null, recordsFuture.completer());
+          return recordsFuture.map(Results::getResults);
+        })
+        .compose(records -> {
+          Future<Boolean> deletedFuture = Future.succeededFuture(true);
+          for (Record record : records) {
+            deletedFuture = deletedFuture.compose(v -> deleteRecord(record, postgresClient, tx));
+          }
+          return deletedFuture;
+        })
+        .compose(v -> {
+          Future<UpdateResult> deleteSnapshot = Future.future();
+          pgClientFactory.createInstance(tenantId).delete(SNAPSHOTS_TABLE, snapshotId, deleteSnapshot.completer());
+          return deleteSnapshot;
+        })
+        .setHandler(result -> {
+          if (result.succeeded()) {
+            postgresClient.endTx(tx, endTx -> future.complete(true));
+          } else {
+            postgresClient.rollbackTx(tx, r -> {
+              LOG.error("Failed to delete records for snapshot id {}. Rollback transaction", result.cause(), snapshotId);
+              future.fail(result.cause());
+            });
+          }
+        });
+    } catch (Exception e) {
+      LOG.error("Error deleting records for snapshot id {}", e, snapshotId);
+      future.fail(e);
+    }
+
+    return future;
+  }
+
+  private Future<Boolean> deleteRecord(Record record, PostgresClient postgresClient, AsyncResult<SQLConnection> tx) {
+
+    Future<Boolean> future = Future.future();
+
+    Future.succeededFuture()
+      .compose(v -> {
+        Future<UpdateResult> rawRecordDeleteFuture = Future.future(); //NOSONAR
+        Criteria idCrit = constructCriteria(ID_FIELD, record.getRawRecord().getId()); //NOSONAR
+        postgresClient.delete(tx, RAW_RECORDS_TABLE, new Criterion(idCrit), rawRecordDeleteFuture.completer());
+        return rawRecordDeleteFuture;
+      })
+      .compose(v -> {
+        if (record.getParsedRecord() != null) {
+          Future<UpdateResult> parsedRecordDeleteFuture = Future.future(); //NOSONAR
+          Criteria idCrit = constructCriteria(ID_FIELD, record.getParsedRecord().getId()); //NOSONAR
+          postgresClient.delete(tx, RecordType.valueOf(record.getRecordType().value()).getTableName(), new Criterion(idCrit), parsedRecordDeleteFuture.completer());
+          return parsedRecordDeleteFuture;
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> {
+        if (record.getErrorRecord() != null) {
+          Future<UpdateResult> errorRecordDeleteFuture = Future.future(); //NOSONAR
+          Criteria idCrit = constructCriteria(ID_FIELD, record.getErrorRecord().getId()); //NOSONAR
+          postgresClient.delete(tx, ERROR_RECORDS_TABLE, new Criterion(idCrit), errorRecordDeleteFuture.completer());
+          return errorRecordDeleteFuture;
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> {
+        Future<UpdateResult> recordModelDeleteFuture = Future.future(); //NOSONAR
+        Criteria idCrit = constructCriteria(ID_FIELD, record.getId()); //NOSONAR
+        postgresClient.delete(tx, RECORDS_TABLE, new Criterion(idCrit), recordModelDeleteFuture.completer());
+        return recordModelDeleteFuture;
+      })
+      .setHandler(result -> {
+        if (result.succeeded()) {
+          future.complete(true);
+        } else {
+          LOG.error("Failed to delete Record with id {}", result.cause(), record.getId());
+          future.fail(result.cause());
+        }
+      });
+
     return future;
   }
 

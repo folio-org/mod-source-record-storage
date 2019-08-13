@@ -112,6 +112,25 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
+  public void deleteSourceStorageSnapshotsRecordsByJobExecutionId(String jobExecutionId, Map<String, String> okapiHeaders,
+                                                                  Handler<AsyncResult<Response>> asyncResultHandler,
+                                                                  Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.deleteRecordsBySnapshotId(jobExecutionId, tenantId)
+          .map(deleted -> DeleteSourceStorageSnapshotsRecordsByJobExecutionIdResponse.respond204WithTextPlain(
+            format("Successfully deleted records for JobExecution %s", jobExecutionId)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to delete records by snapshotId", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
   public void putSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Snapshot entity,
                                                         Map<String, String> okapiHeaders,
                                                         Handler<AsyncResult<Response>> asyncResultHandler,

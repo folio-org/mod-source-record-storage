@@ -3,10 +3,12 @@
 * Changed response status on partial success of batch save/update - return 201/200 if at least one of the records was saved/updated, 500 if none of the records was saved/updated
 * Refactored DAOs to return saved/updated entities
 * Added suppress from discovery endpoint for change records value
+* Added delete records by jobExecution id endpoint
 
 | METHOD |             URL                                       | DESCRIPTION                                      |
 |--------|-------------------------------------------------------|--------------------------------------------------|
-| PUT    | /source-storage/record/suppressFromDiscovery         | Change suppress from discovery flag for record   |
+| PUT    | /source-storage/record/suppressFromDiscovery          | Change suppress from discovery flag for record   |
+| DELETE | /source-storage/snapshots/{jobExecutionId}/records    | Delete records and snapshot by JobExecution id   |
 
 ## 2019-07-23 v2.5.0
 * Added endpoint for updating parsed records

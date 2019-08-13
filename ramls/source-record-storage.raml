@@ -73,6 +73,13 @@ resourceTypes:
           204:
             body:
               text/plain: !!null
+      /records:
+        delete:
+          description: "Delete snapshot and all associated records"
+          responses:
+            204:
+              body:
+                text/plain: !!null
   /records:
     displayName: Records
     description: API for managing Records
@@ -213,27 +220,28 @@ resourceTypes:
     displayName: Records
     description: API for managing Records
     /suppressFromDiscovery:
-          put:
-            description: Change suppress from discovery flag for record
+      put:
+        description: Change suppress from discovery flag for record
+        body:
+          application/json:
+            type: suppressFromDiscoveryDto
+        responses:
+          200:
+            body:
+              text/plain: !!null
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
             body:
               application/json:
-                type: suppressFromDiscoveryDto
-            responses:
-              200:
-                body:
-                  text/plain: !!null
-              400:
-                description: "Bad request"
-                body:
-                  text/plain:
-                    example: "Bad request"
-              422:
-                description: "Unprocessable Entity"
-                body:
-                  application/json:
-                    type: errors
-              500:
-                description: "Internal server error"
-                body:
-                  text/plain:
-                    example: "Internal server error"
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+

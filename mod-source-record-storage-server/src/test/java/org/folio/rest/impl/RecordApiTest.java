@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
@@ -53,6 +54,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
   private static final String BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
+  private static final String SOURCE_STORAGE_DELETE_RECORDS_PATH = "/source-storage/snapshots/%s/records";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
   private static final String RECORDS_TABLE_NAME = "records";
   private static final String RAW_RECORDS_TABLE_NAME = "raw_records";
@@ -1076,7 +1078,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldCreateRawRecordAndErrorRecordOnPostThemInRecordCollection(TestContext testContext) {
+  public void shouldCreateRawRecordAndErrorRecordOnPostInRecordCollection(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1395,5 +1397,65 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldDeleteRecordsBySnapshotId(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record_1, record_2, record_3, record_4, record_5))
+      .withTotalRecords(5);
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(BATCH_RECORDS_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("totalRecords", is(5));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(format(SOURCE_STORAGE_DELETE_RECORDS_PATH, snapshot_1.getJobExecutionId()))
+      .then().log().all()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_1.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(3))
+      .body("records*.snapshotId", everyItem(is(snapshot_2.getJobExecutionId())));
+    async.complete();
+  }
 
 }

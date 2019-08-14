@@ -34,6 +34,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static java.lang.String.format;
+import static org.folio.dao.SnapshotDao.SNAPSHOTS_TABLE;
+import static org.folio.dao.SnapshotDao.SNAPSHOT_ID_FIELD;
 import static org.folio.dao.util.DbUtil.executeInTransaction;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
@@ -50,9 +52,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
-  private static final String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
-  private static final String SNAPSHOTS_TABLE = "snapshots";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s');";

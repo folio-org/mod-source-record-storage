@@ -27,7 +27,6 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -35,6 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static java.lang.String.format;
+import static org.folio.dao.util.DbUtil.executeInTransaction;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
@@ -179,161 +179,118 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
-                                                              String tenantId) {
-    Future<Boolean> future = Future.future();
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    String queryForRecordSearchByExternalId = constructQueryForRecordSearchByExternalId(suppressFromDiscoveryDto);
     String rollBackMessage = format("Record with %s id: %s was not found", suppressFromDiscoveryDto.getIncomingIdType().name(), suppressFromDiscoveryDto.getId());
-    try {
-      String queryForRecordSearchByExternalId;
-      if (suppressFromDiscoveryDto.getIncomingIdType().equals(SuppressFromDiscoveryDto.IncomingIdType.INSTANCE)) {
-        queryForRecordSearchByExternalId = format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
-      } else {
-        throw new BadRequestException("Selected IncomingIdType is not supported");
-      }
-      Future<SQLConnection> tx = Future.future(); //NOSONAR
+
+    return executeInTransaction(pgClient, connection ->
       Future.succeededFuture()
         .compose(v -> {
-          pgClientFactory.createInstance(tenantId).startTx(tx.completer());
-          return tx;
-        }).compose(v -> {
-        Future<ResultSet> resultSetFuture = Future.future();
-        pgClientFactory.createInstance(tenantId).select(tx, queryForRecordSearchByExternalId, resultSetFuture);
-        return resultSetFuture;
-      }).compose(resultSet -> {
-        if (resultSet.getResults() == null
-          || resultSet.getResults().isEmpty()
-          || resultSet.getResults().get(0) == null
-          || resultSet.getResults().get(0).getString(0) == null
-          ) {
-          throw new NotFoundException(rollBackMessage);
-        }
-        Record record = new JsonObject(resultSet.getResults().get(0).getString(0)).mapTo(Record.class);
-        Future<Results<RecordModel>> resultSetFuture = Future.future();
-        Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
-        pgClientFactory.createInstance(tenantId).get(tx, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
-        return resultSetFuture.map(recordModelResults -> recordModelResults.getResults().get(0));
-      }).compose(recordModel -> {
-        recordModel.getAdditionalInfo().setSuppressDiscovery(suppressFromDiscoveryDto.getSuppressFromDiscovery());
-        CQLWrapper filter; //NOSONAR
-        try {
-          filter = getCQLWrapper(RECORDS_TABLE, "id==" + recordModel.getId());
-        } catch (FieldException e) {
-          throw new RuntimeException(e);
-        }
-        Future<UpdateResult> updateHandler = Future.future();
-        pgClientFactory.createInstance(tenantId).update(tx, RECORDS_TABLE, recordModel, filter, true, updateHandler);
-        return updateHandler;
-      }).compose(updateHandler -> {
-        if (updateHandler.getUpdated() != 1) {
-          throw new NotFoundException(rollBackMessage);
-        }
-        Future<Void> endTxFuture = Future.future(); //NOSONAR
-        pgClientFactory.createInstance(tenantId).endTx(tx, endTxFuture);
-        return endTxFuture;
-      }).setHandler(v -> {
-        if (v.failed()) {
-          pgClientFactory.createInstance(tenantId).rollbackTx(tx, rollback -> future.fail(v.cause()));
-          return;
-        }
-        future.complete(true);
-      });
-      return future;
-    } catch (Exception e) {
-      LOG.error("Error while updating Record's suppress from discovery flag by {} id {}",
-        e, suppressFromDiscoveryDto.getIncomingIdType(), suppressFromDiscoveryDto.getId());
-      future.fail(e);
-    }
-    return future;
+          Future<ResultSet> resultSetFuture = Future.future();
+          pgClient.select(connection, queryForRecordSearchByExternalId, resultSetFuture);
+          return resultSetFuture
+            .map(resultSet -> {
+              if (resultSet.getResults() == null
+                || resultSet.getResults().isEmpty()
+                || resultSet.getResults().get(0) == null
+                || resultSet.getResults().get(0).getString(0) == null) {
+                throw new NotFoundException(rollBackMessage);
+              }
+              return new JsonObject(resultSet.getResults().get(0).getString(0)).mapTo(Record.class);
+            });
+        })
+        .compose(record -> {
+          Future<Results<RecordModel>> resultSetFuture = Future.future();
+          Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
+          pgClient.get(connection, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
+          return resultSetFuture
+            .map(results -> {
+              if (results.getResults().isEmpty()) {
+                throw new NotFoundException(format("Record with id %s was not found", record.getId()));
+              }
+              return results.getResults().get(0);
+            });
+        })
+        .compose(recordModel -> {
+          recordModel.getAdditionalInfo().setSuppressDiscovery(suppressFromDiscoveryDto.getSuppressFromDiscovery());
+          return insertOrUpdate(connection, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId)
+            .map(updated -> {
+              if (!updated) {
+                throw new NotFoundException(rollBackMessage);
+              }
+              return true;
+            });
+        })
+    );
   }
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
-    Future<Boolean> future = Future.future();
-    PostgresClient postgresClient = pgClientFactory.createInstance(tenantId); //NOSONAR
-    try {
-      Future<SQLConnection> tx = Future.future(); //NOSONAR
+
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    Criterion snapshotIdCriterion = new Criterion(constructCriteria(SNAPSHOT_ID_FIELD, snapshotId));
+
+    return executeInTransaction(pgClient, connection ->
       Future.succeededFuture()
         .compose(v -> {
-          postgresClient.startTx(tx.completer());
-          return tx;
-        })
-        .compose(v -> {
           Future<Results<Snapshot>> snapshotFuture = Future.future();
-          Criteria idCrit = constructCriteria(SNAPSHOT_ID_FIELD, snapshotId);
-          postgresClient.get(tx, SNAPSHOTS_TABLE, Snapshot.class, new Criterion(idCrit), true, false, null, snapshotFuture.completer());
-          return snapshotFuture.map(results -> results.getResults().get(0));
+          pgClient.get(connection, SNAPSHOTS_TABLE, Snapshot.class, snapshotIdCriterion, true, false, null, snapshotFuture.completer());
+          return snapshotFuture
+            .map(results -> {
+              if (results.getResults().isEmpty()) {
+                throw new NotFoundException(format("Snapshot with id %s was not found", snapshotId));
+              }
+              return results.getResults().get(0);
+            });
         })
         .compose(snapshot -> {
           Future<Results<Record>> recordsFuture = Future.future();
-          Criteria idCrit = constructCriteria(SNAPSHOT_FIELD, snapshotId);
-          postgresClient.get(tx, RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, null, recordsFuture.completer());
+          Criteria snapshotCriterion = constructCriteria(SNAPSHOT_FIELD, snapshot.getJobExecutionId());
+          pgClient.get(connection, RECORDS_VIEW, Record.class, new Criterion(snapshotCriterion), true, false, null, recordsFuture.completer());
           return recordsFuture.map(Results::getResults);
         })
         .compose(records -> {
           Future<Boolean> deletedFuture = Future.succeededFuture(true);
           for (Record record : records) {
-            deletedFuture = deletedFuture.compose(v -> deleteRecord(record, postgresClient, tx));
+            deletedFuture = deletedFuture.compose(v -> deleteRecord(record, pgClient, connection));
           }
           return deletedFuture;
         })
         .compose(v -> {
           Future<UpdateResult> deleteSnapshot = Future.future();
-          pgClientFactory.createInstance(tenantId).delete(SNAPSHOTS_TABLE, snapshotId, deleteSnapshot.completer());
-          return deleteSnapshot;
+          pgClient.delete(connection, SNAPSHOTS_TABLE, snapshotIdCriterion, deleteSnapshot.completer());
+          return deleteSnapshot.map(deleted -> deleted.getUpdated() == 1);
         })
-        .setHandler(result -> {
-          if (result.succeeded()) {
-            postgresClient.endTx(tx, endTx -> future.complete(true));
-          } else {
-            postgresClient.rollbackTx(tx, r -> {
-              LOG.error("Failed to delete records for snapshot id {}. Rollback transaction", result.cause(), snapshotId);
-              future.fail(result.cause());
-            });
-          }
-        });
-    } catch (Exception e) {
-      LOG.error("Error deleting records for snapshot id {}", e, snapshotId);
-      future.fail(e);
-    }
-
-    return future;
+    );
   }
 
-  private Future<Boolean> deleteRecord(Record record, PostgresClient postgresClient, AsyncResult<SQLConnection> tx) {
-
+  /**
+   * Deletes Record
+   *
+   * @param record         Record to delete
+   * @param postgresClient Postgres Client
+   * @param connection     connection
+   * @return future with true if succeeded
+   */
+  private Future<Boolean> deleteRecord(Record record, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
     Future<Boolean> future = Future.future();
-
     Future.succeededFuture()
-      .compose(v -> {
-        Future<UpdateResult> rawRecordDeleteFuture = Future.future(); //NOSONAR
-        Criteria idCrit = constructCriteria(ID_FIELD, record.getRawRecord().getId()); //NOSONAR
-        postgresClient.delete(tx, RAW_RECORDS_TABLE, new Criterion(idCrit), rawRecordDeleteFuture.completer());
-        return rawRecordDeleteFuture;
-      })
+      .compose(v -> deleteById(record.getRawRecord().getId(), RAW_RECORDS_TABLE, postgresClient, connection))
       .compose(v -> {
         if (record.getParsedRecord() != null) {
-          Future<UpdateResult> parsedRecordDeleteFuture = Future.future(); //NOSONAR
-          Criteria idCrit = constructCriteria(ID_FIELD, record.getParsedRecord().getId()); //NOSONAR
-          postgresClient.delete(tx, RecordType.valueOf(record.getRecordType().value()).getTableName(), new Criterion(idCrit), parsedRecordDeleteFuture.completer());
-          return parsedRecordDeleteFuture;
+          return deleteById(record.getParsedRecord().getId(), RecordType.valueOf(record.getRecordType().value()).getTableName(), postgresClient, connection);
         }
         return Future.succeededFuture();
       })
       .compose(v -> {
         if (record.getErrorRecord() != null) {
-          Future<UpdateResult> errorRecordDeleteFuture = Future.future(); //NOSONAR
-          Criteria idCrit = constructCriteria(ID_FIELD, record.getErrorRecord().getId()); //NOSONAR
-          postgresClient.delete(tx, ERROR_RECORDS_TABLE, new Criterion(idCrit), errorRecordDeleteFuture.completer());
-          return errorRecordDeleteFuture;
+          return deleteById(record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, postgresClient, connection);
         }
         return Future.succeededFuture();
       })
-      .compose(v -> {
-        Future<UpdateResult> recordModelDeleteFuture = Future.future(); //NOSONAR
-        Criteria idCrit = constructCriteria(ID_FIELD, record.getId()); //NOSONAR
-        postgresClient.delete(tx, RECORDS_TABLE, new Criterion(idCrit), recordModelDeleteFuture.completer());
-        return recordModelDeleteFuture;
-      })
+      .compose(v -> deleteById(record.getId(), RECORDS_TABLE, postgresClient, connection))
       .setHandler(result -> {
         if (result.succeeded()) {
           future.complete(true);
@@ -342,13 +299,29 @@ public class RecordDaoImpl implements RecordDao {
           future.fail(result.cause());
         }
       });
-
     return future;
   }
 
+  /**
+   * Deletes entity by id
+   *
+   * @param id             id of the entity to delete
+   * @param tableName      table name
+   * @param postgresClient Postgres Client
+   * @param connection     connection
+   * @return future with true if succeeded
+   */
+  private Future<Boolean> deleteById(String id, String tableName, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
+    Future<UpdateResult> deleteFuture = Future.future();
+    Criteria idCrit = constructCriteria(ID_FIELD, id);
+    postgresClient.delete(connection, tableName, new Criterion(idCrit), deleteFuture.completer());
+    return deleteFuture.map(deleted -> deleted.getUpdated() == 1);
+  }
+
   private Future<Record> insertOrUpdateRecord(Record record, String tenantId) {
-    Future<Record> future = Future.future();
-    RecordModel recordModel = new RecordModel() //NOSONAR
+
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    RecordModel recordModel = new RecordModel()
       .withId(record.getId())
       .withSnapshotId(record.getSnapshotId())
       .withMatchedProfileId(record.getMatchedProfileId())
@@ -359,39 +332,26 @@ public class RecordDaoImpl implements RecordDao {
       .withDeleted(record.getDeleted())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
-    Future<SQLConnection> tx = Future.future(); //NOSONAR
-    Future.succeededFuture()
-      .compose(v -> {
-        pgClientFactory.createInstance(tenantId).startTx(tx.completer());
-        return tx;
-      }).compose(v -> insertOrUpdate(tx, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
-      .compose(v -> {
-        if (record.getParsedRecord() != null) {
-          recordModel.setParsedRecordId(record.getParsedRecord().getId());
-          return insertOrUpdateParsedRecord(tx, record, tenantId);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> {
-        if (record.getErrorRecord() != null) {
-          recordModel.setErrorRecordId(record.getErrorRecord().getId());
-          return insertOrUpdate(tx, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId))
-      .setHandler(result -> {
-        if (result.succeeded()) {
-          pgClientFactory.createInstance(tenantId).endTx(tx, endTx ->
-            future.complete(record));
-        } else {
-          pgClientFactory.createInstance(tenantId).rollbackTx(tx, r -> {
-            LOG.error("Failed to insert or update Record with id {}. Rollback transaction", result.cause(), record.getId());
-            future.fail(result.cause());
-          });
-        }
-      });
-    return future;
+
+    return executeInTransaction(pgClient, connection ->
+      Future.succeededFuture()
+        .compose(v -> insertOrUpdate(connection, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
+        .compose(v -> {
+          if (record.getParsedRecord() != null) {
+            recordModel.setParsedRecordId(record.getParsedRecord().getId());
+            return insertOrUpdateParsedRecord(connection, record, tenantId);
+          }
+          return Future.succeededFuture();
+        })
+        .compose(v -> {
+          if (record.getErrorRecord() != null) {
+            recordModel.setErrorRecordId(record.getErrorRecord().getId());
+            return insertOrUpdate(connection, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
+          }
+          return Future.succeededFuture();
+        })
+        .compose(v -> insertOrUpdate(connection, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId).map(updated -> record))
+    );
   }
 
   private Future<Boolean> insertOrUpdate(AsyncResult<SQLConnection> tx, Object rawRecord, String id, String tableName, String tenantId) {
@@ -441,6 +401,20 @@ public class RecordDaoImpl implements RecordDao {
       parsedRecord.setContent(new JsonObject(parsedRecord.getContent().toString()));
     }
     return JsonObject.mapFrom(parsedRecord);
+  }
+
+  /**
+   * Constructs query for record search by external id
+   *
+   * @param suppressFromDiscoveryDto SuppressDiscoveryDto containing incoming id type
+   * @return query
+   */
+  private String constructQueryForRecordSearchByExternalId(SuppressFromDiscoveryDto suppressFromDiscoveryDto) {
+    if (suppressFromDiscoveryDto.getIncomingIdType() == SuppressFromDiscoveryDto.IncomingIdType.INSTANCE) {
+      return format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
+    } else {
+      throw new BadRequestException("Selected IncomingIdType is not supported");
+    }
   }
 
 }

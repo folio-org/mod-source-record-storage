@@ -1398,7 +1398,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldDeleteRecordsBySnapshotId(TestContext testContext) {
+  public void shouldDeleteRecordsAndSnapshotBySnapshotId(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -1450,11 +1450,63 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
       .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
       .body("records*.snapshotId", everyItem(is(snapshot_2.getJobExecutionId())));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnNotFoundOnDeleteRecordsIfSnapshotDoesNotExist(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(format(SOURCE_STORAGE_DELETE_RECORDS_PATH, snapshot_1.getJobExecutionId()))
+      .then().log().all()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+  }
+
+  @Test
+  public void shouldDeleteSnapshotOnDeleteRecordsBySnapshotIdIfThereIsNoRecords(TestContext testContext) {
+    Async async = testContext.async();
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot_1)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(format(SOURCE_STORAGE_DELETE_RECORDS_PATH, snapshot_1.getJobExecutionId()))
+      .then().log().all()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
   }
 

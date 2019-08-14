@@ -104,4 +104,13 @@ public interface RecordDao {
    */
   Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
 
+  /**
+   * Deletes in transaction all records associated with specified snapshot and snapshot itself
+   *
+   * @param snapshotId snapshot id
+   * @param tenantId   tenant id
+   * @return - future with true if succeeded
+   */
+  Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
+
 }

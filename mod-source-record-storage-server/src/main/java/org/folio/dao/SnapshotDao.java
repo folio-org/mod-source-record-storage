@@ -11,6 +11,9 @@ import java.util.Optional;
  */
 public interface SnapshotDao {
 
+  String SNAPSHOTS_TABLE = "snapshots";
+  String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
+
   /**
    * Searches for {@link Snapshot} in database
    *

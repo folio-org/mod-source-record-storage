@@ -25,9 +25,6 @@ public class SnapshotDaoImpl implements SnapshotDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SnapshotDaoImpl.class);
 
-  private static final String SNAPSHOTS_TABLE = "snapshots";
-  private static final String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
-
   @Autowired
   private PostgresClientFactory pgClientFactory;
 

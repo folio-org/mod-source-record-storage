@@ -179,6 +179,11 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
   }
 
+  @Override
+  public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
+    return recordDao.deleteRecordsBySnapshotId(snapshotId, tenantId);
+  }
+
   private Record formatMarcRecord(Record record) {
     try {
       String parsedRecordContent = JsonObject.mapFrom(record.getParsedRecord().getContent()).toString();

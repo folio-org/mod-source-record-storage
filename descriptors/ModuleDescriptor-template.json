@@ -33,6 +33,11 @@
           "permissionsRequired": ["source-storage.snapshots.delete"]
         },
         {
+          "methods": ["DELETE"],
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
+          "permissionsRequired": ["source-storage.snapshots.records.delete"]
+        },
+        {
           "methods": ["GET"],
           "pathPattern": "/source-storage/records",
           "permissionsRequired": ["source-storage.records.get"]
@@ -136,6 +141,11 @@
       "description": "Delete Snapshot"
     },
     {
+      "permissionName": "source-storage.snapshots.records.delete",
+      "displayName": "Source Storage - delete records and snapshot",
+      "description": "Delete Records and Snapshot"
+    },
+    {
       "permissionName": "source-storage.records.get",
       "displayName": "Source Storage - get record(s)",
       "description": "Get Record(s)"
@@ -174,6 +184,7 @@
         "source-storage.snapshots.post",
         "source-storage.snapshots.put",
         "source-storage.snapshots.delete",
+        "source-storage.snapshots.records.delete",
         "source-storage.records.get",
         "source-storage.records.post",
         "source-storage.records.put",

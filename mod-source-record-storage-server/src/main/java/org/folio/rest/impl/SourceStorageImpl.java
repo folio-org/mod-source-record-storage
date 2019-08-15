@@ -279,34 +279,39 @@ public class SourceStorageImpl implements SourceStorage {
   @Override
   public void postSourceStoragePopulateTestMarcRecords(TestMarcRecordsCollection entity, Map<String, String> okapiHeaders,
                                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    if (vertxContext.get(LOAD_SAMPLE_PARAMETER) != null && (Boolean) vertxContext.get(LOAD_SAMPLE_PARAMETER)) {
-      List<Future> futures = new ArrayList<>();
-      entity.getRawRecords().stream()
-        .map(rawRecord -> {
-          Record record = new Record()
-            .withId(rawRecord.getId())
-            .withRawRecord(rawRecord)
-            .withSnapshotId(STUB_SNAPSHOT_ID)
-            .withRecordType(Record.RecordType.MARC)
-            .withMatchedId(rawRecord.getId());
-          if (rawRecord.getContent().startsWith("{")) {
-            record.setParsedRecord(new ParsedRecord().withContent(rawRecord.getContent()));
-          } else {
-            record = parseRecord(record);
-          }
-          return record;
-        })
-        .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
+    try {
+      if (vertxContext.get(LOAD_SAMPLE_PARAMETER) != null && (Boolean) vertxContext.get(LOAD_SAMPLE_PARAMETER)) {
+        List<Future> futures = new ArrayList<>();
+        entity.getRawRecords().stream()
+          .map(rawRecord -> {
+            Record record = new Record()
+              .withId(rawRecord.getId())
+              .withRawRecord(rawRecord)
+              .withSnapshotId(STUB_SNAPSHOT_ID)
+              .withRecordType(Record.RecordType.MARC)
+              .withMatchedId(rawRecord.getId());
+            if (rawRecord.getContent().startsWith("{")) {
+              record.setParsedRecord(new ParsedRecord().withContent(rawRecord.getContent()));
+            } else {
+              record = parseRecord(record);
+            }
+            return record;
+          })
+          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
 
-      CompositeFuture.all(futures).setHandler(result -> {
-        if (result.succeeded()) {
-          asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));
-        } else {
-          asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
-        }
-      });
-    } else {
-      asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond400WithTextPlain("Endpoint is available only in test mode")));
+        CompositeFuture.all(futures).setHandler(result -> {
+          if (result.succeeded()) {
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));
+          } else {
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
+          }
+        });
+      } else {
+        asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond400WithTextPlain("Endpoint is available only in test mode")));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to populate test MARC records", e);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
 

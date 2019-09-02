@@ -4,6 +4,7 @@
 * Refactored DAOs to return saved/updated entities
 * Added suppress from discovery endpoint for change records value
 * Added delete records by jobExecution id endpoint
+* Added delete method to the handlers for _tenant interface
 
 | METHOD |             URL                                       | DESCRIPTION                                      |
 |--------|-------------------------------------------------------|--------------------------------------------------|

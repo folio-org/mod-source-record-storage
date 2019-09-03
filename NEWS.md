@@ -5,6 +5,7 @@
 * Added suppress from discovery endpoint for change records value
 * Added delete records by jobExecution id endpoint
 * Added delete method to the handlers for _tenant interface
+* Filled in "fromModuleVersion" value for each "tables" and "scripts" section in schema.json
 
 | METHOD |             URL                                       | DESCRIPTION                                      |
 |--------|-------------------------------------------------------|--------------------------------------------------|

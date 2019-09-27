@@ -166,7 +166,7 @@ public class RecordServiceImpl implements RecordService {
   public Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId) {
     Future<Optional<Record>> future;
     if (identifier == SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE) {
-      future = recordDao.getRecordByInstanceId(id, tenantId);
+      future = recordDao.getRecordByInstanceId(id, SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE, tenantId);
     } else {
       future = getRecordById(id, tenantId);
     }

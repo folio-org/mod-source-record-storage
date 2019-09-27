@@ -19,6 +19,7 @@ import org.folio.rest.jaxrs.model.RecordModel;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -39,6 +40,7 @@ import static org.folio.dao.SnapshotDao.SNAPSHOT_ID_FIELD;
 import static org.folio.dao.util.DbUtil.executeInTransaction;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType.INSTANCE;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 @Component
@@ -55,7 +57,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
-  private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s');";
+  private static final String GET_RECORD_BY_INSTANCE_ID_QUERY = "select get_record_by_instance_id('%s', '%s');";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -163,10 +165,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId) {
+  public Future<Optional<Record>> getRecordByInstanceId(String instanceId, SourceStorageFormattedRecordsIdGetIdentifier externalIdType, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query = format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId);
+      String query = format(GET_RECORD_BY_INSTANCE_ID_QUERY, instanceId, externalIdType.name());
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
       LOG.error("Error while searching for Record by instance id {}", e, instanceId);
@@ -329,6 +331,7 @@ public class RecordDaoImpl implements RecordDao {
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
       .withRawRecordId(record.getRawRecord().getId())
+      .withExternalIdsHolder(record.getExternalIdsHolder())
       .withDeleted(record.getDeleted())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
@@ -410,8 +413,8 @@ public class RecordDaoImpl implements RecordDao {
    * @return query
    */
   private String constructQueryForRecordSearchByExternalId(SuppressFromDiscoveryDto suppressFromDiscoveryDto) {
-    if (suppressFromDiscoveryDto.getIncomingIdType() == SuppressFromDiscoveryDto.IncomingIdType.INSTANCE) {
-      return format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId());
+    if (suppressFromDiscoveryDto.getIncomingIdType() == INSTANCE) {
+      return format(GET_RECORD_BY_INSTANCE_ID_QUERY, suppressFromDiscoveryDto.getId(), INSTANCE.value());
     } else {
       throw new BadRequestException("Selected IncomingIdType is not supported");
     }

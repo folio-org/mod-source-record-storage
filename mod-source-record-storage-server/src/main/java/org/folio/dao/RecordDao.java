@@ -7,6 +7,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
 import java.util.Optional;
@@ -90,10 +91,11 @@ public interface RecordDao {
    * Searches for {@link Record} by instance id
    *
    * @param instanceId Instance id
+   * @param externalIdType
    * @param tenantId   tenant id
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId);
+  Future<Optional<Record>> getRecordByInstanceId(String instanceId, SourceStorageFormattedRecordsIdGetIdentifier externalIdType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

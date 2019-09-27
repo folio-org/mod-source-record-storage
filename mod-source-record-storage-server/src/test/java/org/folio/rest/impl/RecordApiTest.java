@@ -11,6 +11,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -1341,6 +1342,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(instanceId))
       .withMatchedId(UUID.randomUUID().toString());
 
     RestAssured.given()

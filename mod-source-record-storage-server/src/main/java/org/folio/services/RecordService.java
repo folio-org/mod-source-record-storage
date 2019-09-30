@@ -7,7 +7,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
 import java.util.Optional;
@@ -86,14 +85,14 @@ public interface RecordService {
   Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);
 
   /**
-   * Searches for Record either by SRS id or Instance id
+   * Searches for Record either by SRS id or external relation id
    *
-   * @param identifier specifies whether search should be performed by SRS or Instance id
-   * @param id         either SRS id or Instance id
-   * @param tenantId   tenant id
+   * @param externalIdIdentifier specifies of external relation id type
+   * @param id             either SRS id or external relation id
+   * @param tenantId       tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);
+  Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

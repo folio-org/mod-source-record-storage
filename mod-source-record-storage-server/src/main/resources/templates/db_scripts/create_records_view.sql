@@ -10,6 +10,7 @@ CREATE OR REPLACE VIEW records_view AS
 					'generation', records.jsonb->>'generation',
 					'recordType', records.jsonb->>'recordType',
 					'deleted', records.jsonb->>'deleted',
+					'externalIdsHolder', records.jsonb->'externalIdsHolder',
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
  					'rawRecord', raw_records.jsonb,

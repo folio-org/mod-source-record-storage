@@ -1,13 +1,13 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
 import java.util.Optional;
@@ -88,14 +88,14 @@ public interface RecordDao {
   Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
 
   /**
-   * Searches for {@link Record} by instance id
+   * Searches for {@link Record} by id of external entity which was created from desired record
    *
-   * @param instanceId Instance id
-   * @param externalIdType
+   * @param externalId external relation id
+   * @param externalIdType external id type
    * @param tenantId   tenant id
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByInstanceId(String instanceId, SourceStorageFormattedRecordsIdGetIdentifier externalIdType, String tenantId);
+  Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

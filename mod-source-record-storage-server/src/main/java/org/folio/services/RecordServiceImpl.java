@@ -7,6 +7,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -16,7 +17,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
@@ -163,15 +163,16 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId) {
+  public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
     Future<Optional<Record>> future;
-    if (identifier == SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE) {
-      future = recordDao.getRecordByInstanceId(id, SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE, tenantId);
+    if (externalIdIdentifier != null) {
+      ExternalIdType externalIdType = getExternalIdType(externalIdIdentifier);
+      future = recordDao.getRecordByExternalId(id, externalIdType, tenantId);
     } else {
       future = getRecordById(id, tenantId);
     }
     return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
-      format("Couldn't find Record with %s id %s", identifier, id)))));
+      format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
   }
 
   @Override
@@ -201,6 +202,15 @@ public class RecordServiceImpl implements RecordService {
   private void validateParsedRecordId(ParsedRecord record) {
     if (Objects.isNull(record.getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
+    }
+  }
+
+  private ExternalIdType getExternalIdType(String externalIdIdentifier) {
+    try {
+      return ExternalIdType.valueOf(externalIdIdentifier);
+    } catch (IllegalArgumentException e) {
+      String message = "The external Id type: %s is wrong.";
+      throw new BadRequestException(format(message, externalIdIdentifier));
     }
   }
 

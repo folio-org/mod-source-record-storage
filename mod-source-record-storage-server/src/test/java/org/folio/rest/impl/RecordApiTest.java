@@ -13,7 +13,6 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -1193,15 +1192,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record createdRecord = createResponse.body().as(Record.class);
     async.complete();
 
-    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
-      .withRecordType(ParsedRecordCollection.RecordType.MARC)
-      .withParsedRecords(Collections.singletonList(new ParsedRecord().withContent(marcRecord.getContent()).withId(createdRecord.getParsedRecord().getId())))
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Collections.singletonList(createdRecord))
       .withTotalRecords(1);
 
     async = testContext.async();
     ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
-      .body(parsedRecordCollection)
+      .body(recordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
@@ -1217,15 +1215,31 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnUpdateParsedRecordsIfNoIdPassed(TestContext testContext) {
     Async async = testContext.async();
-    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
-      .withRecordType(ParsedRecordCollection.RecordType.MARC)
-      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
-        new ParsedRecord().withContent(marcRecord.getContent()).withId(null)))
+    Record record1 = new Record()
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withParsedRecord(new ParsedRecord()
+        .withContent(marcRecord.getContent())
+        .withId(UUID.randomUUID().toString()));
+
+    Record record2 = new Record()
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withParsedRecord(new ParsedRecord()
+        .withContent(marcRecord.getContent())
+        .withId(null));
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record1, record2))
       .withTotalRecords(2);
 
     RestAssured.given()
       .spec(spec)
-      .body(parsedRecordCollection)
+      .body(recordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
@@ -1267,15 +1281,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     ParsedRecord parsedRecordJson = new ParsedRecord().withId(createdRecord.getParsedRecord().getId())
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500").put("fields", new JsonArray()));
 
-    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
-      .withRecordType(ParsedRecordCollection.RecordType.MARC)
-      .withParsedRecords(Collections.singletonList(parsedRecordJson))
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Collections.singletonList(createdRecord.withParsedRecord(parsedRecordJson)))
       .withTotalRecords(1);
 
     async = testContext.async();
     ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
-      .body(parsedRecordCollection)
+      .body(recordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()
@@ -1291,15 +1304,32 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnErrorMessagesOnUpdateParsedRecordsIfIdIsNotFound(TestContext testContext) {
     Async async = testContext.async();
-    ParsedRecordCollection parsedRecordCollection = new ParsedRecordCollection()
-      .withRecordType(ParsedRecordCollection.RecordType.MARC)
-      .withParsedRecords(Arrays.asList(new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString()),
-        new ParsedRecord().withContent(marcRecord.getContent()).withId(UUID.randomUUID().toString())))
+
+    Record record1 = new Record()
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withParsedRecord(new ParsedRecord()
+        .withContent(marcRecord.getContent())
+        .withId(UUID.randomUUID().toString()));
+
+    Record record2 = new Record()
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withParsedRecord(new ParsedRecord()
+        .withContent(marcRecord.getContent())
+        .withId(UUID.randomUUID().toString()));
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record1, record2))
       .withTotalRecords(2);
 
     ParsedRecordsBatchResponse result = RestAssured.given()
       .spec(spec)
-      .body(parsedRecordCollection)
+      .body(recordCollection)
       .when()
       .put(BATCH_PARSED_RECORDS_PATH)
       .then()

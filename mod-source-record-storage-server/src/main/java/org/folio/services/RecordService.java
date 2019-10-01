@@ -1,7 +1,6 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -76,13 +75,13 @@ public interface RecordService {
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 
   /**
-   * Update parsed records
+   * Update parsed records from collection of records and external relations ids in one transaction
    *
-   * @param parsedRecordCollection collection of parsed records to update
-   * @param tenantId               tenant id
+   * @param recordCollection collection of records from which parsed records will be updated
+   * @param tenantId         tenant id
    * @return future with response containing list of successfully updated records and error messages for records that were not updated
    */
-  Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);
+  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
 
   /**
    * Searches for Record either by SRS id or external relation id

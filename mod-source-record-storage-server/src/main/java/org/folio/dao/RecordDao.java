@@ -80,12 +80,11 @@ public interface RecordDao {
   /**
    * Updates {@link ParsedRecord} in the db
    *
-   * @param parsedRecord {@link ParsedRecord} to update
-   * @param recordType   type of ParsedRecord
+   * @param record record dto from which {@link ParsedRecord} will be updated
    * @param tenantId     tenant id
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record

@@ -13,7 +13,6 @@ import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordModel;
@@ -139,12 +138,63 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId) {
+  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    return executeInTransaction(pgClient, connection -> Future.succeededFuture()
+      .compose(v -> updateExternalIdsForRecord(connection, record, tenantId))
+      .compose(updated -> updateParsedRecord(connection, record.getParsedRecord(), record.getRecordType(), tenantId))
+    );
+  }
+
+  /**
+   * Updates external relations ids for record in transaction
+   *
+   * @param tx transaction connection
+   * @param record record dto
+   * @param tenantId tenant id
+   * @return future with true if succeeded
+   */
+  private Future<Boolean> updateExternalIdsForRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    String rollBackMessage = format("Record with id: %s was not found", record.getId());
+    Future<Results<RecordModel>> resultSetFuture = Future.future();
+
+    Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
+    pgClient.get(tx, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
+    return resultSetFuture
+      .map(results -> {
+        if (results.getResults().isEmpty()) {
+          throw new NotFoundException(rollBackMessage);
+        }
+        return results.getResults().get(0);
+      })
+      .compose(recordModel -> {
+        recordModel.setExternalIdsHolder(record.getExternalIdsHolder());
+        return insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId)
+          .map(updated -> {
+            if (!updated) {
+              throw new NotFoundException(rollBackMessage);
+            }
+            return true;
+          });
+      });
+  }
+
+  /**
+   * Updates {@link ParsedRecord} in the db in scope of transaction
+   *
+   * @param tx transaction connection
+   * @param parsedRecord {@link ParsedRecord} to update
+   * @param recordType   type of ParsedRecord
+   * @param tenantId     tenant id
+   * @return future with updated ParsedRecord
+   */
+  private Future<ParsedRecord> updateParsedRecord(AsyncResult<SQLConnection> tx, ParsedRecord parsedRecord, Record.RecordType recordType, String tenantId) {
     Future<ParsedRecord> future = Future.future();
     try {
-      Criteria idCrit = constructCriteria(ID_FIELD, parsedRecord.getId());
-      pgClientFactory.createInstance(tenantId).update(RecordType.valueOf(recordType.value()).getTableName(),
-        convertParsedRecordToJsonObject(parsedRecord), new Criterion(idCrit), true, updateResult -> {
+      CQLWrapper filter = getCQLWrapper(RecordType.valueOf(recordType.value()).getTableName(), "id==" + parsedRecord.getId());
+      pgClientFactory.createInstance(tenantId).update(tx, RecordType.valueOf(recordType.value()).getTableName(),
+        convertParsedRecordToJsonObject(parsedRecord), filter, true, updateResult -> {
           if (updateResult.failed()) {
             LOG.error("Could not update ParsedRecord with id {}", updateResult.cause(), parsedRecord.getId());
             future.fail(updateResult.cause());

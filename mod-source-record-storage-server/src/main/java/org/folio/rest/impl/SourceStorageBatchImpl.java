@@ -8,7 +8,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dataimport.util.ExceptionHelper;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.resource.SourceStorageBatch;
 import org.folio.rest.tools.utils.TenantTool;
@@ -57,7 +56,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void putSourceStorageBatchParsedRecords(ParsedRecordCollection entity, Map<String, String> okapiHeaders,
+  public void putSourceStorageBatchParsedRecords(RecordCollection entity, Map<String, String> okapiHeaders,
                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

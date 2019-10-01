@@ -11,7 +11,6 @@ import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -136,29 +135,29 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.getSourceRecords(query, offset, limit, deletedRecords, tenantId);
   }
 
-  @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
 
-    List<Future> futures = parsedRecordCollection.getParsedRecords().stream()
-      .peek(this::validateParsedRecordId)
-      .map(parsedRecord -> recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId))
+  @Override
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+
+    List<Future> futures = recordCollection.getRecords().stream()
+      .peek(record -> validateParsedRecordId(record.getParsedRecord()))
+      .map(record -> recordDao.updateParsedRecord(record, tenantId))
       .collect(Collectors.toList());
 
     Future<ParsedRecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(futures).setHandler(ar -> {
-        ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-        futures.forEach(update -> {
-          if (update.failed()) {
-            response.getErrorMessages().add(update.cause().getMessage());
-          } else {
-            response.getParsedRecords().add((ParsedRecord) update.result());
-          }
-        });
-        response.setTotalRecords(response.getParsedRecords().size());
-        result.complete(response);
-      }
-    );
+      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
+      futures.forEach(update -> {
+        if (update.failed()) {
+          response.getErrorMessages().add(update.cause().getMessage());
+        } else {
+          response.getParsedRecords().add((ParsedRecord) update.result());
+        }
+      });
+      response.setTotalRecords(response.getParsedRecords().size());
+      result.complete(response);
+    });
     return result;
   }
 

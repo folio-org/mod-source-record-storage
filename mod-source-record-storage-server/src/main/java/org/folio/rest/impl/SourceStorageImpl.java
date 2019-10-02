@@ -13,7 +13,6 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
@@ -332,7 +331,7 @@ public class SourceStorageImpl implements SourceStorage {
   }
 
   @Override
-  public void getSourceStorageFormattedRecordsById(String id, SourceStorageFormattedRecordsIdGetIdentifier identifier, Map<String, String> okapiHeaders,
+  public void getSourceStorageFormattedRecordsById(String id, String identifier, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -342,7 +341,7 @@ public class SourceStorageImpl implements SourceStorage {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get record by {} id {}", e, identifier.name(), id);
+        LOG.error("Failed to get record by {} id {}", e, identifier, id);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

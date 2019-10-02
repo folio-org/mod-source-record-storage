@@ -1,8 +1,8 @@
 package org.folio.dao;
 
 import io.vertx.core.Future;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -79,21 +79,21 @@ public interface RecordDao {
   /**
    * Updates {@link ParsedRecord} in the db
    *
-   * @param parsedRecord {@link ParsedRecord} to update
-   * @param recordType   type of ParsedRecord
+   * @param record record dto from which {@link ParsedRecord} will be updated
    * @param tenantId     tenant id
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(ParsedRecord parsedRecord, ParsedRecordCollection.RecordType recordType, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
   /**
-   * Searches for {@link Record} by instance id
+   * Searches for {@link Record} by id of external entity which was created from desired record
    *
-   * @param instanceId Instance id
+   * @param externalId external relation id
+   * @param externalIdType external id type
    * @param tenantId   tenant id
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByInstanceId(String instanceId, String tenantId);
+  Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

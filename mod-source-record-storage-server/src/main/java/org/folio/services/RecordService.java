@@ -1,13 +1,11 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
 import java.util.Optional;
@@ -77,23 +75,23 @@ public interface RecordService {
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 
   /**
-   * Update parsed records
+   * Update parsed records from collection of records and external relations ids in one transaction
    *
-   * @param parsedRecordCollection collection of parsed records to update
-   * @param tenantId               tenant id
+   * @param recordCollection collection of records from which parsed records will be updated
+   * @param tenantId         tenant id
    * @return future with response containing list of successfully updated records and error messages for records that were not updated
    */
-  Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId);
+  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
 
   /**
-   * Searches for Record either by SRS id or Instance id
+   * Searches for Record either by SRS id or external relation id
    *
-   * @param identifier specifies whether search should be performed by SRS or Instance id
-   * @param id         either SRS id or Instance id
-   * @param tenantId   tenant id
+   * @param externalIdIdentifier specifies of external relation id type
+   * @param id             either SRS id or external relation id
+   * @param tenantId       tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId);
+  Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

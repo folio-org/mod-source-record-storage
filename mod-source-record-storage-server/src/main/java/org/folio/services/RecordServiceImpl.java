@@ -7,16 +7,15 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SourceStorageFormattedRecordsIdGetIdentifier;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
@@ -136,42 +135,43 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.getSourceRecords(query, offset, limit, deletedRecords, tenantId);
   }
 
-  @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(ParsedRecordCollection parsedRecordCollection, String tenantId) {
 
-    List<Future> futures = parsedRecordCollection.getParsedRecords().stream()
-      .peek(this::validateParsedRecordId)
-      .map(parsedRecord -> recordDao.updateParsedRecord(parsedRecord, parsedRecordCollection.getRecordType(), tenantId))
+  @Override
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+
+    List<Future> futures = recordCollection.getRecords().stream()
+      .peek(record -> validateParsedRecordId(record.getParsedRecord()))
+      .map(record -> recordDao.updateParsedRecord(record, tenantId))
       .collect(Collectors.toList());
 
     Future<ParsedRecordsBatchResponse> result = Future.future();
 
     CompositeFuture.join(futures).setHandler(ar -> {
-        ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-        futures.forEach(update -> {
-          if (update.failed()) {
-            response.getErrorMessages().add(update.cause().getMessage());
-          } else {
-            response.getParsedRecords().add((ParsedRecord) update.result());
-          }
-        });
-        response.setTotalRecords(response.getParsedRecords().size());
-        result.complete(response);
-      }
-    );
+      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
+      futures.forEach(update -> {
+        if (update.failed()) {
+          response.getErrorMessages().add(update.cause().getMessage());
+        } else {
+          response.getParsedRecords().add((ParsedRecord) update.result());
+        }
+      });
+      response.setTotalRecords(response.getParsedRecords().size());
+      result.complete(response);
+    });
     return result;
   }
 
   @Override
-  public Future<Record> getFormattedRecord(SourceStorageFormattedRecordsIdGetIdentifier identifier, String id, String tenantId) {
+  public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
     Future<Optional<Record>> future;
-    if (identifier == SourceStorageFormattedRecordsIdGetIdentifier.INSTANCE) {
-      future = recordDao.getRecordByInstanceId(id, tenantId);
+    if (externalIdIdentifier != null) {
+      ExternalIdType externalIdType = getExternalIdType(externalIdIdentifier);
+      future = recordDao.getRecordByExternalId(id, externalIdType, tenantId);
     } else {
       future = getRecordById(id, tenantId);
     }
     return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
-      format("Couldn't find Record with %s id %s", identifier, id)))));
+      format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
   }
 
   @Override
@@ -201,6 +201,15 @@ public class RecordServiceImpl implements RecordService {
   private void validateParsedRecordId(ParsedRecord record) {
     if (Objects.isNull(record.getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
+    }
+  }
+
+  private ExternalIdType getExternalIdType(String externalIdIdentifier) {
+    try {
+      return ExternalIdType.valueOf(externalIdIdentifier);
+    } catch (IllegalArgumentException e) {
+      String message = "The external Id type: %s is wrong.";
+      throw new BadRequestException(format(message, externalIdIdentifier));
     }
   }
 

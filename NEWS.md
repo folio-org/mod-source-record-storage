@@ -1,3 +1,6 @@
+## 2019-09-09 v2.7.0-SNAPSHOT
+* Changed payload of endpoint for updating parsed records from ParsedRecordCollection to RecordCollection
+
 ## 2019-09-09 v2.6.0
 * Fixed security vulnerability with jackson databind
 * Changed response status on partial success of batch save/update - return 201/200 if at least one of the records was saved/updated, 500 if none of the records was saved/updated

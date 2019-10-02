@@ -3,7 +3,6 @@ package org.folio.dao;
 import io.vertx.core.Future;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;

@@ -8,78 +8,139 @@
       "version": "2.2",
       "handlers": [
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/snapshots",
-          "permissionsRequired": ["source-storage.snapshots.get"]
+          "permissionsRequired": [
+            "source-storage.snapshots.get"
+          ]
         },
         {
-          "methods": ["POST"],
+          "methods": [
+            "POST"
+          ],
           "pathPattern": "/source-storage/snapshots",
-          "permissionsRequired": ["source-storage.snapshots.post"]
+          "permissionsRequired": [
+            "source-storage.snapshots.post"
+          ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshots.get"]
+          "permissionsRequired": [
+            "source-storage.snapshots.get"
+          ]
         },
         {
-          "methods": ["PUT"],
+          "methods": [
+            "PUT"
+          ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshots.put"]
+          "permissionsRequired": [
+            "source-storage.snapshots.put"
+          ]
         },
         {
-          "methods": ["DELETE"],
+          "methods": [
+            "DELETE"
+          ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
-          "permissionsRequired": ["source-storage.snapshots.delete"]
+          "permissionsRequired": [
+            "source-storage.snapshots.delete"
+          ]
         },
         {
-          "methods": ["DELETE"],
+          "methods": [
+            "DELETE"
+          ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
-          "permissionsRequired": ["source-storage.snapshots.records.delete"]
+          "permissionsRequired": [
+            "source-storage.snapshots.records.delete"
+          ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/records",
-          "permissionsRequired": ["source-storage.records.get"]
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
         },
         {
-          "methods": ["POST"],
+          "methods": [
+            "POST"
+          ],
           "pathPattern": "/source-storage/records",
-          "permissionsRequired": ["source-storage.records.post"]
+          "permissionsRequired": [
+            "source-storage.records.post"
+          ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/records/{id}",
-          "permissionsRequired": ["source-storage.records.get"]
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
         },
         {
-          "methods": ["PUT"],
+          "methods": [
+            "PUT"
+          ],
           "pathPattern": "/source-storage/records/{id}",
-          "permissionsRequired": ["source-storage.records.put"]
+          "permissionsRequired": [
+            "source-storage.records.put"
+          ]
         },
         {
-          "methods": ["DELETE"],
+          "methods": [
+            "DELETE"
+          ],
           "pathPattern": "/source-storage/records/{id}",
-          "permissionsRequired": ["source-storage.records.delete"]
+          "permissionsRequired": [
+            "source-storage.records.delete"
+          ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/sourceRecords",
-          "permissionsRequired": ["source-storage.sourceRecords.get"]
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
         },
         {
-          "methods": ["POST"],
-          "pathPattern": "/source-storage/populate-test-marc-records"
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/populate-test-marc-records",
+          "permissionsRequired": [
+            "source-storage.populate.records"
+          ]
         },
         {
-          "methods": ["GET"],
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/formattedRecords/{id}",
-          "permissionsRequired": ["source-storage.records.get"]
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
         },
         {
-          "methods": ["PUT"],
+          "methods": [
+            "PUT"
+          ],
           "pathPattern": "/source-storage/record/suppressFromDiscovery",
-          "permissionsRequired": ["source-storage.record.update"]
+          "permissionsRequired": [
+            "source-storage.record.update"
+          ]
         }
       ]
     },
@@ -113,7 +174,10 @@
       "interfaceType": "system",
       "handlers": [
         {
-          "methods": ["POST", "DELETE"],
+          "methods": [
+            "POST",
+            "DELETE"
+          ],
           "pathPattern": "/_/tenant"
         }
       ]
@@ -176,6 +240,11 @@
       "description": "Get Results"
     },
     {
+      "permissionName": "source-storage.populate.records",
+      "displayName": "Source Storage - populate storage with test records",
+      "description": "Populate storage with test records"
+    },
+    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -190,6 +259,7 @@
         "source-storage.records.put",
         "source-storage.records.delete",
         "source-storage.sourceRecords.get",
+        "source-storage.populate.records",
         "source-storage.record.update"
       ],
       "visible": false
@@ -201,22 +271,56 @@
     "dockerArgs": {
       "HostConfig": {
         "Memory": 536870912,
-        "PortBindings": { "8081/tcp": [ { "HostPort": "%p" } ] }
+        "PortBindings": {
+          "8081/tcp": [
+            {
+              "HostPort": "%p"
+            }
+          ]
+        }
       }
     },
     "env": [
-      { "name": "JAVA_OPTIONS",
+      {
+        "name": "JAVA_OPTIONS",
         "value": "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
       },
-      { "name": "DB_HOST", "value": "postgres" },
-      { "name": "DB_PORT", "value": "5432" },
-      { "name": "DB_USERNAME", "value": "folio_admin" },
-      { "name": "DB_PASSWORD", "value": "folio_admin" },
-      { "name": "DB_DATABASE", "value": "okapi_modules" },
-      { "name": "DB_QUERYTIMEOUT", "value": "60000" },
-      { "name": "DB_CHARSET", "value": "UTF-8" },
-      { "name": "DB_MAXPOOLSIZE", "value": "5" },
-      { "name": "test.mode", "value": "true" }
+      {
+        "name": "DB_HOST",
+        "value": "postgres"
+      },
+      {
+        "name": "DB_PORT",
+        "value": "5432"
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": "folio_admin"
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": "folio_admin"
+      },
+      {
+        "name": "DB_DATABASE",
+        "value": "okapi_modules"
+      },
+      {
+        "name": "DB_QUERYTIMEOUT",
+        "value": "60000"
+      },
+      {
+        "name": "DB_CHARSET",
+        "value": "UTF-8"
+      },
+      {
+        "name": "DB_MAXPOOLSIZE",
+        "value": "5"
+      },
+      {
+        "name": "test.mode",
+        "value": "true"
+      }
     ]
   }
 }

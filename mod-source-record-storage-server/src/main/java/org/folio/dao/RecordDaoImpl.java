@@ -382,6 +382,7 @@ public class RecordDaoImpl implements RecordDao {
       .withRawRecordId(record.getRawRecord().getId())
       .withExternalIdsHolder(record.getExternalIdsHolder())
       .withDeleted(record.getDeleted())
+      .withOrder(record.getOrder())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
 

@@ -90,13 +90,15 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
-    .withMatchedId(UUID.randomUUID().toString());
+    .withMatchedId(UUID.randomUUID().toString())
+    .withOrder(0);
   private static Record record_2 = new Record()
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
-    .withMatchedId(UUID.randomUUID().toString());
+    .withMatchedId(UUID.randomUUID().toString())
+    .withOrder(0);
   private static Record record_3 = new Record()
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
@@ -108,13 +110,15 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
-    .withMatchedId(UUID.randomUUID().toString());
+    .withMatchedId(UUID.randomUUID().toString())
+    .withOrder(1);
   private static Record record_5 = new Record()
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withMatchedId(UUID.randomUUID().toString())
-    .withParsedRecord(invalidParsedRecord);
+    .withParsedRecord(invalidParsedRecord)
+    .withOrder(2);
 
   @Override
   public void clearTables(TestContext context) {
@@ -311,6 +315,48 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertTrue(sourceRecordList.get(0).getMetadata().getCreatedDate().after(sourceRecordList.get(1).getMetadata().getCreatedDate()));
     Assert.assertTrue(sourceRecordList.get(1).getMetadata().getCreatedDate().after(sourceRecordList.get(2).getMetadata().getCreatedDate()));
     Assert.assertTrue(sourceRecordList.get(2).getMetadata().getCreatedDate().after(sourceRecordList.get(3).getMetadata().getCreatedDate()));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSortedSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_2, record_3, record_5);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<SourceRecord> sourceRecordList = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.deleted", everyItem(is(false)))
+      .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
+
+    Assert.assertEquals(0, sourceRecordList.get(0).getOrder().intValue());
+    Assert.assertEquals(2, sourceRecordList.get(1).getOrder().intValue());
     async.complete();
   }
 
@@ -856,6 +902,50 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(1))
       .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSortedRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_2, record_3, record_5);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> records = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("records.size()", is(3))
+      .body("totalRecords", is(3))
+      .body("records*.deleted", everyItem(is(false)))
+      .extract().response().body().as(RecordCollection.class).getRecords();
+
+    Assert.assertEquals(0, records.get(0).getOrder().intValue());
+    Assert.assertEquals(2, records.get(1).getOrder().intValue());
+    Assert.assertNull(records.get(2).getOrder());
+
     async.complete();
   }
 
@@ -1515,13 +1605,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldDeleteSnapshotOnDeleteRecordsBySnapshotIdIfThereIsNoRecords(TestContext testContext) {
     Async async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot_1)
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
     async = testContext.async();

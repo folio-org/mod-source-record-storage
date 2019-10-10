@@ -42,6 +42,7 @@ import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 @Component
+@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);

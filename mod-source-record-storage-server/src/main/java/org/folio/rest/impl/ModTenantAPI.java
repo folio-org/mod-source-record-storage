@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);

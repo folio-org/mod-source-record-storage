@@ -4,8 +4,6 @@
       "tableName": "snapshots",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -24,8 +22,6 @@
       "tableName": "raw_records",
       "fromModuleVersion": "mod-source-record-storage-2.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -44,8 +40,6 @@
       "tableName": "marc_records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -64,8 +58,6 @@
       "tableName": "error_records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -84,8 +76,6 @@
       "tableName": "records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -111,12 +101,12 @@
   "scripts": [
     {
       "run": "after",
-      "snippet": "CREATE OR REPLACE VIEW records_view AS SELECT records._id, json_build_object('id', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'matchedProfileId', records.jsonb->>'matchedProfileId','matchedId', records.jsonb->>'matchedId','generation', records.jsonb->>'generation','recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order', 'externalIdsHolder', records.jsonb->'externalIdsHolder', 'additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb,'parsedRecord', COALESCE(marc_records.jsonb),'errorRecord', error_records.jsonb) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';",
+      "snippet": "CREATE OR REPLACE VIEW records_view AS SELECT records.id, json_build_object('id', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'matchedProfileId', records.jsonb->>'matchedProfileId','matchedId', records.jsonb->>'matchedId','generation', records.jsonb->>'generation','recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order', 'externalIdsHolder', records.jsonb->'externalIdsHolder', 'additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb,'parsedRecord', COALESCE(marc_records.jsonb),'errorRecord', error_records.jsonb) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';",
       "fromModuleVersion": "mod-source-record-storage-2.0.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE OR REPLACE VIEW source_records_view AS SELECT records._id, json_build_object('recordId', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order','additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb)) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;",
+      "snippet": "CREATE OR REPLACE VIEW source_records_view AS SELECT records.id, json_build_object('recordId', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order','additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb)) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;",
       "fromModuleVersion": "mod-source-record-storage-2.0.0"
     },
     {

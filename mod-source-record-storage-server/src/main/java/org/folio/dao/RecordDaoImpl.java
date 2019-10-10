@@ -54,7 +54,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ID_FIELD = "'id'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
-  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
+  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
 
   @Autowired

@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
@@ -16,8 +17,10 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
@@ -43,6 +46,9 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private RecordService recordService;
 
+  @Autowired
+  private JsonDeserializer<Snapshot> snapshotDeserializer;
+
   private String tenantId;
 
   public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
@@ -58,6 +64,7 @@ public class ModTenantAPI extends TenantAPI {
         handlers.handle(ar);
       } else {
         setLoadSampleParameter(entity, context)
+          .compose(v -> registerSnapshotDeserializer())
           .compose(v -> createStubSnapshot(context, entity))
           .compose(v -> createStubData(entity))
           .setHandler(event -> handlers.handle(ar));
@@ -163,4 +170,8 @@ public class ModTenantAPI extends TenantAPI {
         && p.getValue().equals(Boolean.TRUE.toString()));
   }
 
+  private Future<Void> registerSnapshotDeserializer() {
+    ObjectMapperTool.registerDeserializer(Snapshot.class, snapshotDeserializer);
+    return Future.succeededFuture();
+  }
 }

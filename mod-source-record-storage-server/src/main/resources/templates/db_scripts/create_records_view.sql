@@ -2,7 +2,7 @@
 -- To change the view, update this script and copy it to the appropriate scripts.snippet field of the schema.json
 
 CREATE OR REPLACE VIEW records_view AS
-  SELECT records._id,
+  SELECT records.id,
   json_build_object('id', records.jsonb->>'id',
           'snapshotId', records.jsonb->>'snapshotId',
 					'matchedProfileId', records.jsonb->>'matchedProfileId',
@@ -27,7 +27,7 @@ CREATE OR REPLACE VIEW records_view AS
 -- add LEFT JOIN on that table and its jsonb field as a param of COALESCE, for example:
 --
 --CREATE OR REPLACE VIEW records_view AS
---  SELECT records._id,
+--  SELECT records.id,
 --  json_build_object('id', records.jsonb->>'id',
 --          'snapshotId', records.jsonb->>'snapshotId',
 --					'matchedProfileId', records.jsonb->>'matchedProfileId',
@@ -47,7 +47,7 @@ CREATE OR REPLACE VIEW records_view AS
 --
 --Similarly to update source_records_view the following script has to be updated and copied to the appropriate scripts.snippet field of the schema.json
 CREATE OR REPLACE VIEW source_records_view AS
-  SELECT records._id,
+  SELECT records.id,
   json_build_object('recordId', records.jsonb->>'id',
           'snapshotId', records.jsonb->>'snapshotId',
 					'recordType', records.jsonb->>'recordType',

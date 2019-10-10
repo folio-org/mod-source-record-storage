@@ -4,8 +4,6 @@
       "tableName": "snapshots",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -24,8 +22,6 @@
       "tableName": "raw_records",
       "fromModuleVersion": "mod-source-record-storage-2.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -44,8 +40,6 @@
       "tableName": "marc_records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -64,8 +58,6 @@
       "tableName": "error_records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -84,8 +76,6 @@
       "tableName": "records",
       "fromModuleVersion": "mod-source-record-storage-1.0.0",
       "withMetadata": true,
-      "pkColumnName": "_id",
-      "generateId": false,
       "withAuditing": false,
       "uniqueIndex": [
         {
@@ -101,7 +91,7 @@
       ],
       "foreignKeys": [
         {
-          "fieldName": "jobExecutionId",
+          "fieldName": "snapshotId",
           "targetTable": "snapshots",
           "tOps": "ADD"
         }
@@ -111,12 +101,12 @@
   "scripts": [
     {
       "run": "after",
-      "snippet": "CREATE OR REPLACE VIEW records_view AS SELECT records._id, json_build_object('id', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'matchedProfileId', records.jsonb->>'matchedProfileId','matchedId', records.jsonb->>'matchedId','generation', records.jsonb->>'generation','recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order', 'externalIdsHolder', records.jsonb->'externalIdsHolder', 'additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb,'parsedRecord', COALESCE(marc_records.jsonb),'errorRecord', error_records.jsonb) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';",
+      "snippet": "CREATE OR REPLACE VIEW records_view AS SELECT records.id, json_build_object('id', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'matchedProfileId', records.jsonb->>'matchedProfileId','matchedId', records.jsonb->>'matchedId','generation', records.jsonb->>'generation','recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order', 'externalIdsHolder', records.jsonb->'externalIdsHolder', 'additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb,'parsedRecord', COALESCE(marc_records.jsonb),'errorRecord', error_records.jsonb) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';",
       "fromModuleVersion": "mod-source-record-storage-2.0.0"
     },
     {
       "run": "after",
-      "snippet": "CREATE OR REPLACE VIEW source_records_view AS SELECT records._id, json_build_object('recordId', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order','additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb)) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;",
+      "snippet": "CREATE OR REPLACE VIEW source_records_view AS SELECT records.id, json_build_object('recordId', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', records.jsonb->>'order','additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb)) AS jsonb FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' WHERE records.jsonb->>'parsedRecordId' IS NOT NULL;",
       "fromModuleVersion": "mod-source-record-storage-2.0.0"
     },
     {
@@ -150,18 +140,13 @@
     },
     {
       "run": "after",
-      "snippet": "CREATE OR REPLACE FUNCTION get_highest_generation(matchedId uuid, snapshotId uuid) RETURNS integer AS $generation$ DECLARE generation integer; BEGIN SELECT MAX(records.jsonb ->> 'generation') into generation FROM records INNER JOIN snapshots ON records.jsonb ->> 'snapshotId' = snapshots.jsonb ->> 'jobExecutionId' WHERE (records.jsonb ->> 'matchedId')::uuid = matchedId AND snapshots.jsonb ->> 'status' = 'COMMITTED' AND (snapshots.jsonb -> 'metadata' ->> 'updatedDate')::timestamp with time zone < (SELECT snapshots.jsonb ->> 'processingStartedDate' FROM snapshots WHERE (snapshots.jsonb ->> 'jobExecutionId')::uuid = snapshotId)::timestamp with time zone; RETURN generation; END; $generation$ LANGUAGE plpgsql;",
+      "snippet": "CREATE OR REPLACE FUNCTION get_highest_generation(matchedId uuid, jobSnapshotId uuid) RETURNS integer AS $generation$ DECLARE generation integer; BEGIN SELECT MAX(records.jsonb ->> 'generation') into generation FROM records INNER JOIN snapshots ON records.snapshotId = snapshots.id WHERE (records.jsonb ->> 'matchedId')::uuid = matchedId AND snapshots.jsonb ->> 'status' = 'COMMITTED' AND (snapshots.jsonb -> 'metadata' ->> 'updatedDate')::timestamp with time zone < (SELECT snapshots.jsonb ->> 'processingStartedDate' FROM snapshots WHERE (snapshots.jsonb ->> 'jobExecutionId')::uuid = jobSnapshotId)::timestamp with time zone; RETURN generation; END; $generation$ LANGUAGE plpgsql;",
       "fromModuleVersion": "mod-source-record-storage-2.1.0"
     },
     {
       "run": "after",
       "snippet": "CREATE OR REPLACE FUNCTION get_record_by_external_id(externalId uuid, idFieldName text) RETURNS jsonb AS $recordDtoByExternalId$ DECLARE recordDtoByExternalId jsonb; BEGIN SELECT json_build_object('id', recordsByExternalId.jsonb->>'id', 'snapshotId', recordsByExternalId.jsonb->>'snapshotId', 'matchedProfileId', recordsByExternalId.jsonb->>'matchedProfileId', 'matchedId', recordsByExternalId.jsonb->>'matchedId', 'generation', recordsByExternalId.jsonb->>'generation', 'recordType', recordsByExternalId.jsonb->>'recordType', 'deleted', recordsByExternalId.jsonb->>'deleted', 'externalIdsHolder', recordsByExternalId.jsonb->'externalIdsHolder', 'additionalInfo', recordsByExternalId.jsonb->'additionalInfo', 'metadata', recordsByExternalId.jsonb->'metadata', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb), 'errorRecord', error_records.jsonb) INTO recordDtoByExternalId FROM (SELECT * FROM records WHERE (jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId AND (jsonb ->> 'generation')::int = (SELECT MAX((jsonb ->> 'generation')::int) FROM records)) AS recordsByExternalId JOIN raw_records ON recordsByExternalId.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON recordsByExternalId.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON recordsByExternalId.jsonb->>'errorRecordId' = error_records.jsonb->>'id'; RETURN recordDtoByExternalId; END; $recordDtoByExternalId$ LANGUAGE plpgsql;",
       "fromModuleVersion": "mod-source-record-storage-2.4.0"
-    },
-    {
-      "run": "after",
-      "snippet": "CREATE INDEX IF NOT EXISTS records_snapshot_id_idx_btree ON records USING BTREE ((jsonb ->> 'snapshotId'));",
-      "fromModuleVersion": "mod-source-record-storage-2.7.0"
     }
   ]
 }

@@ -27,7 +27,6 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
-  private static final String RECORDS_TABLE_NAME = "records";
 
   private static Snapshot snapshot_1 = new Snapshot()
     .withJobExecutionId("67dfac11-1caf-4470-9ad1-d533f6360bdd")
@@ -45,14 +44,12 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   @Override
   public void clearTables(TestContext context) {
     Async async = context.async();
-    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(RECORDS_TABLE_NAME, new Criterion(), event1 ->
-      pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 -> {
-        if (event2.failed()) {
-          context.fail(event2.cause());
-        }
-        async.complete();
-      }));
+    PostgresClient.getInstance(vertx, TENANT_ID).delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event -> {
+      if (event.failed()) {
+        context.fail(event.cause());
+      }
+      async.complete();
+    });
   }
 
   @Test

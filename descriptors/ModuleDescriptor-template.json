@@ -4,8 +4,8 @@
   "requires": [],
   "provides": [
     {
-      "id": "source-record-storage-snapshots",
-      "version": "0.1",
+      "id": "source-storage-snapshots",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -55,8 +55,8 @@
       ]
     },
     {
-      "id": "source-record-storage-records",
-      "version": "0.1",
+      "id": "source-storage-records",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -120,12 +120,21 @@
           "permissionsRequired": [
             "source-storage.records.get"
           ]
+        },
+        {
+          "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
+          "permissionsRequired": [
+            "source-storage.snapshots.records.delete"
+          ]
         }
       ]
     },
     {
-      "id": "test-records-populator",
-      "version": "0.1",
+      "id": "source-storage-test-records",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -139,8 +148,8 @@
       ]
     },
     {
-      "id": "records-discovery-config",
-      "version": "0.1",
+      "id": "source-storage-suppress-discovery",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -154,22 +163,7 @@
       ]
     },
     {
-      "id": "source-record-storage-cleanup",
-      "version": "0.1",
-      "handlers": [
-        {
-          "methods": [
-            "DELETE"
-          ],
-          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
-          "permissionsRequired": [
-            "source-storage.snapshots.records.delete"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "source-record-storage-batch",
+      "id": "source-storage-batch",
       "version": "0.1",
       "handlers": [
         {

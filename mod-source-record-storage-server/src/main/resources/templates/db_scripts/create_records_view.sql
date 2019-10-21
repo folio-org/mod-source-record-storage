@@ -7,10 +7,10 @@ CREATE OR REPLACE VIEW records_view AS
           'snapshotId', records.jsonb->>'snapshotId',
 					'matchedProfileId', records.jsonb->>'matchedProfileId',
 					'matchedId', records.jsonb->>'matchedId',
-					'generation', records.jsonb->>'generation',
+					'generation', (records.jsonb->>'generation')::integer,
 					'recordType', records.jsonb->>'recordType',
 					'deleted', records.jsonb->>'deleted',
-					'order', records.jsonb->>'order',
+					'order', (records.jsonb->>'order')::integer,
 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
@@ -21,7 +21,8 @@ CREATE OR REPLACE VIEW records_view AS
    FROM records
      JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
      LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-     LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';
+     LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id'
+   ORDER BY (records.jsonb ->> 'order')::integer;
 
 -- to add a table that stores another type of parsed record,
 -- add LEFT JOIN on that table and its jsonb field as a param of COALESCE, for example:

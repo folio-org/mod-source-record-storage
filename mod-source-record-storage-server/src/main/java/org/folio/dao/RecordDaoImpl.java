@@ -1,5 +1,6 @@
 package org.folio.dao;
 
+import com.fasterxml.jackson.databind.RuntimeJsonMappingException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -9,6 +10,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -25,13 +27,20 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
+import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.z3950.zing.cql.cql2pgjson.FieldException;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static org.folio.dao.SnapshotDao.SNAPSHOTS_TABLE;
@@ -39,6 +48,7 @@ import static org.folio.dao.SnapshotDao.SNAPSHOT_ID_FIELD;
 import static org.folio.dao.util.DbUtil.executeInTransaction;
 import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 @Component
@@ -56,24 +66,23 @@ public class RecordDaoImpl implements RecordDao {
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
+  private static final String COUNT_ROWS_QUERY = "SELECT COUNT(*) FROM %s %s";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
 
   @Override
   public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
-    Future<Results<Record>> future = Future.future();
+    Future<ResultSet> future = Future.future();
     try {
-      String[] fieldList = {"*"};
-      CQLWrapper cql = getCQLWrapper(RECORDS_VIEW, query, limit, offset);
-      pgClientFactory.createInstance(tenantId).get(RECORDS_VIEW, Record.class, fieldList, cql, true, false, future.completer());
+      String tableName = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_VIEW);
+      String preparedQuery = prepareGetQuery(tableName, query, offset, limit);
+      pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view", e);
       future.fail(e);
     }
-    return future.map(results -> new RecordCollection()
-      .withRecords(results.getResults())
-      .withTotalRecords(results.getResultInfo().getTotalRecords()));
+    return future.map(this::mapResultSetToRecordCollection);
   }
 
   @Override
@@ -103,19 +112,20 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
-    Future<Results<SourceRecord>> future = Future.future();
+    Future<ResultSet> future = Future.future();
     try {
-      String[] fieldList = {"*"};
-      CQLWrapper cql = getCQLWrapper(SOURCE_RECORDS_VIEW, "deleted=" + deletedRecords, limit, offset);
-      cql.addWrapper(getCQLWrapper(SOURCE_RECORDS_VIEW, query));
-      pgClientFactory.createInstance(tenantId).get(SOURCE_RECORDS_VIEW, SourceRecord.class, fieldList, cql, true, false, future.completer());
+      StringBuilder cqlQueryBuilder = new StringBuilder("deleted=").append(deletedRecords);
+      if (StringUtils.isNotBlank(query)) {
+        cqlQueryBuilder.append(" and ").append(query);
+      }
+      String tableName = format("%s.%s", convertToPsqlStandard(tenantId), SOURCE_RECORDS_VIEW);
+      String preparedQuery = prepareGetQuery(tableName, cqlQueryBuilder.toString(), offset, limit);
+      pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
     }
-    return future.map(results -> new SourceRecordCollection()
-      .withSourceRecords(results.getResults())
-      .withTotalRecords(results.getResultInfo().getTotalRecords()));
+    return future.map(this::mapResultSetToSourceRecordCollection);
   }
 
   @Override
@@ -149,8 +159,8 @@ public class RecordDaoImpl implements RecordDao {
   /**
    * Updates external relations ids for record in transaction
    *
-   * @param tx transaction connection
-   * @param record record dto
+   * @param tx       transaction connection
+   * @param record   record dto
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -183,7 +193,7 @@ public class RecordDaoImpl implements RecordDao {
   /**
    * Updates {@link ParsedRecord} in the db in scope of transaction
    *
-   * @param tx transaction connection
+   * @param tx           transaction connection
    * @param parsedRecord {@link ParsedRecord} to update
    * @param recordType   type of ParsedRecord
    * @param tenantId     tenant id
@@ -468,6 +478,77 @@ public class RecordDaoImpl implements RecordDao {
       return format(GET_RECORD_BY_EXTERNAL_ID_QUERY, suppressFromDiscoveryDto.getId(), externalIdType.getExternalIdField());
     } catch (IllegalArgumentException e) {
       throw new BadRequestException("Selected IncomingIdType is not supported");
+    }
+  }
+
+  /**
+   * Parses specified cql query to sql query.
+   * @param tableName table name
+   * @param cqlQuery  cql query
+   * @param offset    offset
+   * @param limit     limit
+   * @return sql query for retrieving data from specified table
+   * @throws FieldException
+   */
+  private String prepareGetQuery(String tableName, String cqlQuery, int offset, int limit) throws FieldException {
+    String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
+    String whereClause = getCQLWrapper(tableName, filterCql).toString();
+    String countQuery = format(COUNT_ROWS_QUERY, tableName, whereClause);
+
+    if (StringUtils.isNotBlank(cqlQuery) && cqlQuery.contains("/sort.number")) {
+      String sortByCql = cqlQuery.substring(cqlQuery.indexOf("sortBy"));
+      String sortingField = getSortingField(sortByCql);
+      StringBuilder orderByExpression = new StringBuilder(format("(%s.jsonb->>'%s')::integer", tableName, sortingField));
+
+      if (sortByCql.contains("/sort.descending")) {
+        orderByExpression.append(" DESC ");
+      }
+      String sqlPattern = "SELECT *, (%s) AS totalRows FROM %s %s ORDER BY %s LIMIT %d OFFSET %d";
+      return format(sqlPattern, countQuery, tableName, whereClause, orderByExpression.toString(), limit, offset);
+    }
+    CQLWrapper cql = getCQLWrapper(tableName, cqlQuery, limit, offset);
+    return format("SELECT *, (%s) AS totalRows FROM %s %s", countQuery, tableName, cql.toString());
+  }
+
+  private String getSortingField(String sortByCql) {
+    Pattern pattern = Pattern.compile("sortBy[\\s]([a-z]*)(/.*)?$");
+    Matcher matcher = pattern.matcher(sortByCql);
+    if (matcher.find()) {
+      return matcher.group(1);
+    } else {
+      LOG.error("Error while parsing sorting field from cql sortBy query: '{}'", sortByCql);
+      throw new BadRequestException(format("Invalid sorting field specified '%s'", sortByCql));
+    }
+  }
+
+  private RecordCollection mapResultSetToRecordCollection(ResultSet resultSet) {
+    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger("totalrows") : 0;
+    List<Record> records = resultSet.getRows().stream()
+      .map(row -> mapJsonToEntity(row.getString("jsonb"), Record.class))
+      .collect(Collectors.toList());
+
+    return new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(totalRecords);
+  }
+
+  private SourceRecordCollection mapResultSetToSourceRecordCollection(ResultSet resultSet) {
+    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger("totalrows") : 0;
+    List<SourceRecord> records = resultSet.getRows().stream()
+      .map(row -> mapJsonToEntity(row.getString("jsonb"), SourceRecord.class))
+      .collect(Collectors.toList());
+
+    return new SourceRecordCollection()
+      .withSourceRecords(records)
+      .withTotalRecords(totalRecords);
+  }
+
+  private <T> T mapJsonToEntity(String jsonString, Class<T> entityType) {
+    try {
+      return ObjectMapperTool.getMapper().readValue(jsonString, entityType);
+    } catch (IOException e) {
+      LOG.error(format("Error while mapping json to %s object.", entityType.getSimpleName()), e);
+      throw new RuntimeJsonMappingException(e.getMessage());
     }
   }
 

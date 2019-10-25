@@ -115,8 +115,7 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         recordService.deleteRecordsBySnapshotId(jobExecutionId, tenantId)
-          .map(deleted -> DeleteSourceStorageSnapshotsRecordsByJobExecutionIdResponse.respond204WithTextPlain(
-            format("Successfully deleted records for JobExecution %s", jobExecutionId)))
+          .map(deleted -> DeleteSourceStorageSnapshotsRecordsByJobExecutionIdResponse.respond204())
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -152,8 +151,7 @@ public class SourceStorageImpl implements SourceStorage {
       try {
         snapshotService.deleteSnapshot(jobExecutionId, tenantId)
           .map(deleted -> deleted ?
-            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204WithTextPlain(
-              format("Snapshot with id '%s' was successfully deleted", jobExecutionId)) :
+            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204() :
             DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
               format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
@@ -265,8 +263,7 @@ public class SourceStorageImpl implements SourceStorage {
           .compose(record -> record.getDeleted()
             ? Future.succeededFuture(true)
             : recordService.updateRecord(record.withDeleted(true), tenantId).map(r -> true))
-          .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204WithTextPlain(
-            format("Record with id '%s' was successfully deleted", id)))
+          .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204())
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
@@ -319,7 +316,7 @@ public class SourceStorageImpl implements SourceStorage {
 
         CompositeFuture.all(futures).setHandler(result -> {
           if (result.succeeded()) {
-            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204WithTextPlain("MARC records were successfully saved")));
+            asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204()));
           } else {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
           }

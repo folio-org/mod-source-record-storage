@@ -71,15 +71,11 @@ resourceTypes:
       delete:
         responses:
           204:
-            body:
-              text/plain: !!null
       /records:
         delete:
           description: "Delete snapshot and all associated records"
           responses:
             204:
-              body:
-                text/plain: !!null
   /records:
     displayName: Records
     description: API for managing Records
@@ -119,8 +115,6 @@ resourceTypes:
       delete:
         responses:
           204:
-            body:
-              text/plain: !!null
   /sourceRecords:
     displayName: Source Records
     description: API for getting Source Records
@@ -167,8 +161,6 @@ resourceTypes:
           type: testMarcRecordsCollection
       responses:
         204:
-          body:
-            text/plain: !!null
         400:
           description: "Bad request"
           body:

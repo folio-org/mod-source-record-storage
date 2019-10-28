@@ -30,6 +30,7 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
 
 import javax.ws.rs.BadRequestException;
@@ -67,6 +68,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
   private static final String COUNT_ROWS_QUERY = "SELECT COUNT(*) FROM %s %s";
+  private static final String JSONB_COLUMN = "jsonb";
+  private static final String TOTALROWS_COLUMN = "totalrows";
 
   @Autowired
   private PostgresClientFactory pgClientFactory;
@@ -483,6 +486,12 @@ public class RecordDaoImpl implements RecordDao {
 
   /**
    * Parses specified cql query to sql query.
+   * Parses cql sorting expression with modifier '/sort.number' for sorting by numeric fields to sql expression
+   * with explicit casting sorting field value to integer. Explicit casting of numeric sorting field allows to apply
+   * sorting query to database view, unlike parsed result from CQL2PG#toSql() method,
+   * which causes a syntax error when applied on the database view. Also, resulting sql query returns
+   * number of all existing rows in database, which are satisfying the cql query conditions to 'totalrows' column.
+   *
    * @param tableName table name
    * @param cqlQuery  cql query
    * @param offset    offset
@@ -496,11 +505,11 @@ public class RecordDaoImpl implements RecordDao {
     String countQuery = format(COUNT_ROWS_QUERY, tableName, whereClause);
 
     if (StringUtils.isNotBlank(cqlQuery) && cqlQuery.contains("/sort.number")) {
-      String sortByCql = cqlQuery.substring(cqlQuery.indexOf("sortBy"));
-      String sortingField = getSortingField(sortByCql);
+      String cqlSortByExpression = cqlQuery.substring(cqlQuery.indexOf("sortBy"));
+      String sortingField = getSortingField(cqlSortByExpression);
       StringBuilder orderByExpression = new StringBuilder(format("(%s.jsonb->>'%s')::integer", tableName, sortingField));
 
-      if (sortByCql.contains("/sort.descending")) {
+      if (cqlSortByExpression.contains("/sort.descending")) {
         orderByExpression.append(" DESC ");
       }
       String sqlPattern = "SELECT *, (%s) AS totalRows FROM %s %s ORDER BY %s LIMIT %d OFFSET %d";
@@ -510,21 +519,35 @@ public class RecordDaoImpl implements RecordDao {
     return format("SELECT *, (%s) AS totalRows FROM %s %s", countQuery, tableName, cql.toString());
   }
 
-  private String getSortingField(String sortByCql) {
+  /**
+   * Retrieves sorting field from cql sorting expression.
+   * Valid formats of cql sorting expression: "sortBy sortingField", "sortBy sortingField/sort.descending",
+   * "sortBy sortingField/sort.descending/sort.number", "sortBy sortingField/sort.number".
+   *
+   * @param cqlSortByExpression cql sorting expression
+   * @return sorting field
+   */
+  private String getSortingField(String cqlSortByExpression) {
     Pattern pattern = Pattern.compile("sortBy[\\s]([a-z]*)(/.*)?$");
-    Matcher matcher = pattern.matcher(sortByCql);
+    Matcher matcher = pattern.matcher(cqlSortByExpression);
     if (matcher.find()) {
       return matcher.group(1);
     } else {
-      LOG.error("Error while parsing sorting field from cql sortBy query: '{}'", sortByCql);
-      throw new BadRequestException(format("Invalid sorting field specified '%s'", sortByCql));
+      LOG.error("Error while parsing sorting field from cql sortBy query: '{}'", cqlSortByExpression);
+      throw new BadRequestException(format("Invalid sorting field specified '%s'", cqlSortByExpression));
     }
   }
 
+  /**
+   * Converts result set to {@link RecordCollection}
+   *
+   * @param resultSet result set
+   * @return RecordCollection
+   */
   private RecordCollection mapResultSetToRecordCollection(ResultSet resultSet) {
-    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger("totalrows") : 0;
+    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger(TOTALROWS_COLUMN) : 0;
     List<Record> records = resultSet.getRows().stream()
-      .map(row -> mapJsonToEntity(row.getString("jsonb"), Record.class))
+      .map(row -> mapJsonToEntity(row.getString(JSONB_COLUMN), Record.class))
       .collect(Collectors.toList());
 
     return new RecordCollection()
@@ -532,10 +555,16 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(totalRecords);
   }
 
+  /**
+   * Converts result set to {@link SourceRecordCollection}
+   *
+   * @param resultSet result set
+   * @return SourceRecordCollection
+   */
   private SourceRecordCollection mapResultSetToSourceRecordCollection(ResultSet resultSet) {
-    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger("totalrows") : 0;
+    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger(TOTALROWS_COLUMN) : 0;
     List<SourceRecord> records = resultSet.getRows().stream()
-      .map(row -> mapJsonToEntity(row.getString("jsonb"), SourceRecord.class))
+      .map(row -> mapJsonToEntity(row.getString(JSONB_COLUMN), SourceRecord.class))
       .collect(Collectors.toList());
 
     return new SourceRecordCollection()
@@ -543,6 +572,13 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(totalRecords);
   }
 
+  /**
+   * Deserializes JSON content from given json string to object of specified type.
+   *
+   * @param jsonString json content
+   * @param entityType type of objet to deserialize
+   * @return deserialized object from json string
+   */
   private <T> T mapJsonToEntity(String jsonString, Class<T> entityType) {
     try {
       return ObjectMapperTool.getMapper().readValue(jsonString, entityType);

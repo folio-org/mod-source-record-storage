@@ -21,8 +21,7 @@ CREATE OR REPLACE VIEW records_view AS
    FROM records
      JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
      LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-     LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id'
-   ORDER BY (records.jsonb ->> 'order')::integer;
+     LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id';
 
 -- to add a table that stores another type of parsed record,
 -- add LEFT JOIN on that table and its jsonb field as a param of COALESCE, for example:

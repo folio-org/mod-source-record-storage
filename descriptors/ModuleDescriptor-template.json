@@ -4,8 +4,8 @@
   "requires": [],
   "provides": [
     {
-      "id": "source-record-storage",
-      "version": "2.2",
+      "id": "source-storage-snapshots",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -51,16 +51,13 @@
           "permissionsRequired": [
             "source-storage.snapshots.delete"
           ]
-        },
-        {
-          "methods": [
-            "DELETE"
-          ],
-          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
-          "permissionsRequired": [
-            "source-storage.snapshots.records.delete"
-          ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "source-storage-records",
+      "version": "1.0",
+      "handlers": [
         {
           "methods": [
             "GET"
@@ -117,15 +114,6 @@
         },
         {
           "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/populate-test-marc-records",
-          "permissionsRequired": [
-            "source-storage.populate.records"
-          ]
-        },
-        {
-          "methods": [
             "GET"
           ],
           "pathPattern": "/source-storage/formattedRecords/{id}",
@@ -133,6 +121,36 @@
             "source-storage.records.get"
           ]
         },
+        {
+          "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
+          "permissionsRequired": [
+            "source-storage.snapshots.records.delete"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "source-storage-test-records",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/populate-test-marc-records",
+          "permissionsRequired": [
+            "source-storage.populate.records"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "source-storage-suppress-discovery",
+      "version": "1.0",
+      "handlers": [
         {
           "methods": [
             "PUT"
@@ -145,7 +163,7 @@
       ]
     },
     {
-      "id": "source-record-storage-batch",
+      "id": "source-storage-batch",
       "version": "0.1",
       "handlers": [
         {

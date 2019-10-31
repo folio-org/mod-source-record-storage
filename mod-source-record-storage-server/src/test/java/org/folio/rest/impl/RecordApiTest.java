@@ -98,7 +98,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
     .withMatchedId(UUID.randomUUID().toString())
-    .withOrder(0);
+    .withOrder(11);
   private static Record record_3 = new Record()
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
@@ -118,7 +118,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withRawRecord(rawRecord)
     .withMatchedId(UUID.randomUUID().toString())
     .withParsedRecord(invalidParsedRecord)
-    .withOrder(2);
+    .withOrder(101);
 
   @Override
   public void clearTables(TestContext context) {
@@ -347,7 +347,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order")
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order/sort.number")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
@@ -355,8 +355,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    Assert.assertEquals(0, sourceRecordList.get(0).getOrder().intValue());
-    Assert.assertEquals(2, sourceRecordList.get(1).getOrder().intValue());
+    Assert.assertEquals(11, sourceRecordList.get(0).getOrder().intValue());
+    Assert.assertEquals(101, sourceRecordList.get(1).getOrder().intValue());
     async.complete();
   }
 
@@ -934,7 +934,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     List<Record> records = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order")
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=snapshotId=" + snapshot_2.getJobExecutionId() + " sortBy order/sort.number")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("records.size()", is(3))
@@ -942,8 +942,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("records*.deleted", everyItem(is(false)))
       .extract().response().body().as(RecordCollection.class).getRecords();
 
-    Assert.assertEquals(0, records.get(0).getOrder().intValue());
-    Assert.assertEquals(2, records.get(1).getOrder().intValue());
+    Assert.assertEquals(11, records.get(0).getOrder().intValue());
+    Assert.assertEquals(101, records.get(1).getOrder().intValue());
     Assert.assertNull(records.get(2).getOrder());
 
     async.complete();

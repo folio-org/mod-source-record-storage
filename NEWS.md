@@ -1,6 +1,8 @@
 ## 2019-09-09 v2.7.0-SNAPSHOT
 * Changed payload of endpoint for updating parsed records from ParsedRecordCollection to RecordCollection
 * Added order number to the record
+* Fixed sorting records by order number
+* Broken down source-record-storage interface into smaller ones: source-storage-snapshots, source-storage-records, source-storage-test-records, source-storage-suppress-discovery.
 
 ## 2019-09-09 v2.6.0
 * Fixed security vulnerability with jackson databind

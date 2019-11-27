@@ -1,3 +1,6 @@
+## 2019-11-27 v2.8.0-SNAPSHOT
+* Added migration script to fill externalIdHolder.instanceId fields in records table
+
 ## 2019-11-04 v2.7.0
 * Changed payload of endpoint for updating parsed records from ParsedRecordCollection to RecordCollection
 * Added order number to the record

@@ -82,7 +82,7 @@
     },
     {
       "tableName": "records",
-      "fromModuleVersion": "mod-source-record-storage-2.8.0",
+      "fromModuleVersion": "mod-source-record-storage-3.0.0",
       "customSnippetPath": "migration_scripts/records_external_ids_holder.sql",
       "withMetadata": true,
       "pkColumnName": "_id",

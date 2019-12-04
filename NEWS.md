@@ -1,5 +1,6 @@
-## 2019-11-27 v2.8.0-SNAPSHOT
+## 2019-12-04 v3.0.0
 * Added migration script to fill externalIdHolder.instanceId fields in records table
+* Applied new JVM features to manage container memory
 
 ## 2019-11-04 v2.7.0
 * Changed payload of endpoint for updating parsed records from ParsedRecordCollection to RecordCollection

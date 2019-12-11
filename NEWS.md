@@ -1,3 +1,6 @@
+## 2019-12-11 v3.1.0-SNAPSHOT
+* Fixed timeout on GET /source-storage/sourceRecords
+
 ## 2019-12-04 v3.0.0
 * Added migration script to fill externalIdHolder.instanceId fields in records table
 * Applied new JVM features to manage container memory

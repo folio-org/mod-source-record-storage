@@ -30,7 +30,6 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
 
 import javax.ws.rs.BadRequestException;
@@ -67,7 +66,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
-  private static final String COUNT_ROWS_QUERY = "SELECT COUNT(*) FROM %s %s";
+  private static final String COUNT_ROWS_QUERY = "SELECT COUNT(_id) FROM %s %s";
   private static final String JSONB_COLUMN = "jsonb";
   private static final String TOTALROWS_COLUMN = "totalrows";
 
@@ -79,7 +78,8 @@ public class RecordDaoImpl implements RecordDao {
     Future<ResultSet> future = Future.future();
     try {
       String tableName = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_VIEW);
-      String preparedQuery = prepareGetQuery(tableName, query, offset, limit);
+      String countQuery = prepareCountQuery(tableName, query);
+      String preparedQuery = prepareGetQuery(tableName, countQuery, query, offset, limit);
       pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view", e);
@@ -121,9 +121,13 @@ public class RecordDaoImpl implements RecordDao {
       if (StringUtils.isNotBlank(query)) {
         cqlQueryBuilder.append(" and ").append(query);
       }
+      String cqlForCountQuery = new StringBuilder("(parsedRecordId = \"\" NOT parsedRecordId == \"\")")
+        .append(" and ").append(cqlQueryBuilder).toString();
       String tableName = format("%s.%s", convertToPsqlStandard(tenantId), SOURCE_RECORDS_VIEW);
-      String preparedQuery = prepareGetQuery(tableName, cqlQueryBuilder.toString(), offset, limit);
-      pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
+      String countingTable = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_TABLE);
+      String countQuery = prepareCountQuery(countingTable, cqlForCountQuery);
+      String preparedGetQuery = prepareGetQuery(tableName, countQuery, cqlQueryBuilder.toString(), offset, limit);
+      pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
       future.fail(e);
@@ -493,16 +497,17 @@ public class RecordDaoImpl implements RecordDao {
    * number of all existing rows in database, which are satisfying the cql query conditions to 'totalrows' column.
    *
    * @param tableName table name
+   * @param countQuery query to calculate total records number
    * @param cqlQuery  cql query
    * @param offset    offset
    * @param limit     limit
    * @return sql query for retrieving data from specified table
    * @throws FieldException
    */
-  private String prepareGetQuery(String tableName, String cqlQuery, int offset, int limit) throws FieldException {
+
+  private String prepareGetQuery(String tableName, String countQuery, String cqlQuery, int offset, int limit) throws FieldException {
     String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
     String whereClause = getCQLWrapper(tableName, filterCql).toString();
-    String countQuery = format(COUNT_ROWS_QUERY, tableName, whereClause);
 
     if (StringUtils.isNotBlank(cqlQuery) && cqlQuery.contains("/sort.number")) {
       String cqlSortByExpression = cqlQuery.substring(cqlQuery.indexOf("sortBy"));
@@ -517,6 +522,12 @@ public class RecordDaoImpl implements RecordDao {
     }
     CQLWrapper cql = getCQLWrapper(tableName, cqlQuery, limit, offset);
     return format("SELECT *, (%s) AS totalRows FROM %s %s", countQuery, tableName, cql.toString());
+  }
+
+  private String prepareCountQuery(String tableName, String cqlQuery) throws FieldException {
+    String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
+    String whereClause = getCQLWrapper(tableName, filterCql).toString();
+    return format(COUNT_ROWS_QUERY, tableName, whereClause);
   }
 
   /**

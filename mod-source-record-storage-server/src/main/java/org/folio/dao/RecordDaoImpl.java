@@ -25,12 +25,15 @@ import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.cql.CQLQueryValidationException;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
+import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -78,7 +81,8 @@ public class RecordDaoImpl implements RecordDao {
     Future<ResultSet> future = Future.future();
     try {
       String tableName = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_VIEW);
-      String countQuery = prepareCountQuery(tableName, query);
+      String countingTable = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_TABLE);
+      String countQuery = prepareCountQuery(countingTable, query);
       String preparedQuery = prepareGetQuery(tableName, countQuery, query, offset, limit);
       pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
     } catch (Exception e) {
@@ -121,11 +125,9 @@ public class RecordDaoImpl implements RecordDao {
       if (StringUtils.isNotBlank(query)) {
         cqlQueryBuilder.append(" and ").append(query);
       }
-      String cqlForCountQuery = new StringBuilder("(parsedRecordId = \"\" NOT parsedRecordId == \"\")")
-        .append(" and ").append(cqlQueryBuilder).toString();
       String tableName = format("%s.%s", convertToPsqlStandard(tenantId), SOURCE_RECORDS_VIEW);
       String countingTable = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_TABLE);
-      String countQuery = prepareCountQuery(countingTable, cqlForCountQuery);
+      String countQuery = prepareSourceRecordsCountQuery(countingTable, deletedRecords, query);
       String preparedGetQuery = prepareGetQuery(tableName, countQuery, cqlQueryBuilder.toString(), offset, limit);
       pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
@@ -528,6 +530,23 @@ public class RecordDaoImpl implements RecordDao {
     String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
     String whereClause = getCQLWrapper(tableName, filterCql).toString();
     return format(COUNT_ROWS_QUERY, tableName, whereClause);
+  }
+
+  private String prepareSourceRecordsCountQuery(String tableName, boolean deletedRecords, String cqlQuery) throws FieldException {
+    try {
+      StringBuilder whereClauseBuilder = new StringBuilder(" WHERE ").append(tableName).append(".jsonb->> 'parsedRecordId' IS NOT NULL")
+        .append(" AND ").append(tableName).append(".jsonb->> 'deleted' = ")
+        .append("'").append(deletedRecords).append("'");
+
+      if (StringUtils.isNotBlank(cqlQuery)) {
+        String cqlFilterConditions = new CQL2PgJSON(tableName + ".jsonb").toSql(cqlQuery).getWhere();
+        whereClauseBuilder.append(" AND ").append(cqlFilterConditions);
+      }
+
+      return format(COUNT_ROWS_QUERY, tableName, whereClauseBuilder.toString());
+    } catch (QueryValidationException e) {
+      throw new CQLQueryValidationException(e);
+    }
   }
 
   /**

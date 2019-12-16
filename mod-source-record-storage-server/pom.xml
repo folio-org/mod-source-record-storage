@@ -69,6 +69,12 @@
       <artifactId>data-import-utils</artifactId>
       <version>1.0.0</version>
       <type>jar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>org.z3950.zing</groupId>
+          <artifactId>cql2pgjson</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -85,6 +91,11 @@
       <artifactId>folio-di-support</artifactId>
       <version>1.0.0</version>
       <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.z3950.zing</groupId>
+      <artifactId>cql2pgjson</artifactId>
+      <version>4.0.0</version>
     </dependency>
   </dependencies>
 

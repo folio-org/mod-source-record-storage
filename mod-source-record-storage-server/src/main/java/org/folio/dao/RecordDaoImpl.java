@@ -34,6 +34,7 @@ import org.springframework.stereotype.Component;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
 import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
+import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -41,8 +42,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -59,17 +58,17 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String RECORDS_VIEW = "records_view";
-  private static final String SOURCE_RECORDS_VIEW = "source_records_view";
   private static final String RECORDS_TABLE = "records";
   private static final String RAW_RECORDS_TABLE = "raw_records";
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
+  private static final String GET_RECORDS_QUERY = "SELECT * FROM get_records('%s', '%s', %s, %s, '%s')";
+  private static final String GET_RECORD_BY_ID_QUERY = "SELECT get_record_by_id('%s')";
+  private static final String GET_SOURCE_RECORDS_QUERY = "SELECT * FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
-  private static final String COUNT_ROWS_QUERY = "SELECT COUNT(_id) FROM %s %s";
   private static final String JSONB_COLUMN = "jsonb";
   private static final String TOTALROWS_COLUMN = "totalrows";
 
@@ -80,11 +79,15 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String tableName = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_VIEW);
-      String countingTable = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_TABLE);
-      String countQuery = prepareCountQuery(countingTable, query);
-      String preparedQuery = prepareGetQuery(tableName, countQuery, query, offset, limit);
-      pgClientFactory.createInstance(tenantId).select(preparedQuery, future.completer());
+      String whereClause = StringUtils.EMPTY;
+      String orderBy = StringUtils.EMPTY;
+      if (StringUtils.isNotBlank(query)) {
+        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
+        whereClause = String.format("WHERE %s ", sqlSelect.getWhere()).replace("'", "''");
+        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
+      }
+      String preparedGetQuery = String.format(GET_RECORDS_QUERY, whereClause, orderBy, limit, offset, convertToPsqlStandard(tenantId));
+      pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view", e);
       future.fail(e);
@@ -94,17 +97,18 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    Future<Results<Record>> future = Future.future();
+    Future<ResultSet> future = Future.future();
     try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(RECORDS_VIEW, Record.class, new Criterion(idCrit), true, false, future.completer());
+      String query = String.format(GET_RECORD_BY_ID_QUERY, id);
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying records_view by id", e);
       future.fail(e);
     }
-    return future
-      .map(Results::getResults)
-      .map(records -> records.isEmpty() ? Optional.empty() : Optional.of(records.get(0)));
+    return future.map(resultSet -> {
+      String recordsAsString = resultSet.getResults().get(0).getString(0);
+      return Optional.ofNullable(recordsAsString).map(it -> new JsonObject(it).mapTo(Record.class));
+    });
   }
 
   @Override
@@ -121,14 +125,14 @@ public class RecordDaoImpl implements RecordDao {
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      StringBuilder cqlQueryBuilder = new StringBuilder("deleted=").append(deletedRecords);
+      String queryFilter = StringUtils.EMPTY;
+      String orderBy = StringUtils.EMPTY;
       if (StringUtils.isNotBlank(query)) {
-        cqlQueryBuilder.append(" and ").append(query);
+        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
+        queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
+        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
       }
-      String tableName = format("%s.%s", convertToPsqlStandard(tenantId), SOURCE_RECORDS_VIEW);
-      String countingTable = format("%s.%s", convertToPsqlStandard(tenantId), RECORDS_TABLE);
-      String countQuery = prepareSourceRecordsCountQuery(countingTable, deletedRecords, query);
-      String preparedGetQuery = prepareGetQuery(tableName, countQuery, cqlQueryBuilder.toString(), offset, limit);
+      String preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
       pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Error while querying results_view", e);
@@ -316,14 +320,14 @@ public class RecordDaoImpl implements RecordDao {
             });
         })
         .compose(snapshot -> {
-          Future<Results<Record>> recordsFuture = Future.future();
+          Future<Results<RecordModel>> recordsFuture = Future.future();
           Criteria snapshotCriterion = constructCriteria(SNAPSHOT_FIELD, snapshot.getJobExecutionId());
-          pgClient.get(connection, RECORDS_VIEW, Record.class, new Criterion(snapshotCriterion), true, false, null, recordsFuture.completer());
+          pgClient.get(connection, RECORDS_TABLE, RecordModel.class, new Criterion(snapshotCriterion), true, false, null, recordsFuture.completer());
           return recordsFuture.map(Results::getResults);
         })
         .compose(records -> {
           Future<Boolean> deletedFuture = Future.succeededFuture(true);
-          for (Record record : records) {
+          for (RecordModel record : records) {
             deletedFuture = deletedFuture.compose(v -> deleteRecord(record, pgClient, connection));
           }
           return deletedFuture;
@@ -344,19 +348,19 @@ public class RecordDaoImpl implements RecordDao {
    * @param connection     connection
    * @return future with true if succeeded
    */
-  private Future<Boolean> deleteRecord(Record record, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
+  private Future<Boolean> deleteRecord(RecordModel record, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
     Future<Boolean> future = Future.future();
     Future.succeededFuture()
-      .compose(v -> deleteById(record.getRawRecord().getId(), RAW_RECORDS_TABLE, postgresClient, connection))
+      .compose(v -> deleteById(record.getRawRecordId(), RAW_RECORDS_TABLE, postgresClient, connection))
       .compose(v -> {
-        if (record.getParsedRecord() != null) {
-          return deleteById(record.getParsedRecord().getId(), RecordType.valueOf(record.getRecordType().value()).getTableName(), postgresClient, connection);
+        if (record.getParsedRecordId() != null) {
+          return deleteById(record.getParsedRecordId(), RecordType.valueOf(record.getRecordType().value()).getTableName(), postgresClient, connection);
         }
         return Future.succeededFuture();
       })
       .compose(v -> {
-        if (record.getErrorRecord() != null) {
-          return deleteById(record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, postgresClient, connection);
+        if (record.getErrorRecordId() != null) {
+          return deleteById(record.getErrorRecordId(), ERROR_RECORDS_TABLE, postgresClient, connection);
         }
         return Future.succeededFuture();
       })
@@ -490,81 +494,11 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  /**
-   * Parses specified cql query to sql query.
-   * Parses cql sorting expression with modifier '/sort.number' for sorting by numeric fields to sql expression
-   * with explicit casting sorting field value to integer. Explicit casting of numeric sorting field allows to apply
-   * sorting query to database view, unlike parsed result from CQL2PG#toSql() method,
-   * which causes a syntax error when applied on the database view. Also, resulting sql query returns
-   * number of all existing rows in database, which are satisfying the cql query conditions to 'totalrows' column.
-   *
-   * @param tableName table name
-   * @param countQuery query to calculate total records number
-   * @param cqlQuery  cql query
-   * @param offset    offset
-   * @param limit     limit
-   * @return sql query for retrieving data from specified table
-   * @throws FieldException
-   */
-
-  private String prepareGetQuery(String tableName, String countQuery, String cqlQuery, int offset, int limit) throws FieldException {
-    String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
-    String whereClause = getCQLWrapper(tableName, filterCql).toString();
-
-    if (StringUtils.isNotBlank(cqlQuery) && cqlQuery.contains("/sort.number")) {
-      String cqlSortByExpression = cqlQuery.substring(cqlQuery.indexOf("sortBy"));
-      String sortingField = getSortingField(cqlSortByExpression);
-      StringBuilder orderByExpression = new StringBuilder(format("(%s.jsonb->>'%s')::integer", tableName, sortingField));
-
-      if (cqlSortByExpression.contains("/sort.descending")) {
-        orderByExpression.append(" DESC ");
-      }
-      String sqlPattern = "SELECT *, (%s) AS totalRows FROM %s %s ORDER BY %s LIMIT %d OFFSET %d";
-      return format(sqlPattern, countQuery, tableName, whereClause, orderByExpression.toString(), limit, offset);
-    }
-    CQLWrapper cql = getCQLWrapper(tableName, cqlQuery, limit, offset);
-    return format("SELECT *, (%s) AS totalRows FROM %s %s", countQuery, tableName, cql.toString());
-  }
-
-  private String prepareCountQuery(String tableName, String cqlQuery) throws FieldException {
-    String filterCql = StringUtils.substringBefore(cqlQuery, "sortBy");
-    String whereClause = getCQLWrapper(tableName, filterCql).toString();
-    return format(COUNT_ROWS_QUERY, tableName, whereClause);
-  }
-
-  private String prepareSourceRecordsCountQuery(String tableName, boolean deletedRecords, String cqlQuery) throws FieldException {
+  private SqlSelect getSqlSelect(String table, String cql) throws FieldException {
     try {
-      StringBuilder whereClauseBuilder = new StringBuilder(" WHERE ").append(tableName).append(".jsonb->> 'parsedRecordId' IS NOT NULL")
-        .append(" AND ").append(tableName).append(".jsonb->> 'deleted' = ")
-        .append("'").append(deletedRecords).append("'");
-
-      if (StringUtils.isNotBlank(cqlQuery)) {
-        String cqlFilterConditions = new CQL2PgJSON(tableName + ".jsonb").toSql(cqlQuery).getWhere();
-        whereClauseBuilder.append(" AND ").append(cqlFilterConditions);
-      }
-
-      return format(COUNT_ROWS_QUERY, tableName, whereClauseBuilder.toString());
+      return new CQL2PgJSON(table + ".jsonb").toSql(cql);
     } catch (QueryValidationException e) {
       throw new CQLQueryValidationException(e);
-    }
-  }
-
-  /**
-   * Retrieves sorting field from cql sorting expression.
-   * Valid formats of cql sorting expression: "sortBy sortingField", "sortBy sortingField/sort.descending",
-   * "sortBy sortingField/sort.descending/sort.number", "sortBy sortingField/sort.number".
-   *
-   * @param cqlSortByExpression cql sorting expression
-   * @return sorting field
-   */
-  private String getSortingField(String cqlSortByExpression) {
-    Pattern pattern = Pattern.compile("sortBy[\\s]([a-z]*)(/.*)?$");
-    Matcher matcher = pattern.matcher(cqlSortByExpression);
-    if (matcher.find()) {
-      return matcher.group(1);
-    } else {
-      LOG.error("Error while parsing sorting field from cql sortBy query: '{}'", cqlSortByExpression);
-      throw new BadRequestException(format("Invalid sorting field specified '%s'", cqlSortByExpression));
     }
   }
 

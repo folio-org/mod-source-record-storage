@@ -1,5 +1,6 @@
-## 2019-12-11 v3.1.0-SNAPSHOT
+## 2019-12-13 v3.0.1
 * Fixed timeout on GET /source-storage/sourceRecords
+* Changed default container memory allocation
 
 ## 2019-12-04 v3.0.0
 * Added migration script to fill externalIdHolder.instanceId fields in records table

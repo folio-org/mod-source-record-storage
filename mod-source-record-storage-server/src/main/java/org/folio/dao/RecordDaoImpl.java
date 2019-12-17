@@ -63,7 +63,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
-  private static final String GET_RECORDS_QUERY = "SELECT * FROM get_records('%s', '%s', %s, %s, '%s')";
+  private static final String GET_RECORDS_QUERY = "SELECT _id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
   private static final String GET_RECORD_BY_ID_QUERY = "SELECT get_record_by_id('%s')";
   private static final String GET_SOURCE_RECORDS_QUERY = "SELECT _id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";

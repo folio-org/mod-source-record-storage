@@ -20,12 +20,19 @@ BEGIN
             'parsedRecord', COALESCE(marc_records.jsonb),
             'errorRecord', error_records.jsonb)
           INTO recordDtoByExternalId
-  FROM (SELECT * FROM records
-        WHERE (jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId
-          AND (jsonb ->> 'generation')::int = (SELECT MAX((jsonb ->> 'generation')::int) FROM records)) AS recordsByExternalId
-  JOIN raw_records ON recordsByExternalId.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
-  LEFT JOIN marc_records ON recordsByExternalId.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-  LEFT JOIN error_records ON recordsByExternalId.jsonb->>'errorRecordId' = error_records.jsonb->>'id';
+  FROM (SELECT rcd.*
+        FROM (
+              SELECT rc.*, max(generation) over (partition by matchedId) max_generation
+              FROM (
+                    SELECT r.*,
+                           (r.jsonb ->> 'matchedId')::text  matchedId,
+                           (r.jsonb ->> 'generation')::text generation
+                    FROM records r
+                    WHERE (jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId) rc) rcd
+          WHERE generation = max_generation) recordsByExternalId
+          JOIN raw_records ON recordsByExternalId.jsonb ->> 'rawRecordId' = raw_records.jsonb ->> 'id'
+          LEFT JOIN marc_records ON recordsByExternalId.jsonb ->> 'parsedRecordId' = marc_records.jsonb ->> 'id'
+          LEFT JOIN error_records ON recordsByExternalId.jsonb ->> 'errorRecordId' = error_records.jsonb ->> 'id';
 
   RETURN recordDtoByExternalId;
 END;

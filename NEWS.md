@@ -1,4 +1,4 @@
-## 2019-12-13 v3.0.1
+## 2019-12-17 v3.0.1
 * Fixed timeout on GET /source-storage/sourceRecords
 * Changed default container memory allocation
 

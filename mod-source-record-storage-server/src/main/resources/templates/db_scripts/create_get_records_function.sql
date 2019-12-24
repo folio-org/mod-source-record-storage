@@ -1,10 +1,10 @@
 CREATE OR REPLACE FUNCTION get_records(where_clause text, order_by text, limitVal int, offsetVal int, schema_name text)
-  RETURNS TABLE (_id uuid, jsonb json, totalrows bigint)
+  RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN
   RETURN query
      EXECUTE format('
-            SELECT records._id,
+            SELECT records.id,
                    json_build_object(''id'', records.jsonb->>''id'',
                         ''snapshotId'', records.jsonb->>''snapshotId'',
                         ''matchedProfileId'', records.jsonb->>''matchedProfileId'',
@@ -20,7 +20,7 @@ BEGIN
                         ''parsedRecord'', COALESCE(marc_records.jsonb),
                         ''errorRecord'', error_records.jsonb)
                         AS jsonb,
-                   (SELECT COUNT(_id) FROM %s.records
+                   (SELECT COUNT(id) FROM %s.records
                     %s
                    ) AS totalrows
             FROM %s.records
@@ -36,12 +36,12 @@ language plpgsql;
 
 
 CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
-  RETURNS TABLE (_id uuid, jsonb json, totalrows bigint)
+  RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN
   RETURN query
      EXECUTE format('
-            SELECT records._id,
+            SELECT records.id,
                    json_build_object(''recordId'', records.jsonb->>''id'',
                             ''snapshotId'', records.jsonb->>''snapshotId'',
                             ''recordType'', records.jsonb->>''recordType'',
@@ -52,7 +52,7 @@ BEGIN
                             ''rawRecord'', raw_records.jsonb,
                             ''parsedRecord'', COALESCE(marc_records.jsonb))
                             AS jsonb,
-                   (SELECT COUNT(_id) FROM %s.records
+                   (SELECT COUNT(id) FROM %s.records
                     WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
                       AND records.jsonb->>''deleted'' = ''%s''
                       %s

@@ -11,6 +11,10 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.UpdateResult;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -31,10 +35,6 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
-import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -54,6 +54,7 @@ import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
 @Component
+@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
@@ -63,11 +64,11 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ERROR_RECORDS_TABLE = "error_records";
   private static final String ID_FIELD = "'id'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
-  private static final String GET_RECORDS_QUERY = "SELECT _id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
+  private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
   private static final String GET_RECORD_BY_ID_QUERY = "SELECT get_record_by_id('%s')";
-  private static final String GET_SOURCE_RECORDS_QUERY = "SELECT _id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
+  private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
-  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (_id, jsonb) VALUES (?, ?) ON CONFLICT (_id) DO UPDATE SET jsonb = ?;";
+  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
   private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
   private static final String JSONB_COLUMN = "jsonb";
   private static final String TOTALROWS_COLUMN = "totalrows";

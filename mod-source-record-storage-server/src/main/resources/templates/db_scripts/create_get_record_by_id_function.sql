@@ -24,7 +24,7 @@ BEGIN
   JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
   LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
   LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id'
-  WHERE records._id = record_id;
+  WHERE records.id = record_id;
 
 RETURN recordDto;
 END;

@@ -67,14 +67,8 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.0.0</version>
+      <version>1.5.0</version>
       <type>jar</type>
-      <exclusions>
-        <exclusion>
-          <groupId>org.z3950.zing</groupId>
-          <artifactId>cql2pgjson</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -91,11 +85,6 @@
       <artifactId>folio-di-support</artifactId>
       <version>1.0.0</version>
       <type>jar</type>
-    </dependency>
-    <dependency>
-      <groupId>org.z3950.zing</groupId>
-      <artifactId>cql2pgjson</artifactId>
-      <version>4.0.0</version>
     </dependency>
   </dependencies>
 
@@ -253,12 +242,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.8.9</version>
+            <version>1.9.4</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.8.9</version>
+            <version>1.9.4</version>
           </dependency>
         </dependencies>
       </plugin>

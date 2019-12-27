@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION get_records(where_clause text, order_by text, limitVal int, offsetVal int, schema_name text)
+DROP FUNCTION IF EXISTS get_records; CREATE OR REPLACE FUNCTION get_records(where_clause text, order_by text, limitVal int, offsetVal int, schema_name text)
   RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN
@@ -35,7 +35,7 @@ END $$
 language plpgsql;
 
 
-CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
+DROP FUNCTION IF EXISTS get_records; CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
   RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN

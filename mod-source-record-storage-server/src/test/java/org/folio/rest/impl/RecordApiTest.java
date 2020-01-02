@@ -1651,4 +1651,40 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldCreateRecordsWithFilledMetadataWhenUserIdHeaderIsAbsent(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record_1, record_4))
+      .withTotalRecords(2);
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(specWithoutUserId)
+      .body(recordCollection)
+      .when()
+      .post(BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
+      .body("records*.recordType", everyItem(is(record_1.getRecordType().name())))
+      .body("records*.rawRecord.content", notNullValue())
+      .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)))
+      .body("records*.metadata", notNullValue())
+      .body("records*.metadata.createdDate", notNullValue(String.class))
+      .body("records*.metadata.createdByUserId", notNullValue(String.class))
+      .body("records*.metadata.updatedDate", notNullValue(String.class))
+      .body("records*.metadata.updatedByUserId", notNullValue(String.class));
+    async.complete();
+  }
+
 }

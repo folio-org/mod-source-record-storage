@@ -26,8 +26,10 @@ public abstract class AbstractRestVerticleTest {
   static final String TENANT_ID = "diku";
   static Vertx vertx;
   static RequestSpecification spec;
+  static RequestSpecification specWithoutUserId;
   static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
+  public static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
   private static String useExternalDatabase;
 
   @BeforeClass
@@ -86,6 +88,13 @@ public abstract class AbstractRestVerticleTest {
       .setBaseUri(okapiUrl)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
+      .build();
+
+    specWithoutUserId = new RequestSpecBuilder()
+      .setContentType(ContentType.JSON)
+      .setBaseUri(okapiUrl)
+      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
+      .addHeader(RestVerticle.OKAPI_HEADER_TOKEN, OKAPI_TOKEN)
       .build();
   }
 

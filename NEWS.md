@@ -1,3 +1,6 @@
+## 2020-01-03 v3.0.2
+* Added records metadata filling for batch api
+
 ## 2019-12-17 v3.0.1
 * Fixed timeout on GET /source-storage/sourceRecords
 * Changed default container memory allocation

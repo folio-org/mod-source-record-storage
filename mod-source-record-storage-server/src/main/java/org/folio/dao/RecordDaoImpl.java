@@ -192,7 +192,8 @@ public class RecordDaoImpl implements RecordDao {
         return results.getResults().get(0);
       })
       .compose(recordModel -> {
-        recordModel.setExternalIdsHolder(record.getExternalIdsHolder());
+        recordModel.withExternalIdsHolder(record.getExternalIdsHolder())
+          .withMetadata(record.getMetadata());
         return insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId)
           .map(updated -> {
             if (!updated) {

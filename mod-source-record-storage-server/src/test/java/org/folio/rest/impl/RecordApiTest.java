@@ -1151,7 +1151,12 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
       .body("records*.recordType", everyItem(is(record_1.getRecordType().name())))
       .body("records*.rawRecord.content", notNullValue())
-      .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)));
+      .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)))
+      .body("records*.metadata", notNullValue())
+      .body("records*.metadata.createdDate", notNullValue(String.class))
+      .body("records*.metadata.createdByUserId", notNullValue(String.class))
+      .body("records*.metadata.updatedDate", notNullValue(String.class))
+      .body("records*.metadata.updatedByUserId", notNullValue(String.class));
     async.complete();
   }
 
@@ -1300,6 +1305,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     assertThat(updatedParsedRecord.getId(), notNullValue());
     assertThat(JsonObject.mapFrom(updatedParsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId())
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("metadata", notNullValue())
+      .body("metadata.createdDate", notNullValue(String.class))
+      .body("metadata.createdByUserId", notNullValue(String.class))
+      .body("metadata.updatedDate", notNullValue(String.class))
+      .body("metadata.updatedByUserId", notNullValue(String.class));
   }
 
   @Test

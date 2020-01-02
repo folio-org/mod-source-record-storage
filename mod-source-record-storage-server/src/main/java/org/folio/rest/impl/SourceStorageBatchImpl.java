@@ -91,8 +91,8 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   private void populateRecordsMetaData(List<Record> records, Map<String, String> okapiHeaders) {
-    String userId = okapiHeaders.getOrDefault(OKAPI_USERID_HEADER, "");
-    String token = okapiHeaders.getOrDefault(OKAPI_HEADER_TOKEN, "");
+    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
+    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
     if (userId == null && token != null) {
       userId = userIdFromToken(token);
     }

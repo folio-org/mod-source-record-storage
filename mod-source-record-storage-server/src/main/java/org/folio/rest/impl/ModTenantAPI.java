@@ -5,6 +5,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -13,14 +14,17 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
+import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
@@ -31,11 +35,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+
 @SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);
   static final String LOAD_SAMPLE_PARAMETER = "loadSample";
+  private static final String TEST_MODE_PARAMETER = "testMode";
   private static final String CREATE_STUB_SNAPSHOT_SQL = "templates/db_scripts/create_stub_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
@@ -58,22 +65,31 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
-        setLoadSampleParameter(entity, context)
-          .compose(v -> createStubSnapshot(context, entity))
-          .compose(v -> createStubData(entity))
-          .setHandler(event -> handlers.handle(ar));
+        registerModuleToPubsub(entity, headers, context.owner())
+          .setHandler(registrationAr -> {
+            if (registrationAr.failed()) {
+              handlers.handle(Future.failedFuture(registrationAr.cause()));
+            } else {
+              setLoadSampleParameter(entity, context)
+                .compose(v -> createStubSnapshot(context, entity))
+                .compose(v -> createStubData(entity))
+                .setHandler(event -> handlers.handle(ar));
+            }
+          });
       }
     }, context);
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {
-    context.put(LOAD_SAMPLE_PARAMETER, isLoadSample(attributes));
+    String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
+    context.put(LOAD_SAMPLE_PARAMETER, Boolean.parseBoolean(loadSampleParam));
     return Future.succeededFuture();
   }
 
   private Future<List<String>> createStubSnapshot(Context context, TenantAttributes attributes) {
     try {
-      if (!isLoadSample(attributes)) {
+      String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
+      if (!Boolean.parseBoolean(loadSampleParam)) {
         LOGGER.info("Module is being deployed in production mode");
         return Future.succeededFuture();
       }
@@ -107,7 +123,7 @@ public class ModTenantAPI extends TenantAPI {
 
   private Future<Void> createStubData(TenantAttributes attributes) {
     Future<Void> future = Future.future();
-    if (isLoadSample(attributes)) {
+    if (Boolean.parseBoolean(getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER))) {
       try {
         InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(SAMPLE_DATA);
         if (inputStream == null) {
@@ -154,14 +170,33 @@ public class ModTenantAPI extends TenantAPI {
     return future;
   }
 
-  private boolean isLoadSample(TenantAttributes attributes) {
+  private String getTenantAttributesParameter(TenantAttributes attributes, String parameterName) {
     if (attributes == null) {
-      return false;
+      return EMPTY;
     }
-    return attributes.getParameters()
-      .stream()
-      .anyMatch(p -> p.getKey().equals(LOAD_SAMPLE_PARAMETER)
-        && p.getValue().equals(Boolean.TRUE.toString()));
+    return attributes.getParameters().stream()
+      .filter(p -> p.getKey().equals(parameterName))
+      .findFirst()
+      .map(Parameter::getValue)
+      .orElseGet(() -> EMPTY);
   }
 
+  private Future<Void> registerModuleToPubsub(TenantAttributes attributes, Map<String, String> headers, Vertx vertx) {
+    if (Boolean.parseBoolean(getTenantAttributesParameter(attributes, TEST_MODE_PARAMETER))) {
+      return Future.succeededFuture();
+    }
+
+    Promise<Void> promise = Promise.promise();
+    PubSubClientUtils.registerModule(new OkapiConnectionParams(headers, vertx))
+      .whenComplete((registrationAr, throwable) -> {
+        if (throwable == null) {
+          LOGGER.info("Module was successfully registered as publisher/subscriber in mod-pubsub");
+          promise.complete();
+        } else {
+          LOGGER.error("Error during module registration in mod-pubsub", throwable);
+          promise.fail(throwable);
+        }
+      });
+    return promise.future();
+  }
 }

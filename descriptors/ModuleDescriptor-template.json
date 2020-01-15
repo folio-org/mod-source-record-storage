@@ -190,9 +190,6 @@
           "pathPattern": "/source-storage/batch/records",
           "permissionsRequired": [
             "source-storage.records.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
           ]
         },
         {
@@ -217,6 +214,9 @@
           "pathPattern": "/source-storage/handlers/created-inventory-instance",
           "permissionsRequired": [
             "source-storage.events.post"
+          ],
+          "modulePermissions": [
+            "pubsub.publish.post"
           ]
         }
       ]

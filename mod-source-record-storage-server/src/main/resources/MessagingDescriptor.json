@@ -1,12 +1,6 @@
 {
   "publications": [
     {
-      "eventType": "CREATED_SRS_MARC_BIB_RECORD",
-      "description": "Created SRS Marc Bibliographic Record",
-      "eventTTL": 1,
-      "signed": false
-    },
-    {
       "eventType": "UPDATED_SRS_MARC_BIB_RECORD",
       "description": "Updated SRS Marc Bibliographic Record",
       "eventTTL": 1,

@@ -65,17 +65,12 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
-        registerModuleToPubsub(entity, headers, context.owner())
-          .setHandler(registrationAr -> {
-            if (registrationAr.failed()) {
-              handlers.handle(Future.failedFuture(registrationAr.cause()));
-            } else {
-              setLoadSampleParameter(entity, context)
-                .compose(v -> createStubSnapshot(context, entity))
-                .compose(v -> createStubData(entity))
-                .setHandler(event -> handlers.handle(ar));
-            }
-          });
+        // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
+        setLoadSampleParameter(entity, context)
+          .compose(v -> createStubSnapshot(context, entity))
+          .compose(v -> createStubData(entity))
+          .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
+          .setHandler(event -> handlers.handle(ar));
       }
     }, context);
   }

@@ -18,8 +18,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 
 public abstract class AbstractRestVerticleTest {
@@ -71,11 +70,12 @@ public abstract class AbstractRestVerticleTest {
       .setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
-        List<Parameter> parameters = Arrays.asList(new Parameter().withKey("loadSample").withValue("true"),
-          new Parameter().withKey("testMode").withValue("true"));
         tenantClient.postTenant(new TenantAttributes()
           .withModuleTo("1.0")
-          .withParameters(parameters), res2 -> {
+          .withParameters(Collections.singletonList(
+            new Parameter()
+              .withKey("loadSample")
+              .withValue("true"))), res2 -> {
           async.complete();
         });
       } catch (Exception e) {

@@ -303,11 +303,6 @@
       "description": "Populate storage with test records"
     },
     {
-      "permissionName": "source-storage.events.post",
-      "displayName": "Source Storage - handle event",
-      "description": "Handle event"
-    },
-    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -323,8 +318,7 @@
         "source-storage.records.delete",
         "source-storage.sourceRecords.get",
         "source-storage.populate.records",
-        "source-storage.record.update",
-        "source-storage.events.post"
+        "source-storage.record.update"
       ],
       "visible": false
     }

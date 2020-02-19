@@ -50,12 +50,12 @@ public class AdditionalFieldsUtil {
         MarcFactory factory = MarcFactory.newInstance();
         if (reader.hasNext()) {
           org.marc4j.marc.Record marcRecord = reader.next();
-          VariableField variableField = getSingleFieldByIndicators(marcRecord.getVariableFields(field), INDICATOR, INDICATOR);
+          VariableField variableField = getSingleFieldByIndicators(marcRecord.getVariableFields(field));
           DataField dataField;
           if (variableField != null
             && ((DataField) variableField).getIndicator1() == INDICATOR
-            && ((DataField) variableField).getIndicator2() == INDICATOR
-          ) {
+            && ((DataField) variableField).getIndicator2() == INDICATOR)
+          {
             dataField = (DataField) variableField;
             marcRecord.removeVariableField(variableField);
           } else {
@@ -80,12 +80,12 @@ public class AdditionalFieldsUtil {
     return new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes(StandardCharsets.UTF_8)));
   }
 
-  private static VariableField getSingleFieldByIndicators(List<VariableField> list, char ind1, char ind2) {
+  private static VariableField getSingleFieldByIndicators(List<VariableField> list) {
     if (list == null || list.isEmpty()) {
       return null;
     }
     return list.stream()
-      .filter(f -> ((DataField) f).getIndicator1() == ind1 && ((DataField) f).getIndicator2() == ind2)
+      .filter(f -> ((DataField) f).getIndicator1() == INDICATOR && ((DataField) f).getIndicator2() == INDICATOR)
       .findFirst()
       .orElse(null);
   }

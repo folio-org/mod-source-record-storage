@@ -21,7 +21,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageHandlersImpl.class);
 
   @Autowired
-  EventHandlingService instanceCreatedEventHandleService;
+  private EventHandlingService instanceCreatedEventHandleService;
 
   private String tenantId;
 

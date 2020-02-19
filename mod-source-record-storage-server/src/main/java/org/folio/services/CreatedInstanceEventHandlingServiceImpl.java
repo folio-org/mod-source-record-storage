@@ -21,10 +21,11 @@ import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
-@Component()
+@Component
 public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingService {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreatedInstanceEventHandlingServiceImpl.class);
+  private static final String EVENT_HAS_NOT_NEEDED_DATA_MSG = "Failed to handle CREATED_INVENTORY_INSTANCE event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
 
   @Autowired
   private RecordDao recordDao;
@@ -37,9 +38,8 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
       String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
 
       if (StringUtils.isEmpty(instanceAsString) || StringUtils.isEmpty(recordAsString)) {
-        String msg = "Failed to handle CREATED_INVENTORY_INSTANCE event, cause event payload context does not contain INSTANCE and MARC_BIBLIOGRAPHIC data";
-        LOG.error(msg);
-        return Future.failedFuture(msg);
+        LOG.error(EVENT_HAS_NOT_NEEDED_DATA_MSG);
+        return Future.failedFuture(EVENT_HAS_NOT_NEEDED_DATA_MSG);
       }
       JsonObject instanceJson = new JsonObject(instanceAsString);
       Record record = ObjectMapperTool.getMapper().readValue(recordAsString, Record.class);
@@ -61,12 +61,16 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
    * @param tenantId    tenant id
    * @return  future with updated parsed record
    */
-  public Future<ParsedRecord> setInstanceIdToRecord(Record record, String instanceId, String tenantId) {
+  private Future<ParsedRecord> setInstanceIdToRecord(Record record, String instanceId, String tenantId) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
-    record.getExternalIdsHolder().setInstanceId(instanceId);
-    AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
-    return recordDao.updateParsedRecord(record, tenantId);
+
+    boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
+    if (isAddedField) {
+      record.getExternalIdsHolder().setInstanceId(instanceId);
+      return recordDao.updateParsedRecord(record, tenantId);
+    }
+    return Future.failedFuture(new RuntimeException("Failed to add instance id to record"));
   }
 }

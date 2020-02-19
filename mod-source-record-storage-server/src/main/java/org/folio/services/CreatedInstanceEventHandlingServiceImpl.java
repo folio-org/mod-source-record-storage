@@ -8,7 +8,6 @@ import org.apache.commons.lang.StringUtils;
 import org.folio.dao.RecordDao;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.services.util.AdditionalFieldsUtil;
@@ -25,7 +24,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingService {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreatedInstanceEventHandlingServiceImpl.class);
-  private static final String EVENT_HAS_NOT_NEEDED_DATA_MSG = "Failed to handle CREATED_INVENTORY_INSTANCE event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
+  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle CREATED_INVENTORY_INSTANCE event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
 
   @Autowired
   private RecordDao recordDao;
@@ -38,8 +37,8 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
       String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
 
       if (StringUtils.isEmpty(instanceAsString) || StringUtils.isEmpty(recordAsString)) {
-        LOG.error(EVENT_HAS_NOT_NEEDED_DATA_MSG);
-        return Future.failedFuture(EVENT_HAS_NOT_NEEDED_DATA_MSG);
+        LOG.error(EVENT_HAS_NO_DATA_MSG);
+        return Future.failedFuture(EVENT_HAS_NO_DATA_MSG);
       }
       JsonObject instanceJson = new JsonObject(instanceAsString);
       Record record = ObjectMapperTool.getMapper().readValue(recordAsString, Record.class);

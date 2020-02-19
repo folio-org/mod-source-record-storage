@@ -3,6 +3,7 @@ package org.folio.services.util;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.rest.jaxrs.model.Record;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
@@ -81,7 +82,7 @@ public class AdditionalFieldsUtil {
   }
 
   private static VariableField getSingleFieldByIndicators(List<VariableField> list) {
-    if (list == null || list.isEmpty()) {
+    if (CollectionUtils.isEmpty(list)) {
       return null;
     }
     return list.stream()

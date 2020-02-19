@@ -59,9 +59,9 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
    * @param record      record to update
    * @param instanceId  instance id
    * @param tenantId    tenant id
-   * @return  future with updated parsed record
+   * @return  future with updated record
    */
-  private Future<ParsedRecord> setInstanceIdToRecord(Record record, String instanceId, String tenantId) {
+  private Future<Record> setInstanceIdToRecord(Record record, String instanceId, String tenantId) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
@@ -69,8 +69,8 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     if (isAddedField) {
       record.getExternalIdsHolder().setInstanceId(instanceId);
-      return recordDao.updateParsedRecord(record, tenantId);
+      return recordDao.updateParsedRecord(record, tenantId).map(record);
     }
-    return Future.failedFuture(new RuntimeException("Failed to add instance id to record"));
+    return Future.failedFuture(new RuntimeException(String.format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
   }
 }

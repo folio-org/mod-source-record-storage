@@ -216,4 +216,29 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
     });
   }
 
+  @Test
+  public void shouldReturnFailedFutureWhenParsedRecordHasNoFields(TestContext context) {
+    Async async = context.async();
+    record.withRawRecord(rawRecord)
+      .withParsedRecord(new ParsedRecord()
+        .withId(UUID.randomUUID().toString())
+        .withContent("{\"leader\":\"01240cas a2200397\"}"));
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext);
+
+    Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
+      .compose(rec -> eventHandlingService.handle(Json.encode(dataImportEventPayload), TENANT_ID));
+
+    future.setHandler(ar -> {
+      context.assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
 }

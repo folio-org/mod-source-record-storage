@@ -81,7 +81,12 @@ public class RecordServiceImpl implements RecordService {
         }
         return Future.succeededFuture();
       })
-      .compose(f -> recordDao.calculateGeneration(record, tenantId))
+      .compose(f -> {
+        if (record.getGeneration() == null){
+          return recordDao.calculateGeneration(record, tenantId);
+        }
+        return Future.succeededFuture(record.getGeneration());
+      })
       .compose(generation -> recordDao.saveRecord(record.withGeneration(generation), tenantId));
   }
 

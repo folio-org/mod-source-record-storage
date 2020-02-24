@@ -1,6 +1,7 @@
 ## 2019-12-19 v3.1.0-SNAPSHOT
 * Updated RMB to version 29.1.5
 * Added module registration as publisher/subscriber to mod-pubsub
+* Added condition for generation calculate
 
 ## 2020-01-03 v3.0.2
 * Added records metadata filling for batch api

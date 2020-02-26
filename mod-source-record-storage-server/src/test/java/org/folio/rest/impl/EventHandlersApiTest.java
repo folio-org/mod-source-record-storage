@@ -18,7 +18,7 @@ public class EventHandlersApiTest extends AbstractRestVerticleTest {
 
   private JsonObject event = new JsonObject()
     .put("id", UUID.randomUUID().toString())
-    .put("eventType", "CREATED_INVENTORY_INSTANCE")
+    .put("eventType", "DI_INVENTORY_INSTANCE_CREATED")
     .put("eventMetadata", new JsonObject()
       .put("tenantId", TENANT_ID)
       .put("eventTTL", 1)

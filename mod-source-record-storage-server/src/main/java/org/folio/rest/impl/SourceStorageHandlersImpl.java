@@ -33,7 +33,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   @Override
   public void postSourceStorageHandlersCreatedInventoryInstance(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      LOG.debug("Event CREATED_INVENTORY_INSTANCE was received: {}", entity);
+      LOG.debug("Event DI_INVENTORY_INSTANCE_CREATED was received: {}", entity);
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
 
       // response status doesn't depend on event handling result

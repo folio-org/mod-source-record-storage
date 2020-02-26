@@ -1,13 +1,13 @@
 {
   "publications": [
     {
-      "eventType": "UPDATED_SRS_MARC_BIB_RECORD",
+      "eventType": "DI_SRS_MARC_BIB_RECORD_UPDATED",
       "description": "Updated SRS Marc Bibliographic Record",
       "eventTTL": 1,
       "signed": false
     },
     {
-      "eventType": "DATA_IMPORT_ERROR",
+      "eventType": "DI_ERROR",
       "description": "Data import error occurred",
       "eventTTL": 1,
       "signed": false
@@ -15,7 +15,7 @@
   ],
   "subscriptions": [
     {
-      "eventType": "CREATED_INVENTORY_INSTANCE",
+      "eventType": "DI_INVENTORY_INSTANCE_CREATED",
       "callbackAddress": "/source-storage/handlers/created-inventory-instance"
     }
   ]

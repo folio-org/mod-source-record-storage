@@ -24,7 +24,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingService {
 
   private static final Logger LOG = LoggerFactory.getLogger(CreatedInstanceEventHandlingServiceImpl.class);
-  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle CREATED_INVENTORY_INSTANCE event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
+  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle DI_INVENTORY_INSTANCE_CREATED event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
 
   @Autowired
   private RecordDao recordDao;
@@ -46,7 +46,7 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
       return setInstanceIdToRecord(record, instanceJson.getString("id"), tenantId)
         .map(true);
     } catch (IOException e) {
-      LOG.error("Failed to handle CREATED_INVENTORY_INSTANCE event {}", e, eventContent);
+      LOG.error("Failed to handle DI_INVENTORY_INSTANCE_CREATED event {}", e, eventContent);
       return Future.failedFuture(e);
     }
   }

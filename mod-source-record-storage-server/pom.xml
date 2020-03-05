@@ -11,7 +11,7 @@
   <properties>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.version>2.9.10.1</jackson.version>
+    <jackson.version>2.9.10.3</jackson.version>
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
   </properties>
 

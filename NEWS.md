@@ -1,7 +1,8 @@
-## 2019-12-19 v3.1.0-SNAPSHOT
+## 2020-03-06 v3.1.0
 * Updated RMB to version 29.1.5
 * Added module registration as publisher/subscriber to mod-pubsub
 * Added condition for generation calculate
+* Implemented event handler that updates instance id for MARC bib records
 
 ## 2020-01-03 v3.0.2
 * Added records metadata filling for batch api

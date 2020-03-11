@@ -8,8 +8,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class PostgresClientFactory {
 
-  @Autowired
+
   private Vertx vertx;
+
+  public PostgresClientFactory(@Autowired Vertx vertx) {
+    this.vertx = vertx;
+  }
 
   /**
    * Creates instance of Postgres Client

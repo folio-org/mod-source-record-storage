@@ -29,3 +29,28 @@ BEGIN
 RETURN recordDto;
 END;
 $recordDto$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_source_record_by_id(record_id uuid)
+RETURNS json AS $sourceRecordDto$
+DECLARE
+	sourceRecordDto json;
+BEGIN
+  SELECT json_build_object('recordId', records.jsonb->>'id',
+          'snapshotId', records.jsonb->>'snapshotId',
+					'recordType', records.jsonb->>'recordType',
+					'deleted', records.jsonb->>'deleted',
+					'order', (records.jsonb->>'order')::integer,
+					'additionalInfo', records.jsonb->'additionalInfo',
+					'metadata', records.jsonb->'metadata',
+ 					'rawRecord', raw_records.jsonb,
+ 					'parsedRecord', COALESCE(marc_records.jsonb))
+					AS jsonb
+      INTO sourceRecordDto
+  FROM records
+  JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
+  LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
+  WHERE records.id = record_id;
+
+RETURN sourceRecordDto;
+END;
+$sourceRecordDto$ LANGUAGE plpgsql;

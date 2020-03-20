@@ -42,9 +42,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.dao.SnapshotDao.SNAPSHOTS_TABLE;
 import static org.folio.dao.SnapshotDao.SNAPSHOT_ID_FIELD;
 import static org.folio.dao.util.DbUtil.executeInTransaction;
@@ -66,6 +71,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
   private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
   private static final String GET_RECORD_BY_ID_QUERY = "SELECT get_record_by_id('%s')";
+  private static final String GET_SOURCE_RECORD_BY_ID_QUERY = "SELECT get_source_record_by_id('%s')";
   private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
@@ -82,7 +88,7 @@ public class RecordDaoImpl implements RecordDao {
     try {
       String whereClause = StringUtils.EMPTY;
       String orderBy = StringUtils.EMPTY;
-      if (StringUtils.isNotBlank(query)) {
+      if (isNotBlank(query)) {
         SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
         whereClause = String.format("WHERE %s ", sqlSelect.getWhere()).replace("'", "''");
         orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
@@ -126,20 +132,36 @@ public class RecordDaoImpl implements RecordDao {
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String queryFilter = StringUtils.EMPTY;
-      String orderBy = StringUtils.EMPTY;
-      if (StringUtils.isNotBlank(query)) {
-        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
-        queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
-        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
+      String preparedGetQuery;
+      // an extremely ugly fix to allow searching of SourceRecords by id,
+      // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
+      if (isNotBlank(query) && query.contains("recordId")) {
+        String id = extractUUIDFromQuery(query);
+        preparedGetQuery = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      } else {
+        String queryFilter = StringUtils.EMPTY;
+        String orderBy = StringUtils.EMPTY;
+        if (isNotBlank(query)) {
+          SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
+          queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
+          orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
+        }
+        preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
       }
-      String preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
       pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
-      LOG.error("Error while querying results_view", e);
+      LOG.error("Failed to retrieve SourceRecords", e);
       future.fail(e);
     }
-    return future.map(this::mapResultSetToSourceRecordCollection);
+    return future.map(resultSet -> {
+      if (resultSet.getNumRows() != 0 && !resultSet.getRows().get(0).containsKey(TOTALROWS_COLUMN)) {
+        SourceRecord sourceRecord = mapJsonToEntity(resultSet.getResults().get(0).getString(0), SourceRecord.class);
+        return new SourceRecordCollection()
+          .withSourceRecords(singletonList(sourceRecord))
+          .withTotalRecords(1);
+      }
+      return mapResultSetToSourceRecordCollection(resultSet);
+    });
   }
 
   @Override
@@ -552,6 +574,15 @@ public class RecordDaoImpl implements RecordDao {
       LOG.error(format("Error while mapping json to %s object.", entityType.getSimpleName()), e);
       throw new RuntimeJsonMappingException(e.getMessage());
     }
+  }
+
+  private String extractUUIDFromQuery(String query) {
+    Pattern pairRegex = Pattern.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}");
+    Matcher matcher = pairRegex.matcher(query);
+    if (matcher.find()) {
+      return matcher.group(0);
+    }
+    return EMPTY;
   }
 
 }

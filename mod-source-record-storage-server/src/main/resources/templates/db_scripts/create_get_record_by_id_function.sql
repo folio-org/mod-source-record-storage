@@ -49,7 +49,9 @@ BEGIN
   FROM records
   JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
   LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-  WHERE records.id = record_id;
+  WHERE records.id = record_id
+  AND records.jsonb->>'deleted' = 'false'
+  AND records.jsonb->>'parsedRecordId' IS NOT NULL;
 
 RETURN sourceRecordDto;
 END;

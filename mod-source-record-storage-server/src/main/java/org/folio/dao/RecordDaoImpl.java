@@ -130,37 +130,48 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
+    // an extremely ugly fix to allow searching of SourceRecords by id,
+    // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
+    if (isNotBlank(query) && query.contains("recordId")) {
+      String id = extractUUIDFromQuery(query);
+      return getSourceRecordById(id, tenantId);
+    }
     Future<ResultSet> future = Future.future();
     try {
       String preparedGetQuery;
-      // an extremely ugly fix to allow searching of SourceRecords by id,
-      // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
-      if (isNotBlank(query) && query.contains("recordId")) {
-        String id = extractUUIDFromQuery(query);
-        preparedGetQuery = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
-      } else {
-        String queryFilter = StringUtils.EMPTY;
-        String orderBy = StringUtils.EMPTY;
-        if (isNotBlank(query)) {
-          SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
-          queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
-          orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
-        }
-        preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
+      String queryFilter = StringUtils.EMPTY;
+      String orderBy = StringUtils.EMPTY;
+      if (isNotBlank(query)) {
+        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
+        queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
+        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
       }
+      preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
       pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
     } catch (Exception e) {
       LOG.error("Failed to retrieve SourceRecords", e);
       future.fail(e);
     }
+    return future.map(this::mapResultSetToSourceRecordCollection);
+  }
+
+  private Future<SourceRecordCollection> getSourceRecordById(String id, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by id", e);
+      future.fail(e);
+    }
     return future.map(resultSet -> {
-      if (resultSet.getNumRows() != 0 && !resultSet.getRows().get(0).containsKey(TOTALROWS_COLUMN)) {
-        SourceRecord sourceRecord = mapJsonToEntity(resultSet.getResults().get(0).getString(0), SourceRecord.class);
-        return new SourceRecordCollection()
-          .withSourceRecords(singletonList(sourceRecord))
-          .withTotalRecords(1);
+      String recordsAsString = resultSet.getResults().get(0).getString(0);
+      if (recordsAsString == null) {
+        return new SourceRecordCollection().withTotalRecords(0);
+      } else {
+        SourceRecord sourceRecord = new JsonObject(recordsAsString).mapTo(SourceRecord.class);
+        return new SourceRecordCollection().withSourceRecords(singletonList(sourceRecord)).withTotalRecords(1);
       }
-      return mapResultSetToSourceRecordCollection(resultSet);
     });
   }
 

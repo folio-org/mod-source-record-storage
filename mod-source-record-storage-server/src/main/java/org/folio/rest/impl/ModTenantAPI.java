@@ -14,6 +14,7 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -135,6 +136,7 @@ public class ModTenantAPI extends TenantAPI {
           Record record = new Record();
           JsonObject marcRecordJson = JsonObject.mapFrom(jsonRecord);
           String recordUUID = marcRecordJson.getString("id");
+          String instanceUUID = marcRecordJson.getString("instanceId");
           record.setId(recordUUID);
           JsonObject content = marcRecordJson.getJsonObject("content");
           record.setParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content));
@@ -143,6 +145,7 @@ public class ModTenantAPI extends TenantAPI {
           record.setSnapshotId("00000000-0000-0000-0000-000000000000");
           record.setGeneration(0);
           record.setMatchedId(recordUUID);
+          record.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
           Future<Void> helperFuture = Future.future();
           recordService.saveRecord(record, tenantId).setHandler(h -> {
             if (h.succeeded()) {

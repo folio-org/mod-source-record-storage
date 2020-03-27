@@ -1,3 +1,11 @@
+## 2020-03-27 v3.1.2
+* Added Instance id values to sample data
+* Fixed GET source-storage/sourceRecords endpoint to allow filtering by recordId
+* Updated reference on ramls/raml-storage
+
+## 2020-03-13 v3.1.1
+* Updated reference on ramls/raml-storage
+
 ## 2020-03-06 v3.1.0
 * Updated RMB to version 29.1.5
 * Added module registration as publisher/subscriber to mod-pubsub

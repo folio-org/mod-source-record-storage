@@ -18,7 +18,7 @@ import java.util.UUID;
 @RunWith(BlockJUnit4ClassRunner.class)
 public class AdditionalFieldsUtilTest {
 
-  private static final String PARSED_RECORD_PATH = "src/test/resources/org/folio/services/afterprocessing/parsedRecord.json";
+  private static final String PARSED_RECORD_PATH = "src/test/resources/parsedRecord.json";
 
   @Test
   public void shouldAddInstanceIdSubfield() throws IOException {

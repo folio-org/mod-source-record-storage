@@ -17,6 +17,10 @@
     {
       "eventType": "DI_INVENTORY_INSTANCE_CREATED",
       "callbackAddress": "/source-storage/handlers/created-inventory-instance"
+    },
+    {
+      "eventType": "DI_COMPLETED",
+      "callbackAddress": "/source-storage/handlers/created-inventory-instance"
     }
   ]
 }

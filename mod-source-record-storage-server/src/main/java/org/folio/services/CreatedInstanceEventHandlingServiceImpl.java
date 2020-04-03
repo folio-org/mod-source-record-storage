@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
@@ -44,7 +46,7 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
       JsonObject instanceJson = new JsonObject(instanceAsString);
       Record record = ObjectMapperTool.getMapper().readValue(recordAsString, Record.class);
 
-      return setInstanceIdToRecord(record, instanceJson.getString("id"), tenantId)
+      return setInstanceIdToRecord(record, instanceJson, tenantId)
         .map(true);
     } catch (IOException e) {
       LOG.error("Failed to handle DI_INVENTORY_INSTANCE_CREATED event {}", e, eventContent);
@@ -56,17 +58,21 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
    * Adds specified instanceId to record and additional custom field with instanceId to parsed record.
    * Updates changed record in database.
    *
-   * @param record      record to update
-   * @param instanceId  instance id
-   * @param tenantId    tenant id
-   * @return  future with updated record
+   * @param record   record to update
+   * @param instance instance in Json
+   * @param tenantId tenant id
+   * @return future with updated record
    */
-  private Future<Record> setInstanceIdToRecord(Record record, String instanceId, String tenantId) {
+  private Future<Record> setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
-
+    if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
+      return Future.succeededFuture(record);
+    }
+    String instanceId = instance.getString("id");
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
+    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
     if (isAddedField) {
       record.getExternalIdsHolder().setInstanceId(instanceId);
       return recordDao.updateParsedRecord(record, tenantId).map(record);

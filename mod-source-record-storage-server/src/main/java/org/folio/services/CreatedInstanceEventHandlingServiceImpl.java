@@ -7,6 +7,7 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
+import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
@@ -34,7 +35,7 @@ public class CreatedInstanceEventHandlingServiceImpl implements EventHandlingSer
   @Override
   public Future<Boolean> handle(String eventContent, String tenantId) {
     try {
-      DataImportEventPayload dataImportEventPayload = ObjectMapperTool.getMapper().readValue(eventContent, DataImportEventPayload.class);
+      DataImportEventPayload dataImportEventPayload = ObjectMapperTool.getMapper().readValue(ZIPArchiver.unzip(eventContent), DataImportEventPayload.class);
       String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
       String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
 

@@ -11,6 +11,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.impl.AbstractRestVerticleTest;
 import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
@@ -110,7 +111,14 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
       .withContext(payloadContext);
 
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> eventHandlingService.handle(Json.encode(dataImportEventPayload), TENANT_ID));
+      .compose(rec -> {
+        try {
+          return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+        } catch (IOException e) {
+          e.printStackTrace();
+          return Future.failedFuture(e);
+        }
+      });
 
     future.setHandler(ar -> {
       context.assertTrue(ar.succeeded());
@@ -164,7 +172,14 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
       .withContext(payloadContext);
 
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> eventHandlingService.handle(Json.encode(dataImportEventPayload), TENANT_ID));
+      .compose(rec -> {
+        try {
+          return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+        } catch (IOException e) {
+          e.printStackTrace();
+          return Future.failedFuture(e);
+        }
+      });
 
     future.setHandler(ar -> {
       context.assertTrue(ar.succeeded());

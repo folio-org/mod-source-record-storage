@@ -116,7 +116,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
           return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
-          return null;
+          return Future.failedFuture(e);
         }
       });
 
@@ -177,7 +177,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
           return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
-          return null;
+          return Future.failedFuture(e);
         }
       });
 

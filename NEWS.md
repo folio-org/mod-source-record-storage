@@ -1,3 +1,6 @@
+## 2020-03-27 v3.1.3-SNAPSHOT
+* Added migration script to remove deprecated indexes
+
 ## 2020-03-27 v3.1.2
 * Added Instance id values to sample data
 * Fixed GET source-storage/sourceRecords endpoint to allow filtering by recordId

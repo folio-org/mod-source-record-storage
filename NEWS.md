@@ -1,5 +1,6 @@
-## 2020-03-27 v3.1.3-SNAPSHOT
-* Added migration script to remove deprecated indexes
+## 2020-04-07 v3.1.3
+* Fixed processing of DataImportEventPayload
+* [MODSOURCE-117](https://issues.folio.org/browse/MODSOURCE-117) Added migration script to remove deprecated indexes
 
 ## 2020-03-27 v3.1.2
 * Added Instance id values to sample data

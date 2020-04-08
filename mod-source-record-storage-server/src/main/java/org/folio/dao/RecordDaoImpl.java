@@ -70,7 +70,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String ID_FIELD = "'id'";
   private static final String SNAPSHOT_FIELD = "'snapshotId'";
   private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
-  private static final String GET_RECORD_BY_ID_QUERY = "SELECT get_record_by_id('%s')";
+  private static final String GET_RECORD_BY_MATCHED_ID_QUERY = "SELECT get_record_by_matched_id('%s')";
   private static final String GET_SOURCE_RECORD_BY_ID_QUERY = "SELECT get_source_record_by_id('%s')";
   private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
@@ -106,10 +106,10 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Optional<Record>> getRecordById(String id, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query = String.format(GET_RECORD_BY_ID_QUERY, id);
+      String query = String.format(GET_RECORD_BY_MATCHED_ID_QUERY, id);
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
-      LOG.error("Error while querying records_view by id", e);
+      LOG.error("Error while querying records_view by matchedId", e);
       future.fail(e);
     }
     return future.map(resultSet -> {

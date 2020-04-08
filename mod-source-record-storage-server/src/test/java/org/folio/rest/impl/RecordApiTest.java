@@ -60,6 +60,11 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String RAW_RECORDS_TABLE_NAME = "raw_records";
   private static final String ERROR_RECORDS_TABLE_NAME = "error_records";
   private static final String MARC_RECORDS_TABLE_NAME = "marc_records";
+  private static final String FIRST_UUID = UUID.randomUUID().toString();
+  private static final String SECOND_UUID = UUID.randomUUID().toString();
+  private static final String THIRD_UUID = UUID.randomUUID().toString();
+  private static final String FOURTH_UUID = UUID.randomUUID().toString();
+  private static final String FIFTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -87,38 +92,48 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Record record_1 = new Record()
+    .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
-    .withMatchedId(UUID.randomUUID().toString())
-    .withOrder(0);
+    .withMatchedId(FIRST_UUID)
+    .withOrder(0)
+    .withState(Record.State.ACTUAL);
   private static Record record_2 = new Record()
+    .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
-    .withMatchedId(UUID.randomUUID().toString())
-    .withOrder(11);
+    .withMatchedId(SECOND_UUID)
+    .withOrder(11)
+    .withState(Record.State.ACTUAL);
   private static Record record_3 = new Record()
+    .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withErrorRecord(errorRecord)
-    .withMatchedId(UUID.randomUUID().toString());
+    .withMatchedId(THIRD_UUID)
+    .withState(Record.State.ACTUAL);
   private static Record record_4 = new Record()
+    .withId(FOURTH_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
-    .withMatchedId(UUID.randomUUID().toString())
-    .withOrder(1);
+    .withMatchedId(FOURTH_UUID)
+    .withOrder(1)
+    .withState(Record.State.ACTUAL);
   private static Record record_5 = new Record()
+    .withId(FIFTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
-    .withMatchedId(UUID.randomUUID().toString())
+    .withMatchedId(FIFTH_UUID)
     .withParsedRecord(invalidParsedRecord)
-    .withOrder(101);
+    .withOrder(101)
+    .withState(Record.State.ACTUAL);
 
   @Override
   public void clearTables(TestContext context) {
@@ -1269,12 +1284,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
+    String matchedId = UUID.randomUUID().toString();
+
     Record newRecord = new Record()
+      .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
-      .withMatchedId(UUID.randomUUID().toString())
+      .withMatchedId(matchedId)
+      .withState(Record.State.ACTUAL)
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(true));
 
@@ -1493,12 +1512,16 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
+    String matchedId = UUID.randomUUID().toString();
+
     Record newRecord = new Record()
+      .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
-      .withMatchedId(UUID.randomUUID().toString())
+      .withMatchedId(matchedId)
+      .withState(Record.State.ACTUAL)
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(false));
 

@@ -528,7 +528,33 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    List<Record> recordsToPost = Arrays.asList(record_2, record_2, record_4, record_4);
+
+
+    String firstMatchedId = UUID.randomUUID().toString();
+
+    Record record_4_tmp = new Record()
+      .withId(firstMatchedId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(firstMatchedId)
+      .withOrder(1)
+      .withState(Record.State.ACTUAL);
+
+    String secondMathcedId = UUID.randomUUID().toString();
+
+    Record record_2_tmp = new Record()
+      .withId(secondMathcedId)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(secondMathcedId)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+
+    List<Record> recordsToPost = Arrays.asList(record_2, record_2_tmp, record_4, record_4_tmp);
     for (Record record : recordsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -1060,10 +1086,22 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_NO_CONTENT);
     async.complete();
 
+    String matchedId = UUID.randomUUID().toString();
+
+    Record record_3 = new Record()
+      .withId(matchedId)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(matchedId)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+
     async = testContext.async();
     createParsed = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(record_3)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
@@ -1117,7 +1155,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(record_3)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));

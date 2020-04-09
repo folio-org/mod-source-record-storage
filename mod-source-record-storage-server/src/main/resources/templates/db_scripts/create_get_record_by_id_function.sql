@@ -15,7 +15,7 @@ BEGIN
 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
-					'state', records.jsonb->>'state',
+					'state', records.jsonb->'state',
  					'rawRecord', raw_records.jsonb,
  					'parsedRecord', COALESCE(marc_records.jsonb),
 					'errorRecord', error_records.jsonb)

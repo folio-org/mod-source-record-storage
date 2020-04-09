@@ -103,7 +103,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       async.complete();
 
       async = testContext.async();
+
       Record record = new Record()
+        .withId(matchedId)
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
         .withRawRecord(rawRecord)
@@ -155,7 +157,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
+
     Record record = new Record()
+      .withId(matchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
@@ -207,6 +211,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
       async = testContext.async();
       Record record = new Record()
+        .withId(matchedId)
         .withSnapshotId(snapshot.getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
         .withRawRecord(rawRecord)
@@ -252,6 +257,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
       async = testContext.async();
       Record record = new Record()
+        .withId(matchedId)
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
         .withRecordType(Record.RecordType.MARC)
         .withRawRecord(rawRecord)
@@ -415,7 +421,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withMatchedId(matchedId);
+      .withMatchedId(srsId);
 
     RestAssured.given()
       .spec(spec)

@@ -82,8 +82,13 @@
     },
     {
       "run": "after",
+      "snippet": "DROP FUNCTION IF EXISTS get_record_by_id; ",
+      "fromModuleVersion": "mod-source-record-storage-3.2.0"
+    },
+    {
+      "run": "after",
       "snippet": "DROP FUNCTION IF EXISTS get_record_by_matched_id; CREATE OR REPLACE FUNCTION get_record_by_matched_id(record_id uuid) RETURNS json AS $recordDto$ DECLARE recordDto json;BEGIN   SELECT json_build_object('id', records.jsonb->>'id', 'snapshotId', records.jsonb->>'snapshotId', 'matchedProfileId', records.jsonb->>'matchedProfileId', 'matchedId', records.jsonb->>'matchedId', 'generation', (records.jsonb->>'generation')::integer, 'recordType', records.jsonb->>'recordType', 'deleted', records.jsonb->>'deleted', 'order', (records.jsonb->>'order')::integer, 'externalIdsHolder', records.jsonb->'externalIdsHolder', 'additionalInfo', records.jsonb->'additionalInfo', 'metadata', records.jsonb->'metadata', 'state', records.jsonb->'state', 'rawRecord', raw_records.jsonb, 'parsedRecord', COALESCE(marc_records.jsonb), 'errorRecord', error_records.jsonb) AS jsonb INTO recordDto FROM records JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id' LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id' LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id' WHERE (records.jsonb ->> 'matchedId')::uuid = record_id AND records.jsonb->>'state' = 'ACTUAL'; RETURN recordDto; END; $recordDto$ LANGUAGE plpgsql;",
-      "fromModuleVersion": "mod-source-record-storage-3.1.0"
+      "fromModuleVersion": "mod-source-record-storage-3.2.0"
     },
     {
       "run": "after",

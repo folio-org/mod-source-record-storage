@@ -1,5 +1,6 @@
 ## 2020-03-27 v3.1.3-SNAPSHOT
 * Added migration script to remove deprecated indexes
+* Added State "field" to records table. (MODSOURCE-114) 
 
 ## 2020-03-27 v3.1.2
 * Added Instance id values to sample data

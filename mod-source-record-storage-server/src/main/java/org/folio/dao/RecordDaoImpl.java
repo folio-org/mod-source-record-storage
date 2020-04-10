@@ -109,7 +109,7 @@ public class RecordDaoImpl implements RecordDao {
       String query = String.format(GET_RECORD_BY_MATCHED_ID_QUERY, id);
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
-      LOG.error("Error while querying records_view by matchedId", e);
+      LOG.error("Error while querying records_view by id", e);
       future.fail(e);
     }
     return future.map(resultSet -> {

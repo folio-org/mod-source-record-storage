@@ -1,5 +1,5 @@
 
-CREATE OR REPLACE FUNCTION get_record_by_id(record_id uuid)
+CREATE OR REPLACE FUNCTION get_record_by_matched_id(record_id uuid)
 RETURNS json AS $recordDto$
 DECLARE
 	recordDto json;
@@ -15,6 +15,7 @@ BEGIN
 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
+					'state', records.jsonb->'state',
  					'rawRecord', raw_records.jsonb,
  					'parsedRecord', COALESCE(marc_records.jsonb),
 					'errorRecord', error_records.jsonb)
@@ -24,7 +25,8 @@ BEGIN
   JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
   LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
   LEFT JOIN error_records ON records.jsonb->>'errorRecordId' = error_records.jsonb->>'id'
-  WHERE records.id = record_id;
+  WHERE (records.jsonb ->> 'matchedId')::uuid = record_id
+  AND records.jsonb->>'state' = 'ACTUAL';
 
 RETURN recordDto;
 END;

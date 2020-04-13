@@ -146,6 +146,7 @@ public class ModTenantAPI extends TenantAPI {
           record.setGeneration(0);
           record.setMatchedId(recordUUID);
           record.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
+          record.setState(Record.State.ACTUAL);
           Future<Void> helperFuture = Future.future();
           recordService.saveRecord(record, tenantId).setHandler(h -> {
             if (h.succeeded()) {

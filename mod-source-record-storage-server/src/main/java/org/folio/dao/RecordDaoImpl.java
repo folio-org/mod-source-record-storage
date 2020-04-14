@@ -176,6 +176,31 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<SourceRecord> getSourceRecordByRecordId(String id, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by id", e);
+      future.fail(e);
+    }
+    return future.map(resultSet -> {
+      String recordsAsString = resultSet.getResults().get(0).getString(0);
+      if (recordsAsString == null) {
+        return new SourceRecord();
+      } else {
+        return new JsonObject(recordsAsString).mapTo(SourceRecord.class);
+      }
+    });
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    return null;
+  }
+
+  @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {

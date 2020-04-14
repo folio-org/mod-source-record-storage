@@ -95,6 +95,17 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
+  Future<SourceRecord> getSourceRecordByRecordId(String id, String tenantId);
+
+  /**
+   *
+   * @param externalId
+   * @param externalIdType
+   * @param tenantId
+   * @return
+   */
+  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
+
   /**
    * Change suppress from discovery flag for record by external relation id
    *

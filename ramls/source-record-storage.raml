@@ -152,6 +152,38 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
+  /sourceRecords/{id}:
+    displayName: Source Record
+    description:
+    get:
+      description:
+      queryParameters:
+        idType:
+          description:
+          type: string
+          example: RECORD
+          required: false
+          default: RECORD
+      responses:
+        200:
+          body:
+            application/json:
+              type: sourceRecord
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        404:
+          description: "Not found"
+          body:
+            text/plain:
+              example: "Not found"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
   /populate-test-marc-records:
     post:
       description: A non-production endpoint to populate MARC records for testing purposes. Available only in case deployment tenant parameter "loadSample" is set to true

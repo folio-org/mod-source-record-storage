@@ -72,6 +72,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
   private static final String GET_RECORD_BY_MATCHED_ID_QUERY = "SELECT get_record_by_matched_id('%s')";
   private static final String GET_SOURCE_RECORD_BY_ID_QUERY = "SELECT get_source_record_by_id('%s')";
+  private static final String GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY = "SELECT get_source_record_by_external_id('%s', '%s')";
   private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
@@ -176,7 +177,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecord> getSourceRecordByRecordId(String id, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceRecordByRecordId(String id, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
       String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
@@ -186,18 +187,39 @@ public class RecordDaoImpl implements RecordDao {
       future.fail(e);
     }
     return future.map(resultSet -> {
+      if(resultSet.getResults().isEmpty()) {
+        return Optional.empty();
+      }
       String recordsAsString = resultSet.getResults().get(0).getString(0);
       if (recordsAsString == null) {
-        return new SourceRecord();
+        return Optional.empty();
       } else {
-        return new JsonObject(recordsAsString).mapTo(SourceRecord.class);
+        return Optional.ofNullable(new JsonObject(recordsAsString).mapTo(SourceRecord.class));
       }
     });
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    return null;
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, externalId, externalIdType.getExternalIdField());
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by exteranlId", e);
+      future.fail(e);
+    }
+    return future.map(resultSet -> {
+      if(resultSet.getResults().isEmpty()) {
+        return Optional.empty();
+      }
+      String recordsAsString = resultSet.getResults().get(0).getString(0);
+      if (recordsAsString == null) {
+        return Optional.empty();
+      } else {
+        return Optional.ofNullable(new JsonObject(recordsAsString).mapTo(SourceRecord.class));
+      }
+    });
   }
 
   @Override

@@ -95,7 +95,7 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
-  Future<SourceRecord> getSourceRecordByRecordId(String id, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordByRecordId(String id, String tenantId);
 
   /**
    *

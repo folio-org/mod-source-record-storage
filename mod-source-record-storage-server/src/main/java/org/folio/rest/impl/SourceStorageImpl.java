@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
@@ -297,6 +298,8 @@ public class SourceStorageImpl implements SourceStorage {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getSourceRecordById(id, idType, tenantId)
+          .map(optionalSourceRecord -> optionalSourceRecord.orElseThrow(() ->
+            new NotFoundException(format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
           .map(GetSourceStorageSourceRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

@@ -144,13 +144,12 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecord> getSourceRecordById(String id, String idType, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
     switch (idType) {
       case "INSTANCE":
-        return null;
-        //return recordDao.getSourceRecordByExternalId(id, ExternalIdType.INSTANCE, tenantId);
+        return recordDao.getSourceRecordByExternalId(id, ExternalIdType.INSTANCE, tenantId);
       default:
-        return recordDao.getSourceRecordByRecordId(id, tenantId); //NPE!!!
+        return recordDao.getSourceRecordByRecordId(id, tenantId);
     }
   }
 

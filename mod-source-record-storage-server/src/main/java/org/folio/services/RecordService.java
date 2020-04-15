@@ -82,7 +82,7 @@ public interface RecordService {
    * @param tenantId
    * @return
    */
-  Future<SourceRecord> getSourceRecordById(String id, String idType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
 
 
 

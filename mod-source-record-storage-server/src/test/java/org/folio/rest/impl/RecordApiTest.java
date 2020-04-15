@@ -336,6 +336,53 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnSpecificSourceRecordOnGetByRecordId2(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_3);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    Record createdRecord =
+      RestAssured.given()
+        .spec(spec)
+        .body(record_2)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + SECOND_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(SECOND_UUID));
+    async.complete();
+  }
+
+  @Test
   public void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsNull(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);

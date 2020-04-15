@@ -47,6 +47,7 @@ BEGIN
                             ''recordType'', records.jsonb->>''recordType'',
                             ''deleted'', records.jsonb->>''deleted'',
                             ''order'', records.jsonb->>''order'',
+                            ''externalIdsHolder'', records.jsonb->''externalIdsHolder'',
                             ''additionalInfo'', records.jsonb->''additionalInfo'',
                             ''metadata'', records.jsonb->''metadata'',
                             ''rawRecord'', raw_records.jsonb,

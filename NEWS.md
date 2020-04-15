@@ -3,6 +3,9 @@
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table.
 * [MODOAIPMH-119](https://issues.folio.org/browse/MODOAIPMH-119) Extended sourceRecord schema with externalIdsHolder field.
 
+## 2020-04-07 v3.1.4-SNAPSHOT
+* [MODOAIPMH-119](https://issues.folio.org/browse/MODOAIPMH-119) Extended sourceRecord schema with externalIdsHolder field.
+
 ## 2020-04-07 v3.1.3
 * Fixed processing of DataImportEventPayload
 * [MODSOURCE-117](https://issues.folio.org/browse/MODSOURCE-117) Added migration script to remove deprecated indexes

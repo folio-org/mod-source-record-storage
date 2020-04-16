@@ -14,6 +14,7 @@ import org.marc4j.MarcWriter;
 import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
+import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
 import java.io.ByteArrayInputStream;
@@ -21,6 +22,8 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
  * Util to work with additional fields
@@ -32,6 +35,8 @@ public final class AdditionalFieldsUtil {
   private static final String HR_ID_FROM_FIELD = "001";
   private static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
+  private static final char HR_ID_FIELD_SUB = 'a';
+  private static final char HR_ID_FIELD_IND = ' ';
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';
@@ -178,6 +183,72 @@ public final class AdditionalFieldsUtil {
   }
 
   /**
+   * Adds new data field to marc record
+   *
+   * @param record record that needs to be updated
+   * @param tag    tag of data field
+   * @param value  value of the field to add
+   * @return true if succeeded, false otherwise
+   */
+  public static boolean addDataFieldToMarcRecord(Record record, String tag, char ind1, char ind2, char subfield, String value) {
+    boolean result = false;
+    try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+      if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        MarcReader reader = buildMarcReader(record);
+        MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
+        MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
+        MarcFactory factory = MarcFactory.newInstance();
+        if (reader.hasNext()) {
+          org.marc4j.marc.Record marcRecord = reader.next();
+          DataField dataField = factory.newDataField(tag, ind1, ind2);
+          dataField.addSubfield(factory.newSubfield(subfield, value));
+          marcRecord.addVariableField(dataField);
+          // use stream writer to recalculate leader
+          streamWriter.write(marcRecord);
+          jsonWriter.write(marcRecord);
+          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(new String(os.toByteArray())).encode()));
+          result = true;
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.error("Failed to add additional data field {) to record {}", e, tag, record.getId());
+    }
+    return result;
+  }
+
+  /**
+   * Check if data field with the same value exist
+   *
+   * @param record record that needs to be updated
+   * @param tag    tag of data field
+   * @param value  value of the field to add
+   * @return true if exist
+   */
+  public static boolean isFieldExist(Record record, String tag, char subfield, String value) {
+    boolean result = false;
+    if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+      MarcReader reader = buildMarcReader(record);
+      if (reader.hasNext()) {
+        org.marc4j.marc.Record marcRecord = reader.next();
+        for (VariableField field : marcRecord.getVariableFields(tag)) {
+          if (field instanceof DataField) {
+            for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
+              if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+                result = true;
+                break;
+              }
+            }
+          }
+          if (result) {
+            break;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
    * Move original marc hrId to 035 tag and assign created by inventory hrId into 001 tag
    *
    * @param recordInstancePair - pair of related instance and record
@@ -188,7 +259,9 @@ public final class AdditionalFieldsUtil {
     if (StringUtils.isNotEmpty(hrId) && StringUtils.isNotEmpty(originalHrId)) {
       removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
       addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
-      addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, originalHrId);
+      if (!isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
+        addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
+      }
     }
   }
 

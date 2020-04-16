@@ -154,14 +154,14 @@ resourceTypes:
               example: "Internal server error"
   /sourceRecords/{id}:
     displayName: Source Record
-    description:
+    description:API for getting Source Records via different idTypes
     get:
       description:
-      queryParameters:
+      queryParameters: selection condition of sourceRecords by which id will be searched record
         idType:
           description:
           type: string
-          example: RECORD
+          example: INSTANCE
           required: false
           default: RECORD
       responses:

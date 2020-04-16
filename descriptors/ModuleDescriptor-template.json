@@ -133,6 +133,15 @@
           "methods": [
             "GET"
           ],
+          "pathPattern": "/source-storage/sourceRecords/{id}",
+          "permissionsRequired": [
+            "source-storage.sourceRecord.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/formattedRecords/{id}",
           "permissionsRequired": [
             "source-storage.records.get"
@@ -298,6 +307,11 @@
       "description": "Get Results"
     },
     {
+      "permissionName": "source-storage.sourceRecords.get",
+      "displayName": "Source Storage - get result",
+      "description": "Get Result"
+    },
+    {
       "permissionName": "source-storage.populate.records",
       "displayName": "Source Storage - populate storage with test records",
       "description": "Populate storage with test records"
@@ -317,6 +331,7 @@
         "source-storage.records.put",
         "source-storage.records.delete",
         "source-storage.sourceRecords.get",
+        "source-storage.sourceRecord.get",
         "source-storage.populate.records",
         "source-storage.record.update"
       ],

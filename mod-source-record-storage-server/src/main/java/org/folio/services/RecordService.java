@@ -76,11 +76,11 @@ public interface RecordService {
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
 
   /**
-   *
-   * @param id
-   * @param idType
-   * @param tenantId
-   * @return
+   * Searches for source record by id via specific idType
+   * @param id - for searching
+   * @param idType - search type
+   * @param tenantId - tenant id
+   * @return future with optional source record
    */
   Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
 

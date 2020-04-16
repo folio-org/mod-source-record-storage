@@ -96,11 +96,11 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
-   *
-   * @param id
-   * @param externalIdType
-   * @param tenantId
-   * @return
+   * Searches for {@link SourceRecord} by id if externalIdType is empty. If no, searches by id "externalIdsHolder"-field for externalIdType name
+   * @param id - searching id
+   * @param externalIdType - field name for "externalIdsHolder"
+   * @param tenantId - tenant id
+   * @return future with optional {@link SourceRecord}
    */
   Future<Optional<SourceRecord>> getSourceRecord(String id, ExternalIdType externalIdType, String tenantId);
 

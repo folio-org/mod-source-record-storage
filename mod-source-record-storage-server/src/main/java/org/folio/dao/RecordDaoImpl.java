@@ -190,7 +190,7 @@ public class RecordDaoImpl implements RecordDao {
       }
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by id/externalId", e);
+      LOG.error("Failed to retrieve SourceRecord by id/externalId: {}", e, id);
       future.fail(e);
     }
     return future.map(resultSet -> {

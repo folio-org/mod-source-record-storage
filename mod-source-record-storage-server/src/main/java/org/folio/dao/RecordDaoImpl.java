@@ -40,6 +40,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -177,36 +178,19 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByRecordId(String id, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceRecord(String id, ExternalIdType externalIdType, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      String query;
+      if(Objects.nonNull(externalIdType)) {
+        query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, id, externalIdType.getExternalIdField());
+      }
+      else {
+        query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      }
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by id", e);
-      future.fail(e);
-    }
-    return future.map(resultSet -> {
-      if(resultSet.getResults().isEmpty()) {
-        return Optional.empty();
-      }
-      String recordsAsString = resultSet.getResults().get(0).getString(0);
-      if (recordsAsString == null) {
-        return Optional.empty();
-      } else {
-        return Optional.ofNullable(new JsonObject(recordsAsString).mapTo(SourceRecord.class));
-      }
-    });
-  }
-
-  @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, externalId, externalIdType.getExternalIdField());
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by exteranlId", e);
+      LOG.error("Failed to retrieve SourceRecord by id/externalId", e);
       future.fail(e);
     }
     return future.map(resultSet -> {

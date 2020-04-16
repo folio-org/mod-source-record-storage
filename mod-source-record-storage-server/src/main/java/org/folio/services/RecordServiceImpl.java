@@ -19,6 +19,8 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.services.externalid.ExternalIdProcessor;
+import org.folio.services.externalid.ExternalIdProcessorFactory;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +48,8 @@ public class RecordServiceImpl implements RecordService {
   private RecordDao recordDao;
   @Autowired
   private SnapshotDao snapshotDao;
+  @Autowired
+  private ExternalIdProcessorFactory externalIdProcessorFactory;
 
 
   @Override
@@ -145,12 +149,8 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    switch (idType) {
-      case "INSTANCE":
-        return recordDao.getSourceRecordByExternalId(id, ExternalIdType.INSTANCE, tenantId);
-      default:
-        return recordDao.getSourceRecordByRecordId(id, tenantId);
-    }
+    ExternalIdProcessor externalIdProcessor = externalIdProcessorFactory.createExternalIdProcessor(idType);
+    return externalIdProcessor.process(id, tenantId);
   }
 
 

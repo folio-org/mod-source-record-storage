@@ -46,6 +46,7 @@ BEGIN
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
  					'rawRecord', raw_records.jsonb,
+ 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
  					'parsedRecord', COALESCE(marc_records.jsonb))
 					AS jsonb
       INTO sourceRecordDto
@@ -68,21 +69,22 @@ DECLARE
 	sourceRecordDto json;
 BEGIN
   SELECT json_build_object('recordId', records.jsonb->>'matchedId',
-          'snapshotId', records.jsonb->>'snapshotId',
+                    'snapshotId', records.jsonb->>'snapshotId',
 					'recordType', records.jsonb->>'recordType',
 					'deleted', records.jsonb->>'deleted',
 					'order', (records.jsonb->>'order')::integer,
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
  					'rawRecord', raw_records.jsonb,
+ 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
  					'parsedRecord', COALESCE(marc_records.jsonb))
 					AS jsonb
       INTO sourceRecordDto
   FROM records
   JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
   LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-  WHERE (jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId
-    AND records.jsonb->>'deleted' = 'false'
+  WHERE (records.jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId
+  AND records.jsonb->>'deleted' = 'false'
   AND records.jsonb->>'parsedRecordId' IS NOT NULL
   AND records.jsonb->>'state' = 'ACTUAL';
 

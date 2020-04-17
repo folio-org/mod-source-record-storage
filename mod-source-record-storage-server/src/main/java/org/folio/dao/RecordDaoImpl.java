@@ -194,15 +194,12 @@ public class RecordDaoImpl implements RecordDao {
       future.fail(e);
     }
     return future.map(resultSet -> {
-      if(resultSet.getResults().isEmpty()) {
+      List<JsonArray> results = resultSet.getResults();
+      if(results.isEmpty() || results.get(0).getString(0) == null) {
         return Optional.empty();
       }
-      String recordsAsString = resultSet.getResults().get(0).getString(0);
-      if (recordsAsString == null) {
-        return Optional.empty();
-      } else {
-        return Optional.ofNullable(new JsonObject(recordsAsString).mapTo(SourceRecord.class));
-      }
+      return Optional.ofNullable(new JsonObject(results.get(0).getString(0))
+        .mapTo(SourceRecord.class));
     });
   }
 

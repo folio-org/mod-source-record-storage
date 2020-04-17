@@ -40,6 +40,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -72,6 +73,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
   private static final String GET_RECORD_BY_MATCHED_ID_QUERY = "SELECT get_record_by_matched_id('%s')";
   private static final String GET_SOURCE_RECORD_BY_ID_QUERY = "SELECT get_source_record_by_id('%s')";
+  private static final String GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY = "SELECT get_source_record_by_external_id('%s', '%s')";
   private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
   private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
   private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
@@ -134,7 +136,7 @@ public class RecordDaoImpl implements RecordDao {
     // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
     if (isNotBlank(query) && query.contains("recordId")) {
       String id = extractUUIDFromQuery(query);
-      return getSourceRecordById(id, tenantId);
+      return getSourceRecordCollectionById(id, tenantId);
     }
     Future<ResultSet> future = Future.future();
     try {
@@ -155,7 +157,7 @@ public class RecordDaoImpl implements RecordDao {
     return future.map(this::mapResultSetToSourceRecordCollection);
   }
 
-  private Future<SourceRecordCollection> getSourceRecordById(String id, String tenantId) {
+  private Future<SourceRecordCollection> getSourceRecordCollectionById(String id, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
       String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
@@ -174,6 +176,34 @@ public class RecordDaoImpl implements RecordDao {
       }
     });
   }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by id(matchedId): {}", e, id);
+      future.fail(e);
+    }
+    return processResult(future);
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, id, externalIdType.getExternalIdField());
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by externalId: {}", e, id);
+      future.fail(e);
+    }
+    return processResult(future);
+  }
+
+
 
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
@@ -594,6 +624,17 @@ public class RecordDaoImpl implements RecordDao {
       return matcher.group(0);
     }
     return EMPTY;
+  }
+
+  private Future<Optional<SourceRecord>> processResult(Future<ResultSet> future) {
+    return future.map(resultSet -> {
+      String recordAsString = resultSet.getResults().get(0).getString(0);
+      if (recordAsString == null) {
+        return Optional.empty();
+      }
+      return Optional.ofNullable(new JsonObject(recordAsString)
+        .mapTo(SourceRecord.class));
+    });
   }
 
 }

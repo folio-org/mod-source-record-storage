@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 
@@ -73,6 +74,17 @@ public interface RecordService {
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
+
+  /**
+   * Searches for source record by id via specific idType
+   * @param id - for searching
+   * @param idType - search type
+   * @param tenantId - tenant id
+   * @return future with optional source record
+   */
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
+
+
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction

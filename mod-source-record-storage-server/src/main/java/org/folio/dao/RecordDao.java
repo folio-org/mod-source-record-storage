@@ -96,6 +96,23 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
+   * Searches for {@link SourceRecord} by id (searches via "matchedId").
+   * @param id - id
+   * @param tenantId - tenant id
+   * @return - return future with optional {@link SourceRecord}
+   */
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
+   * @param id - id
+   * @param externalIdType - external id type on which source record will be searched
+   * @param tenantId - tenant id
+   * @return - return future with optional {@link SourceRecord}
+   */
+  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId);
+
+  /**
    * Change suppress from discovery flag for record by external relation id
    *
    * @param suppressFromDiscoveryDto - dto that contains new value and id

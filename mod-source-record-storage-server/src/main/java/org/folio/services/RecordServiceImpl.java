@@ -5,6 +5,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.util.ExternalIdType;
@@ -15,8 +16,11 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.services.externalid.ExternalIdProcessor;
+import org.folio.services.externalid.ExternalIdProcessorFactory;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +28,7 @@ import org.springframework.stereotype.Component;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -43,6 +48,8 @@ public class RecordServiceImpl implements RecordService {
   private RecordDao recordDao;
   @Autowired
   private SnapshotDao snapshotDao;
+  @Autowired
+  private ExternalIdProcessorFactory externalIdProcessorFactory;
 
 
   @Override
@@ -138,6 +145,12 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     return recordDao.getSourceRecords(query, offset, limit, deletedRecords, tenantId);
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
+    ExternalIdProcessor externalIdProcessor = externalIdProcessorFactory.createExternalIdProcessor(idType);
+    return externalIdProcessor.process(id, tenantId);
   }
 
 

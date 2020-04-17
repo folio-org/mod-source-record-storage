@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStorage;
@@ -286,6 +287,25 @@ public class SourceStorageImpl implements SourceStorage {
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to get source records", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void getSourceStorageSourceRecordsById(String id, String idType, Map<String, String> okapiHeaders,
+                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getSourceRecordById(id, idType, tenantId)
+          .map(optionalSourceRecord -> optionalSourceRecord.orElseThrow(() ->
+            new NotFoundException(format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
+          .map(GetSourceStorageSourceRecordsByIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .setHandler(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get source record by id: {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

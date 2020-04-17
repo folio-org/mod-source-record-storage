@@ -336,6 +336,398 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnSpecificSourceRecordOnGetByDefaultExternalId(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+
+    String instanceId = UUID.randomUUID().toString();
+
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + FIRST_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(FIRST_UUID))
+      .body("externalIdsHolder.instanceId", is(SECOND_UUID));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificSourceRecordOnGetByInstanceExternalId(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    String instanceId = UUID.randomUUID().toString();
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + instanceId + "?idType=INSTANCE")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(THIRD_UUID))
+      .body("externalIdsHolder.instanceId", is(instanceId));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificSourceRecordOnGetByRecordExternalId(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    String instanceId = UUID.randomUUID().toString();
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(record)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + SECOND_UUID + "?idType=RECORD")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(SECOND_UUID))
+      .body("externalIdsHolder.instanceId", is(FIRST_UUID));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificSourceRecordOnGetIfInvalidExternalIdType(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    String instanceId = UUID.randomUUID().toString();
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(record)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + SECOND_UUID + "?idType=invalidrecordtype")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(SECOND_UUID))
+      .body("externalIdsHolder.instanceId", is(FIRST_UUID));
+    async.complete();
+  }
+
+  @Test
+  public void shouldNotReturnSpecificSourceRecordOnGetIfItIsNotExists(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    String instanceId = UUID.randomUUID().toString();
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(record)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + FIFTH_UUID + "?idType=INSTANCE")
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+  }
+
+  @Test
   public void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsNull(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);

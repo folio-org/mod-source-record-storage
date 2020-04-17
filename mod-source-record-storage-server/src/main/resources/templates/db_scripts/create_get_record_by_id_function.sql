@@ -37,7 +37,7 @@ RETURNS json AS $sourceRecordDto$
 DECLARE
 	sourceRecordDto json;
 BEGIN
-  SELECT json_build_object('recordId', records.jsonb->>'id',
+  SELECT json_build_object('recordId', records.jsonb->>'matchedId',
           'snapshotId', records.jsonb->>'snapshotId',
 					'recordType', records.jsonb->>'recordType',
 					'deleted', records.jsonb->>'deleted',
@@ -52,9 +52,40 @@ BEGIN
   FROM records
   JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
   LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
-  WHERE records.id = record_id
+  WHERE (records.jsonb ->> 'matchedId')::uuid = record_id
+  AND records.jsonb->>'state' = 'ACTUAL'
   AND records.jsonb->>'deleted' = 'false'
   AND records.jsonb->>'parsedRecordId' IS NOT NULL;
+
+RETURN sourceRecordDto;
+END;
+$sourceRecordDto$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION get_source_record_by_external_id(externalId uuid, idFieldName text)
+RETURNS json AS $sourceRecordDto$
+DECLARE
+	sourceRecordDto json;
+BEGIN
+  SELECT json_build_object('recordId', records.jsonb->>'matchedId',
+                    'snapshotId', records.jsonb->>'snapshotId',
+					'recordType', records.jsonb->>'recordType',
+					'deleted', records.jsonb->>'deleted',
+					'order', (records.jsonb->>'order')::integer,
+					'additionalInfo', records.jsonb->'additionalInfo',
+					'metadata', records.jsonb->'metadata',
+ 					'rawRecord', raw_records.jsonb,
+ 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
+ 					'parsedRecord', COALESCE(marc_records.jsonb))
+					AS jsonb
+      INTO sourceRecordDto
+  FROM records
+  JOIN raw_records ON records.jsonb->>'rawRecordId' = raw_records.jsonb->>'id'
+  LEFT JOIN marc_records ON records.jsonb->>'parsedRecordId' = marc_records.jsonb->>'id'
+  WHERE (records.jsonb -> 'externalIdsHolder' ->> idFieldName)::uuid = externalId
+  AND records.jsonb->>'deleted' = 'false'
+  AND records.jsonb->>'parsedRecordId' IS NOT NULL
+  AND records.jsonb->>'state' = 'ACTUAL';
 
 RETURN sourceRecordDto;
 END;

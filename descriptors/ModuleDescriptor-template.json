@@ -133,6 +133,15 @@
           "methods": [
             "GET"
           ],
+          "pathPattern": "/source-storage/sourceRecords/{id}",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
           "pathPattern": "/source-storage/formattedRecords/{id}",
           "permissionsRequired": [
             "source-storage.records.get"

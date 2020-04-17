@@ -1,3 +1,6 @@
+## v3.2.1-SNAPSHOT
+* [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
+
 ## 2020-04-10 v3.2.0-SNAPSHOT
 * Added State "field" to records table. (MODSOURCE-114)
 * [MODDICORE-43](https://issues.folio.org/browse/MODDICORE-43) SRS MARC Bib: Fix formatting of 035 field constructed from incoming 001

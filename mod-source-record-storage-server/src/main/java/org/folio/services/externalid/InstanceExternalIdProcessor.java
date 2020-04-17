@@ -18,6 +18,6 @@ public class InstanceExternalIdProcessor implements ExternalIdProcessor {
 
   @Override
   public Future<Optional<SourceRecord>> process(String id, String tenantId) {
-    return recordDao.getSourceRecord(id, ExternalIdType.INSTANCE, tenantId);
+    return recordDao.getSourceRecordByExternalId(id, ExternalIdType.INSTANCE, tenantId);
   }
 }

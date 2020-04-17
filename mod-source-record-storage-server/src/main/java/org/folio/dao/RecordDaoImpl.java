@@ -136,7 +136,7 @@ public class RecordDaoImpl implements RecordDao {
     // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
     if (isNotBlank(query) && query.contains("recordId")) {
       String id = extractUUIDFromQuery(query);
-      return getSourceRecordById(id, tenantId);
+      return getSourceRecordCollectionById(id, tenantId);
     }
     Future<ResultSet> future = Future.future();
     try {
@@ -157,7 +157,7 @@ public class RecordDaoImpl implements RecordDao {
     return future.map(this::mapResultSetToSourceRecordCollection);
   }
 
-  private Future<SourceRecordCollection> getSourceRecordById(String id, String tenantId) {
+  private Future<SourceRecordCollection> getSourceRecordCollectionById(String id, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
       String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
@@ -178,30 +178,32 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecord(String id, ExternalIdType externalIdType, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
     Future<ResultSet> future = Future.future();
     try {
-      String query;
-      if(Objects.nonNull(externalIdType)) {
-        query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, id, externalIdType.getExternalIdField());
-      }
-      else {
-        query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
-      }
+      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
       pgClientFactory.createInstance(tenantId).select(query, future.completer());
     } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by id/externalId: {}", e, id);
+      LOG.error("Failed to retrieve SourceRecord by id(matchedId): {}", e, id);
       future.fail(e);
     }
-    return future.map(resultSet -> {
-      String recordAsString = resultSet.getResults().get(0).getString(0);
-      if(recordAsString == null) {
-        return Optional.empty();
-      }
-      return Optional.ofNullable(new JsonObject(recordAsString)
-        .mapTo(SourceRecord.class));
-    });
+    return processResult(future);
   }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId) {
+    Future<ResultSet> future = Future.future();
+    try {
+      String query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, id, externalIdType.getExternalIdField());
+      pgClientFactory.createInstance(tenantId).select(query, future.completer());
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve SourceRecord by externalId: {}", e, id);
+      future.fail(e);
+    }
+    return processResult(future);
+  }
+
+
 
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
@@ -622,6 +624,17 @@ public class RecordDaoImpl implements RecordDao {
       return matcher.group(0);
     }
     return EMPTY;
+  }
+
+  private Future<Optional<SourceRecord>> processResult(Future<ResultSet> future) {
+    return future.map(resultSet -> {
+      String recordAsString = resultSet.getResults().get(0).getString(0);
+      if (recordAsString == null) {
+        return Optional.empty();
+      }
+      return Optional.ofNullable(new JsonObject(recordAsString)
+        .mapTo(SourceRecord.class));
+    });
   }
 
 }

@@ -46,7 +46,6 @@ BEGIN
 					'additionalInfo', records.jsonb->'additionalInfo',
 					'metadata', records.jsonb->'metadata',
  					'rawRecord', raw_records.jsonb,
- 					'externalIdsHolder', records.jsonb->'externalIdsHolder',
  					'parsedRecord', COALESCE(marc_records.jsonb))
 					AS jsonb
       INTO sourceRecordDto

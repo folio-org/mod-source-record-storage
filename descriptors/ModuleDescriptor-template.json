@@ -307,7 +307,7 @@
       "description": "Get Results"
     },
     {
-      "permissionName": "source-storage.sourceRecords.get",
+      "permissionName": "source-storage.sourceRecord.get",
       "displayName": "Source Storage - get result",
       "description": "Get Result"
     },

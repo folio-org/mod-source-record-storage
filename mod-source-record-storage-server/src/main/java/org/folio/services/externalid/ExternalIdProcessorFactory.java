@@ -19,7 +19,7 @@ public class ExternalIdProcessorFactory {
    * @return ExternalIdProcessor - processor for searching source record
    */
   public ExternalIdProcessor createExternalIdProcessor(String idType) {
-    switch (idType) {  //NOSONAR
+    switch (idType.toUpperCase()) {  //NOSONAR
       case "INSTANCE":
         return new InstanceExternalIdProcessor(recordDao);
       default:

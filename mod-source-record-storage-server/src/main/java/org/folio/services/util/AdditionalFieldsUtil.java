@@ -225,27 +225,31 @@ public final class AdditionalFieldsUtil {
    * @return true if exist
    */
   public static boolean isFieldExist(Record record, String tag, char subfield, String value) {
-    boolean result = false;
     if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
       MarcReader reader = buildMarcReader(record);
-      if (reader.hasNext()) {
-        org.marc4j.marc.Record marcRecord = reader.next();
-        for (VariableField field : marcRecord.getVariableFields(tag)) {
-          if (field instanceof DataField) {
-            for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
-              if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
-                result = true;
-                break;
+      try {
+        if (reader.hasNext()) {
+          org.marc4j.marc.Record marcRecord = reader.next();
+          for (VariableField field : marcRecord.getVariableFields(tag)) {
+            if (field instanceof DataField) {
+              for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
+                if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+                  return true;
+                }
               }
+            } else if (field instanceof ControlField
+              && isNotEmpty(((ControlField) field).getData())
+              && ((ControlField) field).getData().equals(value.trim())) {
+              return true;
             }
           }
-          if (result) {
-            break;
-          }
         }
+      } catch (Exception e) {
+        LOGGER.error("Error during the search a field in the record", e);
+        return false;
       }
     }
-    return result;
+    return false;
   }
 
   /**

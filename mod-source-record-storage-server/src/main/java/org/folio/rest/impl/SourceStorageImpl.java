@@ -305,7 +305,7 @@ public class SourceStorageImpl implements SourceStorage {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .setHandler(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get source records", e);
+        LOG.error("Failed to get source record by id: {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

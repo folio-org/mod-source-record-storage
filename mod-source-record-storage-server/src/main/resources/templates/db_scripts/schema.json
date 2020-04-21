@@ -167,7 +167,7 @@
     {
       "run": "after",
       "snippetPath": "migration_scripts/records_add_actual_state.sql",
-      "fromModuleVersion": "mod-source-record-storage-3.2.0"
+      "fromModuleVersion": "mod-source-record-storage-3.1.4"
     },
     {
       "run": "after",

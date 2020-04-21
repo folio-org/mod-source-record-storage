@@ -1,5 +1,6 @@
 ## 2020-04-10 v3.2.0-SNAPSHOT
-* Added State "field" to records table. (MODSOURCE-114)
+* [MODSOURCE-126](https://issues.folio.org/browse/MODSOURCE-126) Add State "field" to migration script.
+* [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table.
 * [MODDICORE-43](https://issues.folio.org/browse/MODDICORE-43) SRS MARC Bib: Fix formatting of 035 field constructed from incoming 001
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
 

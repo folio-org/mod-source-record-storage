@@ -166,6 +166,11 @@
     },
     {
       "run": "after",
+      "snippetPath": "migration_scripts/records_add_actual_state.sql",
+      "fromModuleVersion": "mod-source-record-storage-3.2.0"
+    },
+    {
+      "run": "after",
       "snippetPath": "migration_scripts/remove_deprecated_indexes.sql",
       "fromModuleVersion": "mod-source-record-storage-3.1.3"
     }

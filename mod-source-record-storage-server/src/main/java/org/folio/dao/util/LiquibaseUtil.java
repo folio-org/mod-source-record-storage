@@ -75,12 +75,14 @@ public class LiquibaseUtil {
    * @throws LiquibaseException if database access error occurs
    */
   private static void runScripts(String schemaName, Connection connection, String changelogPath)
-      throws Exception {
+      throws LiquibaseException {
       Database database = DatabaseFactory.getInstance()
         .findCorrectDatabaseImplementation(new JdbcConnection(connection));
       database.setDefaultSchemaName(schemaName);
       try (Liquibase liquibase = new Liquibase(changelogPath, new ClassLoaderResourceAccessor(), database)) {
         liquibase.update(new Contexts());
+      } catch (Exception e) {
+        throw new LiquibaseException(e);
       } finally {
         database.close();
       }

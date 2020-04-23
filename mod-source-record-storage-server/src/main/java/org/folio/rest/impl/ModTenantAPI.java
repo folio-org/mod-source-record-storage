@@ -73,9 +73,10 @@ public class ModTenantAPI extends TenantAPI {
         vertx.executeBlocking(
           blockingFuture -> {
             LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+            blockingFuture.complete();
           },
           // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
-          setLoadSampleParameter(entity, context)
+          result -> setLoadSampleParameter(entity, context)
             .compose(v -> createStubSnapshot(context, entity))
             .compose(v -> createStubData(entity))
             .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))

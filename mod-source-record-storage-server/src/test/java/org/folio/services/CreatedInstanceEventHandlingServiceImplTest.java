@@ -99,7 +99,8 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
   public void shouldSetInstanceIdToRecord(TestContext context) {
     Async async = context.async();
     record.withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord);
+      .withParsedRecord(parsedRecord)
+    .withMatchedId(record.getId());
 
     String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -153,7 +154,8 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
     record.withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withId(UUID.randomUUID().toString())
-        .withContent(PARSED_CONTENT_WITH_999_FIELD));
+        .withContent(PARSED_CONTENT_WITH_999_FIELD))
+    .withMatchedId(record.getId());
 
     String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();

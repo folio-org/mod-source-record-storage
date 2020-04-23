@@ -1,9 +1,9 @@
-## 2020-04-07 v3.1.4-SNAPSHOT
-* [MODSOURCE-126](https://issues.folio.org/browse/MODSOURCE-126) Add State "field" to migration script.
-* [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table.
-* [MODOAIPMH-119](https://issues.folio.org/browse/MODOAIPMH-119) Extended sourceRecord schema with externalIdsHolder field.
+## 2020-04-23 v3.1.4
+* [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table
+* [MODSOURCE-126](https://issues.folio.org/browse/MODSOURCE-126) Add State "field" to migration script
+* [MODOAIPMH-119](https://issues.folio.org/browse/MODOAIPMH-119) Extended sourceRecord schema with externalIdsHolder field
 * [MODDICORE-43](https://issues.folio.org/browse/MODDICORE-43) SRS MARC Bib: Fix formatting of 035 field constructed from incoming 001
-* [MODSOURCE-123](https://issues.folio.org/browse/MODSOURCE-123) Fixed script to rename pk columns.
+* [MODSOURCE-123](https://issues.folio.org/browse/MODSOURCE-123) Fixed script to rename pk columns
 
 ## 2020-04-07 v3.1.3
 * Fixed processing of DataImportEventPayload

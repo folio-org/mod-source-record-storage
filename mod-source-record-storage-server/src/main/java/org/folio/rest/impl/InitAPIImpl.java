@@ -7,6 +7,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.folio.config.ApplicationConfig;
+import org.folio.dao.util.LiquibaseUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -24,6 +25,7 @@ public class InitAPIImpl implements InitAPI {
       future -> {
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
         SpringContextUtil.autowireDependencies(this, context);
+        LiquibaseUtil.initializeSchemaForModule(vertx);
         ObjectMapperTool.registerDeserializer(Snapshot.class, snapshotDeserializer);
         future.complete();
       },

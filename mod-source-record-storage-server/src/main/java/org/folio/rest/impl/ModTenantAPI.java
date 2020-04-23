@@ -68,7 +68,6 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
-        String tenantId = headers.get(RestVerticle.OKAPI_HEADER_TENANT);
         Vertx vertx = context.owner();
         vertx.executeBlocking(
           blockingFuture -> {

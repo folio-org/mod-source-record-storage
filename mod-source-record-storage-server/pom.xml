@@ -87,9 +87,10 @@
       <type>jar</type>
     </dependency>
     <dependency>
-      <groupId>org.liquibase</groupId>
-      <artifactId>liquibase-core</artifactId>
-      <version>3.8.9</version>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-liquibase-util</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+      <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>

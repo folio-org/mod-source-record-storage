@@ -13,7 +13,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dao.util.LiquibaseUtil;
+import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Parameter;

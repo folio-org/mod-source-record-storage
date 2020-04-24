@@ -79,6 +79,9 @@ public class RecordServiceImpl implements RecordService {
     if (record.getAdditionalInfo() == null) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
+    if (record.getState() == null ){
+      record.setState(Record.State.ACTUAL);
+    }
     return snapshotDao.getSnapshotById(record.getSnapshotId(), tenantId)
       .map(optionalRecordSnapshot -> optionalRecordSnapshot.orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
       .compose(snapshot -> {

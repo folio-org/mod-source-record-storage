@@ -1947,12 +1947,15 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
+    String matchedId = UUID.randomUUID().toString();
+
     Record newRecord = new Record()
+      .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
-      .withMatchedId(UUID.randomUUID().toString())
+      .withMatchedId(matchedId)
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(true));
 

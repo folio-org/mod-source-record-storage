@@ -56,7 +56,7 @@ BEGIN
                             AS jsonb,
                    (SELECT COUNT(id) FROM %s.records
                     WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
-                      AND records.jsonb->>''deleted'' = ''%s''
+                    AND records.jsonb->>''deleted'' = ''%s''
                       %s
                     ) AS totalrows
             FROM %s.records

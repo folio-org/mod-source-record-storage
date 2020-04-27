@@ -219,7 +219,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllRecordsWithNotSpecifiedStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+  public void shouldReturnAllRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -260,7 +260,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1));
+      .body("totalRecords", is(1))
+      .body("records*.state", notNullValue());
     async.complete();
   }
 

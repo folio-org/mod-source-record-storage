@@ -213,7 +213,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(4));
+      .body("totalRecords", is(4))
+      .body("records*.state", notNullValue());
     async.complete();
   }
 

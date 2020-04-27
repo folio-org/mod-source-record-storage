@@ -168,7 +168,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllRecordsWithActualStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+  public void shouldReturnAllRecordsWithStatesOnGetWhenNoQueryIsSpecified(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {

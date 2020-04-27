@@ -92,7 +92,7 @@ public class RecordDaoImpl implements RecordDao {
       String orderBy = StringUtils.EMPTY;
       if (isNotBlank(query)) {
         SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
-        whereClause = String.format("AND %s ", sqlSelect.getWhere()).replace("'", "''");
+        whereClause = String.format("WHERE %s ", sqlSelect.getWhere()).replace("'", "''");
         orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
       }
       String preparedGetQuery = String.format(GET_RECORDS_QUERY, whereClause, orderBy, limit, offset, convertToPsqlStandard(tenantId));

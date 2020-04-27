@@ -22,14 +22,12 @@ BEGIN
                         ''errorRecord'', error_records.jsonb)
                         AS jsonb,
                    (SELECT COUNT(id) FROM %s.records
-                    WHERE records.jsonb->>''state'' = ''ACTUAL''
                     %s
                    ) AS totalrows
             FROM %s.records
             JOIN %s.raw_records ON records.jsonb->>''rawRecordId'' = raw_records.jsonb->>''id''
             LEFT JOIN %s.marc_records ON records.jsonb->>''parsedRecordId'' = marc_records.jsonb->>''id''
             LEFT JOIN %s.error_records ON records.jsonb->>''errorRecordId'' = error_records.jsonb->>''id''
-            WHERE records.jsonb->>''state'' = ''ACTUAL''
 			      %s
 			      %s
             LIMIT %s OFFSET %s',
@@ -38,7 +36,7 @@ END $$
 language plpgsql;
 
 
-DROP FUNCTION IF EXISTS get_records; CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
+DROP FUNCTION IF EXISTS get_source_records; CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
   RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN
@@ -58,7 +56,6 @@ BEGIN
                             AS jsonb,
                    (SELECT COUNT(id) FROM %s.records
                     WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
-                      AND records.jsonb->>''state'' = ''ACTUAL''
                       AND records.jsonb->>''deleted'' = ''%s''
                       %s
                     ) AS totalrows
@@ -66,7 +63,6 @@ BEGIN
             JOIN %s.raw_records ON records.jsonb->>''rawRecordId'' = raw_records.jsonb->>''id''
             LEFT JOIN %s.marc_records ON records.jsonb->>''parsedRecordId'' = marc_records.jsonb->>''id''
             WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
-                AND records.jsonb->>''state'' = ''ACTUAL''
                 AND records.jsonb->>''deleted'' = ''%s''
 			        %s
 			      %s

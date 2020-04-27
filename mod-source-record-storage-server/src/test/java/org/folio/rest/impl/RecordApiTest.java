@@ -210,10 +210,10 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_RECORDS_PATH + "?query=state=ACTUAL")
+      .get(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(3));
+      .body("totalRecords", is(4));
     async.complete();
   }
 

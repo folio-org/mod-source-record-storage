@@ -6,3 +6,8 @@ node_modules/
 /src/main/java/org/folio/rest/jaxrs/*
 /src/main/java/storage/model/*
 /src/main/resources/postgres-conf.json
+
+.settings/
+.classpath
+.project
+.factorypath

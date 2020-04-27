@@ -11,7 +11,7 @@
   <properties>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.version>2.9.10.3</jackson.version>
+    <jackson.version>2.9.10.4</jackson.version>
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
   </properties>
 
@@ -84,6 +84,12 @@
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
       <version>1.0.0</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-liquibase-util</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
       <type>jar</type>
     </dependency>
     <dependency>

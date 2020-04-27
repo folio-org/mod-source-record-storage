@@ -11,6 +11,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
+* [Database schemas](#database-schemas)
 * [How to fill module with data for testing purposes](https://wiki.folio.org/x/G6bc)
 
 ## Introduction
@@ -89,6 +90,38 @@ curl -w '\n' -X POST -D -   \
     -H "Content-type: application/json"   \
     -d @target/TenantModuleDescriptor.json \
     http://localhost:9130/_/proxy/tenants/<tenant_name>/modules
+```
+
+## Database schemas
+
+The mod-source-record-storage module uses relational approach and Liquibase to define database schemas. It contains a non-tenant (`source_record_storage_config`) database schema for storing module config data not related to tenants. This module schema is created at the time of module initialization.
+
+Database schemas are described in Liquibase scripts using XML syntax.
+Every script file should contain only one "databaseChangeLog" that consists of at least one "changeset" describing the operations on tables. 
+Scripts should be named using following format:
+`yyyy-MM-dd--hh-mm-schema_change_description`.  \
+`yyyy-MM-dd--hh-mm` - date of script creation;  \
+`schema_change_description` - short description of the change.
+
+Each "changeset" should be uniquely identified by the `"author"` and `"id"` attributes. It is advised to use the Github username as `"author"` attribute. 
+The `"id"` attribute value should be defined in the same format as the script file name.  
+
+If needed, database schema name can be obtained using Liquibase context property `${database.defaultSchemaName}`.
+
+Liquibase scripts are stored in `/resources/liquibase/` directory.
+Scripts files for module and tenant schemas are stored separately in `/resources/liquibase/module/scripts` and `/resources/liquibase/tenant/scripts` respectively.
+\
+To simplify the tracking of schemas changes, the module versioning is displayed in the directories structure:
+```
+/resources/liquibase
+    /module/scripts
+              /v-1.0.0
+                  /2019-08-14--14-00-create-module-table.xml
+              /v-2.0.0
+                  /2019-09-03--11-00-change-id-column-type.xml
+    /module/scripts
+              /v-1.0.0
+                  /2019-09-06--15-00-create-record-field-table.xml
 ```
 
 ## REST Client for mod-source-record-storage

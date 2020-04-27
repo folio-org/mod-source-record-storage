@@ -13,6 +13,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -66,12 +67,19 @@ public class ModTenantAPI extends TenantAPI {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {
-        // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
-        setLoadSampleParameter(entity, context)
-          .compose(v -> createStubSnapshot(context, entity))
-          .compose(v -> createStubData(entity))
-          .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
-          .setHandler(event -> handlers.handle(ar));
+        Vertx vertx = context.owner();
+        vertx.executeBlocking(
+          blockingFuture -> {
+            LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+            blockingFuture.complete();
+          },
+          // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
+          result -> setLoadSampleParameter(entity, context)
+            .compose(v -> createStubSnapshot(context, entity))
+            .compose(v -> createStubData(entity))
+            .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
+            .setHandler(event -> handlers.handle(ar))
+        );
       }
     }, context);
   }

@@ -1,5 +1,6 @@
 ## 2020-04-10 v3.2.0-SNAPSHOT
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
+* [MODSOURCE-129](https://issues.folio.org/browse/MODSOURCE-129) Add Liquibase schema management using [folio-liquibase-util](https://github.com/folio-org/folio-liquibase-util)
 
 ## 2020-04-23 v3.1.4
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table

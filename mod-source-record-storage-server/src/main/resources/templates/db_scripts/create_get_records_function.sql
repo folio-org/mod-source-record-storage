@@ -15,6 +15,7 @@ BEGIN
                         ''order'', (records.jsonb->>''order'')::integer,
                         ''externalIdsHolder'', records.jsonb->''externalIdsHolder'',
                         ''additionalInfo'', records.jsonb->''additionalInfo'',
+                        ''state'', records.jsonb->''state'',
                         ''metadata'', records.jsonb->''metadata'',
                         ''rawRecord'', raw_records.jsonb,
                         ''parsedRecord'', COALESCE(marc_records.jsonb),
@@ -35,14 +36,14 @@ END $$
 language plpgsql;
 
 
-DROP FUNCTION IF EXISTS get_records; CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
+DROP FUNCTION IF EXISTS get_source_records; CREATE OR REPLACE FUNCTION get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text)
   RETURNS TABLE (id uuid, jsonb json, totalrows bigint)
     AS $$
 BEGIN
   RETURN query
      EXECUTE format('
             SELECT records.id,
-                   json_build_object(''recordId'', records.jsonb->>''id'',
+                   json_build_object(''recordId'', records.jsonb->>''matchedId'',
                             ''snapshotId'', records.jsonb->>''snapshotId'',
                             ''recordType'', records.jsonb->>''recordType'',
                             ''deleted'', records.jsonb->>''deleted'',
@@ -55,14 +56,14 @@ BEGIN
                             AS jsonb,
                    (SELECT COUNT(id) FROM %s.records
                     WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
-                      AND records.jsonb->>''deleted'' = ''%s''
+                    AND records.jsonb->>''deleted'' = ''%s''
                       %s
                     ) AS totalrows
             FROM %s.records
             JOIN %s.raw_records ON records.jsonb->>''rawRecordId'' = raw_records.jsonb->>''id''
             LEFT JOIN %s.marc_records ON records.jsonb->>''parsedRecordId'' = marc_records.jsonb->>''id''
             WHERE records.jsonb->>''parsedRecordId'' IS NOT NULL
-              AND records.jsonb->>''deleted'' = ''%s''
+                AND records.jsonb->>''deleted'' = ''%s''
 			        %s
 			      %s
             LIMIT %s OFFSET %s',

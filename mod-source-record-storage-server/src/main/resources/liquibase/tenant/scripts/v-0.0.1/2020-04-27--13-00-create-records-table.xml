@@ -130,4 +130,53 @@
     </createIndex>
   </changeSet>
 
+  <changeSet id="2020-04-27--13-10-create-update-records-set-update-date-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.update_records_set_updated_date() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          NEW.updateddate := current_timestamp;
+          RETURN NEW;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-11-create-update-records-set-update-date-trigger" author="WilliamWelling">
+    <sql>
+      create trigger update_records_set_updated_date
+          before insert or update
+          on ${database.defaultSchemaName}.records_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.update_records_set_updated_date();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-12-create-insert-records-set-created-date-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.insert_records_set_created_date() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          NEW.createddate := current_timestamp;
+          NEW.updateddate := NEW.createddate;
+          RETURN NEW;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-13-create-insert-records-set-created-date-trigger" author="WilliamWelling">
+    <sql>
+      create trigger insert_records_set_created_date
+          before insert or update
+          on ${database.defaultSchemaName}.records_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.insert_records_set_created_date();
+    </sql>
+  </changeSet>
+
 </databaseChangeLog>

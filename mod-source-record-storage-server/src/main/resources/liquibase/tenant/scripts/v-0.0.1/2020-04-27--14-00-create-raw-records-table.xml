@@ -1,0 +1,33 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2020-04-27--14-00-create-raw-records-table" author="WilliamWelling">
+    <createTable tableName="raw_records_lb">
+      <column name="id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="content" type="text">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2020-04-27--14-01-add-raw-records-records-foreign-key" author="WilliamWelling">
+    <addForeignKeyConstraint
+        baseColumnNames="id"
+        baseTableName="raw_records_lb"
+        baseTableSchemaName="${database.defaultSchemaName}"
+        constraintName="fk_raw_records_records"
+        deferrable="true"
+        initiallyDeferred="true"
+        onDelete="CASCADE"
+        onUpdate="RESTRICT"
+        referencedColumnNames="id"
+        referencedTableName="records_lb"
+        referencedTableSchemaName="${database.defaultSchemaName}"/>
+  </changeSet>
+
+</databaseChangeLog>

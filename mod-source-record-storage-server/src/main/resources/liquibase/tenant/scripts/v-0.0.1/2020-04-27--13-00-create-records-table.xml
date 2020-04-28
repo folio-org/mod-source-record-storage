@@ -1,0 +1,133 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2020-04-27--13-00-create-record-type" author="WilliamWelling">
+    <sql>
+      CREATE TYPE ${database.defaultSchemaName}.record_type AS ENUM (
+        'MARC'
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-01-create-record-type-state" author="WilliamWelling">
+    <sql>
+      CREATE TYPE ${database.defaultSchemaName}.record_state_type AS ENUM (
+        'ACTUAL',
+        'DRAFT',
+        'OLD',
+        'DELETED'
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-02-create-records-table" author="WilliamWelling">
+    <createTable tableName="records_lb">
+      <column name="id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="snapshotid" type="uuid">
+        <constraints nullable="false"/>
+      </column>
+      <column name="matchedprofileid" type="uuid">
+        <constraints nullable="false"/>
+      </column>
+      <column name="matchedid" type="uuid">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generation" type="integer">
+        <constraints nullable="false"/>
+      </column>
+      <column name="recordtype" type="${database.defaultSchemaName}.record_type">
+        <constraints nullable="false"/>
+      </column>
+      <column name="instanceid" type="uuid"></column>
+      <column name="state" type="${database.defaultSchemaName}.record_state_type">
+        <constraints nullable="false"/>
+      </column>
+      <column name="orderinfile" type="integer"></column>
+      <column name="suppressdiscovery" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+      <column name="createdbyuserid" type="uuid"></column>
+      <column name="createddate" type="timestamp"></column>
+      <column name="updatedbyuserid" type="uuid"></column>
+      <column name="updateddate" type="timestamp"></column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-03-set-records-suppressdiscovery-default" author="WilliamWelling">
+    <addDefaultValue
+        columnDataType="integer"
+        columnName="suppressdiscovery"
+        defaultValueBoolean="false"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb" />
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-04-add-records-snapshot-foreign-key" author="WilliamWelling">
+    <addForeignKeyConstraint
+        baseColumnNames="snapshotid"
+        baseTableName="records_lb"
+        baseTableSchemaName="${database.defaultSchemaName}"
+        constraintName="fk_records_snapshots"
+        deferrable="true"
+        initiallyDeferred="true"
+        onDelete="CASCADE"
+        onUpdate="RESTRICT"
+        referencedColumnNames="id"
+        referencedTableName="snapshots_lb"
+        referencedTableSchemaName="${database.defaultSchemaName}"/>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-05-create-records-snapshotid-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_snapshotid"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb">
+      <column name="snapshotid"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-06-create-records-instanceid-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_instanceid"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb">
+      <column name="instanceid"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-07-create-records-matchedid-generation-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_matchedid_gen"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb"
+        unique="true">
+      <column name="matchedid"/>
+      <column name="generation"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-08-create-records-updateddate-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_updateddate"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb">
+      <column name="updateddate"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-09-create-records-matchedid-state-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_matchedid_state"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb">
+      <column name="matchedid"/>
+      <column name="state"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

@@ -471,6 +471,7 @@ public class RecordDaoImpl implements RecordDao {
       .withExternalIdsHolder(record.getExternalIdsHolder())
       .withDeleted(record.getDeleted())
       .withOrder(record.getOrder())
+      .withState(RecordModel.State.fromValue(record.getState().value()))
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
 

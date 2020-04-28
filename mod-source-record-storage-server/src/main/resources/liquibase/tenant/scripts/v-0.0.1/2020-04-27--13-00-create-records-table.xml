@@ -48,9 +48,7 @@
         <constraints nullable="false"/>
       </column>
       <column name="orderinfile" type="integer"></column>
-      <column name="suppressdiscovery" type="boolean">
-        <constraints nullable="false"/>
-      </column>
+      <column name="suppressdiscovery" type="boolean"></column>
       <column name="createdbyuserid" type="uuid"></column>
       <column name="createddate" type="timestamp"></column>
       <column name="updatedbyuserid" type="uuid"></column>
@@ -58,16 +56,7 @@
     </createTable>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-03-set-records-suppressdiscovery-default" author="WilliamWelling">
-    <addDefaultValue
-        columnDataType="integer"
-        columnName="suppressdiscovery"
-        defaultValueBoolean="false"
-        schemaName="${database.defaultSchemaName}"
-        tableName="records_lb" />
-  </changeSet>
-
-  <changeSet id="2020-04-27--13-04-add-records-snapshot-foreign-key" author="WilliamWelling">
+  <changeSet id="2020-04-27--13-03-add-records-snapshot-foreign-key" author="WilliamWelling">
     <addForeignKeyConstraint
         baseColumnNames="snapshotid"
         baseTableName="records_lb"
@@ -80,6 +69,15 @@
         referencedColumnNames="id"
         referencedTableName="snapshots_lb"
         referencedTableSchemaName="${database.defaultSchemaName}"/>
+  </changeSet>
+
+  <changeSet id="2020-04-27--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
+    <addDefaultValue
+        columnDataType="integer"
+        columnName="suppressdiscovery"
+        defaultValueBoolean="false"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb" />
   </changeSet>
 
   <changeSet id="2020-04-27--13-05-create-records-snapshotid-index" author="WilliamWelling">
@@ -130,7 +128,7 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-10-create-update-records-set-update-date-function" author="WilliamWelling">
+  <changeSet id="2020-04-27--13-10-create-update-records-set-updated-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.update_records_set_updated_date() returns trigger
           language plpgsql
@@ -144,7 +142,7 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-11-create-update-records-set-update-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-04-27--13-11-create-update-records-set-updated-date-trigger" author="WilliamWelling">
     <sql>
       create trigger update_records_set_updated_date
           before insert or update

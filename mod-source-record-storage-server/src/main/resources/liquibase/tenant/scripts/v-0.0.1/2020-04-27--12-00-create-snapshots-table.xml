@@ -30,9 +30,7 @@
       <column name="status" type="${database.defaultSchemaName}.job_execution_status">
         <constraints nullable="false"/>
       </column>
-      <column name="processing_started_date" type="timestamp">
-        <constraints nullable="false"/>
-      </column>
+      <column name="processing_started_date" type="timestamp"></column>
     </createTable>
   </changeSet>
 

@@ -1,0 +1,37 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+    <changeSet id="2020-04-27--12-00-create-job-execution-status" author="WilliamWelling">
+    <sql>
+      CREATE TYPE ${database.defaultSchemaName}.job_execution_status AS ENUM (
+        'PARENT',
+        'NEW',
+        'FILE_UPLOADED',
+        'PARSING_IN_PROGRESS',
+        'PARSING_FINISHED',
+        'PROCESSING_IN_PROGRESS',
+        'PROCESSING_FINISHED',
+        'COMMIT_IN_PROGRESS',
+        'COMMITTED',
+        'ERROR',
+        'DISCARDED'
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-04-27--12-01-create-snapshots-table" author="WilliamWelling">
+    <createTable tableName="snapshots_lb">
+      <column name="id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="status" type="${database.defaultSchemaName}.job_execution_status">
+        <constraints nullable="false"/>
+      </column>
+      <column name="processing_started_date" type="timestamp"></column>
+    </createTable>
+  </changeSet>
+
+</databaseChangeLog>

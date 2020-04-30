@@ -17,13 +17,13 @@ import io.vertx.ext.sql.UpdateResult;
 
 public interface BeanDao<B, C, F extends BeanFilter> {
 
-  public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT * FROM %s WHERE id = '%s';";
-  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT * FROM %s %s OFFSET %s LIMIT %s;";
-  public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
-  public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
-  public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
+  public final String GET_BY_ID_SQL_TEMPLATE = "SELECT * FROM %s WHERE id = '%s';";
+  public final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT * FROM %s %s OFFSET %s LIMIT %s;";
+  public final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
+  public final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
+  public final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
 
-  public static final SimpleDateFormat ISO_8601_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+  public final SimpleDateFormat ISO_8601_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
   public default Future<Optional<B>> getById(String id, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();

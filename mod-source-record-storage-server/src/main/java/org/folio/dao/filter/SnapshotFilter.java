@@ -12,7 +12,7 @@ public class SnapshotFilter extends Snapshot implements BeanFilter {
 
   @Override
   public String toWhereClause() {
-    List<String> statements = new ArrayList<String>();
+    List<String> statements = new ArrayList<>();
     if (StringUtils.isNotEmpty(getJobExecutionId())) {
       statements.add(String.format("id = '%s'", getJobExecutionId()));
     }

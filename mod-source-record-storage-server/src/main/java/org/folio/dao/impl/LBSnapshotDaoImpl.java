@@ -99,9 +99,9 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
     String processingStartedDate = result.getString("processing_started_date");
     if (StringUtils.isNotEmpty(processingStartedDate)) {
       try {
-        snapshot = snapshot.withProcessingStartedDate(ISO_8601_FORMAT.parse(processingStartedDate));
+        snapshot.setProcessingStartedDate(ISO_8601_FORMAT.parse(processingStartedDate));
       } catch (ParseException e) {
-        e.printStackTrace();
+        LOG.error(e.getMessage(), e.getCause());
       }
     }
     return snapshot;

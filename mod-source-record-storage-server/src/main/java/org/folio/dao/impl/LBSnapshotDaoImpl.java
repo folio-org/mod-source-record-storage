@@ -1,7 +1,6 @@
 package org.folio.dao.impl;
 
 import java.text.ParseException;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,6 +18,15 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 
+// <createTable tableName="snapshots_lb">
+//   <column name="id" type="uuid">
+//     <constraints primaryKey="true" nullable="false"/>
+//   </column>
+//   <column name="status" type="${database.defaultSchemaName}.job_execution_status">
+//     <constraints nullable="false"/>
+//   </column>
+//   <column name="processing_started_date" type="timestamp"></column>
+// </createTable>
 @Component
 public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
@@ -69,8 +77,7 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    String id = snapshot.getJobExecutionId();
-    String values = String.format("'%s'", id);
+    String values = String.format("'%s'", snapshot.getJobExecutionId());
     if (snapshot.getStatus() != null) {
       values = String.format("%s,'%s'", values, snapshot.getStatus().toString());
     }
@@ -78,11 +85,6 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
       values = String.format("%s,'%s'", values, ISO_8601_FORMAT.format(snapshot.getProcessingStartedDate()));
     }
     return values;
-  }
-
-  @Override
-  public Optional<Snapshot> toBean(ResultSet resultSet) {
-    return resultSet.getNumRows() > 0 ? Optional.of(toBean(resultSet.getRows().get(0))) : Optional.empty();
   }
 
   @Override

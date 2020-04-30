@@ -19,7 +19,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   DAO dao;
 
   @Override
-  public void deleteRows(TestContext context) {
+  public void clearTables(TestContext context) {
     Async async = context.async();
     String sql = String.format(DELETE_SQL_TEMPLATE, dao.getTableName());
     dao.getPostgresClient(TENANT_ID).execute(sql, delete -> {
@@ -31,7 +31,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testGetById(TestContext context) {
+  public void shouldGetById(TestContext context) {
     Async async = context.async();
     dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
@@ -49,7 +49,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testGetByIdNotFound(TestContext context) {
+  public void shouldNotFindWhenGetById(TestContext context) {
     Async async = context.async();
     dao.getById(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
@@ -61,14 +61,15 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testGetByNoopFilter(TestContext context) {
+  public void shouldGetByNoopFilter(TestContext context) {
     Async async = context.async();
     I[] beans = getMockBeans();
     CompositeFuture.all(
       dao.save(beans[0], TENANT_ID),
       dao.save(beans[1], TENANT_ID),
       dao.save(beans[2], TENANT_ID),
-      dao.save(beans[3], TENANT_ID)
+      dao.save(beans[3], TENANT_ID),
+      dao.save(beans[4], TENANT_ID)
     ).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -84,14 +85,15 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testGetByArbitruaryFilter(TestContext context) {
+  public void shouldGetByArbitruaryFilter(TestContext context) {
     Async async = context.async();
     I[] beans = getMockBeans();
     CompositeFuture.all(
       dao.save(beans[0], TENANT_ID),
       dao.save(beans[1], TENANT_ID),
       dao.save(beans[2], TENANT_ID),
-      dao.save(beans[3], TENANT_ID)
+      dao.save(beans[3], TENANT_ID),
+      dao.save(beans[4], TENANT_ID)
     ).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -107,7 +109,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testSave(TestContext context) {
+  public void shouldSave(TestContext context) {
     Async async = context.async();
     dao.save(getMockBean(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
@@ -119,7 +121,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testSaveGenerateId(TestContext context) {
+  public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
     dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
@@ -131,7 +133,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testSaveError(TestContext context) {
+  public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
     dao.save(getInvalidMockBean(), TENANT_ID).setHandler(res -> {
       assertTrue(res.failed());
@@ -140,7 +142,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testUpdate(TestContext context) {
+  public void shouldUpdate(TestContext context) {
     Async async = context.async();
     dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
@@ -158,22 +160,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testUpdateError(TestContext context) {
-    Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      I mockInvalidUpdateBean = getInvalidUpdatedMockBean();
-      dao.update(mockInvalidUpdateBean, TENANT_ID).setHandler(res -> {
-        assertTrue(res.failed());
-        async.complete();
-      });
-    });
-  }
-
-  @Test
-  public void testUpdateNotFound(TestContext context) {
+  public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
     I mockUpdateBean = getUpdatedMockBean();
     dao.update(mockUpdateBean, TENANT_ID).setHandler(res -> {
@@ -185,7 +172,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testDelete(TestContext context) {
+  public void shouldDelete(TestContext context) {
     Async async = context.async();
     dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
@@ -202,7 +189,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   }
 
   @Test
-  public void testDeleteNotFound(TestContext context) {
+  public void shouldNotDelete(TestContext context) {
     Async async = context.async();
     dao.delete(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
@@ -224,8 +211,6 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   public abstract I getInvalidMockBean();
 
   public abstract I getUpdatedMockBean();
-
-  public abstract I getInvalidUpdatedMockBean();
 
   public abstract I[] getMockBeans();
 

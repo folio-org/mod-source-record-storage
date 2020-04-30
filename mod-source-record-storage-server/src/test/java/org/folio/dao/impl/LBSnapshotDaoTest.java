@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -24,8 +23,12 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCollection, SnapshotFilter, LBSnapshotDao> {
 
   @Override
+  public void createDependentBeans(TestContext context) {
+    // NOTE: no dependent beans needed for testing Snapshot DAO
+  }
+
+  @Override
   public void createDao(TestContext context) {
-    PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     dao = new LBSnapshotDaoImpl(postgresClientFactory);
   }
 
@@ -68,12 +71,6 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
-  public Snapshot getInvalidUpdatedMockBean() {
-    return getMockBean()
-      .withStatus(null);
-  }
-
-  @Override
   public Snapshot[] getMockBeans() {
     return new Snapshot[] {
       new Snapshot()
@@ -89,6 +86,10 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
       new Snapshot()
         .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
         .withStatus(Snapshot.Status.PARSING_FINISHED)
+        .withProcessingStartedDate(new Date()),
+      new Snapshot()
+        .withJobExecutionId("7644042a-805e-4465-b690-cafbc094d891")
+        .withStatus(Snapshot.Status.DISCARDED)
         .withProcessingStartedDate(new Date())
     };
   }

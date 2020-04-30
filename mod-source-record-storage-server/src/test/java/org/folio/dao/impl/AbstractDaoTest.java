@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -22,6 +23,8 @@ public abstract class AbstractDaoTest {
 
   static Vertx vertx;
 
+  static PostgresClientFactory postgresClientFactory;
+
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
@@ -30,6 +33,8 @@ public abstract class AbstractDaoTest {
     PostgresClient.setIsEmbedded(true);
 
     PostgresClient.getInstance(vertx).startEmbeddedPostgres();
+
+    postgresClientFactory = new PostgresClientFactory(vertx);
 
     int port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
@@ -59,7 +64,10 @@ public abstract class AbstractDaoTest {
   @Before
   public abstract void createDao(TestContext context);
 
+  @Before
+  public abstract void createDependentBeans(TestContext context);
+
   @After
-  public abstract void deleteRows(TestContext context);
+  public abstract void clearTables(TestContext context);
 
 }

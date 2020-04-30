@@ -28,7 +28,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
   public default Future<Optional<B>> getById(String id, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getTableName(), id);
-    getLogger().debug("Attempting get by id: {}", sql);
+    getLogger().info("Attempting get by id: {}", sql);
     getPostgresClient(tenantId).select(sql, promise);
     return promise.future().map(this::toBean);
   }
@@ -36,7 +36,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
   public default Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getTableName(), filter.toWhereClause(), offset, limit);
-    getLogger().debug("Attempting get by filter: {}", sql);
+    getLogger().info("Attempting get by filter: {}", sql);
     getPostgresClient(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
@@ -44,7 +44,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
   public default Future<B> save(B bean, String tenantId) {
     Promise<B> promise = Promise.promise();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), toColumns(bean), toValues(bean, true));
-    getLogger().debug("Attempting save: {}", sql);
+    getLogger().info("Attempting save: {}", sql);
     getPostgresClient(tenantId).execute(sql, save -> {
       if (save.failed()) {
         getLogger().error("Failed to insert row in {}", save.cause(), getTableName());
@@ -60,7 +60,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
     Promise<B> promise = Promise.promise();
     String id = getId(bean);
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), toColumns(bean), toValues(bean, false), id);
-    getLogger().debug("Attempting update: {}", sql);
+    getLogger().info("Attempting update: {}", sql);
     getPostgresClient(tenantId).execute(sql, update -> {
       if (update.failed()) {
         getLogger().error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
@@ -79,9 +79,13 @@ public interface BeanDao<B, C, F extends BeanFilter> {
   public default Future<Boolean> delete(String id, String tenantId) {
     Promise<UpdateResult> promise = Promise.promise();
     String sql = String.format(DELETE_SQL_TEMPLATE, getTableName(), id);
-    getLogger().debug("Attempting delete: {}", sql);
+    getLogger().info("Attempting delete: {}", sql);
     getPostgresClient(tenantId).execute(sql, promise);
     return promise.future().map(updateResult -> updateResult.getUpdated() == 1);
+  }
+
+  public default Optional<B> toBean(ResultSet resultSet)  {
+    return resultSet.getNumRows() > 0 ? Optional.of(toBean(resultSet.getRows().get(0))) : Optional.empty();
   }
 
   public Logger getLogger();
@@ -95,8 +99,6 @@ public interface BeanDao<B, C, F extends BeanFilter> {
   public String toColumns(B bean);
 
   public String toValues(B bean, boolean generateIdIfNotExists);
-
-  public Optional<B> toBean(ResultSet resultSet);
 
   public C toCollection(ResultSet resultSet);
 

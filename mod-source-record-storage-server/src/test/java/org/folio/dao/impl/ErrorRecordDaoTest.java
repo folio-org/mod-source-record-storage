@@ -88,11 +88,6 @@ public class ErrorRecordDaoTest extends AbstractRecordDaoTest<ErrorRecord, Error
   }
 
   @Override
-  public void assertTotal(TestContext context, Integer expected, ErrorRecordCollection actual) {
-    context.assertEquals(expected, actual.getTotalRecords());
-  }
-
-  @Override
   public void assertNoopFilterResults(TestContext context, ErrorRecordCollection actual) {
     List<ErrorRecord> expected = Arrays.asList(getMockBeans());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

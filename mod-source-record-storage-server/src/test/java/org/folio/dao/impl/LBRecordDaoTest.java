@@ -167,11 +167,6 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   }
 
   @Override
-  public void assertTotal(TestContext context, Integer expected, RecordCollection actual) {
-    context.assertEquals(expected, actual.getTotalRecords());
-  }
-
-  @Override
   public void assertNoopFilterResults(TestContext context, RecordCollection actual) {
     List<Record> expected = Arrays.asList(getMockBeans());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

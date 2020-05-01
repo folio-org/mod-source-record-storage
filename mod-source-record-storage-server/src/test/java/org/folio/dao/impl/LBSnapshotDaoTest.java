@@ -109,11 +109,6 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
-  public void assertTotal(TestContext context, Integer expected, SnapshotCollection actual) {
-    context.assertEquals(expected, actual.getTotalRecords());
-  }
-
-  @Override
   public void assertNoopFilterResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = Arrays.asList(getMockBeans());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

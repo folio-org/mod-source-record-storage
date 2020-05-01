@@ -78,11 +78,6 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public void assertTotal(TestContext context, Integer expected, RawRecordCollection actual) {
-    context.assertEquals(expected, actual.getTotalRecords());
-  }
-
-  @Override
   public void assertNoopFilterResults(TestContext context, RawRecordCollection actual) {
     List<RawRecord> expected = Arrays.asList(getMockBeans());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

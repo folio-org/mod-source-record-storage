@@ -186,8 +186,6 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
 
   public abstract void compareBeans(TestContext context, I expected, I actual);
 
-  public abstract void assertTotal(TestContext context, Integer expected, C actual);
-
   public abstract void assertNoopFilterResults(TestContext context, C actual);
 
   public abstract void assertArbitruaryFilterResults(TestContext context, C actual);

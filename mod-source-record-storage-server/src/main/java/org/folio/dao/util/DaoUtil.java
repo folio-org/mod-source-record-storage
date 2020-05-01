@@ -25,4 +25,6 @@ public class DaoUtil {
   public static final String WHERE_TEMPLATE = "WHERE %s";
   public static final String COLUMN_EQUALS_TEMPLATE = "%s = ";
 
+  private DaoUtil() { }
+
 }

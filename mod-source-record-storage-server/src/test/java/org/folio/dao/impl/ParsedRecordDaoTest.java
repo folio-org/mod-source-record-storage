@@ -79,11 +79,6 @@ public class ParsedRecordDaoTest extends AbstractRecordDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public void assertTotal(TestContext context, Integer expected, ParsedRecordCollection actual) {
-    context.assertEquals(expected, actual.getTotalRecords());
-  }
-
-  @Override
   public void assertNoopFilterResults(TestContext context, ParsedRecordCollection actual) {
     List<ParsedRecord> expected = Arrays.asList(getMockBeans());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

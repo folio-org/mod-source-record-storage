@@ -1,9 +1,5 @@
 package org.folio.dao.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.folio.dao.BeanDao;
 import org.folio.dao.filter.BeanFilter;
 import org.junit.Test;
@@ -18,18 +14,6 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
 
   DAO dao;
 
-  @Override
-  public void clearTables(TestContext context) {
-    Async async = context.async();
-    String sql = String.format(DELETE_SQL_TEMPLATE, dao.getTableName());
-    dao.getPostgresClient(TENANT_ID).execute(sql, delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
-  }
-
   @Test
   public void shouldGetById(TestContext context) {
     Async async = context.async();
@@ -41,8 +25,8 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertTrue(res.result().isPresent());
-        compareBeans(getMockBean(), res.result().get());
+        context.assertTrue(res.result().isPresent());
+        compareBeans(context, getMockBean(), res.result().get());
         async.complete();
       });
     });
@@ -55,7 +39,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
       if (res.failed()) {
         context.fail(res.cause());
       }
-      assertFalse(res.result().isPresent());
+      context.assertFalse(res.result().isPresent());
       async.complete();
     });
   }
@@ -78,7 +62,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertNoopFilterResults(res.result());
+        assertNoopFilterResults(context, res.result());
         async.complete();
       });
     });
@@ -102,7 +86,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertArbitruaryFilterResults(res.result());
+        assertArbitruaryFilterResults(context, res.result());
         async.complete();
       });
     });
@@ -115,19 +99,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareBeans(getMockBean(), res.result());
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldSaveGeneratingId(TestContext context) {
-    Async async = context.async();
-    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      compareBeans(getMockBeanWithoutId(), res.result());
+      compareBeans(context, getMockBean(), res.result());
       async.complete();
     });
   }
@@ -136,7 +108,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
     dao.save(getInvalidMockBean(), TENANT_ID).setHandler(res -> {
-      assertTrue(res.failed());
+      context.assertTrue(res.failed());
       async.complete();
     });
   }
@@ -153,7 +125,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
         if (res.failed()) {
           context.fail(res.cause());
         }
-        compareBeans(mockUpdateBean, res.result());
+        compareBeans(context, mockUpdateBean, res.result());
         async.complete();
       });
     });
@@ -164,9 +136,9 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
     Async async = context.async();
     I mockUpdateBean = getUpdatedMockBean();
     dao.update(mockUpdateBean, TENANT_ID).setHandler(res -> {
-      assertTrue(res.failed());
+      context.assertTrue(res.failed());
       String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateBean));
-      assertEquals(expectedMessage, res.cause().getMessage());
+      context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();
     });
   }
@@ -182,7 +154,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertTrue(res.result());
+        context.assertTrue(res.result());
         async.complete();
       });
     });
@@ -195,7 +167,19 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
       if (res.failed()) {
         context.fail(res.cause());
       }
-      assertFalse(res.result());
+      context.assertFalse(res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void testSaveGeneratingId(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareBeans(context, getMockBeanWithoutId(), res.result());
       async.complete();
     });
   }
@@ -214,12 +198,12 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
 
   public abstract I[] getMockBeans();
 
-  public abstract void compareBeans(I expected, I actual);
+  public abstract void compareBeans(TestContext context, I expected, I actual);
 
-  public abstract void assertTotal(Integer expected, C actual);
+  public abstract void assertTotal(TestContext context, Integer expected, C actual);
 
-  public abstract void assertNoopFilterResults(C actual);
+  public abstract void assertNoopFilterResults(TestContext context, C actual);
 
-  public abstract void assertArbitruaryFilterResults(C actual);
+  public abstract void assertArbitruaryFilterResults(TestContext context, C actual);
 
 }

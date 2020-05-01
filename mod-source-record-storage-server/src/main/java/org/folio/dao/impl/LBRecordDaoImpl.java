@@ -138,11 +138,10 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public String toValues(Record record, boolean generateIdIfNotExists) {
     if (generateIdIfNotExists && StringUtils.isEmpty(record.getId())) {
-      String id = UUID.randomUUID().toString();
-      record.setId(id);
-      if (StringUtils.isEmpty(record.getMatchedId())) {
-        record.setMatchedId(id);
-      }
+      record.setId(UUID.randomUUID().toString());
+    }
+    if (StringUtils.isEmpty(record.getMatchedId())) {
+      record.setMatchedId(record.getId());
     }
     String values = String.format("'%s','%s'", record.getId(), record.getMatchedId());
     if (StringUtils.isNoneEmpty(record.getSnapshotId())) {
@@ -159,7 +158,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
     }
     if (record.getExternalIdsHolder() != null) {
       if (StringUtils.isNoneEmpty(record.getExternalIdsHolder().getInstanceId())) {
-        
+        values = String.format("%s,'%s'", values, record.getExternalIdsHolder().getInstanceId());
       }
     }
     if (record.getState() != null) {
@@ -201,9 +200,9 @@ public class LBRecordDaoImpl implements LBRecordDao {
   public Record toBean(JsonObject result) {
     Record record = new Record()
       .withId(result.getString("id"))
+      .withMatchedId(result.getString("matchedid"))
       .withSnapshotId(result.getString("snapshotid"))
       .withMatchedProfileId(result.getString("matchedprofileid"))
-      .withMatchedId(result.getString("matchedpid"))
       .withGeneration(result.getInteger("generation"))
       .withRecordType(RecordType.valueOf(result.getString("recordtype")))
       .withState(State.valueOf(result.getString("state")));

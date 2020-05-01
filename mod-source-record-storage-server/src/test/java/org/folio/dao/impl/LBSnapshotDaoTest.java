@@ -1,9 +1,5 @@
 package org.folio.dao.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -14,8 +10,10 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
+import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
 
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
@@ -33,6 +31,19 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
+  public void clearTables(TestContext context) {
+    Async async = context.async();
+    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
+    String sql = String.format(DELETE_SQL_TEMPLATE, dao.getTableName());
+    pgClient.execute(sql, delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      async.complete();
+    });
+  }
+
+  @Override
   public SnapshotFilter getNoopFilter() {
     return new SnapshotFilter();
   }
@@ -46,14 +57,13 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public Snapshot getMockBean() {
-    return new Snapshot()
-      .withJobExecutionId("ac8f351c-8a2e-11ea-bc55-0242ac130003")
-      .withStatus(Snapshot.Status.NEW);
+    return MockSnapshotFactory.getMockSnapshot();
   }
 
   @Override
   public Snapshot getMockBeanWithoutId() {
-    return new Snapshot().withStatus(Snapshot.Status.NEW);
+    return new Snapshot()
+      .withStatus(Snapshot.Status.NEW);
   }
 
   @Override
@@ -72,59 +82,40 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public Snapshot[] getMockBeans() {
-    return new Snapshot[] {
-      new Snapshot()
-        .withJobExecutionId("67dfac11-1caf-4470-9ad1-d533f6360bdd")
-        .withStatus(Snapshot.Status.NEW),
-      new Snapshot()
-        .withJobExecutionId("17dfac11-1caf-4470-9ad1-d533f6360bdd")
-        .withStatus(Snapshot.Status.NEW),
-      new Snapshot()
-        .withJobExecutionId("27dfac11-1caf-4470-9ad1-d533f6360bdd")
-        .withStatus(Snapshot.Status.PARSING_IN_PROGRESS)
-        .withProcessingStartedDate(new Date()),
-      new Snapshot()
-        .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
-        .withStatus(Snapshot.Status.PARSING_FINISHED)
-        .withProcessingStartedDate(new Date()),
-      new Snapshot()
-        .withJobExecutionId("7644042a-805e-4465-b690-cafbc094d891")
-        .withStatus(Snapshot.Status.DISCARDED)
-        .withProcessingStartedDate(new Date())
-    };
+    return MockSnapshotFactory.getMockSnapshots();
   }
 
   @Override
-  public void compareBeans(Snapshot expected, Snapshot actual) {
+  public void compareBeans(TestContext context, Snapshot expected, Snapshot actual) {
     if (StringUtils.isEmpty(expected.getJobExecutionId())) {
-      assertNotNull(actual.getJobExecutionId());
+      context.assertNotNull(actual.getJobExecutionId());
     } else {
-      assertEquals(dao.getId(expected), dao.getId(actual));
+      context.assertEquals(expected.getJobExecutionId(), actual.getJobExecutionId());
     }
-    assertEquals(expected.getStatus(), actual.getStatus());
-    assertEquals(expected.getProcessingStartedDate(), actual.getProcessingStartedDate());
+    context.assertEquals(expected.getStatus(), actual.getStatus());
+    context.assertEquals(expected.getProcessingStartedDate(), actual.getProcessingStartedDate());
   }
 
   @Override
-  public void assertTotal(Integer expected, SnapshotCollection actual) {
-    assertEquals(expected, actual.getTotalRecords());
+  public void assertTotal(TestContext context, Integer expected, SnapshotCollection actual) {
+    context.assertEquals(expected, actual.getTotalRecords());
   }
 
   @Override
-  public void assertNoopFilterResults(SnapshotCollection actual) {
+  public void assertNoopFilterResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = Arrays.asList(getMockBeans());
-    assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedSnapshot -> assertTrue(actual.getSnapshots().stream()
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
   }
 
   @Override
-  public void assertArbitruaryFilterResults(SnapshotCollection actual) {
+  public void assertArbitruaryFilterResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = Arrays.asList(getMockBeans()).stream()
       .filter(bean -> bean.getStatus().equals(getArbitruaryFilter().getStatus()))
       .collect(Collectors.toList());
-    assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedSnapshot -> assertTrue(actual.getSnapshots().stream()
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
   }
 

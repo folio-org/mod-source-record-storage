@@ -41,12 +41,6 @@ public class ParsedRecordDaoTest extends AbstractRecordDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public ParsedRecord getMockBeanWithoutId() {
-    return new ParsedRecord()
-      .withContent(parsedMarc);
-  }
-
-  @Override
   public ParsedRecord getInvalidMockBean() {
     return new ParsedRecord()
       .withId(mockRecord.getId());

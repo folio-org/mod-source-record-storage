@@ -43,13 +43,6 @@ public class ErrorRecordDaoTest extends AbstractRecordDaoTest<ErrorRecord, Error
   }
 
   @Override
-  public ErrorRecord getMockBeanWithoutId() {
-    return new ErrorRecord()
-      .withContent(parsedMarc)
-      .withDescription("Oops... something happened");
-  }
-
-  @Override
   public ErrorRecord getInvalidMockBean() {
     return new ErrorRecord()
       .withId(mockRecord.getId());

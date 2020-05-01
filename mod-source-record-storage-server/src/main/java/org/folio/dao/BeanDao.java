@@ -1,6 +1,11 @@
 package org.folio.dao;
 
-import java.text.SimpleDateFormat;
+import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
+
 import java.util.Optional;
 
 import javax.ws.rs.NotFoundException;
@@ -16,14 +21,6 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
 public interface BeanDao<B, C, F extends BeanFilter> {
-
-  public final String GET_BY_ID_SQL_TEMPLATE = "SELECT * FROM %s WHERE id = '%s';";
-  public final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT * FROM %s %s OFFSET %s LIMIT %s;";
-  public final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
-  public final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
-  public final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
-
-  public final SimpleDateFormat ISO_8601_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
   public default Future<Optional<B>> getById(String id, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
@@ -45,6 +42,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
     Promise<B> promise = Promise.promise();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), toColumns(bean), toValues(bean, true));
     getLogger().info("Attempting save: {}", sql);
+    // NOTE: timeout when insert in a table with jsonb column and primary key missing from values
     getPostgresClient(tenantId).execute(sql, save -> {
       if (save.failed()) {
         getLogger().error("Failed to insert row in {}", save.cause(), getTableName());

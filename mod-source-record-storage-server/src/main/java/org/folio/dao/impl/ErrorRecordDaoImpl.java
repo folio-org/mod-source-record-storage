@@ -1,10 +1,15 @@
 package org.folio.dao.impl;
 
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ERROR_RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.ColumnsBuilder;
+import org.folio.dao.util.ValuesBuilder;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -32,7 +37,7 @@ public class ErrorRecordDaoImpl implements ErrorRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(ErrorRecordDaoImpl.class);
 
-  private static final String TABLE_NAME = "error_records_lb";
+  public static final String DESCRIPTION_COLUMN_NAME = "description";
 
   private final PostgresClientFactory pgClientFactory;
 
@@ -53,7 +58,7 @@ public class ErrorRecordDaoImpl implements ErrorRecordDao {
 
   @Override
   public String getTableName() {
-    return TABLE_NAME;
+    return ERROR_RECORDS_TABLE_NAME;
   }
 
   @Override
@@ -63,34 +68,20 @@ public class ErrorRecordDaoImpl implements ErrorRecordDao {
 
   @Override
   public String toColumns(ErrorRecord errorRecord) {
-    String columns = StringUtils.isNotEmpty(errorRecord.getId()) ? "id" : StringUtils.EMPTY;
-    if (errorRecord.getContent() != null) {
-      columns += columns.length() > 0 ? ",content" : "content";
-    }
-    if (StringUtils.isNotEmpty(errorRecord.getDescription())) {
-      columns += columns.length() > 0 ? ",description" : "description";
-    }
-    return columns;
+    return ColumnsBuilder.of(ID_COLUMN_NAME)
+      .append(errorRecord.getContent(), CONTENT_COLUMN_NAME)
+      .append(errorRecord.getDescription(), DESCRIPTION_COLUMN_NAME)
+      .build();
   }
 
   @Override
   public String toValues(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // error_records id if foreign key with records_lb
-    String values = StringUtils.isNotEmpty(errorRecord.getId())
-      ? String.format("'%s'", errorRecord.getId())
-      : StringUtils.EMPTY;
-    if (errorRecord.getContent() != null) {
-      values = values.length() > 0
-        ? String.format("%s,'%s'", values, errorRecord.getContent())
-        : String.format("'%s'", values, errorRecord.getContent());
-    }
-    if (StringUtils.isNotEmpty(errorRecord.getDescription())) {
-      values = values.length() > 0
-        ? String.format("%s,'%s'", values, errorRecord.getDescription())
-        : String.format("'%s'", values, errorRecord.getDescription());
-    }
-    return values;
+    // error_records id is foreign key with records_lb
+    return ValuesBuilder.of(errorRecord.getId())
+      .append(errorRecord.getContent())
+      .append(errorRecord.getDescription())
+      .build();
   }
 
   @Override
@@ -103,9 +94,9 @@ public class ErrorRecordDaoImpl implements ErrorRecordDao {
   @Override
   public ErrorRecord toBean(JsonObject result) {
     return new ErrorRecord()
-      .withId(result.getString("id"))
-      .withContent(result.getString("content"))
-      .withDescription(result.getString("description"));
+      .withId(result.getString(ID_COLUMN_NAME))
+      .withContent(result.getString(CONTENT_COLUMN_NAME))
+      .withDescription(result.getString(DESCRIPTION_COLUMN_NAME));
   }
 
 }

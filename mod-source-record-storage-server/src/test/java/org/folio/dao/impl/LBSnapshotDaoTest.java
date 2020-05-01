@@ -11,6 +11,7 @@ import org.folio.dao.filter.SnapshotFilter;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.vertx.ext.unit.Async;
@@ -43,6 +44,23 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
     });
   }
 
+  @Test
+  public void shouldSaveGeneratingId(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareBeans(context, getMockBeanWithoutId(), res.result());
+      async.complete();
+    });
+  }
+
+  public Snapshot getMockBeanWithoutId() {
+    return new Snapshot()
+      .withStatus(Snapshot.Status.NEW);
+  }
+
   @Override
   public SnapshotFilter getNoopFilter() {
     return new SnapshotFilter();
@@ -58,12 +76,6 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   @Override
   public Snapshot getMockBean() {
     return MockSnapshotFactory.getMockSnapshot();
-  }
-
-  @Override
-  public Snapshot getMockBeanWithoutId() {
-    return new Snapshot()
-      .withStatus(Snapshot.Status.NEW);
   }
 
   @Override

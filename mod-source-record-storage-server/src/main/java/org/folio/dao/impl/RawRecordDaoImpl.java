@@ -1,10 +1,15 @@
 package org.folio.dao.impl;
 
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
+
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RawRecordDao;
+import org.folio.dao.util.ColumnsBuilder;
+import org.folio.dao.util.ValuesBuilder;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -29,8 +34,6 @@ public class RawRecordDaoImpl implements RawRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RawRecordDaoImpl.class);
 
-  private static final String TABLE_NAME = "raw_records_lb";
-
   private final PostgresClientFactory pgClientFactory;
 
   @Autowired 
@@ -50,7 +53,7 @@ public class RawRecordDaoImpl implements RawRecordDao {
 
   @Override
   public String getTableName() {
-    return TABLE_NAME;
+    return RAW_RECORDS_TABLE_NAME;
   }
 
   @Override
@@ -60,26 +63,18 @@ public class RawRecordDaoImpl implements RawRecordDao {
 
   @Override
   public String toColumns(RawRecord rawRecord) {
-    String columns = StringUtils.isNotEmpty(rawRecord.getId()) ? "id" : StringUtils.EMPTY;
-    if (rawRecord.getContent() != null) {
-      columns += columns.length() > 0 ? ",content" : "content";
-    }
-    return columns;
+    return ColumnsBuilder.of(ID_COLUMN_NAME)
+      .append(rawRecord.getContent(), CONTENT_COLUMN_NAME)
+      .build();
   }
 
   @Override
   public String toValues(RawRecord rawRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // raw_records id if foreign key with records_lb
-    String values = StringUtils.isNotEmpty(rawRecord.getId())
-      ? String.format("'%s'", rawRecord.getId())
-      : StringUtils.EMPTY;
-    if (rawRecord.getContent() != null) {
-      values = values.length() > 0
-        ? String.format("%s,'%s'", values, rawRecord.getContent())
-        : String.format("'%s'", values, rawRecord.getContent());
-    }
-    return values;
+    // raw_records id is foreign key with records_lb
+    return ValuesBuilder.of(rawRecord.getId())
+      .append(rawRecord.getContent())
+      .build();
   }
 
   @Override
@@ -92,8 +87,8 @@ public class RawRecordDaoImpl implements RawRecordDao {
   @Override
   public RawRecord toBean(JsonObject result) {
     return new RawRecord()
-      .withId(result.getString("id"))
-      .withContent(result.getString("content"));
+      .withId(result.getString(ID_COLUMN_NAME))
+      .withContent(result.getString(CONTENT_COLUMN_NAME));
   }
 
 }

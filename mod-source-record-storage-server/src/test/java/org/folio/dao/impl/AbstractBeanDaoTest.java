@@ -172,25 +172,11 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
     });
   }
 
-  @Test
-  public void testSaveGeneratingId(TestContext context) {
-    Async async = context.async();
-    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      compareBeans(context, getMockBeanWithoutId(), res.result());
-      async.complete();
-    });
-  }
-
   public abstract F getNoopFilter();
 
   public abstract F getArbitruaryFilter();
 
   public abstract I getMockBean();
-
-  public abstract I getMockBeanWithoutId();
 
   public abstract I getInvalidMockBean();
 

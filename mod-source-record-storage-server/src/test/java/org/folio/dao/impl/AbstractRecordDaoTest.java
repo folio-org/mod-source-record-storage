@@ -121,13 +121,4 @@ public abstract class AbstractRecordDaoTest<I, C, F extends BeanFilter, DAO exte
     });
   }
 
-  @Override
-  public void testSaveGeneratingId(TestContext context) {
-    Async async = context.async();
-    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
-      context.assertTrue(res.failed());
-      async.complete();
-    });
-  }
-
 }

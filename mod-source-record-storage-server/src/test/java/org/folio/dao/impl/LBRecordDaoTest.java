@@ -13,6 +13,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.CompositeFuture;
@@ -71,6 +72,28 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
     });
   }
 
+  @Test
+  public void shouldSaveGeneratingId(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareBeans(context, getMockBeanWithoutId(), res.result());
+      async.complete();
+    });
+  }
+
+  public Record getMockBeanWithoutId() {
+    return new Record()
+      .withSnapshotId(snapshot2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
+      .withOrder(0)
+      .withGeneration(1)
+      .withState(Record.State.ACTUAL);
+  }
+
   @Override
   public RecordFilter getNoopFilter() {
     return new RecordFilter();
@@ -87,17 +110,6 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   @Override
   public Record getMockBean() {
     return MockRecordFactory.getMockRecord(snapshot1);
-  }
-
-  @Override
-  public Record getMockBeanWithoutId() {
-    return new Record()
-      .withSnapshotId(snapshot2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
-      .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
-      .withOrder(0)
-      .withGeneration(1)
-      .withState(Record.State.ACTUAL);
   }
 
   @Override

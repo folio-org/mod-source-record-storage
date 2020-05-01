@@ -40,12 +40,6 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public RawRecord getMockBeanWithoutId() {
-    return new RawRecord()
-      .withContent(rawMarc);
-  }
-
-  @Override
   public RawRecord getInvalidMockBean() {
     return new RawRecord()
       .withId(mockRecord.getId());

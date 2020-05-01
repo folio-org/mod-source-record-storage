@@ -1,12 +1,19 @@
 package org.folio.dao.impl;
 
+import static com.fasterxml.jackson.databind.util.StdDateFormat.DATE_FORMAT_STR_ISO8601;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
+
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.ColumnsBuilder;
+import org.folio.dao.util.ValuesBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -32,7 +39,8 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(LBSnapshotDaoImpl.class);
 
-  private static final String TABLE_NAME = "snapshots_lb";
+  public static final String PROCESSING_STARTED_DATE_COLUMN_NAME = "processing_started_date";
+  public static final String STATUS_COLUMN_NAME = "status";
 
   private final PostgresClientFactory pgClientFactory;
 
@@ -52,7 +60,7 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   @Override
   public String getTableName() {
-    return TABLE_NAME;
+    return SNAPSHOTS_TABLE_NAME;
   }
 
   @Override
@@ -62,14 +70,10 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   @Override
   public String toColumns(Snapshot snapshot) {
-    String columns = "id";
-    if (snapshot.getStatus() != null) {
-      columns += ",status";
-    }
-    if (snapshot.getProcessingStartedDate() != null) {
-      columns += ",processing_started_date";
-    }
-    return columns;
+    return ColumnsBuilder.of(ID_COLUMN_NAME)
+      .append(snapshot.getProcessingStartedDate(), PROCESSING_STARTED_DATE_COLUMN_NAME)
+      .append(snapshot.getStatus(), STATUS_COLUMN_NAME)
+      .build();
   }
 
   @Override
@@ -77,14 +81,13 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    String values = String.format("'%s'", snapshot.getJobExecutionId());
+    ValuesBuilder valuesBuilder = ValuesBuilder.of(snapshot.getJobExecutionId())
+      .append(snapshot.getProcessingStartedDate());
     if (snapshot.getStatus() != null) {
-      values = String.format("%s,'%s'", values, snapshot.getStatus().toString());
+      valuesBuilder
+        .append(snapshot.getStatus().toString());
     }
-    if (snapshot.getProcessingStartedDate() != null) {
-      values = String.format("%s,'%s'", values, ISO_8601_FORMAT.format(snapshot.getProcessingStartedDate()));
-    }
-    return values;
+    return valuesBuilder.build();
   }
 
   @Override
@@ -96,12 +99,12 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   @Override
   public Snapshot toBean(JsonObject result) {
-    Snapshot snapshot = new Snapshot().withJobExecutionId(result.getString("id"))
-      .withStatus(Snapshot.Status.fromValue(result.getString("status")));
-    String processingStartedDate = result.getString("processing_started_date");
+    Snapshot snapshot = new Snapshot().withJobExecutionId(result.getString(ID_COLUMN_NAME))
+      .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
+    String processingStartedDate = result.getString(PROCESSING_STARTED_DATE_COLUMN_NAME);
     if (StringUtils.isNotEmpty(processingStartedDate)) {
       try {
-        snapshot.setProcessingStartedDate(ISO_8601_FORMAT.parse(processingStartedDate));
+        snapshot.setProcessingStartedDate(new SimpleDateFormat(DATE_FORMAT_STR_ISO8601).parse(processingStartedDate));
       } catch (ParseException e) {
         LOG.error(e.getMessage(), e.getCause());
       }

@@ -1,28 +1,24 @@
 package org.folio.dao.filter;
 
-import static org.folio.dao.BeanDao.ISO_8601_FORMAT;
+import static org.folio.dao.impl.LBSnapshotDaoImpl.PROCESSING_STARTED_DATE_COLUMN_NAME;
+import static org.folio.dao.impl.LBSnapshotDaoImpl.STATUS_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 
 public class SnapshotFilter extends Snapshot implements BeanFilter {
 
   @Override
   public String toWhereClause() {
-    List<String> statements = new ArrayList<>();
-    if (StringUtils.isNotEmpty(getJobExecutionId())) {
-      statements.add(String.format("id = '%s'", getJobExecutionId()));
-    }
+    WhereClauseBuilder whereClauseBuilder = WhereClauseBuilder.of()
+      .append(getJobExecutionId(), ID_COLUMN_NAME)
+      .append(getProcessingStartedDate(), PROCESSING_STARTED_DATE_COLUMN_NAME);
     if (getStatus() != null) {
-      statements.add(String.format("status = '%s'", getStatus().toString()));
+      whereClauseBuilder
+        .append(getStatus().toString(), STATUS_COLUMN_NAME);
     }
-    if (getProcessingStartedDate() != null) {
-      statements.add(String.format("processing_started_date = '%s'", ISO_8601_FORMAT.format(getProcessingStartedDate())));
-    }
-    return statements.isEmpty() ? StringUtils.EMPTY : "WHERE " + String.join(" AND ", statements);
+    return whereClauseBuilder.build();
   }
 
 }

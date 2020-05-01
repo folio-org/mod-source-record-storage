@@ -1,23 +1,19 @@
 package org.folio.dao.filter;
 
-import java.util.ArrayList;
-import java.util.List;
+import static org.folio.dao.impl.ErrorRecordDaoImpl.DESCRIPTION_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 
 public class ErrorRecordFilter extends ErrorRecord implements BeanFilter {
 
   @Override
   public String toWhereClause() {
-    List<String> statements = new ArrayList<>();
-    if (StringUtils.isNotEmpty(getId())) {
-      statements.add(String.format("id = '%s'", getId()));
-    }
-    if (StringUtils.isNotEmpty(getDescription())) {
-      statements.add(String.format("description = '%s'", getDescription()));
-    }
-    return statements.isEmpty() ? StringUtils.EMPTY : "WHERE " + String.join(" AND ", statements);
+    return WhereClauseBuilder.of()
+      .append(getId(), ID_COLUMN_NAME)
+      .append(getDescription(), DESCRIPTION_COLUMN_NAME)
+      .build();
   }
 
 }

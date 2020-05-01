@@ -1,13 +1,15 @@
 package org.folio.dao.impl;
 
-import java.io.IOException;
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
+
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.ColumnsBuilder;
+import org.folio.dao.util.ValuesBuilder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -32,10 +34,6 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(ParsedRecordDaoImpl.class);
 
-  private static final String TABLE_NAME = "marc_records_lb";
-
-  private static final ObjectMapper objectMapper = new ObjectMapper();;
-
   private final PostgresClientFactory pgClientFactory;
 
   @Autowired
@@ -55,7 +53,7 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
 
   @Override
   public String getTableName() {
-    return TABLE_NAME;
+    return PARSED_RECORDS_TABLE_NAME;
   }
 
   @Override
@@ -65,26 +63,18 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
 
   @Override
   public String toColumns(ParsedRecord parsedRecord) {
-    String columns = StringUtils.isNotEmpty(parsedRecord.getId()) ? "id" : StringUtils.EMPTY;
-    if (parsedRecord.getContent() != null) {
-      columns += columns.length() > 0 ? ",content" : "content";
-    }
-    return columns;
+    return ColumnsBuilder.of(ID_COLUMN_NAME)
+      .append(parsedRecord.getContent(), CONTENT_COLUMN_NAME)
+      .build();
   }
 
   @Override
   public String toValues(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // parsed_records id if foreign key with records_lb
-    String values = StringUtils.isNotEmpty(parsedRecord.getId())
-      ? String.format("'%s'", parsedRecord.getId())
-      : StringUtils.EMPTY;
-    if (parsedRecord.getContent() != null) {
-      values = values.length() > 0
-        ? String.format("%s,'%s'", values, parsedRecord.getContent())
-        : String.format("'%s'", values, parsedRecord.getContent());
-    }
-    return values;
+    // parsed_records id is foreign key with records_lb
+    return ValuesBuilder.of(parsedRecord.getId())
+      .append(parsedRecord.getContent())
+      .build();
   }
 
   @Override
@@ -96,12 +86,11 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
 
   @Override
   public ParsedRecord toBean(JsonObject result) {
-    String content = result.getString("content");
-    ParsedRecord parsedObject = new ParsedRecord()
-      .withId(result.getString("id"))
+    String content = result.getString(CONTENT_COLUMN_NAME);
+    return new ParsedRecord()
+      .withId(result.getString(ID_COLUMN_NAME))
       .withContent(content)
       .withFormattedContent(new JsonObject(content).encodePrettily());
-    return parsedObject;
   }
 
 }

@@ -15,6 +15,7 @@ public class DaoUtil {
   public static final String ERROR_RECORDS_TABLE_NAME = "error_records_lb";
 
   public static final String ID_COLUMN_NAME = "id";
+  public static final String JSON_COLUMN_NAME = "jsonb";
   public static final String CONTENT_COLUMN_NAME = "content";
 
   

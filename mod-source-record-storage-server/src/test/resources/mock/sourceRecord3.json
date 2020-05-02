@@ -1,0 +1,320 @@
+{
+  "recordId" : "d3cd3e1e-a18c-4f7c-b053-9aa50343394e",
+  "snapshotId" : "27dfac11-1caf-4470-9ad1-d533f6360bdd",
+  "recordType" : "MARC",
+  "rawRecord" : {
+    "id" : "7a80e18e-d352-47ad-beef-6035f04bcf78",
+    "content" : "01743nai a2200409 i 4500001000800000005001700008006001900025007001500044008004100059010001800100035002400118042000800142043001200150040003200162049000800194074002300202086002100225100004300246245011300289250004200402264006500444300002300509310002400532336002600556337002600582338003600608490005400644500014400698504004800842588009200890610007200982710007301054773012901127830002601256856004001282922001101322\u001E5962418\u001E20200210110404.0\u001Em     o  d f      \u001Ecr mn|||||||||\u001E200124c20189999dcu x w obb  f0    2eng c\u001E  \u001Fa   2020230732\u001E  \u001Fa(OCoLC)on1137385866\u001E  \u001Fapcc\u001E  \u001Fan-us---\u001E  \u001FaGPO\u001Fbeng\u001Ferda\u001Fepn\u001FcGPO\u001FdMvI\u001E  \u001FaWWW\u001E  \u001Fa0807-A-07 (online)\u001E0 \u001FaLC 14.23:98-888/\u001E1 \u001FaDavis, Christopher M.,\u001Fd1966-\u001Feauthor.\u001E10\u001Fa\"Fast-track\" or expedited procedures  :\u001Fbtheir purpose, elements, and implications  /\u001FcChristopher M. Davis.\u001E  \u001Fa[Library of Congress public edition].\u001E 1\u001Fa[Washington, D.C.] :\u001FbCongressional Research Service,\u001Fc2018-\u001E  \u001Fa1 online resource.\u001E  \u001FaUpdated irregularly\u001E  \u001Fatext\u001Fbtxt\u001F2rdacontent\u001E  \u001Facomputer\u001Fbc\u001F2rdamedia\u001E  \u001Faonline resource\u001Fbcr\u001F2rdacarrier\u001E1 \u001FaReport / Congressional Research Service ;\u001Fv98-888\u001E  \u001FaThe CRS report home page provides access to all versions published since 2018 in accordance with P.L. 115-141; earliest version dated 2003.\u001E  \u001FaReport includes bibliographical references.\u001E  \u001FaDescription based on contents viewed on Jan. 21, 2020; title from CRS report home page.\u001E10\u001FaUnited States.\u001FbCongress\u001FxRules and practice\u001FxFast-track procedure.\u001E2 \u001FaLibrary of Congress.\u001FbCongressional Research Service,\u001Feissuing body.\u001E08\u001FiContained in (work):\u001FtCRS reports (Library of Congress. Congressional Research Service)\u001Fw(DLC) 2018231131\u001Fw(OCoLC)1052784408\u001E 0\u001FaCRS report ;\u001Fv98-888.\u001E40\u001Fuhttps://purl.fdlp.gov/GPO/gpo130975\u001E  \u001FaCRSREP\u001E\u001D"
+  },
+  "parsedRecord" : {
+    "id" : "d488b327-3a4e-4777-8968-36a0ee9cdaf4",
+    "content" : {
+      "fields" : [ {
+        "001" : "in00000000002"
+      }, {
+        "005" : "20200210110404.0"
+      }, {
+        "006" : "m     o  d f      "
+      }, {
+        "007" : "cr mn|||||||||"
+      }, {
+        "008" : "200124c20189999dcu x w obb  f0    2eng c"
+      }, {
+        "010" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "   2020230732"
+          } ]
+        }
+      }, {
+        "035" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "(OCoLC)on1137385866"
+          } ]
+        }
+      }, {
+        "042" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "pcc"
+          } ]
+        }
+      }, {
+        "043" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "n-us---"
+          } ]
+        }
+      }, {
+        "040" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "GPO"
+          }, {
+            "b" : "eng"
+          }, {
+            "e" : "rda"
+          }, {
+            "e" : "pn"
+          }, {
+            "c" : "GPO"
+          }, {
+            "d" : "MvI"
+          } ]
+        }
+      }, {
+        "049" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "WWW"
+          } ]
+        }
+      }, {
+        "074" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "0807-A-07 (online)"
+          } ]
+        }
+      }, {
+        "086" : {
+          "ind1" : "0",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "LC 14.23:98-888/"
+          } ]
+        }
+      }, {
+        "100" : {
+          "ind1" : "1",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Davis, Christopher M.,"
+          }, {
+            "d" : "1966-"
+          }, {
+            "e" : "author."
+          } ]
+        }
+      }, {
+        "245" : {
+          "ind1" : "1",
+          "ind2" : "0",
+          "subfields" : [ {
+            "a" : "\"Fast-track\" or expedited procedures  :"
+          }, {
+            "b" : "their purpose, elements, and implications  /"
+          }, {
+            "c" : "Christopher M. Davis."
+          } ]
+        }
+      }, {
+        "250" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "[Library of Congress public edition]."
+          } ]
+        }
+      }, {
+        "264" : {
+          "ind1" : " ",
+          "ind2" : "1",
+          "subfields" : [ {
+            "a" : "[Washington, D.C.] :"
+          }, {
+            "b" : "Congressional Research Service,"
+          }, {
+            "c" : "2018-"
+          } ]
+        }
+      }, {
+        "300" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "1 online resource."
+          } ]
+        }
+      }, {
+        "310" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Updated irregularly"
+          } ]
+        }
+      }, {
+        "336" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "text"
+          }, {
+            "b" : "txt"
+          }, {
+            "2" : "rdacontent"
+          } ]
+        }
+      }, {
+        "337" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "computer"
+          }, {
+            "b" : "c"
+          }, {
+            "2" : "rdamedia"
+          } ]
+        }
+      }, {
+        "338" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "online resource"
+          }, {
+            "b" : "cr"
+          }, {
+            "2" : "rdacarrier"
+          } ]
+        }
+      }, {
+        "490" : {
+          "ind1" : "1",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Report / Congressional Research Service ;"
+          }, {
+            "v" : "98-888"
+          } ]
+        }
+      }, {
+        "500" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "The CRS report home page provides access to all versions published since 2018 in accordance with P.L. 115-141; earliest version dated 2003."
+          } ]
+        }
+      }, {
+        "504" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Report includes bibliographical references."
+          } ]
+        }
+      }, {
+        "588" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Description based on contents viewed on Jan. 21, 2020; title from CRS report home page."
+          } ]
+        }
+      }, {
+        "610" : {
+          "ind1" : "1",
+          "ind2" : "0",
+          "subfields" : [ {
+            "a" : "United States."
+          }, {
+            "b" : "Congress"
+          }, {
+            "x" : "Rules and practice"
+          }, {
+            "x" : "Fast-track procedure."
+          } ]
+        }
+      }, {
+        "710" : {
+          "ind1" : "2",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "Library of Congress."
+          }, {
+            "b" : "Congressional Research Service,"
+          }, {
+            "e" : "issuing body."
+          } ]
+        }
+      }, {
+        "773" : {
+          "ind1" : "0",
+          "ind2" : "8",
+          "subfields" : [ {
+            "i" : "Contained in (work):"
+          }, {
+            "t" : "CRS reports (Library of Congress. Congressional Research Service)"
+          }, {
+            "w" : "(DLC) 2018231131"
+          }, {
+            "w" : "(OCoLC)1052784408"
+          } ]
+        }
+      }, {
+        "830" : {
+          "ind1" : " ",
+          "ind2" : "0",
+          "subfields" : [ {
+            "a" : "CRS report ;"
+          }, {
+            "v" : "98-888."
+          } ]
+        }
+      }, {
+        "856" : {
+          "ind1" : "4",
+          "ind2" : "0",
+          "subfields" : [ {
+            "u" : "https://purl.fdlp.gov/GPO/gpo130975"
+          } ]
+        }
+      }, {
+        "922" : {
+          "ind1" : " ",
+          "ind2" : " ",
+          "subfields" : [ {
+            "a" : "CRSREP"
+          } ]
+        }
+      }, {
+        "999" : {
+          "ind1" : "f",
+          "ind2" : "f",
+          "subfields" : [ {
+            "s" : "d3cd3e1e-a18c-4f7c-b053-9aa50343394e"
+          }, {
+            "i" : "e50e9535-091c-451e-82b7-d078b7c4770f"
+          } ]
+        }
+      } ],
+      "leader" : "01840nai a2200421 i 4500"
+    },
+    "formattedContent" : "LEADER 01840nai a2200421 i 4500\n001 in00000000002\n005 20200210110404.0\n006 m     o  d f      \n007 cr mn|||||||||\n008 200124c20189999dcu x w obb  f0    2eng c\n010   $a   2020230732\n035   $a(OCoLC)on1137385866\n042   $apcc\n043   $an-us---\n040   $aGPO$beng$erda$epn$cGPO$dMvI\n049   $aWWW\n074   $a0807-A-07 (online)\n086 0 $aLC 14.23:98-888/\n100 1 $aDavis, Christopher M.,$d1966-$eauthor.\n245 10$a\"Fast-track\" or expedited procedures  :$btheir purpose, elements, and implications  /$cChristopher M. Davis.\n250   $a[Library of Congress public edition].\n264  1$a[Washington, D.C.] :$bCongressional Research Service,$c2018-\n300   $a1 online resource.\n310   $aUpdated irregularly\n336   $atext$btxt$2rdacontent\n337   $acomputer$bc$2rdamedia\n338   $aonline resource$bcr$2rdacarrier\n490 1 $aReport / Congressional Research Service ;$v98-888\n500   $aThe CRS report home page provides access to all versions published since 2018 in accordance with P.L. 115-141; earliest version dated 2003.\n504   $aReport includes bibliographical references.\n588   $aDescription based on contents viewed on Jan. 21, 2020; title from CRS report home page.\n610 10$aUnited States.$bCongress$xRules and practice$xFast-track procedure.\n710 2 $aLibrary of Congress.$bCongressional Research Service,$eissuing body.\n773 08$iContained in (work):$tCRS reports (Library of Congress. Congressional Research Service)$w(DLC) 2018231131$w(OCoLC)1052784408\n830  0$aCRS report ;$v98-888.\n856 40$uhttps://purl.fdlp.gov/GPO/gpo130975\n922   $aCRSREP\n999 ff$sd3cd3e1e-a18c-4f7c-b053-9aa50343394e$ie50e9535-091c-451e-82b7-d078b7c4770f\n"
+  },
+  "deleted" : false,
+  "externalIdsHolder" : {
+    "instanceId" : "e50e9535-091c-451e-82b7-d078b7c4770f"
+  },
+  "additionalInfo" : {
+    "suppressDiscovery" : false
+  },
+  "metadata" : {
+    "createdDate" : "2020-04-19T16:43:00.436+0000",
+    "createdByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a",
+    "updatedDate" : "2020-04-19T16:43:01.442+0000",
+    "updatedByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a"
+  }
+}

@@ -34,9 +34,7 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
 
   @Override
   public RawRecord getMockBean() {
-    return new RawRecord()
-      .withId(mockRecord.getId())
-      .withContent(rawMarc);
+    return MockRawRecordFactory.getMockRawRecord(mockRecord);
   }
 
   @Override
@@ -52,23 +50,7 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
 
   @Override
   public RawRecord[] getMockBeans() {
-    return new RawRecord[] {
-      new RawRecord()
-        .withId(mockRecords[0].getId())
-        .withContent(rawMarc),
-      new RawRecord()
-        .withId(mockRecords[1].getId())
-        .withContent(rawMarc),
-      new RawRecord()
-        .withId(mockRecords[2].getId())
-        .withContent(rawMarc),
-      new RawRecord()
-        .withId(mockRecords[3].getId())
-        .withContent(rawMarc),
-      new RawRecord()
-        .withId(mockRecords[4].getId())
-        .withContent(rawMarc)
-    };
+    return MockRawRecordFactory.getMockRawRecords(mockRecords);
   }
 
   @Override

@@ -4,7 +4,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
-    <changeSet id="2020-04-27--12-00-create-job-execution-status" author="WilliamWelling">
+  <changeSet id="2020-04-27--12-00-create-job-execution-status" author="WilliamWelling">
     <sql>
       CREATE TYPE ${database.defaultSchemaName}.job_execution_status AS ENUM (
         'PARENT',

@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 
@@ -11,64 +12,76 @@ public class MockRecordFactory {
       .withMatchedId(id)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
-      .withRecordType(Record.RecordType.MARC)
       .withOrder(0)
       .withGeneration(1)
-      .withState(Record.State.ACTUAL);
+      .withRecordType(Record.RecordType.MARC)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId("47b4fbce-6200-48ad-af71-44d5246154d7"));
   }
 
   public static Record[] getMockRecords(Snapshot snapshot1, Snapshot snapshot2) {
-    String id1 = "233e18c0-9fab-4f5e-aa35-376af1bdc63e";
-    String id2 = "79a4c560-802d-4031-a7a0-ff338fe734f3";
-    String id3 = "e028c34e-3f11-41a0-a481-09d0b7af4a17";
-    String id4 = "5a9f334b-9612-471a-8730-ccf42995f682";
-    String id5 = "09454964-b0a6-409c-a26e-07e0399f0e72";
+    String id1 = "009286d6-f89e-4881-9562-11158f02664a";
+    String id2 = "e567b8e2-a45b-45f1-a85a-6b6312bdf4d8";
+    String id3 = "d3cd3e1e-a18c-4f7c-b053-9aa50343394e";
+    String id4 = "7293f287-bb51-41f5-805d-00ff18a1f791";
+    String id5 = "13f0b043-4fdd-4ba9-b3a8-a35b2ac2a30a";
     return new Record[] {
       new Record()
         .withId(id1)
         .withMatchedId(id1)
         .withSnapshotId(snapshot1.getJobExecutionId())
         .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
-        .withRecordType(Record.RecordType.MARC)
         .withOrder(0)
         .withGeneration(1)
-        .withState(Record.State.ACTUAL),
+        .withRecordType(Record.RecordType.MARC)
+        .withState(Record.State.ACTUAL)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId("6eee8eb9-db1a-46e2-a8ad-780f19974efa")),
       new Record()
         .withId(id2)
         .withMatchedId(id2)
         .withSnapshotId(snapshot2.getJobExecutionId())
         .withMatchedProfileId("df7bf522-66e1-4b52-9d48-abd739f37934")
-        .withRecordType(Record.RecordType.MARC)
         .withOrder(11)
         .withGeneration(1)
-        .withState(Record.State.ACTUAL),
+        .withRecordType(Record.RecordType.MARC)
+        .withState(Record.State.ACTUAL)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId("54cc0262-76df-4cac-acca-b10e9bc5c79a")),
       new Record()
         .withId(id3)
-        .withMatchedId(id3)
+        .withMatchedId(id1)
         .withSnapshotId(snapshot2.getJobExecutionId())
         .withMatchedProfileId("df7bf522-66e1-4b52-9d48-abd739f37934")
-        .withRecordType(Record.RecordType.MARC)
         .withOrder(27)
         .withGeneration(2)
-        .withState(Record.State.OLD),
+        .withRecordType(Record.RecordType.MARC)
+        .withState(Record.State.OLD)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId("e50e9535-091c-451e-82b7-d078b7c4770f")),
       new Record()
         .withId(id4)
         .withMatchedId(id4)
         .withSnapshotId(snapshot1.getJobExecutionId())
         .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
-        .withRecordType(Record.RecordType.MARC)
         .withOrder(1)
         .withGeneration(1)
-        .withState(Record.State.DRAFT),
+        .withRecordType(Record.RecordType.MARC)
+        .withState(Record.State.DRAFT)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId("c1d3be12-ecec-4fab-9237-baf728575185")),
       new Record()
         .withId(id5)
-        .withMatchedId(id5)
+        .withMatchedId(id4)
         .withSnapshotId(snapshot2.getJobExecutionId())
         .withMatchedProfileId("df7bf522-66e1-4b52-9d48-abd739f37934")
-        .withRecordType(Record.RecordType.MARC)
         .withOrder(101)
-        .withGeneration(3)
+        .withGeneration(2)
+        .withRecordType(Record.RecordType.MARC)
         .withState(Record.State.ACTUAL)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId("c1d3be12-ecec-4fab-9237-baf728575185"))
     };
   }
   

@@ -1,43 +1,18 @@
 package org.folio.dao.impl;
 
-import java.io.IOException;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.folio.dao.BeanDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.BeanFilter;
-import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.PostgresClient;
 
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
 public abstract class AbstractRecordDaoTest<I, C, F extends BeanFilter, DAO extends BeanDao<I, C, F>> extends AbstractBeanDaoTest<I, C, F, DAO> {
-
-  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
-
-  static String rawMarc;
-  static String parsedMarc;
-
-  static {
-    try {
-      rawMarc = new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    try {
-      parsedMarc = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
 
   LBSnapshotDao snapshotDao;
 

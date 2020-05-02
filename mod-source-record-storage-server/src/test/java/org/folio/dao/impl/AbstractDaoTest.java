@@ -21,6 +21,8 @@ public abstract class AbstractDaoTest {
 
   static final String TENANT_ID = "diku";
 
+  static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s;";
+
   static Vertx vertx;
 
   static PostgresClientFactory postgresClientFactory;

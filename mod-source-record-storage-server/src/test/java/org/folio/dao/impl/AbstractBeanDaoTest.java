@@ -10,8 +10,6 @@ import io.vertx.ext.unit.TestContext;
 
 public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extends BeanDao<I, C, F>> extends AbstractDaoTest {
 
-  static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s;";
-
   DAO dao;
 
   @Test

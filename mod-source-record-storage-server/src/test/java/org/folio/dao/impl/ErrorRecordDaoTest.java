@@ -36,10 +36,7 @@ public class ErrorRecordDaoTest extends AbstractRecordDaoTest<ErrorRecord, Error
 
   @Override
   public ErrorRecord getMockBean() {
-    return new ErrorRecord()
-      .withId(mockRecord.getId())
-      .withContent(parsedMarc)
-      .withDescription("Oops... something happened");
+    return MockErrorRecordFactory.getMockErrorRecord(mockRecord);
   }
 
   @Override
@@ -56,28 +53,7 @@ public class ErrorRecordDaoTest extends AbstractRecordDaoTest<ErrorRecord, Error
 
   @Override
   public ErrorRecord[] getMockBeans() {
-    return new ErrorRecord[] {
-      new ErrorRecord()
-        .withId(mockRecords[0].getId())
-        .withContent(parsedMarc)
-        .withDescription("Oops... something happened"),
-      new ErrorRecord()
-        .withId(mockRecords[1].getId())
-        .withContent(parsedMarc)
-        .withDescription("Something went wrong"),
-      new ErrorRecord()
-        .withId(mockRecords[2].getId())
-        .withContent(parsedMarc)
-        .withDescription("Oops... something happened"),
-      new ErrorRecord()
-        .withId(mockRecords[3].getId())
-        .withContent(parsedMarc)
-        .withDescription("Oops... something happened"),
-      new ErrorRecord()
-        .withId(mockRecords[4].getId())
-        .withContent(parsedMarc)
-        .withDescription("Failed parsing MARC record")
-    };
+    return MockErrorRecordFactory.getMockErrorRecords(mockRecords);
   }
 
   @Override

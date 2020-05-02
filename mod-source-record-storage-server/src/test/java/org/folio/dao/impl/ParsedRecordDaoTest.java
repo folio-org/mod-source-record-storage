@@ -35,9 +35,7 @@ public class ParsedRecordDaoTest extends AbstractRecordDaoTest<ParsedRecord, Par
 
   @Override
   public ParsedRecord getMockBean() {
-    return new ParsedRecord()
-      .withId(mockRecord.getId())
-      .withContent(parsedMarc);
+    return MockParsedRecordFactory.getMockParsedRecord(mockRecord);
   }
 
   @Override
@@ -53,23 +51,7 @@ public class ParsedRecordDaoTest extends AbstractRecordDaoTest<ParsedRecord, Par
 
   @Override
   public ParsedRecord[] getMockBeans() {
-    return new ParsedRecord[] {
-      new ParsedRecord()
-        .withId(mockRecords[0].getId())
-        .withContent(parsedMarc),
-      new ParsedRecord()
-        .withId(mockRecords[1].getId())
-        .withContent(parsedMarc),
-      new ParsedRecord()
-        .withId(mockRecords[2].getId())
-        .withContent(parsedMarc),
-      new ParsedRecord()
-        .withId(mockRecords[3].getId())
-        .withContent(parsedMarc),
-      new ParsedRecord()
-        .withId(mockRecords[4].getId())
-        .withContent(parsedMarc)
-    };
+    return MockParsedRecordFactory.getMockParsedRecords(mockRecords);
   }
 
   @Override

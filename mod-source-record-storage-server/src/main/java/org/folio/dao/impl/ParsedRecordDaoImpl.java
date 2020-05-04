@@ -87,7 +87,7 @@ public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRec
       String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
       parsedRecord.withFormattedContent(formattedContent);
     } catch (IOException e) {
-      LOG.error("Error formatting content", e);
+      logger.error("Error formatting content", e);
     }
     return parsedRecord;
   }

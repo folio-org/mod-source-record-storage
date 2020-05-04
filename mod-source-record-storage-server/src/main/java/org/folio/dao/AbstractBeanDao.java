@@ -30,7 +30,7 @@ import io.vertx.ext.sql.UpdateResult;
 
 public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements BeanDao<B, C, F> {
 
-  protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
+  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
@@ -38,7 +38,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   public Future<Optional<B>> getById(String id, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getTableName(), id);
-    LOG.info("Attempting get by id: {}", sql);
+    logger.info("Attempting get by id: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toBean);
   }
@@ -46,7 +46,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getTableName(), filter.toWhereClause(), offset, limit);
-    LOG.info("Attempting get by filter: {}", sql);
+    logger.info("Attempting get by filter: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
@@ -55,10 +55,10 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     Promise<B> promise = Promise.promise();
     String columns = getColumns();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValues(columns));
-    LOG.info("Attempting save: {}", sql);
+    logger.info("Attempting save: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, true), save -> {
       if (save.failed()) {
-        LOG.error("Failed to insert row in {}", save.cause(), getTableName());
+        logger.error("Failed to insert row in {}", save.cause(), getTableName());
         promise.fail(save.cause());
         return;
       }
@@ -69,14 +69,14 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
 
   public Future<List<B>> save(List<B> beans, String tenantId) {
     Promise<List<B>> promise = Promise.promise();
-    LOG.info("Attempting batch save in {}", getTableName());
-    // TODO: update when raml-module-builder supports batch save with params
+    logger.info("Attempting batch save in {}", getTableName());
+    // NOTE: update when raml-module-builder supports batch save with params
     // vertx-mysql-postgresql-client does not implement batch save
     // vertx-pg-client does
     // https://github.com/folio-org/raml-module-builder/pull/640
     CompositeFuture.all(beans.stream().map(bean -> save(bean, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
       if (batch.failed()) {
-        LOG.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
+        logger.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
         promise.fail(batch.cause());
         return;
       }
@@ -90,10 +90,10 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     String id = getId(bean);
     String columns = getColumns();
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValues(columns), id);
-    LOG.info("Attempting update: {}", sql);
+    logger.info("Attempting update: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, false), update -> {
       if (update.failed()) {
-        LOG.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
+        logger.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
         promise.fail(update.cause());
         return;
       }
@@ -109,7 +109,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   public Future<Boolean> delete(String id, String tenantId) {
     Promise<UpdateResult> promise = Promise.promise();
     String sql = String.format(DELETE_SQL_TEMPLATE, getTableName(), id);
-    LOG.info("Attempting delete: {}", sql);
+    logger.info("Attempting delete: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, promise);
     return promise.future().map(updateResult -> updateResult.getUpdated() == 1);
   }

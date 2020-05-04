@@ -56,23 +56,25 @@ public interface BeanDao<B, C, F extends BeanFilter> {
         promise.fail(save.cause());
         return;
       }
-      promise.complete(bean);
+      promise.complete(postSave(bean));
     });
     return promise.future();
   }
 
   public default Future<List<B>> save(List<B> beans, String tenantId) {
     Promise<List<B>> promise = Promise.promise();
-    String columns = getColumns();
-    String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValues(columns));
-    getLogger().info("Attempting batch save: {}", sql);
+    getLogger().info("Attempting batch save in {}", getTableName());
+    // TODO: update when raml-module-builder supports batch save with params
+    // vertx-mysql-postgresql-client does not implement batch save
+    // vertx-pg-client does
+    // https://github.com/folio-org/raml-module-builder/pull/640
     CompositeFuture.all(beans.stream().map(bean -> save(bean, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
       if (batch.failed()) {
         getLogger().error("Failed to batch insert rows in {}", batch.cause(), getTableName());
         promise.fail(batch.cause());
         return;
       }
-      promise.complete(beans);
+      promise.complete(postSave(beans));
     });
     return promise.future();
   }
@@ -93,7 +95,7 @@ public interface BeanDao<B, C, F extends BeanFilter> {
         promise.fail(new NotFoundException(String.format("%s row with id %s was not updated", getTableName(), id)));
         return;
       }
-      promise.complete(bean);
+      promise.complete(postUpdate(bean));
     });
     return promise.future();
   }
@@ -118,6 +120,18 @@ public interface BeanDao<B, C, F extends BeanFilter> {
     return Arrays.asList(columns.split(COMMA)).stream()
       .map(c -> QUESTION_MARK)
       .collect(Collectors.joining(COMMA));
+  }
+
+  public default B postSave(B bean) {
+    return bean;
+  }
+
+  public default B postUpdate(B bean) {
+    return bean;
+  }
+
+  public default List<B> postSave(List<B> beans) {
+    return beans.stream().map(this::postSave).collect(Collectors.toList());
   }
 
   public Logger getLogger();

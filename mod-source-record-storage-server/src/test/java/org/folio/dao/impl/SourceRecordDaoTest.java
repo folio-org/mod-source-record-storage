@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,8 +10,11 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
+import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -119,6 +123,8 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
       context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
         new JsonObject((String) res.result().get().getParsedRecord().getContent()));
+      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
+        res.result().get().getParsedRecord().getFormattedContent().trim());
       async.complete();
     });
   }
@@ -134,6 +140,8 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
       context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
         new JsonObject((String) res.result().get().getParsedRecord().getContent()));
+      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
+        res.result().get().getParsedRecord().getFormattedContent().trim());
       async.complete();
     });
   }
@@ -150,6 +158,8 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
       context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
         new JsonObject((String) res.result().get().getParsedRecord().getContent()));
+      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
+        res.result().get().getParsedRecord().getFormattedContent().trim());
       async.complete();
     });
   }
@@ -166,6 +176,8 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
       context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
         new JsonObject((String) res.result().get().getParsedRecord().getContent()));
+      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
+        res.result().get().getParsedRecord().getFormattedContent().trim());
       async.complete();
     });
   }
@@ -179,10 +191,38 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       }
 
       List<Record> expectedRecords = getRecords().stream()
-        .filter(mockRecord -> mockRecord.getState().equals(State.ACTUAL))
+        .filter(expectedRecord -> expectedRecord.getState().equals(State.ACTUAL))
         .collect(Collectors.toList());
 
-      context.assertEquals(expectedRecords.size(), res.result().getTotalRecords());
+      Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+
+      List<ParsedRecord> expectedParsedRecords = expectedRecords.stream()
+        .map(expectedRecord -> getParsedRecord(expectedRecord.getId()))
+        .filter(parsedRecord -> parsedRecord.isPresent())
+        .map(parsedRecord -> parsedRecord.get())
+        .collect(Collectors.toList());
+
+      Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
+
+      SourceRecordCollection actualSourceRecordCollection = res.result();
+
+      List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords(); 
+
+      Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
+
+      context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+      context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+
+      for(int i = 0; i < expectedRecords.size(); i++) {
+        Record expectedRecord = expectedRecords.get(i);
+        ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
+        SourceRecord actualSourceRecord = actualSourceRecords.get(i);
+        context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
+        context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
+          new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
+        context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
+          actualSourceRecord.getParsedRecord().getFormattedContent().trim());
+      }
 
       async.complete();
     });

@@ -4,15 +4,19 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.SourceRecordDao;
+import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecord.RecordType;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.marc4j.MarcException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +46,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private final PostgresClientFactory pgClientFactory;
 
-  @Autowired 
+  @Autowired
   public SourceRecordDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
   }
@@ -118,8 +122,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private SourceRecordCollection toSourceRecordCollection(ResultSet resultSet) {
     return new SourceRecordCollection()
-      .withSourceRecords(resultSet.getRows().stream()
-        .map(this::toSourceRecord).collect(Collectors.toList()))
+      .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
@@ -128,11 +131,15 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     JsonObject jsonb = new JsonObject(jsonObject.getString(JSON_COLUMN_NAME));
     JsonObject content = jsonb.getJsonObject(CONTENT_COLUMN_NAME);
     ParsedRecord parsedRecord = new ParsedRecord()
-        .withId(jsonb.getString(ID_COLUMN_NAME))
-        .withContent(content.encode());
-    // TODO: handle formatted content
-    // could add record type to function response
-    // then pass content and type to utility to convert to formatted content
+      .withId(jsonb.getString(ID_COLUMN_NAME))
+      .withContent(content.encode());
+    try {
+      String formattedContent = MarcUtil.marcJsonToTxtMarc(content.encode());
+      parsedRecord.withFormattedContent(formattedContent);
+    } catch (MarcException | IOException e) {
+      LOG.error("Error formatting content", e);
+    }
+    // NOTE: will be missing several properties; record type, snapshot id, etc.
     return new SourceRecord()
       .withRecordId(id)
       .withParsedRecord(parsedRecord);

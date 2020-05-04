@@ -4,14 +4,17 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
+import org.marc4j.MarcException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -87,12 +90,27 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
   @Override
   public ParsedRecord toBean(JsonObject result) {
     String content = result.getString(CONTENT_COLUMN_NAME);
-    // TODO: handle formatted content
-    // could add record type to function response
-    // then pass content and type to utility to convert to formatted content
-    return new ParsedRecord()
+    return formatContent(new ParsedRecord()
       .withId(result.getString(ID_COLUMN_NAME))
-      .withContent(content);
+      .withContent(content));
+  }
+
+  public ParsedRecord postSave(ParsedRecord parsedRecord) {
+    return formatContent(parsedRecord);
+  }
+
+  public ParsedRecord postUpdate(ParsedRecord parsedRecord) {
+    return formatContent(parsedRecord);
+  }
+
+  private ParsedRecord formatContent(ParsedRecord parsedRecord) {
+    try {
+      String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
+      parsedRecord.withFormattedContent(formattedContent);
+    } catch (MarcException | IOException e) {
+      getLogger().error("Error formatting content", e);
+    }
+    return parsedRecord;
   }
 
 }

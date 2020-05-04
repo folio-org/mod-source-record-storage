@@ -86,6 +86,10 @@ public abstract class DaoTestMocks {
     return parsedRecords.get(index);
   }
 
+  protected Optional<ParsedRecord> getParsedRecord(String id) {
+    return parsedRecords.stream().filter(pr -> pr.getId().equals(id)).findAny();
+  }
+
   private static RawRecord toRawRecord(SourceRecord sourceRecord) {
     return sourceRecord.getRawRecord();
   }

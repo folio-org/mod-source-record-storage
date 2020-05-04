@@ -109,7 +109,9 @@ public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, Parse
   @Override
   public void compareBeans(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(new JsonObject((String) expected.getContent()), new JsonObject((String) actual.getContent()));
+    context.assertEquals(new JsonObject((String) expected.getContent()),
+      new JsonObject((String) actual.getContent()));
+    context.assertEquals(expected.getFormattedContent().trim(), actual.getFormattedContent().trim());
   }
 
   @Override

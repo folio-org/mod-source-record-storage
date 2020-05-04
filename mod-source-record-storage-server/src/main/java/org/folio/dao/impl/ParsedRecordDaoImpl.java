@@ -8,14 +8,14 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.ColumnsBuilder;
-import org.folio.dao.util.ValuesBuilder;
+import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -62,35 +62,37 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
   }
 
   @Override
-  public String toColumns(ParsedRecord parsedRecord) {
-    return ColumnsBuilder.of(ID_COLUMN_NAME)
-      .append(parsedRecord.getContent(), CONTENT_COLUMN_NAME)
+  public String getColumns() {
+    return ColumnBuilder.of(ID_COLUMN_NAME)
+      .append(CONTENT_COLUMN_NAME)
       .build();
   }
 
   @Override
-  public String toValues(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
+  public JsonArray toParams(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // parsed_records id is foreign key with records_lb
-    return ValuesBuilder.of(parsedRecord.getId())
-      .append(parsedRecord.getContent())
-      .build();
+    // error_records id is foreign key with records_lb
+    return new JsonArray()
+      .add(parsedRecord.getId())
+      .add(parsedRecord.getContent());
   }
 
   @Override
   public ParsedRecordCollection toCollection(ResultSet resultSet) {
     return new ParsedRecordCollection()
-        .withParsedRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
-        .withTotalRecords(resultSet.getNumRows());
+      .withParsedRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
   public ParsedRecord toBean(JsonObject result) {
     String content = result.getString(CONTENT_COLUMN_NAME);
+    // TODO: handle formatted content
+    // could add record type to function response
+    // then pass content and type to utility to convert to formatted content
     return new ParsedRecord()
       .withId(result.getString(ID_COLUMN_NAME))
-      .withContent(content)
-      .withFormattedContent(new JsonObject(content).encodePrettily());
+      .withContent(content);
   }
 
 }

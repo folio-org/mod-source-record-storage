@@ -1,19 +1,17 @@
 package org.folio.dao.impl;
 
-import static com.fasterxml.jackson.databind.util.StdDateFormat.DATE_FORMAT_STR_ISO8601;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.Date;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.ColumnsBuilder;
-import org.folio.dao.util.ValuesBuilder;
+import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -25,6 +23,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -56,9 +55,9 @@ import io.vertx.ext.sql.ResultSet;
 //   <column name="orderinfile" type="integer"></column>
 //   <column name="suppressdiscovery" type="boolean"></column>
 //   <column name="createdbyuserid" type="uuid"></column>
-//   <column name="createddate" type="timestamp"></column>
+//   <column name="createddate" type="timestamptz"></column>
 //   <column name="updatedbyuserid" type="uuid"></column>
-//   <column name="updateddate" type="timestamp"></column>
+//   <column name="updateddate" type="timestamptz"></column>
 // </createTable>
 @Component
 public class LBRecordDaoImpl implements LBRecordDao {
@@ -107,77 +106,61 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public String toColumns(Record record) {
-    ColumnsBuilder columnBuilder = ColumnsBuilder
-      .of(String.format("%s,%s", ID_COLUMN_NAME, MATCHED_ID_COLUMN_NAME))
-      .append(record.getSnapshotId(), SNAPSHOT_ID_COLUMN_NAME)
-      .append(record.getMatchedProfileId(), MATCHED_PROFILE_ID_COLUMN_NAME)
-      .append(record.getGeneration(), GENERATION_COLUMN_NAME)
-      .append(record.getOrder(), ORDER_IN_FILE_COLUMN_NAME)
-      .append(record.getRecordType(), RECORD_TYPE_COLUMN_NAME)
-      .append(record.getState(), STATE_COLUMN_NAME);
-    if (record.getExternalIdsHolder() != null) {
-      columnBuilder
-        .append(record.getExternalIdsHolder().getInstanceId(), INSTANCE_ID_COLUMN_NAME);
-    }
-    if (record.getAdditionalInfo() != null) {
-      columnBuilder
-        .append(record.getAdditionalInfo().getSuppressDiscovery(), SUPPRESS_DISCOVERY_COLUMN_NAME);
-    }
-    if (record.getMetadata() != null) {
-      columnBuilder
-        .append(record.getMetadata().getCreatedByUserId(), CREATED_BY_USER_ID_COLUMN_NAME);
-      columnBuilder
-        .append(record.getMetadata().getCreatedDate(), CREATED_DATE_COLUMN_NAME);
-      columnBuilder
-        .append(record.getMetadata().getUpdatedByUserId(), UPDATED_BY_USER_ID_COLUMN_NAME);
-      columnBuilder
-        .append(record.getMetadata().getUpdatedDate(), UPDATED_DATE_COLUMN_NAME);
-    }
-    return columnBuilder.build();
+  public String getColumns() {
+    return ColumnBuilder
+      .of(ID_COLUMN_NAME)
+      .append(MATCHED_ID_COLUMN_NAME)
+      .append(SNAPSHOT_ID_COLUMN_NAME)
+      .append(MATCHED_PROFILE_ID_COLUMN_NAME)
+      .append(GENERATION_COLUMN_NAME)
+      .append(ORDER_IN_FILE_COLUMN_NAME)
+      .append(RECORD_TYPE_COLUMN_NAME)
+      .append(STATE_COLUMN_NAME)
+      .append(INSTANCE_ID_COLUMN_NAME)
+      .append(SUPPRESS_DISCOVERY_COLUMN_NAME)
+      .append(CREATED_BY_USER_ID_COLUMN_NAME)
+      .append(CREATED_DATE_COLUMN_NAME)
+      .append(UPDATED_BY_USER_ID_COLUMN_NAME)
+      .append(UPDATED_DATE_COLUMN_NAME)
+      .build();
   }
 
   @Override
-  public String toValues(Record record, boolean generateIdIfNotExists) {
+  public JsonArray toParams(Record record, boolean generateIdIfNotExists) {
     if (generateIdIfNotExists && StringUtils.isEmpty(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
     if (StringUtils.isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
-    ValuesBuilder valuesBuilder = ValuesBuilder.of(record.getId())
-      .append(record.getMatchedId())
-      .append(record.getSnapshotId())
-      .append(record.getMatchedProfileId())
-      .append(record.getGeneration())
-      .append(record.getOrder());
-    if (record.getRecordType() != null) {
-      valuesBuilder
-        .append(record.getRecordType().toString());
-    }
-    if (record.getState() != null) {
-      valuesBuilder
-        .append(record.getState().toString());
-    }
+    JsonArray params = new JsonArray()
+      .add(record.getId())
+      .add(record.getMatchedId())
+      .add(record.getSnapshotId())
+      .add(record.getMatchedProfileId())
+      .add(record.getGeneration())
+      .add(record.getOrder())
+      .add(record.getRecordType())
+      .add(record.getState());
     if (record.getExternalIdsHolder() != null) {
-      valuesBuilder
-        .append(record.getExternalIdsHolder().getInstanceId());
+      params.add(record.getExternalIdsHolder().getInstanceId());
+    } else {
+      params.addNull();
     }
     if (record.getAdditionalInfo() != null) {
-      valuesBuilder
-        .append(record.getAdditionalInfo().getSuppressDiscovery());
+      params.add(record.getAdditionalInfo().getSuppressDiscovery());
+    } else {
+      params.addNull();
     }
     if (record.getMetadata() != null) {
-      valuesBuilder
-        .append(record.getMetadata().getCreatedByUserId());
-      valuesBuilder
-        .append(record.getMetadata().getCreatedDate());
-      valuesBuilder
-        .append(record.getMetadata().getUpdatedByUserId());
-      valuesBuilder
-        .append(record.getMetadata().getUpdatedDate());
+      params.add(record.getMetadata().getCreatedByUserId());
+      params.add(record.getMetadata().getCreatedDate());
+      params.add(record.getMetadata().getUpdatedByUserId());
+      params.add(record.getMetadata().getUpdatedDate());
+    } else {
+      params.addNull().addNull().addNull().addNull();
     }
-    return valuesBuilder.build();
+    return params;
   }
 
   @Override
@@ -220,25 +203,17 @@ public class LBRecordDaoImpl implements LBRecordDao {
     if (StringUtils.isNotEmpty(createdByUserId)) {
       metadata.setCreatedByUserId(createdByUserId);
     }
-    String createdDate = result.getString(CREATED_DATE_COLUMN_NAME);
-    if (StringUtils.isNotEmpty(createdDate)) {
-      try {
-        metadata.setCreatedDate(new SimpleDateFormat(DATE_FORMAT_STR_ISO8601).parse(createdDate));
-      } catch (ParseException e) {
-        LOG.error(e.getMessage(), e.getCause());
-      }
+    Instant createdDate = result.getInstant(CREATED_DATE_COLUMN_NAME);
+    if (createdDate != null) {
+      metadata.setCreatedDate(Date.from(createdDate));
     }
     String updatedByUserId = result.getString(UPDATED_BY_USER_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(updatedByUserId)) {
       metadata.setUpdatedByUserId(updatedByUserId);
     }
-    String updatedDate = result.getString(UPDATED_DATE_COLUMN_NAME);
-    if (StringUtils.isNotEmpty(updatedDate)) {
-      try {
-        metadata.setUpdatedDate(new SimpleDateFormat(DATE_FORMAT_STR_ISO8601).parse(updatedDate));
-      } catch (ParseException e) {
-        LOG.error(e.getMessage(), e.getCause());
-      }
+    Instant updatedDate = result.getInstant(UPDATED_DATE_COLUMN_NAME);
+    if (updatedDate != null) {
+      metadata.setUpdatedDate(Date.from(updatedDate));
     }
     record.setMetadata(metadata);
     return record;

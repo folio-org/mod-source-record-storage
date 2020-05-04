@@ -1,6 +1,7 @@
 package org.folio.dao.impl;
 
-import java.util.Arrays;
+import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -75,7 +76,7 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public Snapshot getMockBean() {
-    return MockSnapshotFactory.getMockSnapshot();
+    return getSnapshot(0);
   }
 
   @Override
@@ -86,15 +87,15 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public Snapshot getUpdatedMockBean() {
-    Date now = new Date();
-    return getMockBean()
+    return new Snapshot()
+      .withJobExecutionId(getMockBean().getJobExecutionId())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS)
-      .withProcessingStartedDate(now);
+      .withProcessingStartedDate(new Date());
   }
 
   @Override
-  public Snapshot[] getMockBeans() {
-    return MockSnapshotFactory.getMockSnapshots();
+  public List<Snapshot> getMockBeans() {
+    return getSnapshots();
   }
 
   @Override
@@ -105,12 +106,15 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
       context.assertEquals(expected.getJobExecutionId(), actual.getJobExecutionId());
     }
     context.assertEquals(expected.getStatus(), actual.getStatus());
-    context.assertEquals(expected.getProcessingStartedDate(), actual.getProcessingStartedDate());
+    if (expected.getProcessingStartedDate() != null) {
+      context.assertEquals(DATE_FORMATTER.format(expected.getProcessingStartedDate()), 
+        DATE_FORMATTER.format(actual.getProcessingStartedDate().getTime()));
+    }
   }
 
   @Override
   public void assertNoopFilterResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = Arrays.asList(getMockBeans());
+    List<Snapshot> expected = getMockBeans();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
@@ -118,7 +122,7 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = Arrays.asList(getMockBeans()).stream()
+    List<Snapshot> expected = getMockBeans().stream()
       .filter(bean -> bean.getStatus().equals(getArbitruaryFilter().getStatus()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

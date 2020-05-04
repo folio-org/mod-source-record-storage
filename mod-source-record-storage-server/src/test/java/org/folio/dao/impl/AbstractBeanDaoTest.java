@@ -1,10 +1,11 @@
 package org.folio.dao.impl;
 
+import java.util.List;
+
 import org.folio.dao.BeanDao;
 import org.folio.dao.filter.BeanFilter;
 import org.junit.Test;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
@@ -45,16 +46,9 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldGetByNoopFilter(TestContext context) {
     Async async = context.async();
-    I[] beans = getMockBeans();
-    CompositeFuture.all(
-      dao.save(beans[0], TENANT_ID),
-      dao.save(beans[1], TENANT_ID),
-      dao.save(beans[2], TENANT_ID),
-      dao.save(beans[3], TENANT_ID),
-      dao.save(beans[4], TENANT_ID)
-    ).setHandler(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    dao.save(getMockBeans(), TENANT_ID).setHandler(create -> {
+      if (create.failed()) {
+        context.fail(create.cause());
       }
       dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID).setHandler(res -> {
         if (res.failed()) {
@@ -69,14 +63,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldGetByArbitruaryFilter(TestContext context) {
     Async async = context.async();
-    I[] beans = getMockBeans();
-    CompositeFuture.all(
-      dao.save(beans[0], TENANT_ID),
-      dao.save(beans[1], TENANT_ID),
-      dao.save(beans[2], TENANT_ID),
-      dao.save(beans[3], TENANT_ID),
-      dao.save(beans[4], TENANT_ID)
-    ).setHandler(save -> {
+    dao.save(getMockBeans(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -180,7 +167,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
 
   public abstract I getUpdatedMockBean();
 
-  public abstract I[] getMockBeans();
+  public abstract List<I> getMockBeans();
 
   public abstract void compareBeans(TestContext context, I expected, I actual);
 

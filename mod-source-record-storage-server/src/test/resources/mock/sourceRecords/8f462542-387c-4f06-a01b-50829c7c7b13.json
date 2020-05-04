@@ -1,0 +1,362 @@
+{
+  "recordId" : "8f462542-387c-4f06-a01b-50829c7c7b13",
+  "snapshotId": "6681ef31-03fe-4abc-9596-23de06d575c5",
+  "recordType" : "MARC",
+  "rawRecord" : {
+    "id" : "8f462542-387c-4f06-a01b-50829c7c7b13",
+    "content" : "{\"leader\":\"02046nam a2200421 cc4500\",\"fields\":[{\"001\":\"inst000000000004\"},{\"003\":\"DE-601\"},{\"005\":\"20180615233857.0\"},{\"007\":\"he\\\\amu000uuuu\"},{\"008\":\"170217s2016\\\\\\\\\\\\\\\\xxu\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\000\\\\0\\\\eng\\\\d\"},{\"020\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"9780866989732\"},{\"9\":\"978-0-86698-973-2\"}]}},{\"020\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"0866989730\"},{\"9\":\"0-86698-973-0\"}]}},{\"020\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"9780866985529\"},{\"9\":\"978-0-86698-552-9\"}]}},{\"020\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"0866985522\"},{\"9\":\"0-86698-552-2\"}]}},{\"035\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"(OCoLC)962073864\"}]}},{\"035\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"(OCoLC)ocn962073864\"}]}},{\"035\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"(OCoLC)962073864\"}]}},{\"035\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"(DE-599)GBV880391235\"}]}},{\"035\":\"880391235\"},{\"040\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"b\":\"ger\"},{\"c\":\"GBVCP\"},{\"e\":\"rda\"}]}},{\"041\":{\"ind1\":\"0\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"eng\"},{\"a\":\"ang\"},{\"a\":\"lat\"}]}},{\"245\":{\"ind1\":\"0\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Anglo-Saxon manuscripts in microfiche facsimile\"},{\"n\":\"Volume 25\"},{\"p\":\"Corpus Christi College, Cambridge II, MSS 12, 144, 162, 178, 188, 198, 265, 285, 322, 326, 449\"},{\"h\":\"microform\"},{\"c\":\"A. N. Doane (editor and director), Matthew T. Hussey (associate editor), Phillip Pulsiano (founding editor)\"}]}},{\"264\":{\"ind1\":\"3\",\"ind2\":\"1\",\"subfields\":[{\"a\":\"Tempe, Arizona\"},{\"b\":\"ACMRS, Arizona Center for Medieval and Renaissance Studies\"},{\"c\":\"2016\"}]}},{\"300\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"69 Mikrofiches\"},{\"e\":\"1 Begleitbuch (XII, 167 Seiten)\"}]}},{\"336\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Text\"},{\"b\":\"txt\"},{\"2\":\"rdacontent\"}]}},{\"337\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Mikroform\"},{\"b\":\"h\"},{\"2\":\"rdamedia\"}]}},{\"338\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Mikrofiche\"},{\"b\":\"he\"},{\"2\":\"rdacarrier\"}]}},{\"490\":{\"ind1\":\"0\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Medieval and Renaissance Texts and Studies\"},{\"v\":\"volume 497\"}]}},{\"500\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Titel und Angaben zu beteiligter Person vom Begleitheft\"}]}},{\"546\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"In English with segments in Anglo-Saxon and Latin\"}]}},{\"700\":{\"ind1\":\"1\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Lucas, Peter J.\"},{\"e\":\"VerfasserIn von Zusatztexten\"},{\"4\":\"wat\"},{\"0\":\"(DE-601)699400066\"},{\"0\":\"(DE-588)188475893\"}]}},{\"710\":{\"ind1\":\"2\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"Arizona Center for Medieval and Renaissance Studies\"}]}},{\"773\":{\"ind1\":\"0\",\"ind2\":\"8\",\"subfields\":[{\"q\":\"25.2016\"},{\"w\":\"(DE-601)281985480\"}]}},{\"830\":{\"ind1\":\"\\\\\",\"ind2\":\"0\",\"subfields\":[{\"w\":\"(DE-601)13055846X\"},{\"v\":\"volume 497\"},{\"9\":\"49700\"}]}},{\"900\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"a\":\"GBV\"},{\"b\":\"SBB-PK Berlin <1+1A>\"},{\"d\":\"!2! 1 F 5327-25\"},{\"x\":\"L\"},{\"z\":\"LC\"},{\"f\":\"Mikrofiches\"},{\"d\":\"!2! 1 F 5327-25,Beil.\"},{\"x\":\"L\"},{\"z\":\"LC\"},{\"f\":\"Begleitbuch\"}]}},{\"954\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"0\":\"SBB-PK Berlin <1+1A>\"},{\"a\":\"11\"},{\"b\":\"1665961309\"},{\"c\":\"01\"},{\"f\":\"2\"},{\"d\":\"1 F 5327-25\"},{\"e\":\"d\"},{\"k\":\"Mikrofiches\"},{\"x\":\"0001\"}]}},{\"954\":{\"ind1\":\"\\\\\",\"ind2\":\"\\\\\",\"subfields\":[{\"0\":\"SBB-PK Berlin <1+1A>\"},{\"a\":\"11\"},{\"b\":\"1665961317\"},{\"c\":\"02\"},{\"f\":\"2\"},{\"d\":\"1 F 5327-25,Beil.\"},{\"e\":\"u\"},{\"k\":\"Begleitbuch\"},{\"x\":\"0001\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"8f462542-387c-4f06-a01b-50829c7c7b13\"},{\"i\":\"8be05cf5-fb4f-4752-8094-8e179d08fb99\"}]}}]}"
+  },
+  "parsedRecord" : {
+    "id" : "8f462542-387c-4f06-a01b-50829c7c7b13",
+    "content" : {
+      "fields" : [ {
+        "001" : "inst000000000004"
+      }, {
+        "003" : "DE-601"
+      }, {
+        "005" : "20180615233857.0"
+      }, {
+        "007" : "he\\amu000uuuu"
+      }, {
+        "008" : "170217s2016\\\\\\\\xxu\\\\\\\\\\\\\\\\\\\\\\000\\0\\eng\\d"
+      }, {
+        "020" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "9780866989732"
+          }, {
+            "9" : "978-0-86698-973-2"
+          } ]
+        }
+      }, {
+        "020" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "0866989730"
+          }, {
+            "9" : "0-86698-973-0"
+          } ]
+        }
+      }, {
+        "020" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "9780866985529"
+          }, {
+            "9" : "978-0-86698-552-9"
+          } ]
+        }
+      }, {
+        "020" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "0866985522"
+          }, {
+            "9" : "0-86698-552-2"
+          } ]
+        }
+      }, {
+        "035" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "(OCoLC)962073864"
+          } ]
+        }
+      }, {
+        "035" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "(OCoLC)ocn962073864"
+          } ]
+        }
+      }, {
+        "035" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "(OCoLC)962073864"
+          } ]
+        }
+      }, {
+        "035" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "(DE-599)GBV880391235"
+          } ]
+        }
+      }, {
+        "035" : "880391235"
+      }, {
+        "040" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "b" : "ger"
+          }, {
+            "c" : "GBVCP"
+          }, {
+            "e" : "rda"
+          } ]
+        }
+      }, {
+        "041" : {
+          "ind1" : "0",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "eng"
+          }, {
+            "a" : "ang"
+          }, {
+            "a" : "lat"
+          } ]
+        }
+      }, {
+        "245" : {
+          "ind1" : "0",
+          "ind2" : "0",
+          "subfields" : [ {
+            "a" : "Anglo-Saxon manuscripts in microfiche facsimile"
+          }, {
+            "n" : "Volume 25"
+          }, {
+            "p" : "Corpus Christi College, Cambridge II, MSS 12, 144, 162, 178, 188, 198, 265, 285, 322, 326, 449"
+          }, {
+            "h" : "microform"
+          }, {
+            "c" : "A. N. Doane (editor and director), Matthew T. Hussey (associate editor), Phillip Pulsiano (founding editor)"
+          } ]
+        }
+      }, {
+        "264" : {
+          "ind1" : "3",
+          "ind2" : "1",
+          "subfields" : [ {
+            "a" : "Tempe, Arizona"
+          }, {
+            "b" : "ACMRS, Arizona Center for Medieval and Renaissance Studies"
+          }, {
+            "c" : "2016"
+          } ]
+        }
+      }, {
+        "300" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "69 Mikrofiches"
+          }, {
+            "e" : "1 Begleitbuch (XII, 167 Seiten)"
+          } ]
+        }
+      }, {
+        "336" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Text"
+          }, {
+            "b" : "txt"
+          }, {
+            "2" : "rdacontent"
+          } ]
+        }
+      }, {
+        "337" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Mikroform"
+          }, {
+            "b" : "h"
+          }, {
+            "2" : "rdamedia"
+          } ]
+        }
+      }, {
+        "338" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Mikrofiche"
+          }, {
+            "b" : "he"
+          }, {
+            "2" : "rdacarrier"
+          } ]
+        }
+      }, {
+        "490" : {
+          "ind1" : "0",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Medieval and Renaissance Texts and Studies"
+          }, {
+            "v" : "volume 497"
+          } ]
+        }
+      }, {
+        "500" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Titel und Angaben zu beteiligter Person vom Begleitheft"
+          } ]
+        }
+      }, {
+        "546" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "In English with segments in Anglo-Saxon and Latin"
+          } ]
+        }
+      }, {
+        "700" : {
+          "ind1" : "1",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Lucas, Peter J."
+          }, {
+            "e" : "VerfasserIn von Zusatztexten"
+          }, {
+            "4" : "wat"
+          }, {
+            "0" : "(DE-601)699400066"
+          }, {
+            "0" : "(DE-588)188475893"
+          } ]
+        }
+      }, {
+        "710" : {
+          "ind1" : "2",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "Arizona Center for Medieval and Renaissance Studies"
+          } ]
+        }
+      }, {
+        "773" : {
+          "ind1" : "0",
+          "ind2" : "8",
+          "subfields" : [ {
+            "q" : "25.2016"
+          }, {
+            "w" : "(DE-601)281985480"
+          } ]
+        }
+      }, {
+        "830" : {
+          "ind1" : "\\",
+          "ind2" : "0",
+          "subfields" : [ {
+            "w" : "(DE-601)13055846X"
+          }, {
+            "v" : "volume 497"
+          }, {
+            "9" : "49700"
+          } ]
+        }
+      }, {
+        "900" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "a" : "GBV"
+          }, {
+            "b" : "SBB-PK Berlin <1+1A>"
+          }, {
+            "d" : "!2! 1 F 5327-25"
+          }, {
+            "x" : "L"
+          }, {
+            "z" : "LC"
+          }, {
+            "f" : "Mikrofiches"
+          }, {
+            "d" : "!2! 1 F 5327-25,Beil."
+          }, {
+            "x" : "L"
+          }, {
+            "z" : "LC"
+          }, {
+            "f" : "Begleitbuch"
+          } ]
+        }
+      }, {
+        "954" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "0" : "SBB-PK Berlin <1+1A>"
+          }, {
+            "a" : "11"
+          }, {
+            "b" : "1665961309"
+          }, {
+            "c" : "01"
+          }, {
+            "f" : "2"
+          }, {
+            "d" : "1 F 5327-25"
+          }, {
+            "e" : "d"
+          }, {
+            "k" : "Mikrofiches"
+          }, {
+            "x" : "0001"
+          } ]
+        }
+      }, {
+        "954" : {
+          "ind1" : "\\",
+          "ind2" : "\\",
+          "subfields" : [ {
+            "0" : "SBB-PK Berlin <1+1A>"
+          }, {
+            "a" : "11"
+          }, {
+            "b" : "1665961317"
+          }, {
+            "c" : "02"
+          }, {
+            "f" : "2"
+          }, {
+            "d" : "1 F 5327-25,Beil."
+          }, {
+            "e" : "u"
+          }, {
+            "k" : "Begleitbuch"
+          }, {
+            "x" : "0001"
+          } ]
+        }
+      }, {
+        "999" : {
+          "ind1" : "f",
+          "ind2" : "f",
+          "subfields" : [ {
+            "s" : "8f462542-387c-4f06-a01b-50829c7c7b13"
+          }, {
+            "i" : "8be05cf5-fb4f-4752-8094-8e179d08fb99"
+          } ]
+        }
+      } ],
+      "leader" : "02046nam a2200421 cc4500"
+    },
+    "formattedContent" : "LEADER 02046nam a2200421 cc4500\n001 inst000000000004\n003 DE-601\n005 20180615233857.0\n007 he\\amu000uuuu\n008 170217s2016\\\\\\\\xxu\\\\\\\\\\\\\\\\\\\\\\000\\0\\eng\\d\n035 880391235\n020 \\\\$a9780866989732$9978-0-86698-973-2\n020 \\\\$a0866989730$90-86698-973-0\n020 \\\\$a9780866985529$9978-0-86698-552-9\n020 \\\\$a0866985522$90-86698-552-2\n035 \\\\$a(OCoLC)962073864\n035 \\\\$a(OCoLC)ocn962073864\n035 \\\\$a(OCoLC)962073864\n035 \\\\$a(DE-599)GBV880391235\n040 \\\\$bger$cGBVCP$erda\n041 0\\$aeng$aang$alat\n245 00$aAnglo-Saxon manuscripts in microfiche facsimile$nVolume 25$pCorpus Christi College, Cambridge II, MSS 12, 144, 162, 178, 188, 198, 265, 285, 322, 326, 449$hmicroform$cA. N. Doane (editor and director), Matthew T. Hussey (associate editor), Phillip Pulsiano (founding editor)\n264 31$aTempe, Arizona$bACMRS, Arizona Center for Medieval and Renaissance Studies$c2016\n300 \\\\$a69 Mikrofiches$e1 Begleitbuch (XII, 167 Seiten)\n336 \\\\$aText$btxt$2rdacontent\n337 \\\\$aMikroform$bh$2rdamedia\n338 \\\\$aMikrofiche$bhe$2rdacarrier\n490 0\\$aMedieval and Renaissance Texts and Studies$vvolume 497\n500 \\\\$aTitel und Angaben zu beteiligter Person vom Begleitheft\n546 \\\\$aIn English with segments in Anglo-Saxon and Latin\n700 1\\$aLucas, Peter J.$eVerfasserIn von Zusatztexten$4wat$0(DE-601)699400066$0(DE-588)188475893\n710 2\\$aArizona Center for Medieval and Renaissance Studies\n773 08$q25.2016$w(DE-601)281985480\n830 \\0$w(DE-601)13055846X$vvolume 497$949700\n900 \\\\$aGBV$bSBB-PK Berlin <1+1A>$d!2! 1 F 5327-25$xL$zLC$fMikrofiches$d!2! 1 F 5327-25,Beil.$xL$zLC$fBegleitbuch\n954 \\\\$0SBB-PK Berlin <1+1A>$a11$b1665961309$c01$f2$d1 F 5327-25$ed$kMikrofiches$x0001\n954 \\\\$0SBB-PK Berlin <1+1A>$a11$b1665961317$c02$f2$d1 F 5327-25,Beil.$eu$kBegleitbuch$x0001\n999 ff$s8f462542-387c-4f06-a01b-50829c7c7b13$i8be05cf5-fb4f-4752-8094-8e179d08fb99\n"
+  },
+  "deleted" : false,
+  "externalIdsHolder" : {
+    "instanceId" : "8be05cf5-fb4f-4752-8094-8e179d08fb99"
+  },
+  "additionalInfo" : {
+    "suppressDiscovery" : false
+  }
+}

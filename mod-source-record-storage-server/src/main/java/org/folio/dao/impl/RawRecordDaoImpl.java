@@ -8,14 +8,14 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RawRecordDao;
-import org.folio.dao.util.ColumnsBuilder;
-import org.folio.dao.util.ValuesBuilder;
+import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -62,19 +62,19 @@ public class RawRecordDaoImpl implements RawRecordDao {
   }
 
   @Override
-  public String toColumns(RawRecord rawRecord) {
-    return ColumnsBuilder.of(ID_COLUMN_NAME)
-      .append(rawRecord.getContent(), CONTENT_COLUMN_NAME)
+  public String getColumns() {
+    return ColumnBuilder.of(ID_COLUMN_NAME)
+      .append(CONTENT_COLUMN_NAME)
       .build();
   }
 
   @Override
-  public String toValues(RawRecord rawRecord, boolean generateIdIfNotExists) {
+  public JsonArray toParams(RawRecord rawRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // raw_records id is foreign key with records_lb
-    return ValuesBuilder.of(rawRecord.getId())
-      .append(rawRecord.getContent())
-      .build();
+    // error_records id is foreign key with records_lb
+    return new JsonArray()
+      .add(rawRecord.getId())
+      .add(rawRecord.getContent());
   }
 
   @Override

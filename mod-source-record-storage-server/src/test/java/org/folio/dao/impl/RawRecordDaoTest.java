@@ -1,23 +1,73 @@
 package org.folio.dao.impl;
 
-import java.util.Arrays;
 import java.util.List;
 
+import org.folio.dao.LBRecordDao;
+import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.filter.RawRecordFilter;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
+import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
 
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecordCollection, RawRecordFilter, RawRecordDao> {
+public class RawRecordDaoTest extends AbstractBeanDaoTest<RawRecord, RawRecordCollection, RawRecordFilter, RawRecordDao> {
+
+  LBSnapshotDao snapshotDao;
+
+  LBRecordDao recordDao;
+
+  @Override
+  public void createDependentBeans(TestContext context) {
+    Async async = context.async();
+    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
+    recordDao = new LBRecordDaoImpl(postgresClientFactory);
+    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
+      if (saveSnapshots.failed()) {
+        context.fail(saveSnapshots.cause());
+      }
+      recordDao.save(getRecords(), TENANT_ID).setHandler(saveRecords -> {
+        if (saveRecords.failed()) {
+          context.fail(saveRecords.cause());
+        }
+        async.complete();
+      });
+    });
+  }
 
   @Override
   public void createDao(TestContext context) {
     dao = new RawRecordDaoImpl(postgresClientFactory);
+  }
+
+  @Override
+  public void clearTables(TestContext context) {
+    Async async = context.async();
+    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
+    String sql = String.format(DELETE_SQL_TEMPLATE, dao.getTableName());
+    pgClient.execute(sql, delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      String recordSql = String.format(DELETE_SQL_TEMPLATE, recordDao.getTableName());
+      pgClient.execute(recordSql, recordDelete -> {
+        if (recordDelete.failed()) {
+          context.fail(recordDelete.cause());
+        }
+        String snapshotSql = String.format(DELETE_SQL_TEMPLATE, snapshotDao.getTableName());
+        pgClient.execute(snapshotSql, snapshotDelete -> {
+          if (snapshotDelete.failed()) {
+            context.fail(snapshotDelete.cause());
+          }
+          async.complete();
+        });
+      });
+    });
   }
 
   @Override
@@ -34,23 +84,25 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
 
   @Override
   public RawRecord getMockBean() {
-    return MockRawRecordFactory.getMockRawRecord(mockRecord);
+    return getRawRecord(0);
   }
 
   @Override
   public RawRecord getInvalidMockBean() {
     return new RawRecord()
-      .withId(mockRecord.getId());
+      .withId(getRecord(0).getId());
   }
 
   @Override
   public RawRecord getUpdatedMockBean() {
-    return getMockBean();
+    return new RawRecord()
+      .withId(getMockBean().getId())
+      .withContent(getMockBean().getContent());
   }
 
   @Override
-  public RawRecord[] getMockBeans() {
-    return MockRawRecordFactory.getMockRawRecords(mockRecords);
+  public List<RawRecord> getMockBeans() {
+    return getRawRecords();
   }
 
   @Override
@@ -61,7 +113,7 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
 
   @Override
   public void assertNoopFilterResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = Arrays.asList(getMockBeans());
+    List<RawRecord> expected = getMockBeans();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
       .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
@@ -69,7 +121,7 @@ public class RawRecordDaoTest extends AbstractRecordDaoTest<RawRecord, RawRecord
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = Arrays.asList(getMockBeans());
+    List<RawRecord> expected = getMockBeans();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
       .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));

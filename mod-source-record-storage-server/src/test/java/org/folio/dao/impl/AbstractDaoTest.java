@@ -17,7 +17,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractDaoTest {
+public abstract class AbstractDaoTest extends DaoTestMocks {
 
   static final String TENANT_ID = "diku";
 

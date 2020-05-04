@@ -1,14 +1,13 @@
 package org.folio.dao.util;
 
-import static com.fasterxml.jackson.databind.util.StdDateFormat.DATE_FORMAT_STR_ISO8601;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.dao.util.DaoUtil.COLUMN_EQUALS_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.SPACED_AND;
 import static org.folio.dao.util.DaoUtil.UNWRAPPED_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.WHERE_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.WRAPPED_TEMPLATE;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
@@ -17,11 +16,8 @@ public class WhereClauseBuilder {
 
   private final StringBuilder whereClause;
 
-  private final SimpleDateFormat simpleDateFormat;
-
   private WhereClauseBuilder() {
     whereClause = new StringBuilder();
-    simpleDateFormat = new SimpleDateFormat(DATE_FORMAT_STR_ISO8601);
   }
 
   public WhereClauseBuilder append(Object value, String column) {
@@ -45,7 +41,7 @@ public class WhereClauseBuilder {
 
   public WhereClauseBuilder append(Date value, String column) {
     if (value != null) {
-      return wrapped(simpleDateFormat.format(value), column);
+      return wrapped(DATE_FORMATTER.format(value), column);
     }
     return this;
   }

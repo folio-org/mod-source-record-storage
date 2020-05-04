@@ -8,14 +8,14 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.ColumnsBuilder;
-import org.folio.dao.util.ValuesBuilder;
+import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -67,21 +67,22 @@ public class ErrorRecordDaoImpl implements ErrorRecordDao {
   }
 
   @Override
-  public String toColumns(ErrorRecord errorRecord) {
-    return ColumnsBuilder.of(ID_COLUMN_NAME)
-      .append(errorRecord.getContent(), CONTENT_COLUMN_NAME)
-      .append(errorRecord.getDescription(), DESCRIPTION_COLUMN_NAME)
+  public String getColumns() {
+    return ColumnBuilder
+      .of(ID_COLUMN_NAME)
+      .append(CONTENT_COLUMN_NAME)
+      .append(DESCRIPTION_COLUMN_NAME)
       .build();
   }
 
   @Override
-  public String toValues(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
+  public JsonArray toParams(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // error_records id is foreign key with records_lb
-    return ValuesBuilder.of(errorRecord.getId())
-      .append(errorRecord.getContent())
-      .append(errorRecord.getDescription())
-      .build();
+    return new JsonArray()
+      .add(errorRecord.getId())
+      .add(errorRecord.getContent())
+      .add(errorRecord.getDescription());
   }
 
   @Override

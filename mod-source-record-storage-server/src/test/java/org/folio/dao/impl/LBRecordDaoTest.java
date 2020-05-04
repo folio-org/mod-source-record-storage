@@ -1,6 +1,5 @@
 package org.folio.dao.impl;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -11,12 +10,10 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.RecordFilter;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -26,24 +23,14 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   private LBSnapshotDao snapshotDao;
 
-  private Snapshot snapshot1;
-  private Snapshot snapshot2;
-
   @Override
   public void createDependentBeans(TestContext context) {
-    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
     Async async = context.async();
-
-    Snapshot[] snapshots = MockSnapshotFactory.getMockSnapshots();
-    CompositeFuture.all(
-      snapshotDao.save(snapshots[0], TENANT_ID),
-      snapshotDao.save(snapshots[1], TENANT_ID)
-    ).setHandler(save -> {
+    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
+    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      snapshot1 = save.result().resultAt(0);
-      snapshot2 = save.result().resultAt(1);
       async.complete();
     });
   }
@@ -86,7 +73,7 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   public Record getMockBeanWithoutId() {
     return new Record()
-      .withSnapshotId(snapshot2.getJobExecutionId())
+      .withSnapshotId(getSnapshot(1).getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
       .withOrder(0)
@@ -109,7 +96,7 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   @Override
   public Record getMockBean() {
-    return MockRecordFactory.getMockRecord(snapshot1);
+    return getRecord(0);
   }
 
   @Override
@@ -124,14 +111,23 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   @Override
   public Record getUpdatedMockBean() {
-    return getMockBean()
+    return new Record()
+      .withId(getMockBean().getId())
+      .withMatchedId(getMockBean().getMatchedId())
+      .withMatchedProfileId(getMockBean().getMatchedProfileId())
+      .withSnapshotId(getMockBean().getSnapshotId())
+      .withGeneration(getMockBean().getGeneration())
+      .withRecordType(getMockBean().getRecordType())
+      .withAdditionalInfo(getMockBean().getAdditionalInfo())
+      .withExternalIdsHolder(getMockBean().getExternalIdsHolder())
+      .withMetadata(getMockBean().getMetadata())
       .withState(Record.State.DRAFT)
       .withOrder(2);
   }
 
   @Override
-  public Record[] getMockBeans() {
-    return MockRecordFactory.getMockRecords(snapshot1, snapshot2);
+  public List<Record> getMockBeans() {
+    return getRecords();
   }
 
   @Override
@@ -160,15 +156,15 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
     }
     if (expected.getMetadata() != null) {
       context.assertEquals(expected.getMetadata().getCreatedByUserId(), actual.getMetadata().getCreatedByUserId());
-      context.assertEquals(expected.getMetadata().getCreatedDate(), actual.getMetadata().getCreatedDate());
+      context.assertNotNull(actual.getMetadata().getCreatedDate());
       context.assertEquals(expected.getMetadata().getUpdatedByUserId(), actual.getMetadata().getUpdatedByUserId());
-      context.assertEquals(expected.getMetadata().getUpdatedDate(), actual.getMetadata().getUpdatedDate());
+      context.assertNotNull(actual.getMetadata().getUpdatedDate());
     }
   }
 
   @Override
   public void assertNoopFilterResults(TestContext context, RecordCollection actual) {
-    List<Record> expected = Arrays.asList(getMockBeans());
+    List<Record> expected = getMockBeans();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
       .anyMatch(actualRecord -> actualRecord.getId().equals(expectedRecord.getId()))));
@@ -176,7 +172,7 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, RecordCollection actual) {
-    List<Record> expected = Arrays.asList(getMockBeans()).stream()
+    List<Record> expected = getMockBeans().stream()
       .filter(bean -> bean.getState().equals(getArbitruaryFilter().getState()) &&
         bean.getMatchedProfileId().equals(getArbitruaryFilter().getMatchedProfileId()))
       .collect(Collectors.toList());

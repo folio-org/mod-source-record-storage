@@ -125,16 +125,17 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private SourceRecord toSourceRecord(JsonObject jsonObject) {
     String id = jsonObject.getString(ID_COLUMN_NAME);
-    JsonObject parsedRecord = new JsonObject(jsonObject.getString(JSON_COLUMN_NAME));
-    JsonObject content = parsedRecord.getJsonObject(CONTENT_COLUMN_NAME);
+    JsonObject jsonb = new JsonObject(jsonObject.getString(JSON_COLUMN_NAME));
+    JsonObject content = jsonb.getJsonObject(CONTENT_COLUMN_NAME);
+    ParsedRecord parsedRecord = new ParsedRecord()
+        .withId(jsonb.getString(ID_COLUMN_NAME))
+        .withContent(content.encode());
     // TODO: handle formatted content
     // could add record type to function response
     // then pass content and type to utility to convert to formatted content
     return new SourceRecord()
       .withRecordId(id)
-      .withParsedRecord(new ParsedRecord()
-        .withId(parsedRecord.getString(ID_COLUMN_NAME))
-        .withContent(content.encode()));
+      .withParsedRecord(parsedRecord);
   }
 
 

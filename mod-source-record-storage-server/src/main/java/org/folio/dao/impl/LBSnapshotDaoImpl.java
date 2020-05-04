@@ -10,19 +10,16 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.AbstractBeanDao;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.filter.SnapshotFilter;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
-import org.folio.rest.persist.PostgresClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 
 // <createTable tableName="snapshots_lb">
@@ -35,28 +32,10 @@ import io.vertx.ext.sql.ResultSet;
 //   <column name="processing_started_date" type="timestamptz"></column>
 // </createTable>
 @Component
-public class LBSnapshotDaoImpl implements LBSnapshotDao {
-
-  private static final Logger LOG = LoggerFactory.getLogger(LBSnapshotDaoImpl.class);
+public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollection, SnapshotFilter> implements LBSnapshotDao {
 
   public static final String STATUS_COLUMN_NAME = "status";
   public static final String PROCESSING_STARTED_DATE_COLUMN_NAME = "processing_started_date";
-
-  private final PostgresClientFactory pgClientFactory;
-
-  public LBSnapshotDaoImpl(@Autowired PostgresClientFactory pgClientFactory) {
-    this.pgClientFactory = pgClientFactory;
-  }
-
-  @Override
-  public Logger getLogger() {
-    return LOG;
-  }
-
-  @Override
-  public PostgresClient getPostgresClient(String tenantId) {
-    return pgClientFactory.createInstance(tenantId);
-  }
 
   @Override
   public String getTableName() {
@@ -69,7 +48,7 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
   }
 
   @Override
-  public String getColumns() {
+  protected String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(STATUS_COLUMN_NAME)
       .append(PROCESSING_STARTED_DATE_COLUMN_NAME)
@@ -77,7 +56,7 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
   }
 
   @Override
-  public JsonArray toParams(Snapshot snapshot, boolean generateIdIfNotExists) {
+  protected JsonArray toParams(Snapshot snapshot, boolean generateIdIfNotExists) {
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
@@ -93,14 +72,14 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
   }
 
   @Override
-  public SnapshotCollection toCollection(ResultSet resultSet) {
+  protected SnapshotCollection toCollection(ResultSet resultSet) {
     return new SnapshotCollection()
       .withSnapshots(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  public Snapshot toBean(JsonObject result) {
+  protected Snapshot toBean(JsonObject result) {
     Snapshot snapshot = new Snapshot().withJobExecutionId(result.getString(ID_COLUMN_NAME))
       .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
     Instant processingStartedDate = result.getInstant(PROCESSING_STARTED_DATE_COLUMN_NAME);

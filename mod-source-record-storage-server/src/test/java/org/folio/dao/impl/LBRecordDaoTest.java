@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.RecordFilter;
@@ -24,9 +25,10 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   private LBSnapshotDao snapshotDao;
 
   @Override
-  public void createDependentBeans(TestContext context) {
+  public void createDependentBeans(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
+    snapshotDao = new LBSnapshotDaoImpl();
+    FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -36,8 +38,9 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   }
 
   @Override
-  public void createDao(TestContext context) {
-    dao = new LBRecordDaoImpl(postgresClientFactory);
+  public void createDao(TestContext context) throws IllegalAccessException {
+    dao = new LBRecordDaoImpl();
+    FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
   }
 
   @Override

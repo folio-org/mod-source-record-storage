@@ -3,6 +3,7 @@ package org.folio.dao.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
@@ -25,10 +26,12 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
   LBRecordDao recordDao;
 
   @Override
-  public void createDependentBeans(TestContext context) {
+  public void createDependentBeans(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
-    recordDao = new LBRecordDaoImpl(postgresClientFactory);
+    snapshotDao = new LBSnapshotDaoImpl();
+    FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
+    recordDao = new LBRecordDaoImpl();
+    FieldUtils.writeField(recordDao, "postgresClientFactory", postgresClientFactory, true);
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
@@ -43,8 +46,9 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
   }
 
   @Override
-  public void createDao(TestContext context) {
-    dao = new ErrorRecordDaoImpl(postgresClientFactory);
+  public void createDao(TestContext context) throws IllegalAccessException {
+    dao = new ErrorRecordDaoImpl();
+    FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
   }
 
   @Override

@@ -7,20 +7,17 @@ import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
+import org.folio.dao.AbstractBeanDao;
 import org.folio.dao.ParsedRecordDao;
-import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.filter.ParsedRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.persist.PostgresClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 
 // <createTable tableName="marc_records_lb">
@@ -32,26 +29,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class ParsedRecordDaoImpl implements ParsedRecordDao {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ParsedRecordDaoImpl.class);
-
-  private final PostgresClientFactory pgClientFactory;
-
-  @Autowired
-  public ParsedRecordDaoImpl(PostgresClientFactory pgClientFactory) {
-    this.pgClientFactory = pgClientFactory;
-  }
-
-  @Override
-  public Logger getLogger() {
-    return LOG;
-  }
-
-  @Override
-  public PostgresClient getPostgresClient(String tenantId) {
-    return pgClientFactory.createInstance(tenantId);
-  }
+public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> implements ParsedRecordDao {
 
   @Override
   public String getTableName() {
@@ -64,14 +42,14 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
   }
 
   @Override
-  public String getColumns() {
+  protected String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .build();
   }
 
   @Override
-  public JsonArray toParams(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
+  protected JsonArray toParams(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // error_records id is foreign key with records_lb
     return new JsonArray()
@@ -80,14 +58,14 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
   }
 
   @Override
-  public ParsedRecordCollection toCollection(ResultSet resultSet) {
+  protected ParsedRecordCollection toCollection(ResultSet resultSet) {
     return new ParsedRecordCollection()
       .withParsedRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  public ParsedRecord toBean(JsonObject result) {
+  protected ParsedRecord toBean(JsonObject result) {
     String content = result.getString(CONTENT_COLUMN_NAME);
     return formatContent(new ParsedRecord()
       .withId(result.getString(ID_COLUMN_NAME))
@@ -95,12 +73,12 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
   }
 
   @Override
-  public ParsedRecord postSave(ParsedRecord parsedRecord) {
+  protected ParsedRecord postSave(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
   }
 
   @Override
-  public ParsedRecord postUpdate(ParsedRecord parsedRecord) {
+  protected ParsedRecord postUpdate(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
   }
 
@@ -109,7 +87,7 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
       String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
       parsedRecord.withFormattedContent(formattedContent);
     } catch (IOException e) {
-      getLogger().error("Error formatting content", e);
+      LOG.error("Error formatting content", e);
     }
     return parsedRecord;
   }

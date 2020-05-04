@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
@@ -46,18 +47,24 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   private ErrorRecordDao errorRecordDao;
 
   @Override
-  public void createDao(TestContext context) {
-    sourceRecordDao = new SourceRecordDaoImpl(postgresClientFactory);
+  public void createDao(TestContext context) throws IllegalAccessException {
+    sourceRecordDao = new SourceRecordDaoImpl();
+    FieldUtils.writeField(sourceRecordDao, "postgresClientFactory", postgresClientFactory, true);
   }
 
   @Override
-  public void createDependentBeans(TestContext context) {
+  public void createDependentBeans(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
-    recordDao = new LBRecordDaoImpl(postgresClientFactory);
-    rawRecordDao = new RawRecordDaoImpl(postgresClientFactory);
-    parsedRecordDao = new ParsedRecordDaoImpl(postgresClientFactory);
-    errorRecordDao = new ErrorRecordDaoImpl(postgresClientFactory);
+    snapshotDao = new LBSnapshotDaoImpl();
+    FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
+    recordDao = new LBRecordDaoImpl();
+    FieldUtils.writeField(recordDao, "postgresClientFactory", postgresClientFactory, true);
+    rawRecordDao = new RawRecordDaoImpl();
+    FieldUtils.writeField(rawRecordDao, "postgresClientFactory", postgresClientFactory, true);
+    parsedRecordDao = new ParsedRecordDaoImpl();
+    FieldUtils.writeField(parsedRecordDao, "postgresClientFactory", postgresClientFactory, true);
+    errorRecordDao = new ErrorRecordDaoImpl();
+    FieldUtils.writeField(errorRecordDao, "postgresClientFactory", postgresClientFactory, true);
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
@@ -93,7 +100,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     pgClient.execute(rawRecordSql, deleteHandler(rawRecordDeletePromise));
     pgClient.execute(parsedRecordSql, deleteHandler(parsedRecordDeletePromise));
     pgClient.execute(errorRecordSql, deleteHandler(errorRecordDeletePromise));
-    CompositeFuture.all(rawRecordDeletePromise.future(), parsedRecordDeletePromise.future(), errorRecordDeletePromise.future()).setHandler(delete -> {
+    CompositeFuture.all(
+      rawRecordDeletePromise.future(),
+      parsedRecordDeletePromise.future(),
+      errorRecordDeletePromise.future()
+    ).setHandler(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

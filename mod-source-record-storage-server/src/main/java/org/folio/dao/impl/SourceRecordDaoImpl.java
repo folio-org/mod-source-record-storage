@@ -43,12 +43,8 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   private static final String GET_SOURCE_MARC_RECORDS_FOR_PERIOD_TEMPLATE = "SELECT * FROM get_source_marc_records_for_period('%s','%s',%s,%s) as records;";
   private static final String GET_SOURCE_MARC_RECORDS_FOR_PERIOD_ALT_TEMPLATE = "SELECT * FROM get_source_marc_records_for_period_alt('%s','%s',%s,%s) as records;";
 
-  private final PostgresClientFactory pgClientFactory;
-
   @Autowired
-  public SourceRecordDaoImpl(PostgresClientFactory pgClientFactory) {
-    this.pgClientFactory = pgClientFactory;
-  }
+  private PostgresClientFactory postgresClientFactory;
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordById(String id, String tenantId) {
@@ -94,7 +90,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(template, id);
     LOG.info("Attempting get source records: {}", sql);
-    pgClientFactory.createInstance(tenantId).select(sql, promise);
+    postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toSourceRecord);
   }
 
@@ -111,7 +107,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   private Future<SourceRecordCollection> select(String sql, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     LOG.info("Attempting get by source records: {}", sql);
-    pgClientFactory.createInstance(tenantId).select(sql, promise);
+    postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toSourceRecordCollection);
   }
 

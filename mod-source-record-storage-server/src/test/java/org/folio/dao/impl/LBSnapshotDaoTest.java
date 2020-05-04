@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -28,8 +29,9 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
-  public void createDao(TestContext context) {
-    dao = new LBSnapshotDaoImpl(postgresClientFactory);
+  public void createDao(TestContext context) throws IllegalAccessException {
+    dao = new LBSnapshotDaoImpl();
+    FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
   }
 
   @Override

@@ -64,10 +64,10 @@ public abstract class AbstractDaoTest extends DaoTestMocks {
   }
 
   @Before
-  public abstract void createDao(TestContext context);
+  public abstract void createDao(TestContext context) throws IllegalAccessException;
 
   @Before
-  public abstract void createDependentBeans(TestContext context);
+  public abstract void createDependentBeans(TestContext context) throws IllegalAccessException;
 
   @After
   public abstract void clearTables(TestContext context);

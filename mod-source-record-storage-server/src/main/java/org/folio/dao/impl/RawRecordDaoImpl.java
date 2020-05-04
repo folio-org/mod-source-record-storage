@@ -6,19 +6,16 @@ import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
 
 import java.util.stream.Collectors;
 
-import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.AbstractBeanDao;
 import org.folio.dao.RawRecordDao;
+import org.folio.dao.filter.RawRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
-import org.folio.rest.persist.PostgresClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 
 // <createTable tableName="raw_records_lb">
@@ -30,26 +27,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class RawRecordDaoImpl implements RawRecordDao {
-
-  private static final Logger LOG = LoggerFactory.getLogger(RawRecordDaoImpl.class);
-
-  private final PostgresClientFactory pgClientFactory;
-
-  @Autowired 
-  public RawRecordDaoImpl(PostgresClientFactory pgClientFactory) {
-    this.pgClientFactory = pgClientFactory;
-  }
-
-  @Override
-  public Logger getLogger() {
-    return LOG;
-  }
-
-  @Override
-  public PostgresClient getPostgresClient(String tenantId) {
-    return pgClientFactory.createInstance(tenantId);
-  }
+public class RawRecordDaoImpl extends AbstractBeanDao<RawRecord, RawRecordCollection, RawRecordFilter> implements RawRecordDao {
 
   @Override
   public String getTableName() {
@@ -62,14 +40,14 @@ public class RawRecordDaoImpl implements RawRecordDao {
   }
 
   @Override
-  public String getColumns() {
+  protected String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .build();
   }
 
   @Override
-  public JsonArray toParams(RawRecord rawRecord, boolean generateIdIfNotExists) {
+  protected JsonArray toParams(RawRecord rawRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // error_records id is foreign key with records_lb
     return new JsonArray()
@@ -78,14 +56,14 @@ public class RawRecordDaoImpl implements RawRecordDao {
   }
 
   @Override
-  public RawRecordCollection toCollection(ResultSet resultSet) {
+  protected RawRecordCollection toCollection(ResultSet resultSet) {
     return new RawRecordCollection()
       .withRawRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  public RawRecord toBean(JsonObject result) {
+  protected RawRecord toBean(JsonObject result) {
     return new RawRecord()
       .withId(result.getString(ID_COLUMN_NAME))
       .withContent(result.getString(CONTENT_COLUMN_NAME));

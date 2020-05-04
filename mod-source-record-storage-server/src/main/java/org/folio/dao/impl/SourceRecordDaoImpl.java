@@ -1,6 +1,7 @@
 package org.folio.dao.impl;
 
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
 
@@ -80,13 +81,13 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date to, Integer offset, Integer limit, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_TEMPLATE, from, to, offset, limit, tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till, Integer offset, Integer limit, String tenantId) {
+    return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_TEMPLATE, from, till, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date to, Integer offset, Integer limit, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_ALT_TEMPLATE, from, to, offset, limit, tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset, Integer limit, String tenantId) {
+    return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_ALT_TEMPLATE, from, till, offset, limit, tenantId);
   }
 
   private Future<Optional<SourceRecord>> select(String template, String id, String tenantId) {
@@ -102,8 +103,8 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     return select(sql, tenantId);
   }
 
-  private Future<SourceRecordCollection> select(String template, Date from, Date to, Integer offset, Integer limit, String tenantId) {
-    String sql = String.format(template, from, to, offset, limit);
+  private Future<SourceRecordCollection> select(String template, Date from, Date till, Integer offset, Integer limit, String tenantId) {
+    String sql = String.format(template, DATE_FORMATTER.format(from), DATE_FORMATTER.format(till), offset, limit);
     return select(sql, tenantId);
   }
 

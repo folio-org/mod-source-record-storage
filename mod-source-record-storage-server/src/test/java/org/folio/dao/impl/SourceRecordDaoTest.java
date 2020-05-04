@@ -1,9 +1,14 @@
 package org.folio.dao.impl;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
@@ -88,11 +93,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     pgClient.execute(rawRecordSql, deleteHandler(rawRecordDeletePromise));
     pgClient.execute(parsedRecordSql, deleteHandler(parsedRecordDeletePromise));
     pgClient.execute(errorRecordSql, deleteHandler(errorRecordDeletePromise));
-    CompositeFuture.all(
-      rawRecordDeletePromise.future(),
-      parsedRecordDeletePromise.future(),
-      errorRecordDeletePromise.future()
-    ).setHandler(delete -> {
+    CompositeFuture.all(rawRecordDeletePromise.future(), parsedRecordDeletePromise.future(), errorRecordDeletePromise.future()).setHandler(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -189,41 +190,50 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
+      compareSourceRecordCollection(context, res.result());
+      async.complete();
+    });
+  }
 
-      List<Record> expectedRecords = getRecords().stream()
-        .filter(expectedRecord -> expectedRecord.getState().equals(State.ACTUAL))
-        .collect(Collectors.toList());
-
-      Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-
-      List<ParsedRecord> expectedParsedRecords = expectedRecords.stream()
-        .map(expectedRecord -> getParsedRecord(expectedRecord.getId()))
-        .filter(parsedRecord -> parsedRecord.isPresent())
-        .map(parsedRecord -> parsedRecord.get())
-        .collect(Collectors.toList());
-
-      Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
-
-      SourceRecordCollection actualSourceRecordCollection = res.result();
-
-      List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords(); 
-
-      Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
-
-      context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-      context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-
-      for(int i = 0; i < expectedRecords.size(); i++) {
-        Record expectedRecord = expectedRecords.get(i);
-        ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
-        SourceRecord actualSourceRecord = actualSourceRecords.get(i);
-        context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
-        context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
-          new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
-        context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
-          actualSourceRecord.getParsedRecord().getFormattedContent().trim());
+  @Test
+  public void shouldGetSourceMarcRecordsAlt(TestContext context) {
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsAlt(0, 10, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
+      compareSourceRecordCollection(context, res.result());
+      async.complete();
+    });
+  }
 
+  @Test
+  public void shouldGetSourceMarcRecordsForPeriod(TestContext context) throws ParseException {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
+    Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
+    Date till = DateUtils.addHours(new Date(), 1);
+    DateUtils.addHours(new Date(), 1);
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareSourceRecordCollection(context, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordsForPeriodAlt(TestContext context) throws ParseException {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
+    Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
+    Date till = DateUtils.addHours(new Date(), 1);
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareSourceRecordCollection(context, res.result());
       async.complete();
     });
   }
@@ -236,6 +246,38 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       }
       promise.complete(delete);
     };
+  }
+
+  private void compareSourceRecordCollection(TestContext context, SourceRecordCollection actualSourceRecordCollection) {
+    List<Record> expectedRecords = getRecords().stream()
+        .filter(expectedRecord -> expectedRecord.getState().equals(State.ACTUAL)).collect(Collectors.toList());
+
+      Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+
+      List<ParsedRecord> expectedParsedRecords = expectedRecords.stream()
+        .map(expectedRecord -> getParsedRecord(expectedRecord.getId()))
+        .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
+        .collect(Collectors.toList());
+
+      Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
+
+      List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
+
+      Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
+
+      context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+      context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+
+      for (int i = 0; i < expectedRecords.size(); i++) {
+        Record expectedRecord = expectedRecords.get(i);
+        ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
+        SourceRecord actualSourceRecord = actualSourceRecords.get(i);
+        context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
+        context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
+          new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
+        context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
+          actualSourceRecord.getParsedRecord().getFormattedContent().trim());
+      }
   }
 
 }

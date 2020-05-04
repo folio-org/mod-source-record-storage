@@ -146,7 +146,7 @@
 
   <changeSet id="2020-04-28--08-06-create-get-source-marc-records-for-period" author="WilliamWelling">
     <createProcedure>
-      create function ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamp without time zone, p_till timestamp without time zone, p_offset integer,
+      create function ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamptz, p_till timestamptz, p_offset integer,
                                                                                        p_limit integer)
           returns TABLE
                   (
@@ -172,7 +172,7 @@
 
   <changeSet id="2020-04-28--08-07-create-get-source-marc-records-for-period-alt" author="WilliamWelling">
     <createProcedure>
-      create function ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamp without time zone, p_till timestamp without time zone, p_offset integer,
+      create function ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamptz, p_till timestamptz, p_offset integer,
                                                                                            p_limit integer)
           returns TABLE
                   (

@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
@@ -154,9 +155,13 @@ public class LBRecordDaoImpl implements LBRecordDao {
     }
     if (record.getMetadata() != null) {
       params.add(record.getMetadata().getCreatedByUserId());
-      params.add(record.getMetadata().getCreatedDate());
+      if (record.getMetadata().getCreatedDate() != null) {
+        params.add(DATE_FORMATTER.format(record.getMetadata().getCreatedDate()));
+      }
       params.add(record.getMetadata().getUpdatedByUserId());
-      params.add(record.getMetadata().getUpdatedDate());
+      if (record.getMetadata().getUpdatedDate() != null) {
+        params.add(DATE_FORMATTER.format(record.getMetadata().getUpdatedDate()));
+      }
     } else {
       params.addNull().addNull().addNull().addNull();
     }

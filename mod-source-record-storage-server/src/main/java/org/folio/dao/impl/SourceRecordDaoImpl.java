@@ -14,9 +14,7 @@ import org.folio.dao.SourceRecordDao;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecord.RecordType;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.marc4j.MarcException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -136,7 +134,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     try {
       String formattedContent = MarcUtil.marcJsonToTxtMarc(content.encode());
       parsedRecord.withFormattedContent(formattedContent);
-    } catch (MarcException | IOException e) {
+    } catch (IOException e) {
       LOG.error("Error formatting content", e);
     }
     // NOTE: will be missing several properties; record type, snapshot id, etc.

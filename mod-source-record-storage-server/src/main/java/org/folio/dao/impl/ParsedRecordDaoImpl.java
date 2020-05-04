@@ -14,7 +14,6 @@ import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
-import org.marc4j.MarcException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -95,10 +94,12 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
       .withContent(content));
   }
 
+  @Override
   public ParsedRecord postSave(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
   }
 
+  @Override
   public ParsedRecord postUpdate(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
   }
@@ -107,7 +108,7 @@ public class ParsedRecordDaoImpl implements ParsedRecordDao {
     try {
       String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
       parsedRecord.withFormattedContent(formattedContent);
-    } catch (MarcException | IOException e) {
+    } catch (IOException e) {
       getLogger().error("Error formatting content", e);
     }
     return parsedRecord;

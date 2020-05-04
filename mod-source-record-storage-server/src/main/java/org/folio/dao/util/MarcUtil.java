@@ -19,27 +19,29 @@ public class MarcUtil {
 
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-  public static String rawMarcToMarcJson(String rawMarc) throws IOException, MarcException {
+  private MarcUtil() { }
+
+  public static String rawMarcToMarcJson(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
     return recordToMarcJson(record);
   }
 
-  public static String rawMarcToTxtMarc(String rawMarc) throws IOException, MarcException {
+  public static String rawMarcToTxtMarc(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
     return recordToTxtMarc(record);
   }
 
-  public static String marcJsonToRawMarc(String marcJson) throws IOException, MarcException {
+  public static String marcJsonToRawMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);
     return recordToRawMarc(record);
   }
 
-  public static String marcJsonToTxtMarc(String marcJson) throws IOException, MarcException {
+  public static String marcJsonToTxtMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);
     return recordToTxtMarc(record);
   }
 
-  private static Record rawMarcToRecord(String rawMarc) throws IOException, MarcException {
+  private static Record rawMarcToRecord(String rawMarc) throws IOException {
     try (InputStream in = new ByteArrayInputStream(rawMarc.getBytes(DEFAULT_CHARSET))) {
       final MarcStreamReader reader = new MarcStreamReader(in, DEFAULT_CHARSET.name());
       if (reader.hasNext()) {
@@ -49,7 +51,7 @@ public class MarcUtil {
     throw new MarcException(String.format("Unable to read: %s", rawMarc));
   }
 
-  private static Record marcJsonToRecord(String marcJson) throws IOException, MarcException {
+  private static Record marcJsonToRecord(String marcJson) throws IOException {
     try (InputStream in = new ByteArrayInputStream(marcJson.getBytes())) {
       final MarcJsonReader reader = new MarcJsonReader(in);
       if (reader.hasNext()) {
@@ -59,7 +61,7 @@ public class MarcUtil {
     throw new MarcException(String.format("Unable to read: %s", marcJson));
   }
 
-  private static String recordToMarcJson(Record record) throws IOException, MarcException {
+  private static String recordToMarcJson(Record record) throws IOException {
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final MarcJsonWriter writer = new MarcJsonWriter(out);
       writer.write(record);
@@ -68,7 +70,7 @@ public class MarcUtil {
     }
   }
 
-  private static String recordToRawMarc(Record record) throws IOException, MarcException {
+  private static String recordToRawMarc(Record record) throws IOException {
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final MarcStreamWriter writer = new MarcStreamWriter(out);
       writer.write(record);
@@ -77,7 +79,7 @@ public class MarcUtil {
     }
   }
 
-  private static String recordToTxtMarc(Record record) throws IOException, MarcException {
+  private static String recordToTxtMarc(Record record) throws IOException {
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final MarcTxtWriter writer = new MarcTxtWriter(out);
       writer.write(record);

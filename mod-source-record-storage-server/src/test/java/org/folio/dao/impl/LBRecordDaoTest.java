@@ -25,22 +25,22 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   private LBSnapshotDao snapshotDao;
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
-    Async async = context.async();
+  public void createDao(TestContext context) throws IllegalAccessException {
     snapshotDao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
+    dao = new LBRecordDaoImpl();
+    FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
+  }
+
+  @Override
+  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+    Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
       async.complete();
     });
-  }
-
-  @Override
-  public void createDao(TestContext context) throws IllegalAccessException {
-    dao = new LBRecordDaoImpl();
-    FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
   }
 
   @Override
@@ -57,6 +57,42 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
         if (snapshotDelete.failed()) {
           context.fail(snapshotDelete.cause());
         }
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetByMatchedId(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      dao.getByMatchedId(getMockBean().getMatchedId(), TENANT_ID).setHandler(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertTrue(res.result().isPresent());
+        compareBeans(context, getMockBean(), res.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetByInstanceId(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      dao.getByInstanceId(getMockBean().getExternalIdsHolder().getInstanceId(), TENANT_ID).setHandler(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertTrue(res.result().isPresent());
+        compareBeans(context, getMockBean(), res.result().get());
         async.complete();
       });
     });

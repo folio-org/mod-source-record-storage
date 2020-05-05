@@ -24,14 +24,14 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCollection, SnapshotFilter, LBSnapshotDao> {
 
   @Override
-  public void createDependentBeans(TestContext context) {
-    // NOTE: no dependent beans needed for testing Snapshot DAO
-  }
-
-  @Override
   public void createDao(TestContext context) throws IllegalAccessException {
     dao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
+  }
+
+  @Override
+  public void createDependentBeans(TestContext context) {
+    // NOTE: no dependent beans needed for testing Snapshot DAO
   }
 
   @Override

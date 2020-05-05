@@ -3,6 +3,7 @@ package org.folio.dao.impl;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -17,7 +18,10 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
+import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -39,23 +43,15 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class SourceRecordDaoTest extends AbstractDaoTest {
 
-  private SourceRecordDao sourceRecordDao;
-
   private LBSnapshotDao snapshotDao;
   private LBRecordDao recordDao;
   private RawRecordDao rawRecordDao;
   private ParsedRecordDao parsedRecordDao;
   private ErrorRecordDao errorRecordDao;
+  private SourceRecordDao sourceRecordDao;
 
   @Override
   public void createDao(TestContext context) throws IllegalAccessException {
-    sourceRecordDao = new SourceRecordDaoImpl();
-    FieldUtils.writeField(sourceRecordDao, "postgresClientFactory", postgresClientFactory, true);
-  }
-
-  @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
-    Async async = context.async();
     snapshotDao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
     recordDao = new LBRecordDaoImpl();
@@ -66,6 +62,16 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     FieldUtils.writeField(parsedRecordDao, "postgresClientFactory", postgresClientFactory, true);
     errorRecordDao = new ErrorRecordDaoImpl();
     FieldUtils.writeField(errorRecordDao, "postgresClientFactory", postgresClientFactory, true);
+    sourceRecordDao = new SourceRecordDaoImpl();
+    FieldUtils.writeField(sourceRecordDao, "postgresClientFactory", postgresClientFactory, true);
+    FieldUtils.writeField(sourceRecordDao, "recordDao", recordDao, true);
+    FieldUtils.writeField(sourceRecordDao, "rawRecordDao", rawRecordDao, true);
+    FieldUtils.writeField(sourceRecordDao, "parsedRecordDao", parsedRecordDao, true);
+  }
+
+  @Override
+  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+    Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
@@ -187,8 +193,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
         context.fail(res.cause());
       }
       List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -203,8 +210,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       // NOTE: some new mock data should be introduced to ensure assertion of latest generation
       // when done the expected records and parsed records will have to be manually filtered
       List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -221,8 +229,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
         context.fail(res.cause());
       }
       List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -240,20 +249,76 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       // NOTE: some new mock data should be introduced to ensure assertion of latest generation
       // when done the expected records and parsed records will have to be manually filtered
       List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
 
-  private Handler<AsyncResult<UpdateResult>> deleteHandler(Promise<AsyncResult<UpdateResult>> promise) {
-    return delete -> {
-      if (delete.failed()) {
-        promise.fail(delete.cause());
-        return;
+  @Test
+  public void shouldGetSourceMarcRecordWithContentById(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    String id = getRecord(0).getId();
+    sourceRecordDao.getSourceMarcRecordById(content, id, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      promise.complete(delete);
-    };
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
+      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordWithContentByMatchedId(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    String matchedId = getRecord(0).getMatchedId();
+    sourceRecordDao.getSourceMarcRecordByMatchedId(content, matchedId, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
+      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordWithContentByInstanceId(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
+    sourceRecordDao.getSourceMarcRecordByInstanceId(content, instanceId, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
+      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordsByFilter(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    RecordFilter filter = new RecordFilter();
+    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<Record> expectedRecords = getRecords();
+      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
+      async.complete();
+    });
   }
 
   private void compareSourceRecord(
@@ -272,30 +337,70 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
 
   private void compareSourceRecordCollection(
     TestContext context, 
-    List<Record> expectedRecords, 
+    List<Record> expectedRecords,
+    List<RawRecord> expectedRawRecords,
     List<ParsedRecord> expectedParsedRecords, 
     SourceRecordCollection actualSourceRecordCollection
   ) {
-    Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-
-    Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
-
     List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
 
+    Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+    Collections.sort(expectedRawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
+    Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
     Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
 
     context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-    context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+
+    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedRawRecords.size());
+    expectedRawRecords.forEach(expectedRawRecord -> {
+      Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
+        return sourceRecord.getRawRecord() != null
+          && sourceRecord.getRawRecord().getId().equals(expectedRawRecord.getId());
+      }).findAny();
+      context.assertTrue(actualSourceRecord.isPresent());
+      context.assertEquals(expectedRawRecord.getContent(),
+        actualSourceRecord.get().getRawRecord().getContent());
+    });
+
+    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedParsedRecords.size());
+    expectedParsedRecords.forEach(expectedParsedRecord -> {
+      Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
+        return sourceRecord.getParsedRecord() != null
+          && sourceRecord.getParsedRecord().getId().equals(expectedParsedRecord.getId());
+      }).findAny();
+      context.assertTrue(actualSourceRecord.isPresent());
+      context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
+        new JsonObject((String) actualSourceRecord.get().getParsedRecord().getContent()).encode());
+      context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
+        actualSourceRecord.get().getParsedRecord().getFormattedContent().trim());
+    });
 
     for (int i = 0; i < expectedRecords.size(); i++) {
       Record expectedRecord = expectedRecords.get(i);
-      ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
       SourceRecord actualSourceRecord = actualSourceRecords.get(i);
       context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
-      context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
-        new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
-      context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
-        actualSourceRecord.getParsedRecord().getFormattedContent().trim());
+      if (actualSourceRecord.getSnapshotId() != null) {
+        context.assertEquals(expectedRecord.getSnapshotId(), actualSourceRecord.getSnapshotId());
+      }
+      if (actualSourceRecord.getOrder() != null) {
+        context.assertEquals(expectedRecord.getOrder(), actualSourceRecord.getOrder());
+      }
+      if (actualSourceRecord.getRecordType() != null) {
+        context.assertEquals(expectedRecord.getRecordType().toString(),
+          actualSourceRecord.getRecordType().toString());
+      }
+      if (actualSourceRecord.getExternalIdsHolder() != null) {
+        context.assertEquals(expectedRecord.getExternalIdsHolder().getInstanceId(),
+          actualSourceRecord.getExternalIdsHolder().getInstanceId());
+      }
+      if (actualSourceRecord.getMetadata() != null) {
+        context.assertEquals(expectedRecord.getMetadata().getCreatedByUserId(),
+          actualSourceRecord.getMetadata().getCreatedByUserId());
+        context.assertNotNull(actualSourceRecord.getMetadata().getCreatedDate());
+        context.assertEquals(expectedRecord.getMetadata().getUpdatedByUserId(),
+          actualSourceRecord.getMetadata().getUpdatedByUserId());
+        context.assertNotNull(actualSourceRecord.getMetadata().getUpdatedDate());
+      }
     }
   }
 
@@ -304,11 +409,28 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       .filter(expectedRecord -> expectedRecord.getState().equals(state)).collect(Collectors.toList());
   }
 
+  private List<RawRecord> getRawRecords(List<Record> records) {
+    return records.stream()
+      .map(record -> getRawRecord(record.getId()))
+      .filter(rawRecord -> rawRecord.isPresent()).map(rawRecord -> rawRecord.get())
+      .collect(Collectors.toList());
+  }
+
   private List<ParsedRecord> getParsedRecords(List<Record> records) {
     return records.stream()
       .map(record -> getParsedRecord(record.getId()))
       .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
       .collect(Collectors.toList());
+  }
+
+  private Handler<AsyncResult<UpdateResult>> deleteHandler(Promise<AsyncResult<UpdateResult>> promise) {
+    return delete -> {
+      if (delete.failed()) {
+        promise.fail(delete.cause());
+        return;
+      }
+      promise.complete(delete);
+    };
   }
 
 }

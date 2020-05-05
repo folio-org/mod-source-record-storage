@@ -36,11 +36,9 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   protected PostgresClientFactory postgresClientFactory;
 
   public Future<Optional<B>> getById(String id, String tenantId) {
-    Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getTableName(), id);
     logger.info("Attempting get by id: {}", sql);
-    postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toBean);
+    return select(sql, tenantId);
   }
 
   public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
@@ -54,7 +52,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   public Future<B> save(B bean, String tenantId) {
     Promise<B> promise = Promise.promise();
     String columns = getColumns();
-    String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValues(columns));
+    String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
     logger.info("Attempting save: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, true), save -> {
       if (save.failed()) {
@@ -89,7 +87,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     Promise<B> promise = Promise.promise();
     String id = getId(bean);
     String columns = getColumns();
-    String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValues(columns), id);
+    String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns), id);
     logger.info("Attempting update: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, false), update -> {
       if (update.failed()) {
@@ -114,38 +112,112 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     return promise.future().map(updateResult -> updateResult.getUpdated() == 1);
   }
 
+  /**
+   * Prepare list of params for multi-row INSERT and UPDATE query values
+   * 
+   * @param beans                 list of Beans for extracting values for params
+   * @param generateIdIfNotExists flag indicating whether to generate UUID for id
+   * @return list of {@link JsonArray} params
+   */
   public List<JsonArray> toParams(List<B> beans, boolean generateIdIfNotExists) {
     return beans.stream().map(bean -> toParams(bean, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
+  /**
+   * Convert {@link ResultSet} into Bean
+   * 
+   * @param resultSet {@link ResultSet} query results
+   * @return optional Bean
+   */
   public Optional<B> toBean(ResultSet resultSet)  {
     return resultSet.getNumRows() > 0 ? Optional.of(toBean(resultSet.getRows().get(0))) : Optional.empty();
   }
 
-  public String getValues(String columns) {
+  /**
+   * Prepare values list for INSERT and UPDATE queries
+   * 
+   * @param columns comma seperated list of column names
+   * @return comma seperated list of question marks matching number of columns
+   */
+  public String getValuesTemplate(String columns) {
     return Arrays.asList(columns.split(COMMA)).stream()
       .map(c -> QUESTION_MARK)
       .collect(Collectors.joining(COMMA));
   }
 
+  /**
+   * Submit SQL query
+   * 
+   * @param sql      SQL query
+   * @param tenantId tenant id
+   * @return future of optional Bean
+   */
+  protected Future<Optional<B>> select(String sql, String tenantId) {
+    Promise<ResultSet> promise = Promise.promise();
+    postgresClientFactory.createInstance(tenantId).select(sql, promise);
+    return promise.future().map(this::toBean);
+  }
+
+  /**
+   * Post save processing of Bean
+   * 
+   * @param bean saved Bean
+   * @return bean after post save processing
+   */
   protected B postSave(B bean) {
     return bean;
   }
 
+  /**
+   * Post update processing of Bean
+   * 
+   * @param bean updated Bean
+   * @return bean after post update processing
+   */
   protected B postUpdate(B bean) {
     return bean;
   }
 
+  /**
+   * Post save processing of list of Beans
+   * 
+   * @param beans saved list of Beans
+   * @return bean after post save processing
+   */
   protected List<B> postSave(List<B> beans) {
     return beans.stream().map(this::postSave).collect(Collectors.toList());
   }
 
+  /**
+   * Prepare columns list for INSERT and UPDATE queries
+   * 
+   * @return comma seperated list of table column names
+   */
   protected abstract String getColumns();
 
+  /**
+   * Prepare params for INSERT and UPDATE query values
+   * 
+   * @param bean                  Bean for extracting values for params
+   * @param generateIdIfNotExists flag indicating whether to generate UUID for id
+   * @return {@link JsonArray} params
+   */
   protected abstract JsonArray toParams(B bean, boolean generateIdIfNotExists);
 
+  /**
+   * Convert {@link ResultSet} into Bean Collection
+   * 
+   * @param resultSet {@link ResultSet} query results
+   * @return Bean Collection
+   */
   protected abstract C toCollection(ResultSet resultSet);
 
+  /**
+   * Convert {@link JsonObject} into Bean
+   * 
+   * @param result {@link JsonObject} query result row
+   * @return Bean
+   */
   protected abstract B toBean(JsonObject result);
 
 }

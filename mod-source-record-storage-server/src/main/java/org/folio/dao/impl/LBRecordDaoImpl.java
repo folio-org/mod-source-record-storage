@@ -1,11 +1,13 @@
 package org.folio.dao.impl;
 
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,7 @@ import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.ResultSet;
@@ -73,6 +76,20 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   public static final String CREATED_DATE_COLUMN_NAME = "createddate";
   public static final String UPDATED_BY_USER_ID_COLUMN_NAME = "updatedbyuserid";
   public static final String UPDATED_DATE_COLUMN_NAME = "updateddate";
+
+  @Override
+  public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
+    logger.info("Attempting get by matched id: {}", sql);
+    return select(sql, tenantId);
+  }
+
+  @Override
+  public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
+    logger.info("Attempting get by instance id: {}", sql);
+    return select(sql, tenantId);
+  }
 
   @Override
   public String getTableName() {
@@ -163,7 +180,7 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       .withGeneration(result.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)))
       .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)));
-    
+
     if (result.containsKey(ORDER_IN_FILE_COLUMN_NAME)) {
       record.setOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
     }

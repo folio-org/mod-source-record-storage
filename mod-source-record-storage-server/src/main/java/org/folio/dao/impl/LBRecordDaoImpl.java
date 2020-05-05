@@ -7,6 +7,7 @@ import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -138,19 +139,19 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       .add(record.getOrder())
       .add(record.getRecordType())
       .add(record.getState());
-    if (record.getExternalIdsHolder() != null) {
+    if (Objects.nonNull(record.getExternalIdsHolder())) {
       params.add(record.getExternalIdsHolder().getInstanceId());
     } else {
       params.addNull();
     }
-    if (record.getAdditionalInfo() != null) {
+    if (Objects.nonNull(record.getAdditionalInfo())) {
       params.add(record.getAdditionalInfo().getSuppressDiscovery());
     } else {
       params.addNull();
     }
-    if (record.getMetadata() != null) {
+    if (Objects.nonNull(record.getMetadata())) {
       params.add(record.getMetadata().getCreatedByUserId());
-      if (record.getMetadata().getCreatedDate() != null) {
+      if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
         params.add(DATE_FORMATTER.format(record.getMetadata().getCreatedDate()));
       }
       params.add(record.getMetadata().getUpdatedByUserId());
@@ -204,7 +205,7 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       metadata.setCreatedByUserId(createdByUserId);
     }
     Instant createdDate = result.getInstant(CREATED_DATE_COLUMN_NAME);
-    if (createdDate != null) {
+    if (Objects.nonNull(createdDate)) {
       metadata.setCreatedDate(Date.from(createdDate));
     }
     String updatedByUserId = result.getString(UPDATED_BY_USER_ID_COLUMN_NAME);
@@ -212,7 +213,7 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       metadata.setUpdatedByUserId(updatedByUserId);
     }
     Instant updatedDate = result.getInstant(UPDATED_DATE_COLUMN_NAME);
-    if (updatedDate != null) {
+    if (Objects.nonNull(updatedDate)) {
       metadata.setUpdatedDate(Date.from(updatedDate));
     }
     record.setMetadata(metadata);

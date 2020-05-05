@@ -9,6 +9,7 @@ import static org.folio.dao.util.DaoUtil.WHERE_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.WRAPPED_TEMPLATE;
 
 import java.util.Date;
+import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -40,7 +41,7 @@ public class WhereClauseBuilder {
   }
 
   public WhereClauseBuilder append(Date value, String column) {
-    if (value != null) {
+    if (Objects.nonNull(value)) {
       return wrapped(DATE_FORMATTER.format(value), column);
     }
     return this;
@@ -53,7 +54,7 @@ public class WhereClauseBuilder {
   }
 
   private WhereClauseBuilder wrappedWithCheck(Object value, String column) {
-    if (value != null) {
+    if (Objects.nonNull(value)) {
       return wrapped(value, column);
     }
     return this;
@@ -70,7 +71,7 @@ public class WhereClauseBuilder {
   }
 
   private WhereClauseBuilder unwrappedWithCheck(Object value, String column) {
-    if (value != null) {
+    if (Objects.nonNull(value)) {
       return unwrapped(value, column);
     }
     return this;

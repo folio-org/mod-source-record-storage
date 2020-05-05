@@ -6,6 +6,7 @@ import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -63,7 +64,7 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
     JsonArray params = new JsonArray()
       .add(snapshot.getJobExecutionId())
       .add(snapshot.getStatus());
-    if (snapshot.getProcessingStartedDate() != null) {
+    if (Objects.nonNull(snapshot.getProcessingStartedDate())) {
       params.add(DATE_FORMATTER.format(snapshot.getProcessingStartedDate()));
     } else {
       params.addNull();
@@ -83,7 +84,7 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
     Snapshot snapshot = new Snapshot().withJobExecutionId(result.getString(ID_COLUMN_NAME))
       .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
     Instant processingStartedDate = result.getInstant(PROCESSING_STARTED_DATE_COLUMN_NAME);
-    if (processingStartedDate != null) {
+    if (Objects.nonNull(processingStartedDate)) {
       snapshot.setProcessingStartedDate(Date.from(processingStartedDate));
     }
     return snapshot;

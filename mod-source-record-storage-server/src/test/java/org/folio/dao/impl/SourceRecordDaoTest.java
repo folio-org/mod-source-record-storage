@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -131,12 +132,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      context.assertTrue(res.result().isPresent());
-      context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
-      context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
-        new JsonObject((String) res.result().get().getParsedRecord().getContent()));
-      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
-        res.result().get().getParsedRecord().getFormattedContent().trim());
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -148,12 +144,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      context.assertTrue(res.result().isPresent());
-      context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
-      context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
-        new JsonObject((String) res.result().get().getParsedRecord().getContent()));
-      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
-        res.result().get().getParsedRecord().getFormattedContent().trim());
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected record and parsed record should be updated
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -166,12 +159,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      context.assertTrue(res.result().isPresent());
-      context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
-      context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
-        new JsonObject((String) res.result().get().getParsedRecord().getContent()));
-      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
-        res.result().get().getParsedRecord().getFormattedContent().trim());
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -184,12 +172,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      context.assertTrue(res.result().isPresent());
-      context.assertEquals(getRecord(0).getId(), res.result().get().getRecordId());
-      context.assertEquals(new JsonObject((String) getParsedRecord(0).getContent()),
-        new JsonObject((String) res.result().get().getParsedRecord().getContent()));
-      context.assertEquals(getParsedRecord(0).getFormattedContent().trim(),
-        res.result().get().getParsedRecord().getFormattedContent().trim());
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected record and parsed record should be updated
+      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -201,7 +186,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecordCollection(context, res.result());
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -213,7 +200,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecordCollection(context, res.result());
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected records and parsed records will have to be manually filtered
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -229,7 +220,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecordCollection(context, res.result());
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -244,7 +237,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecordCollection(context, res.result());
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected records and parsed records will have to be manually filtered
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedParsedRecords, res.result());
       async.complete();
     });
   }
@@ -259,36 +256,59 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     };
   }
 
-  private void compareSourceRecordCollection(TestContext context, SourceRecordCollection actualSourceRecordCollection) {
-    List<Record> expectedRecords = getRecords().stream()
-        .filter(expectedRecord -> expectedRecord.getState().equals(State.ACTUAL)).collect(Collectors.toList());
+  private void compareSourceRecord(
+    TestContext context,
+    Record expectedRecord,
+    ParsedRecord expectedParsedRecord,
+    Optional<SourceRecord> actualSourceRecord
+  ) {
+    context.assertTrue(actualSourceRecord.isPresent());
+    context.assertEquals(expectedRecord.getId(), actualSourceRecord.get().getRecordId());
+    context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()),
+      new JsonObject((String) actualSourceRecord.get().getParsedRecord().getContent()));
+    context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
+      actualSourceRecord.get().getParsedRecord().getFormattedContent().trim());
+  }
 
-      Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+  private void compareSourceRecordCollection(
+    TestContext context, 
+    List<Record> expectedRecords, 
+    List<ParsedRecord> expectedParsedRecords, 
+    SourceRecordCollection actualSourceRecordCollection
+  ) {
+    Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
 
-      List<ParsedRecord> expectedParsedRecords = expectedRecords.stream()
-        .map(expectedRecord -> getParsedRecord(expectedRecord.getId()))
-        .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
-        .collect(Collectors.toList());
+    Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
 
-      Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
+    List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
 
-      List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
+    Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
 
-      Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
+    context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+    context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
 
-      context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-      context.assertEquals(expectedParsedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+    for (int i = 0; i < expectedRecords.size(); i++) {
+      Record expectedRecord = expectedRecords.get(i);
+      ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
+      SourceRecord actualSourceRecord = actualSourceRecords.get(i);
+      context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
+      context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
+        new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
+      context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
+        actualSourceRecord.getParsedRecord().getFormattedContent().trim());
+    }
+  }
 
-      for (int i = 0; i < expectedRecords.size(); i++) {
-        Record expectedRecord = expectedRecords.get(i);
-        ParsedRecord expectedParsedRecord = expectedParsedRecords.get(i);
-        SourceRecord actualSourceRecord = actualSourceRecords.get(i);
-        context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
-        context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
-          new JsonObject((String) actualSourceRecord.getParsedRecord().getContent()).encode());
-        context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
-          actualSourceRecord.getParsedRecord().getFormattedContent().trim());
-      }
+  private List<Record> getRecords(State state) {
+    return getRecords().stream()
+      .filter(expectedRecord -> expectedRecord.getState().equals(state)).collect(Collectors.toList());
+  }
+
+  private List<ParsedRecord> getParsedRecords(List<Record> records) {
+    return records.stream()
+      .map(record -> getParsedRecord(record.getId()))
+      .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
+      .collect(Collectors.toList());
   }
 
 }

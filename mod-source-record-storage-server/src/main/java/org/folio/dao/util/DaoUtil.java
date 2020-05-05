@@ -3,6 +3,9 @@ package org.folio.dao.util;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 
+/**
+ * Utility class for hosting DAO constants
+ */
 public class DaoUtil {
 
   public static final FastDateFormat DATE_FORMATTER = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT;

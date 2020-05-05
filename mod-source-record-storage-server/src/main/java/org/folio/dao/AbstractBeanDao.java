@@ -30,21 +30,21 @@ import io.vertx.ext.sql.UpdateResult;
 
 public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements BeanDao<B, C, F> {
 
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
 
   public Future<Optional<B>> getById(String id, String tenantId) {
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getTableName(), id);
-    logger.info("Attempting get by id: {}", sql);
+    log.info("Attempting get by id: {}", sql);
     return select(sql, tenantId);
   }
 
   public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getTableName(), filter.toWhereClause(), offset, limit);
-    logger.info("Attempting get by filter: {}", sql);
+    log.info("Attempting get by filter: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
@@ -53,10 +53,10 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     Promise<B> promise = Promise.promise();
     String columns = getColumns();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
-    logger.info("Attempting save: {}", sql);
+    log.info("Attempting save: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, true), save -> {
       if (save.failed()) {
-        logger.error("Failed to insert row in {}", save.cause(), getTableName());
+        log.error("Failed to insert row in {}", save.cause(), getTableName());
         promise.fail(save.cause());
         return;
       }
@@ -67,14 +67,14 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
 
   public Future<List<B>> save(List<B> beans, String tenantId) {
     Promise<List<B>> promise = Promise.promise();
-    logger.info("Attempting batch save in {}", getTableName());
+    log.info("Attempting batch save in {}", getTableName());
     // NOTE: update when raml-module-builder supports batch save with params
     // vertx-mysql-postgresql-client does not implement batch save
     // vertx-pg-client does
     // https://github.com/folio-org/raml-module-builder/pull/640
     CompositeFuture.all(beans.stream().map(bean -> save(bean, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
       if (batch.failed()) {
-        logger.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
+        log.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
         promise.fail(batch.cause());
         return;
       }
@@ -88,10 +88,10 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     String id = getId(bean);
     String columns = getColumns();
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns), id);
-    logger.info("Attempting update: {}", sql);
+    log.info("Attempting update: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, false), update -> {
       if (update.failed()) {
-        logger.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
+        log.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
         promise.fail(update.cause());
         return;
       }
@@ -107,7 +107,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
   public Future<Boolean> delete(String id, String tenantId) {
     Promise<UpdateResult> promise = Promise.promise();
     String sql = String.format(DELETE_SQL_TEMPLATE, getTableName(), id);
-    logger.info("Attempting delete: {}", sql);
+    log.info("Attempting delete: {}", sql);
     postgresClientFactory.createInstance(tenantId).execute(sql, promise);
     return promise.future().map(updateResult -> updateResult.getUpdated() == 1);
   }

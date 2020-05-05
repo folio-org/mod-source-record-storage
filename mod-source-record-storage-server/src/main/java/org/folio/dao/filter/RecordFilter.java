@@ -15,6 +15,8 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
+import java.util.Objects;
+
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
@@ -33,23 +35,23 @@ public class RecordFilter extends Record implements BeanFilter {
       .append(getMatchedProfileId(), MATCHED_PROFILE_ID_COLUMN_NAME)
       .append(getGeneration(), GENERATION_COLUMN_NAME)
       .append(getOrder(), ORDER_IN_FILE_COLUMN_NAME);
-    if (getRecordType() != null) {
+    if (Objects.nonNull(getRecordType())) {
       whereClauseBuilder
         .append(getRecordType().toString(), RECORD_TYPE_COLUMN_NAME);
     }
-    if (getState() != null) {
+    if (Objects.nonNull(getState())) {
       whereClauseBuilder
         .append(getState().toString(), STATE_COLUMN_NAME);
     }
-    if (getExternalIdsHolder() != null) {
+    if (Objects.nonNull(getExternalIdsHolder())) {
       whereClauseBuilder
         .append(getExternalIdsHolder().getInstanceId(), INSTANCE_ID_COLUMN_NAME);
     }
-    if (getAdditionalInfo() != null) {
+    if (Objects.nonNull(getAdditionalInfo())) {
       whereClauseBuilder
         .append(getAdditionalInfo().getSuppressDiscovery(), SUPPRESS_DISCOVERY_COLUMN_NAME);
     }
-    if (getMetadata() != null) {
+    if (Objects.nonNull(getMetadata())) {
       whereClauseBuilder
         .append(getMetadata().getCreatedByUserId(), CREATED_BY_USER_ID_COLUMN_NAME);
       whereClauseBuilder

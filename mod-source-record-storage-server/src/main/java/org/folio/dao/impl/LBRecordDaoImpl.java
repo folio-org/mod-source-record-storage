@@ -81,14 +81,14 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
     String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
-    logger.info("Attempting get by matched id: {}", sql);
+    log.info("Attempting get by matched id: {}", sql);
     return select(sql, tenantId);
   }
 
   @Override
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
     String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
-    logger.info("Attempting get by instance id: {}", sql);
+    log.info("Attempting get by instance id: {}", sql);
     return select(sql, tenantId);
   }
 
@@ -181,24 +181,20 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       .withGeneration(result.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)))
       .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)));
-
     if (result.containsKey(ORDER_IN_FILE_COLUMN_NAME)) {
       record.setOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
     }
-
     ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
     String instanceId = result.getString(INSTANCE_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(instanceId)) {
       externalIdHolder.setInstanceId(instanceId);
     }
     record.setExternalIdsHolder(externalIdHolder);
-
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (result.containsKey(SUPPRESS_DISCOVERY_COLUMN_NAME)) {
       additionalInfo.setSuppressDiscovery(result.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME));
     }
     record.setAdditionalInfo(additionalInfo);
-
     Metadata metadata = new Metadata();
     String createdByUserId = result.getString(CREATED_BY_USER_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(createdByUserId)) {

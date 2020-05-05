@@ -171,8 +171,8 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private SourceRecordCollection toSourceRecordCollection(ResultSet resultSet) {
     return new SourceRecordCollection()
-        .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()))
-        .withTotalRecords(resultSet.getNumRows());
+      .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()))
+      .withTotalRecords(resultSet.getNumRows());
   }
 
   private SourceRecord toSourceRecord(JsonObject jsonObject) {

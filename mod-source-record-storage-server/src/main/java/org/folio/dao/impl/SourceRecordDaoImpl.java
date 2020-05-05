@@ -229,7 +229,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private Future<Optional<SourceRecord>> lookupContent(SourceRecordContent content, String tenantId, Optional<SourceRecord> sourceRecord) {
     if (sourceRecord.isPresent()) {
-      return lookupContent(content, tenantId, sourceRecord.get()).map(sr -> Optional.of(sr));
+      return lookupContent(content, tenantId, sourceRecord.get()).map(Optional::of);
     }
     return Future.factory.succeededFuture(sourceRecord);
   }

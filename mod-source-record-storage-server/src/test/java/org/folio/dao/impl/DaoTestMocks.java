@@ -2,6 +2,7 @@ package org.folio.dao.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,11 +40,17 @@ public abstract class DaoTestMocks {
   @BeforeClass
   public static void setUpMocks(final TestContext context) throws Exception {
     List<SourceRecord> sourceRecords = readSourceRecords();
+    Collections.sort(sourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
     rawRecords = sourceRecords.stream().map(DaoTestMocks::toRawRecord).collect(Collectors.toList());
+    Collections.sort(rawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
     parsedRecords = sourceRecords.stream().map(DaoTestMocks::toParsedRecord).collect(Collectors.toList());
+    Collections.sort(parsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
     errorRecords = readErrorRecords(sourceRecords);
+    Collections.sort(errorRecords, (er1, er2) -> er1.getId().compareTo(er2.getId()));
     records = readRecords(sourceRecords);
+    Collections.sort(records, (r1, r2) -> r1.getId().compareTo(r2.getId()));
     snapshots = readSnapshots(sourceRecords);
+    Collections.sort(snapshots, (s1, s2) -> s1.getJobExecutionId().compareTo(s2.getJobExecutionId()));
   }
 
   protected List<Snapshot> getSnapshots() {

@@ -31,7 +31,7 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
 
   @Override
   public void createDependentEntities(TestContext context) {
-    // NOTE: no dependent beans needed for testing Snapshot DAO
+    // NOTE: no dependent entities needed for testing Snapshot DAO
   }
 
   @Override

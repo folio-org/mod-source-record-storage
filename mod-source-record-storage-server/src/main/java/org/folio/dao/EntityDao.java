@@ -41,7 +41,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param offset       starting index in a list of results
    * @param limit        maximum number of results to return
    * @param tenantId     tenant id
-   * @param handler      handler for each Entity
+   * @param handler      handler for Entity stream
    * @param replyHandler handler for when stream is finished
    */
   public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<I> handler, Handler<AsyncResult<Void>> replyHandler);
@@ -49,7 +49,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
   /**
    * Saves Entity to database
    * 
-   * @param entity     Entity to save
+   * @param entity   Entity to save
    * @param tenantId tenant id
    * @return future with saved entity
    */
@@ -58,16 +58,16 @@ public interface EntityDao<I, C, F extends EntityFilter> {
   /**
    * Saves batch of Entity to database
    * 
-   * @param beans    List of Entities to save
+   * @param entities List of Entities to save
    * @param tenantId tenant id
-   * @return future with list of saved beans
+   * @return future with list of saved entities
    */
-  public Future<List<I>> save(List<I> beans, String tenantId);
+  public Future<List<I>> save(List<I> entities, String tenantId);
 
   /**
    * Updates Entity in database
    * 
-   * @param entity     Entity to save
+   * @param entity   Entity to save
    * @param tenantId tenant id
    * @return future with updated entity
    */
@@ -99,7 +99,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
   /**
    * Get Entity id
    * 
-   * @param entity     Entity to retrieve id from
+   * @param entity Entity to retrieve id from
    * @return id of given entity
    */
   public String getId(I entity);

@@ -90,20 +90,20 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
     return promise.future();
   }
 
-  public Future<List<I>> save(List<I> beans, String tenantId) {
+  public Future<List<I>> save(List<I> entities, String tenantId) {
     Promise<List<I>> promise = Promise.promise();
     log.info("Attempting batch save in {}", getTableName());
     // NOTE: update when raml-module-builder supports batch save with params
     // vertx-mysql-postgresql-client does not implement batch save
     // vertx-pg-client does
     // https://github.com/folio-org/raml-module-builder/pull/640
-    CompositeFuture.all(beans.stream().map(entity -> save(entity, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
+    CompositeFuture.all(entities.stream().map(entity -> save(entity, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
       if (batch.failed()) {
         log.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
         promise.fail(batch.cause());
         return;
       }
-      promise.complete(postSave(beans));
+      promise.complete(postSave(entities));
     });
     return promise.future();
   }
@@ -140,12 +140,12 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
   /**
    * Prepare list of params for multi-row INSERT and UPDATE query values
    * 
-   * @param beans                 list of Entities for extracting values for params
+   * @param entities              list of Entities for extracting values for params
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return list of {@link JsonArray} params
    */
-  public List<JsonArray> toParams(List<I> beans, boolean generateIdIfNotExists) {
-    return beans.stream().map(entity -> toParams(entity, generateIdIfNotExists)).collect(Collectors.toList());
+  public List<JsonArray> toParams(List<I> entities, boolean generateIdIfNotExists) {
+    return entities.stream().map(entity -> toParams(entity, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
   /**
@@ -206,11 +206,11 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
   /**
    * Post save processing of list of Entities
    * 
-   * @param beans saved list of Entities
+   * @param entities saved list of Entities
    * @return entity after post save processing
    */
-  protected List<I> postSave(List<I> beans) {
-    return beans.stream().map(this::postSave).collect(Collectors.toList());
+  protected List<I> postSave(List<I> entities) {
+    return entities.stream().map(this::postSave).collect(Collectors.toList());
   }
 
   /**

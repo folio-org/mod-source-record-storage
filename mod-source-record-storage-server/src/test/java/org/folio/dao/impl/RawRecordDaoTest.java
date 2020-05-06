@@ -135,7 +135,7 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   @Override
   public RawRecordFilter getCompleteFilter() {
     RawRecordFilter filter = new RawRecordFilter();
-    BeanUtils.copyProperties(getRawRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8"), filter);
+    BeanUtils.copyProperties(getRawRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
     return filter;
   }
 

@@ -136,7 +136,7 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   @Override
   public SnapshotFilter getCompleteFilter() {
     SnapshotFilter filter = new SnapshotFilter();
-    BeanUtils.copyProperties(getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5"), filter);
+    BeanUtils.copyProperties(getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), filter);
     return filter;
   }
 

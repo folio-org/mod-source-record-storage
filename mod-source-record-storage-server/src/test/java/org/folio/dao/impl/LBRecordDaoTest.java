@@ -224,7 +224,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Override
   public RecordFilter getCompleteFilter() {
     RecordFilter filter = new RecordFilter();
-    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8"), filter);
+    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
     return filter;
   }
 

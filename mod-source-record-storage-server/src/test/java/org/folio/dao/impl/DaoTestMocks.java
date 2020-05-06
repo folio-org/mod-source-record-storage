@@ -98,7 +98,7 @@ public abstract class DaoTestMocks {
   }
 
   protected Optional<Record> getRecord(String id) {
-    return records.stream().filter(r -> r.getId().equals(r)).findAny();
+    return records.stream().filter(r -> r.getId().equals(id)).findAny();
   }
 
   protected Optional<ErrorRecord> getErrorRecord(String id) {

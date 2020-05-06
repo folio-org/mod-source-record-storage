@@ -225,6 +225,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   public RecordFilter getCompleteFilter() {
     RecordFilter filter = new RecordFilter();
     BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
+    filter.withMetadata(filter.getMetadata().withCreatedDate(null).withUpdatedDate(null));
     return filter;
   }
 
@@ -241,9 +242,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
       " AND instanceid = '6b4ae089-e1ee-431f-af83-e1133f8e3da0'" +
       " AND suppressdiscovery = false" +
       " AND createdbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'" +
-      " AND createddate = '2020-03-19T11:43:00-05:00'" +
-      " AND updatedbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'" +
-      " AND updateddate = '2020-03-19T11:43:01-05:00'";
+      " AND updatedbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'";
   }
 
 }

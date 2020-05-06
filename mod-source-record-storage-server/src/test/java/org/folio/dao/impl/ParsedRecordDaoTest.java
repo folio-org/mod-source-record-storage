@@ -139,7 +139,7 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   @Override
   public ParsedRecordFilter getCompleteFilter() {
     ParsedRecordFilter filter = new ParsedRecordFilter();
-    BeanUtils.copyProperties(getParsedRecord(0), filter);
+    BeanUtils.copyProperties(getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8"), filter);
     return filter;
   }
 

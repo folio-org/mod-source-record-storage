@@ -141,7 +141,7 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
   @Override
   public ErrorRecordFilter getCompleteFilter() {
     ErrorRecordFilter filter = new ErrorRecordFilter();
-    BeanUtils.copyProperties(getErrorRecord(0), filter);
+    BeanUtils.copyProperties(getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e"), filter);
     return filter;
   }
 

@@ -93,6 +93,18 @@ public abstract class DaoTestMocks {
     return parsedRecords.get(index);
   }
 
+  protected Optional<Snapshot> getSnapshot(String id) {
+    return snapshots.stream().filter(s -> s.getJobExecutionId().equals(id)).findAny();
+  }
+
+  protected Optional<Record> getRecord(String id) {
+    return records.stream().filter(r -> r.getId().equals(r)).findAny();
+  }
+
+  protected Optional<ErrorRecord> getErrorRecord(String id) {
+    return errorRecords.stream().filter(er -> er.getId().equals(id)).findAny();
+  }
+
   protected Optional<RawRecord> getRawRecord(String id) {
     return rawRecords.stream().filter(rr -> rr.getId().equals(id)).findAny();
   }

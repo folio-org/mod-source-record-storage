@@ -184,8 +184,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldGenerateWhereClauseFromFilter(TestContext context) {
     F filter = getCompleteFilter();
-    String whereClause = filter.toWhereClause();
-    assertEquals(getCompleteWhereClause(), whereClause);
+    assertEquals(getCompleteWhereClause().trim(), filter.toWhereClause().trim());
   }
 
   public void compareEntities(TestContext context, List<E> expected, List<E> actual) {

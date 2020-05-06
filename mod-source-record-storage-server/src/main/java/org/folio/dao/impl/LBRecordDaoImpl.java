@@ -17,6 +17,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.filter.RecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -185,20 +186,20 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       .withMatchedId(result.getString(MATCHED_ID_COLUMN_NAME))
       .withGeneration(result.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)));
-    ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
     String instanceId = result.getString(INSTANCE_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(instanceId)) {
+      ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
       externalIdHolder.setInstanceId(instanceId);
+      record.setExternalIdsHolder(externalIdHolder);
     }
-    record.setExternalIdsHolder(externalIdHolder);
     record
       .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)))
       .withOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
-    AdditionalInfo additionalInfo = new AdditionalInfo();
     if (result.containsKey(SUPPRESS_DISCOVERY_COLUMN_NAME)) {
+      AdditionalInfo additionalInfo = new AdditionalInfo();
       additionalInfo.setSuppressDiscovery(result.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME));
+      record.setAdditionalInfo(additionalInfo);
     }
-    record.setAdditionalInfo(additionalInfo);
     Metadata metadata = new Metadata();
     String createdByUserId = result.getString(CREATED_BY_USER_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(createdByUserId)) {
@@ -229,39 +230,22 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       .withMatchedId(row.getString(3))
       .withGeneration(row.getInteger(4))
       .withRecordType(RecordType.valueOf(row.getString(5)));
-    ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
     String instanceId = row.getString(6);
     if (StringUtils.isNotEmpty(instanceId)) {
+      ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
       externalIdHolder.setInstanceId(instanceId);
+      record.setExternalIdsHolder(externalIdHolder);
     }
-    record.setExternalIdsHolder(externalIdHolder);
     record
       .withState(State.valueOf(row.getString(7)))
       .withOrder(row.getInteger(8));
-    AdditionalInfo additionalInfo = new AdditionalInfo();
     Boolean suppressDiscovery = row.getBoolean(9);
     if (Objects.nonNull(suppressDiscovery)) {
+      AdditionalInfo additionalInfo = new AdditionalInfo();
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
+      record.setAdditionalInfo(additionalInfo);
     }
-    record.setAdditionalInfo(additionalInfo);
-    Metadata metadata = new Metadata();
-    String createdByUserId = row.getString(10);
-    if (StringUtils.isNotEmpty(createdByUserId)) {
-      metadata.setCreatedByUserId(createdByUserId);
-    }
-    Instant createdDate = row.getInstant(11);
-    if (Objects.nonNull(createdDate)) {
-      metadata.setCreatedDate(Date.from(createdDate));
-    }
-    String updatedByUserId = row.getString(12);
-    if (StringUtils.isNotEmpty(updatedByUserId)) {
-      metadata.setUpdatedByUserId(updatedByUserId);
-    }
-    Instant updatedDate = row.getInstant(13);
-    if (Objects.nonNull(updatedDate)) {
-      metadata.setUpdatedDate(Date.from(updatedDate));
-    }
-    record.setMetadata(metadata);
+    record.setMetadata(DaoUtil.metadataFromJsonArray(row, new int[] { 10, 11, 12, 13 }));
     return record;
   }
 

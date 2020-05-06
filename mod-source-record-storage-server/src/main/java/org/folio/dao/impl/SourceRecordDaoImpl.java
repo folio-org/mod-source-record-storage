@@ -16,23 +16,20 @@ import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
 import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.SourceRecordContent;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -250,30 +247,13 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   private SourceRecord toSourceRecord(JsonArray row) {
-    Metadata metadata = new Metadata();
-    String createdByUserId = row.getString(4);
-    if (StringUtils.isNotEmpty(createdByUserId)) {
-      metadata.setCreatedByUserId(createdByUserId);
-    }
-    Instant createdDate = row.getInstant(5);
-    if (Objects.nonNull(createdDate)) {
-      metadata.setCreatedDate(Date.from(createdDate));
-    }
-    String updatedByUserId = row.getString(6);
-    if (StringUtils.isNotEmpty(updatedByUserId)) {
-      metadata.setUpdatedByUserId(updatedByUserId);
-    }
-    Instant updatedDate = row.getInstant(7);
-    if (Objects.nonNull(updatedDate)) {
-      metadata.setUpdatedDate(Date.from(updatedDate));
-    }
     return new SourceRecord()
       .withRecordId(row.getString(0))
       .withSnapshotId(row.getString(1))
       .withOrder(row.getInteger(2))
       // NOTE: not ideal to have multiple record type enums
       .withRecordType(RecordType.fromValue(row.getString(3)))
-      .withMetadata(metadata);
+      .withMetadata(DaoUtil.metadataFromJsonArray(row, new int[] { 4, 5, 6, 7 }));
   }
 
   private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {

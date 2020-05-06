@@ -1,7 +1,15 @@
 package org.folio.dao.util;
 
+import java.time.Instant;
+import java.util.Date;
+import java.util.Objects;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
+import org.folio.rest.jaxrs.model.Metadata;
+
+import io.vertx.core.json.JsonArray;
 
 /**
  * Utility class for hosting DAO constants
@@ -38,5 +46,26 @@ public class DaoUtil {
   public static final String COLUMN_EQUALS_TEMPLATE = "%s = ";
 
   private DaoUtil() { }
+
+  public static Metadata metadataFromJsonArray(JsonArray row, int[] positions) {
+    Metadata metadata = new Metadata();
+    String createdByUserId = row.getString(positions[0]);
+    if (StringUtils.isNotEmpty(createdByUserId)) {
+      metadata.setCreatedByUserId(createdByUserId);
+    }
+    Instant createdDate = row.getInstant(positions[1]);
+    if (Objects.nonNull(createdDate)) {
+      metadata.setCreatedDate(Date.from(createdDate));
+    }
+    String updatedByUserId = row.getString(positions[2]);
+    if (StringUtils.isNotEmpty(updatedByUserId)) {
+      metadata.setUpdatedByUserId(updatedByUserId);
+    }
+    Instant updatedDate = row.getInstant(positions[3]);
+    if (Objects.nonNull(updatedDate)) {
+      metadata.setUpdatedDate(Date.from(updatedDate));
+    }
+    return metadata;
+  }
 
 }

@@ -9,7 +9,7 @@ import java.util.Objects;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 
-public class SnapshotFilter extends Snapshot implements BeanFilter {
+public class SnapshotFilter extends Snapshot implements EntityFilter {
 
   @Override
   public String toWhereClause() {

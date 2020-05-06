@@ -12,7 +12,7 @@ import io.vertx.core.Future;
 /**
  * Data access object for {@link Record}
  */
-public interface LBRecordDao extends BeanDao<Record, RecordCollection, RecordFilter> {
+public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordFilter> {
 
   /**
    * Searches for {@link Record} by id

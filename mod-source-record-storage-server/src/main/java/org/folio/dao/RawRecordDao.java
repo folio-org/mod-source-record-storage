@@ -7,6 +7,6 @@ import org.folio.rest.jaxrs.model.RawRecordCollection;
 /**
  * Data access object for {@link RawRecord}
  */
-public interface RawRecordDao extends BeanDao<RawRecord, RawRecordCollection, RawRecordFilter> {
+public interface RawRecordDao extends EntityDao<RawRecord, RawRecordCollection, RawRecordFilter> {
 
 }

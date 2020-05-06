@@ -21,7 +21,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCollection, SnapshotFilter, LBSnapshotDao> {
+public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotCollection, SnapshotFilter, LBSnapshotDao> {
 
   @Override
   public void createDao(TestContext context) throws IllegalAccessException {
@@ -30,7 +30,7 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
-  public void createDependentBeans(TestContext context) {
+  public void createDependentEntities(TestContext context) {
     // NOTE: no dependent beans needed for testing Snapshot DAO
   }
 
@@ -50,16 +50,16 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntityWithoutId(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareBeans(context, getMockBeanWithoutId(), res.result());
+      compareEntities(context, getMockEntityWithoutId(), res.result());
       async.complete();
     });
   }
 
-  public Snapshot getMockBeanWithoutId() {
+  public Snapshot getMockEntityWithoutId() {
     return new Snapshot()
       .withStatus(Snapshot.Status.NEW);
   }
@@ -77,31 +77,31 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
   }
 
   @Override
-  public Snapshot getMockBean() {
+  public Snapshot getMockEntity() {
     return getSnapshot(0);
   }
 
   @Override
-  public Snapshot getInvalidMockBean() {
+  public Snapshot getInvalidMockEntity() {
     return new Snapshot()
       .withJobExecutionId("f3ba7619-d9b6-4e7d-9ebf-587d2d3807d0");
   }
 
   @Override
-  public Snapshot getUpdatedMockBean() {
+  public Snapshot getUpdatedMockEntity() {
     return new Snapshot()
-      .withJobExecutionId(getMockBean().getJobExecutionId())
+      .withJobExecutionId(getMockEntity().getJobExecutionId())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS)
       .withProcessingStartedDate(new Date());
   }
 
   @Override
-  public List<Snapshot> getMockBeans() {
+  public List<Snapshot> getMockEntities() {
     return getSnapshots();
   }
 
   @Override
-  public void compareBeans(TestContext context, Snapshot expected, Snapshot actual) {
+  public void compareEntities(TestContext context, Snapshot expected, Snapshot actual) {
     if (StringUtils.isEmpty(expected.getJobExecutionId())) {
       context.assertNotNull(actual.getJobExecutionId());
     } else {
@@ -116,7 +116,7 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public void assertNoopFilterResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = getMockBeans();
+    List<Snapshot> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
@@ -124,8 +124,8 @@ public class LBSnapshotDaoTest extends AbstractBeanDaoTest<Snapshot, SnapshotCol
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = getMockBeans().stream()
-      .filter(bean -> bean.getStatus().equals(getArbitruaryFilter().getStatus()))
+    List<Snapshot> expected = getMockEntities().stream()
+      .filter(entity -> entity.getStatus().equals(getArbitruaryFilter().getStatus()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()

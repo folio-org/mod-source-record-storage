@@ -20,7 +20,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollection, RecordFilter, LBRecordDao> {
+public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollection, RecordFilter, LBRecordDao> {
 
   private LBSnapshotDao snapshotDao;
 
@@ -33,7 +33,7 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   }
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+  public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
@@ -65,16 +65,16 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   @Test
   public void shouldGetByMatchedId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByMatchedId(getMockBean().getMatchedId(), TENANT_ID).setHandler(res -> {
+      dao.getByMatchedId(getMockEntity().getMatchedId(), TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        compareBeans(context, getMockBean(), res.result().get());
+        compareEntities(context, getMockEntity(), res.result().get());
         async.complete();
       });
     });
@@ -83,16 +83,16 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   @Test
   public void shouldGetByInstanceId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByInstanceId(getMockBean().getExternalIdsHolder().getInstanceId(), TENANT_ID).setHandler(res -> {
+      dao.getByInstanceId(getMockEntity().getExternalIdsHolder().getInstanceId(), TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        compareBeans(context, getMockBean(), res.result().get());
+        compareEntities(context, getMockEntity(), res.result().get());
         async.complete();
       });
     });
@@ -101,16 +101,16 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBeanWithoutId(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntityWithoutId(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareBeans(context, getMockBeanWithoutId(), res.result());
+      compareEntities(context, getMockEntityWithoutId(), res.result());
       async.complete();
     });
   }
 
-  public Record getMockBeanWithoutId() {
+  public Record getMockEntityWithoutId() {
     return new Record()
       .withSnapshotId(getSnapshot(1).getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
@@ -134,12 +134,12 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   }
 
   @Override
-  public Record getMockBean() {
+  public Record getMockEntity() {
     return getRecord(0);
   }
 
   @Override
-  public Record getInvalidMockBean() {
+  public Record getInvalidMockEntity() {
     String id = UUID.randomUUID().toString();
     return new Record().withId(id)
       .withRecordType(Record.RecordType.MARC)
@@ -149,28 +149,28 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
   }
 
   @Override
-  public Record getUpdatedMockBean() {
+  public Record getUpdatedMockEntity() {
     return new Record()
-      .withId(getMockBean().getId())
-      .withMatchedId(getMockBean().getMatchedId())
-      .withMatchedProfileId(getMockBean().getMatchedProfileId())
-      .withSnapshotId(getMockBean().getSnapshotId())
-      .withGeneration(getMockBean().getGeneration())
-      .withRecordType(getMockBean().getRecordType())
-      .withAdditionalInfo(getMockBean().getAdditionalInfo())
-      .withExternalIdsHolder(getMockBean().getExternalIdsHolder())
-      .withMetadata(getMockBean().getMetadata())
+      .withId(getMockEntity().getId())
+      .withMatchedId(getMockEntity().getMatchedId())
+      .withMatchedProfileId(getMockEntity().getMatchedProfileId())
+      .withSnapshotId(getMockEntity().getSnapshotId())
+      .withGeneration(getMockEntity().getGeneration())
+      .withRecordType(getMockEntity().getRecordType())
+      .withAdditionalInfo(getMockEntity().getAdditionalInfo())
+      .withExternalIdsHolder(getMockEntity().getExternalIdsHolder())
+      .withMetadata(getMockEntity().getMetadata())
       .withState(Record.State.DRAFT)
       .withOrder(2);
   }
 
   @Override
-  public List<Record> getMockBeans() {
+  public List<Record> getMockEntities() {
     return getRecords();
   }
 
   @Override
-  public void compareBeans(TestContext context, Record expected, Record actual) {
+  public void compareEntities(TestContext context, Record expected, Record actual) {
     if (StringUtils.isEmpty(expected.getId())) {
       context.assertNotNull(actual.getId());
     } else {
@@ -203,7 +203,7 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   @Override
   public void assertNoopFilterResults(TestContext context, RecordCollection actual) {
-    List<Record> expected = getMockBeans();
+    List<Record> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
       .anyMatch(actualRecord -> actualRecord.getId().equals(expectedRecord.getId()))));
@@ -211,9 +211,9 @@ public class LBRecordDaoTest extends AbstractBeanDaoTest<Record, RecordCollectio
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, RecordCollection actual) {
-    List<Record> expected = getMockBeans().stream()
-      .filter(bean -> bean.getState().equals(getArbitruaryFilter().getState()) &&
-        bean.getMatchedProfileId().equals(getArbitruaryFilter().getMatchedProfileId()))
+    List<Record> expected = getMockEntities().stream()
+      .filter(entity -> entity.getState().equals(getArbitruaryFilter().getState()) &&
+        entity.getMatchedProfileId().equals(getArbitruaryFilter().getMatchedProfileId()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()

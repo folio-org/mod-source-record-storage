@@ -20,7 +20,7 @@ import java.util.Objects;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
-public class RecordFilter extends Record implements BeanFilter {
+public class RecordFilter extends Record implements EntityFilter {
 
   public RecordFilter() {
     setState(null);

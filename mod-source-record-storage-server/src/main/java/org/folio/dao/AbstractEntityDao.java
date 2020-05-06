@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
-import org.folio.dao.filter.BeanFilter;
+import org.folio.dao.filter.EntityFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -30,7 +30,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
-public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements BeanDao<I, C, F> {
+public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements EntityDao<I, C, F> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -67,25 +67,25 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
           return;
         }
         stream.result()
-          .handler(row -> handler.handle(toBean(row)))
+          .handler(row -> handler.handle(toEntity(row)))
           .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
           .endHandler(x -> endHandler.handle(Future.succeededFuture()));
       });
     });
   }
 
-  public Future<I> save(I bean, String tenantId) {
+  public Future<I> save(I entity, String tenantId) {
     Promise<I> promise = Promise.promise();
     String columns = getColumns();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
     log.info("Attempting save: {}", sql);
-    postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, true), save -> {
+    postgresClientFactory.createInstance(tenantId).execute(sql, toParams(entity, true), save -> {
       if (save.failed()) {
         log.error("Failed to insert row in {}", save.cause(), getTableName());
         promise.fail(save.cause());
         return;
       }
-      promise.complete(postSave(bean));
+      promise.complete(postSave(entity));
     });
     return promise.future();
   }
@@ -97,7 +97,7 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
     // vertx-mysql-postgresql-client does not implement batch save
     // vertx-pg-client does
     // https://github.com/folio-org/raml-module-builder/pull/640
-    CompositeFuture.all(beans.stream().map(bean -> save(bean, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
+    CompositeFuture.all(beans.stream().map(entity -> save(entity, tenantId)).collect(Collectors.toList())).setHandler(batch -> {
       if (batch.failed()) {
         log.error("Failed to batch insert rows in {}", batch.cause(), getTableName());
         promise.fail(batch.cause());
@@ -108,13 +108,13 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
     return promise.future();
   }
 
-  public Future<I> update(I bean, String tenantId) {
+  public Future<I> update(I entity, String tenantId) {
     Promise<I> promise = Promise.promise();
-    String id = getId(bean);
+    String id = getId(entity);
     String columns = getColumns();
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns), id);
     log.info("Attempting update: {}", sql);
-    postgresClientFactory.createInstance(tenantId).execute(sql, toParams(bean, false), update -> {
+    postgresClientFactory.createInstance(tenantId).execute(sql, toParams(entity, false), update -> {
       if (update.failed()) {
         log.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
         promise.fail(update.cause());
@@ -124,7 +124,7 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
         promise.fail(new NotFoundException(String.format("%s row with id %s was not updated", getTableName(), id)));
         return;
       }
-      promise.complete(postUpdate(bean));
+      promise.complete(postUpdate(entity));
     });
     return promise.future();
   }
@@ -140,22 +140,22 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
   /**
    * Prepare list of params for multi-row INSERT and UPDATE query values
    * 
-   * @param beans                 list of Beans for extracting values for params
+   * @param beans                 list of Entities for extracting values for params
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return list of {@link JsonArray} params
    */
   public List<JsonArray> toParams(List<I> beans, boolean generateIdIfNotExists) {
-    return beans.stream().map(bean -> toParams(bean, generateIdIfNotExists)).collect(Collectors.toList());
+    return beans.stream().map(entity -> toParams(entity, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
   /**
-   * Convert {@link ResultSet} into Bean
+   * Convert {@link ResultSet} into Entity
    * 
    * @param resultSet {@link ResultSet} query results
-   * @return optional Bean
+   * @return optional Entity
    */
-  public Optional<I> toBean(ResultSet resultSet)  {
-    return resultSet.getNumRows() > 0 ? Optional.of(toBean(resultSet.getRows().get(0))) : Optional.empty();
+  public Optional<I> toEntity(ResultSet resultSet)  {
+    return resultSet.getNumRows() > 0 ? Optional.of(toEntity(resultSet.getRows().get(0))) : Optional.empty();
   }
 
   /**
@@ -175,39 +175,39 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
    * 
    * @param sql      SQL query
    * @param tenantId tenant id
-   * @return future of optional Bean
+   * @return future of optional Entity
    */
   protected Future<Optional<I>> select(String sql, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toBean);
+    return promise.future().map(this::toEntity);
   }
 
   /**
-   * Post save processing of Bean
+   * Post save processing of Entity
    * 
-   * @param bean saved Bean
-   * @return bean after post save processing
+   * @param entity saved Entity
+   * @return entity after post save processing
    */
-  protected I postSave(I bean) {
-    return bean;
+  protected I postSave(I entity) {
+    return entity;
   }
 
   /**
-   * Post update processing of Bean
+   * Post update processing of Entity
    * 
-   * @param bean updated Bean
-   * @return bean after post update processing
+   * @param entity updated Entity
+   * @return entity after post update processing
    */
-  protected I postUpdate(I bean) {
-    return bean;
+  protected I postUpdate(I entity) {
+    return entity;
   }
 
   /**
-   * Post save processing of list of Beans
+   * Post save processing of list of Entities
    * 
-   * @param beans saved list of Beans
-   * @return bean after post save processing
+   * @param beans saved list of Entities
+   * @return entity after post save processing
    */
   protected List<I> postSave(List<I> beans) {
     return beans.stream().map(this::postSave).collect(Collectors.toList());
@@ -216,34 +216,34 @@ public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements Bea
   /**
    * Prepare params for INSERT and UPDATE query values
    * 
-   * @param bean                  Bean for extracting values for params
+   * @param entity                  Entity for extracting values for params
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return {@link JsonArray} params
    */
-  protected abstract JsonArray toParams(I bean, boolean generateIdIfNotExists);
+  protected abstract JsonArray toParams(I entity, boolean generateIdIfNotExists);
 
   /**
-   * Convert {@link ResultSet} into Bean Collection
+   * Convert {@link ResultSet} into Entity Collection
    * 
    * @param resultSet {@link ResultSet} query results
-   * @return Bean Collection
+   * @return Entity Collection
    */
   protected abstract C toCollection(ResultSet resultSet);
 
   /**
-   * Convert {@link JsonObject} into Bean
+   * Convert {@link JsonObject} into Entity
    * 
    * @param result {@link JsonObject} query result row
-   * @return Bean
+   * @return Entity
    */
-  protected abstract I toBean(JsonObject result);
+  protected abstract I toEntity(JsonObject result);
 
   /**
-   * Convert {@link JsonArray} into Bean
+   * Convert {@link JsonArray} into Entity
    * 
    * @param result {@link JsonArray} query result row
-   * @return Bean
+   * @return Entity
    */
-  protected abstract I toBean(JsonArray row);
+  protected abstract I toEntity(JsonArray row);
 
 }

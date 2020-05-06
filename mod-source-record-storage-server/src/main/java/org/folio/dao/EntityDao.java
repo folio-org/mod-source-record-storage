@@ -3,80 +3,80 @@ package org.folio.dao;
 import java.util.List;
 import java.util.Optional;
 
-import org.folio.dao.filter.BeanFilter;
+import org.folio.dao.filter.EntityFilter;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Data access object interface for Bean with Collection and {@link BeanFilter}
+ * Data access object interface for Entity with Collection and {@link EntityFilter}
  */
-public interface BeanDao<I, C, F extends BeanFilter> {
+public interface EntityDao<I, C, F extends EntityFilter> {
 
   /**
-   * Searches for Bean by id
+   * Searches for Entity by id
    * 
-   * @param id       Bean id
+   * @param id       Entity id
    * @param tenantId tenant id
-   * @return future with optional bean
+   * @return future with optional entity
    */
   public Future<Optional<I>> getById(String id, String tenantId);
 
   /**
-   * Searchs for Bean by filter
+   * Searchs for Entity by filter
    * 
-   * @param filter   Bean Filter which prepares WHERE clause for query
+   * @param filter   Entity Filter which prepares WHERE clause for query
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
-   * @return future with bean collection
+   * @return future with entity collection
    */
   public Future<C> getByFilter(F filter, int offset, int limit, String tenantId);
 
   /**
-   * Searchs for Bean by filter and stream results
+   * Searchs for Entity by filter and stream results
    * 
-   * @param filter       Bean Filter which prepares WHERE clause for query
+   * @param filter       Entity Filter which prepares WHERE clause for query
    * @param offset       starting index in a list of results
    * @param limit        maximum number of results to return
    * @param tenantId     tenant id
-   * @param handler      handler for each Bean
+   * @param handler      handler for each Entity
    * @param replyHandler handler for when stream is finished
    */
   public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<I> handler, Handler<AsyncResult<Void>> replyHandler);
 
   /**
-   * Saves Bean to database
+   * Saves Entity to database
    * 
-   * @param bean     Bean to save
+   * @param entity     Entity to save
    * @param tenantId tenant id
-   * @return future with saved bean
+   * @return future with saved entity
    */
-  public Future<I> save(I bean, String tenantId);
+  public Future<I> save(I entity, String tenantId);
 
   /**
-   * Saves batch of Bean to database
+   * Saves batch of Entity to database
    * 
-   * @param beans    List of Beans to save
+   * @param beans    List of Entities to save
    * @param tenantId tenant id
    * @return future with list of saved beans
    */
   public Future<List<I>> save(List<I> beans, String tenantId);
 
   /**
-   * Updates Bean in database
+   * Updates Entity in database
    * 
-   * @param bean     Bean to save
+   * @param entity     Entity to save
    * @param tenantId tenant id
-   * @return future with updated bean
+   * @return future with updated entity
    */
-  public Future<I> update(I bean, String tenantId);
+  public Future<I> update(I entity, String tenantId);
 
   /**
-   * Deletes Bean from database
+   * Deletes Entity from database
    * 
-   * @param id       Bean id
+   * @param id       Entity id
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
@@ -85,7 +85,7 @@ public interface BeanDao<I, C, F extends BeanFilter> {
   /**
    * Get table name for DAO
    * 
-   * @return database table name for bean
+   * @return database table name for entity
    */
   public String getTableName();
 
@@ -97,11 +97,11 @@ public interface BeanDao<I, C, F extends BeanFilter> {
   public String getColumns();
 
   /**
-   * Get Bean id
+   * Get Entity id
    * 
-   * @param bean     Bean to retrieve id from
-   * @return id of given bean
+   * @param entity     Entity to retrieve id from
+   * @return id of given entity
    */
-  public String getId(I bean);
+  public String getId(I entity);
 
 }

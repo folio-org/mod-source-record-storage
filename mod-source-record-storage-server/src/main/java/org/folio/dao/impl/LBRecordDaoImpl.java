@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dao.AbstractBeanDao;
+import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.filter.RecordFilter;
 import org.folio.dao.util.ColumnBuilder;
@@ -62,7 +62,7 @@ import io.vertx.ext.sql.ResultSet;
 //   <column name="updateddate" type="timestamptz"></column>
 // </createTable>
 @Component
-public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, RecordFilter> implements LBRecordDao {
+public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection, RecordFilter> implements LBRecordDao {
 
   public static final String MATCHED_ID_COLUMN_NAME = "matchedid";
   public static final String SNAPSHOT_ID_COLUMN_NAME = "snapshotid";
@@ -172,12 +172,12 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   @Override
   protected RecordCollection toCollection(ResultSet resultSet) {
     return new RecordCollection()
-      .withRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  protected Record toBean(JsonObject result) {
+  protected Record toEntity(JsonObject result) {
     Record record = new Record()
       .withId(result.getString(ID_COLUMN_NAME))
       .withSnapshotId(result.getString(SNAPSHOT_ID_COLUMN_NAME))
@@ -221,7 +221,7 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   }
 
   @Override
-  protected Record toBean(JsonArray row) {
+  protected Record toEntity(JsonArray row) {
     Record record = new Record()
       .withId(row.getString(0))
       .withSnapshotId(row.getString(1))

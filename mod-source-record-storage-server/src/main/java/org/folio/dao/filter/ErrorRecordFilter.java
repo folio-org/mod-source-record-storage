@@ -6,7 +6,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 
-public class ErrorRecordFilter extends ErrorRecord implements BeanFilter {
+public class ErrorRecordFilter extends ErrorRecord implements EntityFilter {
 
   @Override
   public String toWhereClause() {

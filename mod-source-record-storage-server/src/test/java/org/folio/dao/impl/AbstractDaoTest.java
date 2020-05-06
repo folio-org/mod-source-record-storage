@@ -67,7 +67,7 @@ public abstract class AbstractDaoTest extends DaoTestMocks {
   public abstract void createDao(TestContext context) throws IllegalAccessException;
 
   @Before
-  public abstract void createDependentBeans(TestContext context) throws IllegalAccessException;
+  public abstract void createDependentEntities(TestContext context) throws IllegalAccessException;
 
   @After
   public abstract void clearTables(TestContext context);

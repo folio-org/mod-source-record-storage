@@ -7,7 +7,7 @@ import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
-import org.folio.dao.AbstractBeanDao;
+import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.filter.ParsedRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
@@ -29,7 +29,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> implements ParsedRecordDao {
+public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> implements ParsedRecordDao {
 
   @Override
   public String getTableName() {
@@ -60,12 +60,12 @@ public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRec
   @Override
   protected ParsedRecordCollection toCollection(ResultSet resultSet) {
     return new ParsedRecordCollection()
-      .withParsedRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withParsedRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  protected ParsedRecord toBean(JsonObject result) {
+  protected ParsedRecord toEntity(JsonObject result) {
     String content = result.getString(CONTENT_COLUMN_NAME);
     return formatContent(new ParsedRecord()
       .withId(result.getString(ID_COLUMN_NAME))
@@ -73,7 +73,7 @@ public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRec
   }
 
   @Override
-  protected ParsedRecord toBean(JsonArray row) {
+  protected ParsedRecord toEntity(JsonArray row) {
     String content = row.getString(1);
     return formatContent(new ParsedRecord()
       .withId(row.getString(0))

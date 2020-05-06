@@ -6,7 +6,7 @@ import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
 
 import java.util.stream.Collectors;
 
-import org.folio.dao.AbstractBeanDao;
+import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.filter.RawRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
@@ -27,7 +27,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class RawRecordDaoImpl extends AbstractBeanDao<RawRecord, RawRecordCollection, RawRecordFilter> implements RawRecordDao {
+public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordCollection, RawRecordFilter> implements RawRecordDao {
 
   @Override
   public String getTableName() {
@@ -58,19 +58,19 @@ public class RawRecordDaoImpl extends AbstractBeanDao<RawRecord, RawRecordCollec
   @Override
   protected RawRecordCollection toCollection(ResultSet resultSet) {
     return new RawRecordCollection()
-      .withRawRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withRawRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  protected RawRecord toBean(JsonObject result) {
+  protected RawRecord toEntity(JsonObject result) {
     return new RawRecord()
       .withId(result.getString(ID_COLUMN_NAME))
       .withContent(result.getString(CONTENT_COLUMN_NAME));
   }
 
   @Override
-  protected RawRecord toBean(JsonArray row) {
+  protected RawRecord toEntity(JsonArray row) {
     return new RawRecord()
       .withId(row.getString(0))
       .withContent(row.getString(1));

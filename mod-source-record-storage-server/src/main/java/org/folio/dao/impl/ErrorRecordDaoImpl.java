@@ -6,7 +6,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
 import java.util.stream.Collectors;
 
-import org.folio.dao.AbstractBeanDao;
+import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.filter.ErrorRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
@@ -30,7 +30,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class ErrorRecordDaoImpl extends AbstractBeanDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> implements ErrorRecordDao {
+public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> implements ErrorRecordDao {
 
   public static final String DESCRIPTION_COLUMN_NAME = "description";
 
@@ -66,12 +66,12 @@ public class ErrorRecordDaoImpl extends AbstractBeanDao<ErrorRecord, ErrorRecord
   @Override
   protected ErrorRecordCollection toCollection(ResultSet resultSet) {
     return new ErrorRecordCollection()
-      .withErrorRecords(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withErrorRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  protected ErrorRecord toBean(JsonObject result) {
+  protected ErrorRecord toEntity(JsonObject result) {
     return new ErrorRecord()
       .withId(result.getString(ID_COLUMN_NAME))
       .withContent(result.getString(CONTENT_COLUMN_NAME))
@@ -79,7 +79,7 @@ public class ErrorRecordDaoImpl extends AbstractBeanDao<ErrorRecord, ErrorRecord
   }
 
   @Override
-  protected ErrorRecord toBean(JsonArray row) {
+  protected ErrorRecord toEntity(JsonArray row) {
     return new ErrorRecord()
       .withId(row.getString(0))
       .withContent(row.getString(1))

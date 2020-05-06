@@ -17,7 +17,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class RawRecordDaoTest extends AbstractBeanDaoTest<RawRecord, RawRecordCollection, RawRecordFilter, RawRecordDao> {
+public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecordCollection, RawRecordFilter, RawRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -34,7 +34,7 @@ public class RawRecordDaoTest extends AbstractBeanDaoTest<RawRecord, RawRecordCo
   }
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+  public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {
@@ -87,37 +87,37 @@ public class RawRecordDaoTest extends AbstractBeanDaoTest<RawRecord, RawRecordCo
   }
 
   @Override
-  public RawRecord getMockBean() {
+  public RawRecord getMockEntity() {
     return getRawRecord(0);
   }
 
   @Override
-  public RawRecord getInvalidMockBean() {
+  public RawRecord getInvalidMockEntity() {
     return new RawRecord()
       .withId(getRecord(0).getId());
   }
 
   @Override
-  public RawRecord getUpdatedMockBean() {
+  public RawRecord getUpdatedMockEntity() {
     return new RawRecord()
-      .withId(getMockBean().getId())
-      .withContent(getMockBean().getContent());
+      .withId(getMockEntity().getId())
+      .withContent(getMockEntity().getContent());
   }
 
   @Override
-  public List<RawRecord> getMockBeans() {
+  public List<RawRecord> getMockEntities() {
     return getRawRecords();
   }
 
   @Override
-  public void compareBeans(TestContext context, RawRecord expected, RawRecord actual) {
+  public void compareEntities(TestContext context, RawRecord expected, RawRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContent(), actual.getContent());
   }
 
   @Override
   public void assertNoopFilterResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockBeans();
+    List<RawRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
       .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
@@ -125,7 +125,7 @@ public class RawRecordDaoTest extends AbstractBeanDaoTest<RawRecord, RawRecordCo
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockBeans();
+    List<RawRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
       .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));

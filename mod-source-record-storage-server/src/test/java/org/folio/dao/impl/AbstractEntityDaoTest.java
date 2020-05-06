@@ -4,30 +4,30 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.folio.dao.BeanDao;
-import org.folio.dao.filter.BeanFilter;
+import org.folio.dao.EntityDao;
+import org.folio.dao.filter.EntityFilter;
 import org.junit.Test;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extends BeanDao<I, C, F>> extends AbstractDaoTest {
+public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO extends EntityDao<I, C, F>> extends AbstractDaoTest {
 
   DAO dao;
 
   @Test
   public void shouldGetById(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getById(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
+      dao.getById(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        compareBeans(context, getMockBean(), res.result().get());
+        compareEntities(context, getMockEntity(), res.result().get());
         async.complete();
       });
     });
@@ -36,7 +36,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldNotFindWhenGetById(TestContext context) {
     Async async = context.async();
-    dao.getById(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
+    dao.getById(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -48,7 +48,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldGetByNoopFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBeans(), TENANT_ID).setHandler(create -> {
+    dao.save(getMockEntities(), TENANT_ID).setHandler(create -> {
       if (create.failed()) {
         context.fail(create.cause());
       }
@@ -65,7 +65,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldGetByArbitruaryFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBeans(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntities(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -82,11 +82,11 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldSave(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareBeans(context, getMockBean(), res.result());
+      compareEntities(context, getMockEntity(), res.result());
       async.complete();
     });
   }
@@ -94,7 +94,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
-    dao.save(getInvalidMockBean(), TENANT_ID).setHandler(res -> {
+    dao.save(getInvalidMockEntity(), TENANT_ID).setHandler(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });
@@ -103,16 +103,16 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldUpdate(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      I mockUpdateBean = getUpdatedMockBean();
-      dao.update(mockUpdateBean, TENANT_ID).setHandler(res -> {
+      I mockUpdateEntity = getUpdatedMockEntity();
+      dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
-        compareBeans(context, mockUpdateBean, res.result());
+        compareEntities(context, mockUpdateEntity, res.result());
         async.complete();
       });
     });
@@ -121,10 +121,10 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
-    I mockUpdateBean = getUpdatedMockBean();
-    dao.update(mockUpdateBean, TENANT_ID).setHandler(res -> {
+    I mockUpdateEntity = getUpdatedMockEntity();
+    dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
       context.assertTrue(res.failed());
-      String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateBean));
+      String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
       context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();
     });
@@ -133,11 +133,11 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldDelete(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBean(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.delete(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
+      dao.delete(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -150,7 +150,7 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldNotDelete(TestContext context) {
     Async async = context.async();
-    dao.delete(dao.getId(getMockBean()), TENANT_ID).setHandler(res -> {
+    dao.delete(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -162,27 +162,27 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
   @Test
   public void shouldStreamGetByFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockBeans(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntities(), TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       List<I> actual = new ArrayList<>();
-      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID, bean -> {
-        actual.add(bean);
+      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID, entity -> {
+        actual.add(entity);
       }, finished -> {
         if (finished.failed()) {
           context.fail(finished.cause());
         }
-        compareBeans(context, getMockBeans(), actual);
+        compareEntities(context, getMockEntities(), actual);
         async.complete();
       });
     });
   }
 
-  public void compareBeans(TestContext context, List<I> expected, List<I> actual) {
+  public void compareEntities(TestContext context, List<I> expected, List<I> actual) {
     Collections.sort(actual, (b1, b2) -> dao.getId(b1).compareTo(dao.getId(b2)));
     for (int i = 0; i < expected.size() - 1; i++) {
-      compareBeans(context, expected.get(i), actual.get(i));
+      compareEntities(context, expected.get(i), actual.get(i));
     }
   }
 
@@ -190,15 +190,15 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
 
   public abstract F getArbitruaryFilter();
 
-  public abstract I getMockBean();
+  public abstract I getMockEntity();
 
-  public abstract I getInvalidMockBean();
+  public abstract I getInvalidMockEntity();
 
-  public abstract I getUpdatedMockBean();
+  public abstract I getUpdatedMockEntity();
 
-  public abstract List<I> getMockBeans();
+  public abstract List<I> getMockEntities();
 
-  public abstract void compareBeans(TestContext context, I expected, I actual);
+  public abstract void compareEntities(TestContext context, I expected, I actual);
 
   public abstract void assertNoopFilterResults(TestContext context, C actual);
 

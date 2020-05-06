@@ -18,7 +18,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter, ParsedRecordDao> {
+public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter, ParsedRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -35,7 +35,7 @@ public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, Parse
   }
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+  public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
     
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
@@ -89,30 +89,30 @@ public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, Parse
   }
 
   @Override
-  public ParsedRecord getMockBean() {
+  public ParsedRecord getMockEntity() {
     return getParsedRecord(0);
   }
 
   @Override
-  public ParsedRecord getInvalidMockBean() {
+  public ParsedRecord getInvalidMockEntity() {
     return new ParsedRecord()
       .withId(getRecord(0).getId());
   }
 
   @Override
-  public ParsedRecord getUpdatedMockBean() {
+  public ParsedRecord getUpdatedMockEntity() {
     return new ParsedRecord()
-      .withId(getMockBean().getId())
-      .withContent(getMockBean().getContent());
+      .withId(getMockEntity().getId())
+      .withContent(getMockEntity().getContent());
   }
 
   @Override
-  public List<ParsedRecord> getMockBeans() {
+  public List<ParsedRecord> getMockEntities() {
     return getParsedRecords();
   }
 
   @Override
-  public void compareBeans(TestContext context, ParsedRecord expected, ParsedRecord actual) {
+  public void compareEntities(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(new JsonObject((String) expected.getContent()),
       new JsonObject((String) actual.getContent()));
@@ -121,7 +121,7 @@ public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, Parse
 
   @Override
   public void assertNoopFilterResults(TestContext context, ParsedRecordCollection actual) {
-    List<ParsedRecord> expected = getMockBeans();
+    List<ParsedRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
       .anyMatch(actualParsedRecord -> actualParsedRecord.getId().equals(expectedParsedRecord.getId()))));
@@ -129,7 +129,7 @@ public class ParsedRecordDaoTest extends AbstractBeanDaoTest<ParsedRecord, Parse
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, ParsedRecordCollection actual) {
-    List<ParsedRecord> expected = getMockBeans();
+    List<ParsedRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
       .anyMatch(actualParsedRecord -> actualParsedRecord.getId().equals(expectedParsedRecord.getId()))));

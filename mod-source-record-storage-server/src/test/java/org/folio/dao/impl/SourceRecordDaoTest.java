@@ -70,7 +70,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+  public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {

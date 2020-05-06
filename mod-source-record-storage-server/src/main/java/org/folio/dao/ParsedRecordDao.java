@@ -7,6 +7,6 @@ import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 /**
  * Data access object for {@link ParsedRecord}
  */
-public interface ParsedRecordDao extends BeanDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> {
+public interface ParsedRecordDao extends EntityDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> {
 
 }

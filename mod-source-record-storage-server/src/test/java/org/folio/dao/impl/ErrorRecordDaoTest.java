@@ -19,7 +19,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter, ErrorRecordDao> {
+public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter, ErrorRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -36,7 +36,7 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
   }
 
   @Override
-  public void createDependentBeans(TestContext context) throws IllegalAccessException {
+  public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
     snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
       if (saveSnapshots.failed()) {
@@ -89,31 +89,31 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
   }
 
   @Override
-  public ErrorRecord getMockBean() {
+  public ErrorRecord getMockEntity() {
     return getErrorRecord(0);
   }
 
   @Override
-  public ErrorRecord getInvalidMockBean() {
+  public ErrorRecord getInvalidMockEntity() {
     return new ErrorRecord()
       .withId(getRecord(0).getId());
   }
 
   @Override
-  public ErrorRecord getUpdatedMockBean() {
+  public ErrorRecord getUpdatedMockEntity() {
     return new ErrorRecord()
-      .withId(getMockBean().getId())
-      .withContent(getMockBean().getContent())
+      .withId(getMockEntity().getId())
+      .withContent(getMockEntity().getContent())
       .withDescription("Something went really wrong");
   }
 
   @Override
-  public List<ErrorRecord> getMockBeans() {
+  public List<ErrorRecord> getMockEntities() {
     return getErrorRecords();
   }
 
   @Override
-  public void compareBeans(TestContext context, ErrorRecord expected, ErrorRecord actual) {
+  public void compareEntities(TestContext context, ErrorRecord expected, ErrorRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getDescription(), actual.getDescription());
     context.assertEquals(new JsonObject((String) expected.getContent()), new JsonObject((String) actual.getContent()));
@@ -121,7 +121,7 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
 
   @Override
   public void assertNoopFilterResults(TestContext context, ErrorRecordCollection actual) {
-    List<ErrorRecord> expected = getMockBeans();
+    List<ErrorRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
       .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
@@ -129,8 +129,8 @@ public class ErrorRecordDaoTest extends AbstractBeanDaoTest<ErrorRecord, ErrorRe
 
   @Override
   public void assertArbitruaryFilterResults(TestContext context, ErrorRecordCollection actual) {
-    List<ErrorRecord> expected = getMockBeans().stream()
-      .filter(bean -> bean.getDescription().equals(getArbitruaryFilter().getDescription()))
+    List<ErrorRecord> expected = getMockEntities().stream()
+      .filter(entity -> entity.getDescription().equals(getArbitruaryFilter().getDescription()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()

@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dao.AbstractBeanDao;
+import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.dao.util.ColumnBuilder;
@@ -33,7 +33,7 @@ import io.vertx.ext.sql.ResultSet;
 //   <column name="processing_started_date" type="timestamptz"></column>
 // </createTable>
 @Component
-public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollection, SnapshotFilter> implements LBSnapshotDao {
+public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotCollection, SnapshotFilter> implements LBSnapshotDao {
 
   public static final String STATUS_COLUMN_NAME = "status";
   public static final String PROCESSING_STARTED_DATE_COLUMN_NAME = "processing_started_date";
@@ -75,12 +75,12 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
   @Override
   protected SnapshotCollection toCollection(ResultSet resultSet) {
     return new SnapshotCollection()
-      .withSnapshots(resultSet.getRows().stream().map(this::toBean).collect(Collectors.toList()))
+      .withSnapshots(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
       .withTotalRecords(resultSet.getNumRows());
   }
 
   @Override
-  protected Snapshot toBean(JsonObject result) {
+  protected Snapshot toEntity(JsonObject result) {
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(result.getString(ID_COLUMN_NAME))
       .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
@@ -92,7 +92,7 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
   }
 
   @Override
-  protected Snapshot toBean(JsonArray row) {
+  protected Snapshot toEntity(JsonArray row) {
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(row.getString(0))
       .withStatus(Snapshot.Status.fromValue(row.getString(1)));

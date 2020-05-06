@@ -7,6 +7,6 @@ import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 /**
  * Data access object for {@link ErrorRecord}
  */
-public interface ErrorRecordDao extends BeanDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> {
+public interface ErrorRecordDao extends EntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> {
 
 }

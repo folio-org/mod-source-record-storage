@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,7 +13,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO extends EntityDao<I, C, F>> extends AbstractDaoTest {
+public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>> extends AbstractDaoTest {
 
   DAO dao;
 
@@ -107,7 +109,7 @@ public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO ex
       if (save.failed()) {
         context.fail(save.cause());
       }
-      I mockUpdateEntity = getUpdatedMockEntity();
+      E mockUpdateEntity = getUpdatedMockEntity();
       dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
         if (res.failed()) {
           context.fail(res.cause());
@@ -121,7 +123,7 @@ public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
-    I mockUpdateEntity = getUpdatedMockEntity();
+    E mockUpdateEntity = getUpdatedMockEntity();
     dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
       context.assertTrue(res.failed());
       String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
@@ -166,7 +168,7 @@ public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO ex
       if (res.failed()) {
         context.fail(res.cause());
       }
-      List<I> actual = new ArrayList<>();
+      List<E> actual = new ArrayList<>();
       dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID, entity -> {
         actual.add(entity);
       }, finished -> {
@@ -179,7 +181,14 @@ public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO ex
     });
   }
 
-  public void compareEntities(TestContext context, List<I> expected, List<I> actual) {
+  @Test
+  public void shouldGenerateWhereClauseFromFilter(TestContext context) {
+    F filter = getCompleteFilter();
+    String whereClause = filter.toWhereClause();
+    assertEquals(getCompleteWhereClause(), whereClause);
+  }
+
+  public void compareEntities(TestContext context, List<E> expected, List<E> actual) {
     Collections.sort(actual, (b1, b2) -> dao.getId(b1).compareTo(dao.getId(b2)));
     for (int i = 0; i < expected.size() - 1; i++) {
       compareEntities(context, expected.get(i), actual.get(i));
@@ -190,18 +199,22 @@ public abstract class AbstractEntityDaoTest<I, C, F extends EntityFilter, DAO ex
 
   public abstract F getArbitruaryFilter();
 
-  public abstract I getMockEntity();
+  public abstract F getCompleteFilter();
 
-  public abstract I getInvalidMockEntity();
+  public abstract E getMockEntity();
 
-  public abstract I getUpdatedMockEntity();
+  public abstract E getInvalidMockEntity();
 
-  public abstract List<I> getMockEntities();
+  public abstract E getUpdatedMockEntity();
 
-  public abstract void compareEntities(TestContext context, I expected, I actual);
+  public abstract List<E> getMockEntities();
+
+  public abstract void compareEntities(TestContext context, E expected, E actual);
 
   public abstract void assertNoopFilterResults(TestContext context, C actual);
 
   public abstract void assertArbitruaryFilterResults(TestContext context, C actual);
+
+  public abstract String getCompleteWhereClause();
 
 }

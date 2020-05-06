@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -129,6 +130,18 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
       .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
+  }
+
+  @Override
+  public RawRecordFilter getCompleteFilter() {
+    RawRecordFilter filter = new RawRecordFilter();
+    BeanUtils.copyProperties(getRawRecord(0), filter);
+    return filter;
+  }
+
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'";
   }
 
 }

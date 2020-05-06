@@ -114,36 +114,31 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till, Integer offset,
-      Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till, Integer offset, Integer limit, String tenantId) {
     return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_TEMPLATE, from, till, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset,
-      Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset, Integer limit, String tenantId) {
     return select(GET_SOURCE_MARC_RECORDS_FOR_PERIOD_ALT_TEMPLATE, from, till, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id,
-      String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id, String tenantId) {
     return recordDao.getById(id, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId,
-      String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId, String tenantId) {
     return recordDao.getByMatchedId(matchedId, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId,
-      String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId) {
     return recordDao.getByInstanceId(instanceId, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
@@ -174,6 +169,8 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
           return;
         }
         stream.result()
+          .endHandler(x -> endHandler.handle(Future.succeededFuture()))
+          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
           .handler(row -> {
             stream.result().pause();
             lookupContent(content, tenantId, toSourceRecord(row)).setHandler(res -> {
@@ -184,9 +181,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
               handler.handle(res.result());
               stream.result().resume();
             });
-          })
-          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
-          .endHandler(x -> endHandler.handle(Future.succeededFuture()));
+          });
       });
     });
   }

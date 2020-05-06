@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeanUtils;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -133,6 +134,18 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
       .anyMatch(actualParsedRecord -> actualParsedRecord.getId().equals(expectedParsedRecord.getId()))));
+  }
+
+  @Override
+  public ParsedRecordFilter getCompleteFilter() {
+    ParsedRecordFilter filter = new ParsedRecordFilter();
+    BeanUtils.copyProperties(getParsedRecord(0), filter);
+    return filter;
+  }
+
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'";
   }
 
 }

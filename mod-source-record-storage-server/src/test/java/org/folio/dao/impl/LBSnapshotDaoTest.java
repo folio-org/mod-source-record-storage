@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -130,6 +131,20 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
+  }
+
+  @Override
+  public SnapshotFilter getCompleteFilter() {
+    SnapshotFilter filter = new SnapshotFilter();
+    BeanUtils.copyProperties(getSnapshot(0), filter);
+    return filter;
+  }
+
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = '6681ef31-03fe-4abc-9596-23de06d575c5'" +
+      " AND processing_started_date = '2020-04-28T23:13:35-05:00'" +
+      " AND status = 'PROCESSING_IN_PROGRESS'";
   }
 
 }

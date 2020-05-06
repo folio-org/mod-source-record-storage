@@ -12,6 +12,7 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeanUtils;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -135,6 +136,19 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
       .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+  }
+
+  @Override
+  public ErrorRecordFilter getCompleteFilter() {
+    ErrorRecordFilter filter = new ErrorRecordFilter();
+    BeanUtils.copyProperties(getErrorRecord(0), filter);
+    return filter;
+  }
+
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'" +
+      " AND description = 'Opps... something went wrong'";
   }
 
 }

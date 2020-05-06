@@ -30,14 +30,14 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
-public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements EntityDao<I, C, F> {
+public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements EntityDao<E, C, F> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
 
-  public Future<Optional<I>> getById(String id, String tenantId) {
+  public Future<Optional<E>> getById(String id, String tenantId) {
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
     log.info("Attempting get by id: {}", sql);
     return select(sql, tenantId);
@@ -51,7 +51,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
     return promise.future().map(this::toCollection);
   }
 
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<I> handler, Handler<AsyncResult<Void>> endHandler) {
+  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
     String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
@@ -74,8 +74,8 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
     });
   }
 
-  public Future<I> save(I entity, String tenantId) {
-    Promise<I> promise = Promise.promise();
+  public Future<E> save(E entity, String tenantId) {
+    Promise<E> promise = Promise.promise();
     String columns = getColumns();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
     log.info("Attempting save: {}", sql);
@@ -90,8 +90,8 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
     return promise.future();
   }
 
-  public Future<List<I>> save(List<I> entities, String tenantId) {
-    Promise<List<I>> promise = Promise.promise();
+  public Future<List<E>> save(List<E> entities, String tenantId) {
+    Promise<List<E>> promise = Promise.promise();
     log.info("Attempting batch save in {}", getTableName());
     // NOTE: update when raml-module-builder supports batch save with params
     // vertx-mysql-postgresql-client does not implement batch save
@@ -108,8 +108,8 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
     return promise.future();
   }
 
-  public Future<I> update(I entity, String tenantId) {
-    Promise<I> promise = Promise.promise();
+  public Future<E> update(E entity, String tenantId) {
+    Promise<E> promise = Promise.promise();
     String id = getId(entity);
     String columns = getColumns();
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns), id);
@@ -144,7 +144,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return list of {@link JsonArray} params
    */
-  public List<JsonArray> toParams(List<I> entities, boolean generateIdIfNotExists) {
+  public List<JsonArray> toParams(List<E> entities, boolean generateIdIfNotExists) {
     return entities.stream().map(entity -> toParams(entity, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
@@ -154,7 +154,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param resultSet {@link ResultSet} query results
    * @return optional Entity
    */
-  public Optional<I> toEntity(ResultSet resultSet)  {
+  public Optional<E> toEntity(ResultSet resultSet)  {
     return resultSet.getNumRows() > 0 ? Optional.of(toEntity(resultSet.getRows().get(0))) : Optional.empty();
   }
 
@@ -177,7 +177,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param tenantId tenant id
    * @return future of optional Entity
    */
-  protected Future<Optional<I>> select(String sql, String tenantId) {
+  protected Future<Optional<E>> select(String sql, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toEntity);
@@ -189,7 +189,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param entity saved Entity
    * @return entity after post save processing
    */
-  protected I postSave(I entity) {
+  protected E postSave(E entity) {
     return entity;
   }
 
@@ -199,7 +199,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param entity updated Entity
    * @return entity after post update processing
    */
-  protected I postUpdate(I entity) {
+  protected E postUpdate(E entity) {
     return entity;
   }
 
@@ -209,18 +209,18 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param entities saved list of Entities
    * @return entity after post save processing
    */
-  protected List<I> postSave(List<I> entities) {
+  protected List<E> postSave(List<E> entities) {
     return entities.stream().map(this::postSave).collect(Collectors.toList());
   }
 
   /**
    * Prepare params for INSERT and UPDATE query values
    * 
-   * @param entity                  Entity for extracting values for params
+   * @param entity                Entity for extracting values for params
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return {@link JsonArray} params
    */
-  protected abstract JsonArray toParams(I entity, boolean generateIdIfNotExists);
+  protected abstract JsonArray toParams(E entity, boolean generateIdIfNotExists);
 
   /**
    * Convert {@link ResultSet} into Entity Collection
@@ -236,7 +236,7 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param result {@link JsonObject} query result row
    * @return Entity
    */
-  protected abstract I toEntity(JsonObject result);
+  protected abstract E toEntity(JsonObject result);
 
   /**
    * Convert {@link JsonArray} into Entity
@@ -244,6 +244,6 @@ public abstract class AbstractEntityDao<I, C, F extends EntityFilter> implements
    * @param result {@link JsonArray} query result row
    * @return Entity
    */
-  protected abstract I toEntity(JsonArray row);
+  protected abstract E toEntity(JsonArray row);
 
 }

@@ -12,7 +12,7 @@ import io.vertx.core.Handler;
 /**
  * Data access object interface for Entity with Collection and {@link EntityFilter}
  */
-public interface EntityDao<I, C, F extends EntityFilter> {
+public interface EntityDao<E, C, F extends EntityFilter> {
 
   /**
    * Searches for Entity by id
@@ -21,7 +21,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param tenantId tenant id
    * @return future with optional entity
    */
-  public Future<Optional<I>> getById(String id, String tenantId);
+  public Future<Optional<E>> getById(String id, String tenantId);
 
   /**
    * Searchs for Entity by filter
@@ -44,7 +44,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param handler      handler for Entity stream
    * @param replyHandler handler for when stream is finished
    */
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<I> handler, Handler<AsyncResult<Void>> replyHandler);
+  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> replyHandler);
 
   /**
    * Saves Entity to database
@@ -53,7 +53,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param tenantId tenant id
    * @return future with saved entity
    */
-  public Future<I> save(I entity, String tenantId);
+  public Future<E> save(E entity, String tenantId);
 
   /**
    * Saves batch of Entity to database
@@ -62,7 +62,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
-  public Future<List<I>> save(List<I> entities, String tenantId);
+  public Future<List<E>> save(List<E> entities, String tenantId);
 
   /**
    * Updates Entity in database
@@ -71,7 +71,7 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param tenantId tenant id
    * @return future with updated entity
    */
-  public Future<I> update(I entity, String tenantId);
+  public Future<E> update(E entity, String tenantId);
 
   /**
    * Deletes Entity from database
@@ -102,6 +102,6 @@ public interface EntityDao<I, C, F extends EntityFilter> {
    * @param entity Entity to retrieve id from
    * @return id of given entity
    */
-  public String getId(I entity);
+  public String getId(E entity);
 
 }

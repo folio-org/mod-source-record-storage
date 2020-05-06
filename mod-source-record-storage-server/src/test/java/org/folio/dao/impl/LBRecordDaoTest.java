@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -218,6 +219,31 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
       .anyMatch(actualRecord -> actualRecord.getId().equals(expectedRecord.getId()))));
+  }
+
+  @Override
+  public RecordFilter getCompleteFilter() {
+    RecordFilter filter = new RecordFilter();
+    BeanUtils.copyProperties(getRecord(0), filter);
+    return filter;
+  }
+
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'" +
+      " AND matchedid = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'" +
+      " AND snapshotid = '7f939c0b-618c-4eab-8276-a14e0bfe5728'" +
+      " AND matchedprofileid = '0731b68a-147e-4ad8-9de2-7eef7c1a5a99'" +
+      " AND generation = 0" +
+      " AND orderinfile = 1" +
+      " AND recordtype = 'MARC'" +
+      " AND state = 'ACTUAL'" +
+      " AND instanceid = '6b4ae089-e1ee-431f-af83-e1133f8e3da0'" +
+      " AND suppressdiscovery = false" +
+      " AND createdbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'" +
+      " AND createddate = '2020-03-19T11:43:00-05:00'" +
+      " AND updatedbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'" +
+      " AND updateddate = '2020-03-19T11:43:01-05:00'";
   }
 
 }

@@ -1,16 +1,27 @@
 package org.folio.dao.impl;
 
-import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.*;
+import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.COMMA;
+import static org.folio.dao.util.DaoUtil.*;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
@@ -19,6 +30,7 @@ import org.folio.dao.SourceRecordDao;
 import org.folio.dao.filter.RecordFilter;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.SourceRecordContent;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -29,18 +41,25 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
+import io.vertx.ext.sql.SQLRowStream;
 
 @Component
 public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRecordDaoImpl.class);
+
+  private static final String SOURCE_RECORD_COLUMNS = String.join(COMMA, ID_COLUMN_NAME, SNAPSHOT_ID_COLUMN_NAME, ORDER_IN_FILE_COLUMN_NAME, RECORD_TYPE_COLUMN_NAME,
+    CREATED_BY_USER_ID_COLUMN_NAME, CREATED_DATE_COLUMN_NAME, UPDATED_BY_USER_ID_COLUMN_NAME, UPDATED_DATE_COLUMN_NAME);
 
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id('%s') as records;";
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_ALT_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id_alt('%s') as records;";
@@ -139,6 +158,41 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       .compose(recordCollection -> lookupContent(content, tenantId, recordCollection));
   }
 
+  @Override
+  public void getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId,
+    Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, filter.toWhereClause(), offset, limit);
+    LOG.info("Attempting stream get by filter: {}", sql);
+    postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
+      if (connection.failed()) {
+        LOG.error("Failed to get database connection", connection.cause());
+        endHandler.handle(Future.failedFuture(connection.cause()));
+        return;
+      }
+      connection.result().queryStream(sql, stream -> {
+        if (stream.failed()) {
+          LOG.error("Failed to get stream", stream.cause());
+          endHandler.handle(Future.failedFuture(stream.cause()));
+          return;
+        }
+        stream.result()
+          .handler(row -> {
+            stream.result().pause();
+            lookupContent(content, tenantId, toSourceRecord(row)).setHandler(res -> {
+              if (res.failed()) {
+                endHandler.handle(Future.failedFuture(res.cause()));
+                return;
+              }
+              handler.handle(res.result());
+              stream.result().resume();
+            });
+          })
+          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
+          .endHandler(x -> endHandler.handle(Future.succeededFuture()));
+      });
+    });
+  }
+
   private Future<Optional<SourceRecord>> select(String template, String id, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     String sql = String.format(template, id);
@@ -194,6 +248,33 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       .withParsedRecord(parsedRecord);
   }
 
+  private SourceRecord toSourceRecord(JsonArray row) {
+    Metadata metadata = new Metadata();
+    String createdByUserId = row.getString(4);
+    if (StringUtils.isNotEmpty(createdByUserId)) {
+      metadata.setCreatedByUserId(createdByUserId);
+    }
+    Instant createdDate = row.getInstant(5);
+    if (Objects.nonNull(createdDate)) {
+      metadata.setCreatedDate(Date.from(createdDate));
+    }
+    String updatedByUserId = row.getString(6);
+    if (StringUtils.isNotEmpty(updatedByUserId)) {
+      metadata.setUpdatedByUserId(updatedByUserId);
+    }
+    Instant updatedDate = row.getInstant(7);
+    if (Objects.nonNull(updatedDate)) {
+      metadata.setUpdatedDate(Date.from(updatedDate));
+    }
+    return new SourceRecord()
+      .withRecordId(row.getString(0))
+      .withSnapshotId(row.getString(1))
+      .withOrder(row.getInteger(2))
+      // NOTE: not ideal to have multiple record type enums
+      .withRecordType(RecordType.fromValue(row.getString(3)))
+      .withMetadata(metadata);
+  }
+
   private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {
     if (record.isPresent()) {
       return Optional.of(toSourceRecord(record.get()));
@@ -206,9 +287,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       .withRecordId(record.getId())
       .withSnapshotId(record.getSnapshotId())
       .withOrder(record.getOrder())
-      .withMetadata(record.getMetadata())
       // NOTE: not ideal to have multiple record type enums
-      .withRecordType(RecordType.fromValue(record.getRecordType().toString()));
+      .withRecordType(RecordType.fromValue(record.getRecordType().toString()))
+      .withMetadata(record.getMetadata());
   }
 
   private Future<SourceRecordCollection> lookupContent(SourceRecordContent content, String tenantId, RecordCollection recordCollection) {

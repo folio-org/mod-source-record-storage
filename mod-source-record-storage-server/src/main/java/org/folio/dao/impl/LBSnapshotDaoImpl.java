@@ -44,16 +44,16 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
   }
 
   @Override
-  public String getId(Snapshot snapshot) {
-    return snapshot.getJobExecutionId();
-  }
-
-  @Override
-  protected String getColumns() {
+  public String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(STATUS_COLUMN_NAME)
       .append(PROCESSING_STARTED_DATE_COLUMN_NAME)
       .build();
+  }
+
+  @Override
+  public String getId(Snapshot snapshot) {
+    return snapshot.getJobExecutionId();
   }
 
   @Override
@@ -81,9 +81,22 @@ public class LBSnapshotDaoImpl extends AbstractBeanDao<Snapshot, SnapshotCollect
 
   @Override
   protected Snapshot toBean(JsonObject result) {
-    Snapshot snapshot = new Snapshot().withJobExecutionId(result.getString(ID_COLUMN_NAME))
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(result.getString(ID_COLUMN_NAME))
       .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
     Instant processingStartedDate = result.getInstant(PROCESSING_STARTED_DATE_COLUMN_NAME);
+    if (Objects.nonNull(processingStartedDate)) {
+      snapshot.setProcessingStartedDate(Date.from(processingStartedDate));
+    }
+    return snapshot;
+  }
+
+  @Override
+  protected Snapshot toBean(JsonArray row) {
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(row.getString(0))
+      .withStatus(Snapshot.Status.fromValue(row.getString(1)));
+    Instant processingStartedDate = row.getInstant(2);
     if (Objects.nonNull(processingStartedDate)) {
       snapshot.setProcessingStartedDate(Date.from(processingStartedDate));
     }

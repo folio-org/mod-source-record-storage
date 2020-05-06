@@ -80,14 +80,14 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
     log.info("Attempting get by matched id: {}", sql);
     return select(sql, tenantId);
   }
 
   @Override
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
     log.info("Attempting get by instance id: {}", sql);
     return select(sql, tenantId);
   }
@@ -98,28 +98,28 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   }
 
   @Override
-  public String getId(Record record) {
-    return record.getId();
-  }
-
-  @Override
-  protected String getColumns() {
+  public String getColumns() {
     return ColumnBuilder
       .of(ID_COLUMN_NAME)
-      .append(MATCHED_ID_COLUMN_NAME)
       .append(SNAPSHOT_ID_COLUMN_NAME)
       .append(MATCHED_PROFILE_ID_COLUMN_NAME)
+      .append(MATCHED_ID_COLUMN_NAME)
       .append(GENERATION_COLUMN_NAME)
-      .append(ORDER_IN_FILE_COLUMN_NAME)
       .append(RECORD_TYPE_COLUMN_NAME)
-      .append(STATE_COLUMN_NAME)
       .append(INSTANCE_ID_COLUMN_NAME)
+      .append(STATE_COLUMN_NAME)
+      .append(ORDER_IN_FILE_COLUMN_NAME)
       .append(SUPPRESS_DISCOVERY_COLUMN_NAME)
       .append(CREATED_BY_USER_ID_COLUMN_NAME)
       .append(CREATED_DATE_COLUMN_NAME)
       .append(UPDATED_BY_USER_ID_COLUMN_NAME)
       .append(UPDATED_DATE_COLUMN_NAME)
       .build();
+  }
+
+  @Override
+  public String getId(Record record) {
+    return record.getId();
   }
 
   @Override
@@ -132,18 +132,19 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
     }
     JsonArray params = new JsonArray()
       .add(record.getId())
-      .add(record.getMatchedId())
       .add(record.getSnapshotId())
       .add(record.getMatchedProfileId())
+      .add(record.getMatchedId())
       .add(record.getGeneration())
-      .add(record.getOrder())
-      .add(record.getRecordType())
-      .add(record.getState());
+      .add(record.getRecordType());
     if (Objects.nonNull(record.getExternalIdsHolder())) {
       params.add(record.getExternalIdsHolder().getInstanceId());
     } else {
       params.addNull();
     }
+    params
+      .add(record.getState())
+      .add(record.getOrder());
     if (Objects.nonNull(record.getAdditionalInfo())) {
       params.add(record.getAdditionalInfo().getSuppressDiscovery());
     } else {
@@ -153,10 +154,14 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       params.add(record.getMetadata().getCreatedByUserId());
       if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
         params.add(DATE_FORMATTER.format(record.getMetadata().getCreatedDate()));
+      } else {
+        params.addNull();
       }
       params.add(record.getMetadata().getUpdatedByUserId());
-      if (record.getMetadata().getUpdatedDate() != null) {
+      if (Objects.nonNull(record.getMetadata().getUpdatedDate())) {
         params.add(DATE_FORMATTER.format(record.getMetadata().getUpdatedDate()));
+      } else {
+        params.addNull();
       }
     } else {
       params.addNull().addNull().addNull().addNull();
@@ -175,21 +180,20 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
   protected Record toBean(JsonObject result) {
     Record record = new Record()
       .withId(result.getString(ID_COLUMN_NAME))
-      .withMatchedId(result.getString(MATCHED_ID_COLUMN_NAME))
       .withSnapshotId(result.getString(SNAPSHOT_ID_COLUMN_NAME))
       .withMatchedProfileId(result.getString(MATCHED_PROFILE_ID_COLUMN_NAME))
+      .withMatchedId(result.getString(MATCHED_ID_COLUMN_NAME))
       .withGeneration(result.getInteger(GENERATION_COLUMN_NAME))
-      .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)))
-      .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)));
-    if (result.containsKey(ORDER_IN_FILE_COLUMN_NAME)) {
-      record.setOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
-    }
+      .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)));
     ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
     String instanceId = result.getString(INSTANCE_ID_COLUMN_NAME);
     if (StringUtils.isNotEmpty(instanceId)) {
       externalIdHolder.setInstanceId(instanceId);
     }
     record.setExternalIdsHolder(externalIdHolder);
+    record
+      .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)))
+      .withOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (result.containsKey(SUPPRESS_DISCOVERY_COLUMN_NAME)) {
       additionalInfo.setSuppressDiscovery(result.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME));
@@ -209,6 +213,51 @@ public class LBRecordDaoImpl extends AbstractBeanDao<Record, RecordCollection, R
       metadata.setUpdatedByUserId(updatedByUserId);
     }
     Instant updatedDate = result.getInstant(UPDATED_DATE_COLUMN_NAME);
+    if (Objects.nonNull(updatedDate)) {
+      metadata.setUpdatedDate(Date.from(updatedDate));
+    }
+    record.setMetadata(metadata);
+    return record;
+  }
+
+  @Override
+  protected Record toBean(JsonArray row) {
+    Record record = new Record()
+      .withId(row.getString(0))
+      .withSnapshotId(row.getString(1))
+      .withMatchedProfileId(row.getString(2))
+      .withMatchedId(row.getString(3))
+      .withGeneration(row.getInteger(4))
+      .withRecordType(RecordType.valueOf(row.getString(5)));
+    ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
+    String instanceId = row.getString(6);
+    if (StringUtils.isNotEmpty(instanceId)) {
+      externalIdHolder.setInstanceId(instanceId);
+    }
+    record.setExternalIdsHolder(externalIdHolder);
+    record
+      .withState(State.valueOf(row.getString(7)))
+      .withOrder(row.getInteger(8));
+    AdditionalInfo additionalInfo = new AdditionalInfo();
+    Boolean suppressDiscovery = row.getBoolean(9);
+    if (Objects.nonNull(suppressDiscovery)) {
+      additionalInfo.setSuppressDiscovery(suppressDiscovery);
+    }
+    record.setAdditionalInfo(additionalInfo);
+    Metadata metadata = new Metadata();
+    String createdByUserId = row.getString(10);
+    if (StringUtils.isNotEmpty(createdByUserId)) {
+      metadata.setCreatedByUserId(createdByUserId);
+    }
+    Instant createdDate = row.getInstant(11);
+    if (Objects.nonNull(createdDate)) {
+      metadata.setCreatedDate(Date.from(createdDate));
+    }
+    String updatedByUserId = row.getString(12);
+    if (StringUtils.isNotEmpty(updatedByUserId)) {
+      metadata.setUpdatedByUserId(updatedByUserId);
+    }
+    Instant updatedDate = row.getInstant(13);
     if (Objects.nonNull(updatedDate)) {
       metadata.setUpdatedDate(Date.from(updatedDate));
     }

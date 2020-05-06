@@ -321,6 +321,26 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     });
   }
 
+  @Test
+  public void shouldStreamGetSourceMarcRecordsByFilter(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    RecordFilter filter = new RecordFilter();
+    List<SourceRecord> actualSourceRecords = new ArrayList<>();
+    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
+      actualSourceRecords.add(sourceRecord);
+    }, finished -> {
+      if (finished.failed()) {
+        context.fail(finished.cause());
+      }
+      List<Record> expectedRecords = getRecords();
+      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
+      async.complete();
+    });
+  }
+
   private void compareSourceRecord(
     TestContext context,
     Record expectedRecord,
@@ -343,15 +363,27 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     SourceRecordCollection actualSourceRecordCollection
   ) {
     List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
+    context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
+    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedRawRecords.size());
+    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedParsedRecords.size());
+    compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
+  }
+
+  private void compareSourceRecords(
+    TestContext context, 
+    List<Record> expectedRecords,
+    List<RawRecord> expectedRawRecords,
+    List<ParsedRecord> expectedParsedRecords, 
+    List<SourceRecord> actualSourceRecords
+  ) {
+
+    context.assertEquals(expectedRecords.size(), actualSourceRecords.size());
 
     Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
     Collections.sort(expectedRawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
     Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
     Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
 
-    context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-
-    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedRawRecords.size());
     expectedRawRecords.forEach(expectedRawRecord -> {
       Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
         return sourceRecord.getRawRecord() != null
@@ -362,7 +394,6 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
         actualSourceRecord.get().getRawRecord().getContent());
     });
 
-    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedParsedRecords.size());
     expectedParsedRecords.forEach(expectedParsedRecord -> {
       Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
         return sourceRecord.getParsedRecord() != null

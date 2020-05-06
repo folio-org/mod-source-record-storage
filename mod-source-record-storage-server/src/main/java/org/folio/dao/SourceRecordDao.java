@@ -11,7 +11,9 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 
 /**
  * Data access object for {@link SourceRecord}
@@ -138,6 +140,21 @@ public interface SourceRecordDao {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with specified {@link SourceRecordContent}
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset,
+      Integer limit, String tenantId);
+
+  /**
+   * Searches for collection of {@link SourceRecord} by {@link RecordFilter} and streams response
+   * 
+   * @param content    specific {@link SourceRecordContent}
+   * @param filter     {@link RecordFilter} to prepare WHERE clause
+   * @param offset     starting index in a list of results
+   * @param limit      maximum number of results to return
+   * @param tenantId   tenant id
+   * @param handler    handler for each {@link SourceRecord}
+   * @param endHandler handler for when stream is finished
+   */
+  public void getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId,
+      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler);
 
 }

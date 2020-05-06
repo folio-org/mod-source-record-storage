@@ -40,17 +40,17 @@ public class ErrorRecordDaoImpl extends AbstractBeanDao<ErrorRecord, ErrorRecord
   }
 
   @Override
-  public String getId(ErrorRecord errorRecord) {
-    return errorRecord.getId();
-  }
-
-  @Override
-  protected String getColumns() {
+  public String getColumns() {
     return ColumnBuilder
       .of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .append(DESCRIPTION_COLUMN_NAME)
       .build();
+  }
+
+  @Override
+  public String getId(ErrorRecord errorRecord) {
+    return errorRecord.getId();
   }
 
   @Override
@@ -76,6 +76,14 @@ public class ErrorRecordDaoImpl extends AbstractBeanDao<ErrorRecord, ErrorRecord
       .withId(result.getString(ID_COLUMN_NAME))
       .withContent(result.getString(CONTENT_COLUMN_NAME))
       .withDescription(result.getString(DESCRIPTION_COLUMN_NAME));
+  }
+
+  @Override
+  protected ErrorRecord toBean(JsonArray row) {
+    return new ErrorRecord()
+      .withId(row.getString(0))
+      .withContent(row.getString(1))
+      .withDescription(row.getString(2));
   }
 
 }

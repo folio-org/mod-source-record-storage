@@ -10,9 +10,9 @@ public class DaoUtil {
 
   public static final FastDateFormat DATE_FORMATTER = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT;
 
-  public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT * FROM %s WHERE id = '%s';";
-  public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT * FROM %s WHERE %s = '%s';";
-  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT * FROM %s %s OFFSET %s LIMIT %s;";
+  public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT %s FROM %s WHERE id = '%s';";
+  public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT %s FROM %s WHERE %s = '%s';";
+  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s FROM %s %s OFFSET %s LIMIT %s;";
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
   public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";

@@ -18,8 +18,10 @@ import javax.ws.rs.NotFoundException;
 import org.folio.dao.filter.BeanFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -28,29 +30,52 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
-public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements BeanDao<B, C, F> {
+public abstract class AbstractBeanDao<I, C, F extends BeanFilter> implements BeanDao<I, C, F> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
 
-  public Future<Optional<B>> getById(String id, String tenantId) {
-    String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getTableName(), id);
+  public Future<Optional<I>> getById(String id, String tenantId) {
+    String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
     log.info("Attempting get by id: {}", sql);
     return select(sql, tenantId);
   }
 
   public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getTableName(), filter.toWhereClause(), offset, limit);
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
     log.info("Attempting get by filter: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
 
-  public Future<B> save(B bean, String tenantId) {
-    Promise<B> promise = Promise.promise();
+  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<I> handler, Handler<AsyncResult<Void>> endHandler) {
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
+    log.info("Attempting stream get by filter: {}", sql);
+    postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
+      if (connection.failed()) {
+        log.error("Failed to get database connection", connection.cause());
+        endHandler.handle(Future.failedFuture(connection.cause()));
+        return;
+      }
+      connection.result().queryStream(sql, stream -> {
+        if (stream.failed()) {
+          log.error("Failed to get stream", stream.cause());
+          endHandler.handle(Future.failedFuture(stream.cause()));
+          return;
+        }
+        stream.result()
+          .handler(row -> handler.handle(toBean(row)))
+          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
+          .endHandler(x -> endHandler.handle(Future.succeededFuture()));
+      });
+    });
+  }
+
+  public Future<I> save(I bean, String tenantId) {
+    Promise<I> promise = Promise.promise();
     String columns = getColumns();
     String sql = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
     log.info("Attempting save: {}", sql);
@@ -65,8 +90,8 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     return promise.future();
   }
 
-  public Future<List<B>> save(List<B> beans, String tenantId) {
-    Promise<List<B>> promise = Promise.promise();
+  public Future<List<I>> save(List<I> beans, String tenantId) {
+    Promise<List<I>> promise = Promise.promise();
     log.info("Attempting batch save in {}", getTableName());
     // NOTE: update when raml-module-builder supports batch save with params
     // vertx-mysql-postgresql-client does not implement batch save
@@ -83,8 +108,8 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
     return promise.future();
   }
 
-  public Future<B> update(B bean, String tenantId) {
-    Promise<B> promise = Promise.promise();
+  public Future<I> update(I bean, String tenantId) {
+    Promise<I> promise = Promise.promise();
     String id = getId(bean);
     String columns = getColumns();
     String sql = String.format(UPDATE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns), id);
@@ -119,7 +144,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return list of {@link JsonArray} params
    */
-  public List<JsonArray> toParams(List<B> beans, boolean generateIdIfNotExists) {
+  public List<JsonArray> toParams(List<I> beans, boolean generateIdIfNotExists) {
     return beans.stream().map(bean -> toParams(bean, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
@@ -129,7 +154,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param resultSet {@link ResultSet} query results
    * @return optional Bean
    */
-  public Optional<B> toBean(ResultSet resultSet)  {
+  public Optional<I> toBean(ResultSet resultSet)  {
     return resultSet.getNumRows() > 0 ? Optional.of(toBean(resultSet.getRows().get(0))) : Optional.empty();
   }
 
@@ -152,7 +177,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param tenantId tenant id
    * @return future of optional Bean
    */
-  protected Future<Optional<B>> select(String sql, String tenantId) {
+  protected Future<Optional<I>> select(String sql, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toBean);
@@ -164,7 +189,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param bean saved Bean
    * @return bean after post save processing
    */
-  protected B postSave(B bean) {
+  protected I postSave(I bean) {
     return bean;
   }
 
@@ -174,7 +199,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param bean updated Bean
    * @return bean after post update processing
    */
-  protected B postUpdate(B bean) {
+  protected I postUpdate(I bean) {
     return bean;
   }
 
@@ -184,16 +209,9 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param beans saved list of Beans
    * @return bean after post save processing
    */
-  protected List<B> postSave(List<B> beans) {
+  protected List<I> postSave(List<I> beans) {
     return beans.stream().map(this::postSave).collect(Collectors.toList());
   }
-
-  /**
-   * Prepare columns list for INSERT and UPDATE queries
-   * 
-   * @return comma seperated list of table column names
-   */
-  protected abstract String getColumns();
 
   /**
    * Prepare params for INSERT and UPDATE query values
@@ -202,7 +220,7 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return {@link JsonArray} params
    */
-  protected abstract JsonArray toParams(B bean, boolean generateIdIfNotExists);
+  protected abstract JsonArray toParams(I bean, boolean generateIdIfNotExists);
 
   /**
    * Convert {@link ResultSet} into Bean Collection
@@ -218,6 +236,14 @@ public abstract class AbstractBeanDao<B, C, F extends BeanFilter> implements Bea
    * @param result {@link JsonObject} query result row
    * @return Bean
    */
-  protected abstract B toBean(JsonObject result);
+  protected abstract I toBean(JsonObject result);
+
+  /**
+   * Convert {@link JsonArray} into Bean
+   * 
+   * @param result {@link JsonArray} query result row
+   * @return Bean
+   */
+  protected abstract I toBean(JsonArray row);
 
 }

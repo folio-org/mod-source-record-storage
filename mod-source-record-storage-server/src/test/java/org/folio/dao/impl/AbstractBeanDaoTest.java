@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.folio.dao.BeanDao;
@@ -155,6 +157,33 @@ public abstract class AbstractBeanDaoTest<I, C, F extends BeanFilter, DAO extend
       context.assertFalse(res.result());
       async.complete();
     });
+  }
+
+  @Test
+  public void shouldStreamGetByFilter(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockBeans(), TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<I> actual = new ArrayList<>();
+      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID, bean -> {
+        actual.add(bean);
+      }, finished -> {
+        if (finished.failed()) {
+          context.fail(finished.cause());
+        }
+        compareBeans(context, getMockBeans(), actual);
+        async.complete();
+      });
+    });
+  }
+
+  public void compareBeans(TestContext context, List<I> expected, List<I> actual) {
+    Collections.sort(actual, (b1, b2) -> dao.getId(b1).compareTo(dao.getId(b2)));
+    for (int i = 0; i < expected.size() - 1; i++) {
+      compareBeans(context, expected.get(i), actual.get(i));
+    }
   }
 
   public abstract F getNoopFilter();

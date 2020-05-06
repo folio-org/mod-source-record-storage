@@ -37,15 +37,15 @@ public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRec
   }
 
   @Override
-  public String getId(ParsedRecord parsedRecord) {
-    return parsedRecord.getId();
-  }
-
-  @Override
-  protected String getColumns() {
+  public String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .build();
+  }
+
+  @Override
+  public String getId(ParsedRecord parsedRecord) {
+    return parsedRecord.getId();
   }
 
   @Override
@@ -69,6 +69,14 @@ public class ParsedRecordDaoImpl extends AbstractBeanDao<ParsedRecord, ParsedRec
     String content = result.getString(CONTENT_COLUMN_NAME);
     return formatContent(new ParsedRecord()
       .withId(result.getString(ID_COLUMN_NAME))
+      .withContent(content));
+  }
+
+  @Override
+  protected ParsedRecord toBean(JsonArray row) {
+    String content = row.getString(1);
+    return formatContent(new ParsedRecord()
+      .withId(row.getString(0))
       .withContent(content));
   }
 

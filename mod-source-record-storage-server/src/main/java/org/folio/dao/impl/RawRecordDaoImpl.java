@@ -35,15 +35,15 @@ public class RawRecordDaoImpl extends AbstractBeanDao<RawRecord, RawRecordCollec
   }
 
   @Override
-  public String getId(RawRecord rawRecord) {
-    return rawRecord.getId();
-  }
-
-  @Override
-  protected String getColumns() {
+  public String getColumns() {
     return ColumnBuilder.of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .build();
+  }
+
+  @Override
+  public String getId(RawRecord rawRecord) {
+    return rawRecord.getId();
   }
 
   @Override
@@ -67,6 +67,13 @@ public class RawRecordDaoImpl extends AbstractBeanDao<RawRecord, RawRecordCollec
     return new RawRecord()
       .withId(result.getString(ID_COLUMN_NAME))
       .withContent(result.getString(CONTENT_COLUMN_NAME));
+  }
+
+  @Override
+  protected RawRecord toBean(JsonArray row) {
+    return new RawRecord()
+      .withId(row.getString(0))
+      .withContent(row.getString(1));
   }
 
 }

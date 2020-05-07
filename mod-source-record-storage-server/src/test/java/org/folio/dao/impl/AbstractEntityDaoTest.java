@@ -20,11 +20,11 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldGetById(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getById(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
+      dao.getById(dao.getId(getMockEntity()), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -38,7 +38,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldNotFindWhenGetById(TestContext context) {
     Async async = context.async();
-    dao.getById(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
+    dao.getById(dao.getId(getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -50,11 +50,11 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldGetByNoopFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntities(), TENANT_ID).setHandler(create -> {
+    dao.save(getMockEntities(), TENANT_ID).onComplete(create -> {
       if (create.failed()) {
         context.fail(create.cause());
       }
-      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID).setHandler(res -> {
+      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -67,11 +67,11 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldGetByArbitruaryFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntities(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntities(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByFilter(getArbitruaryFilter(), 0, 10, TENANT_ID).setHandler(res -> {
+      dao.getByFilter(getArbitruaryFilter(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -84,7 +84,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldSave(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -96,7 +96,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
-    dao.save(getInvalidMockEntity(), TENANT_ID).setHandler(res -> {
+    dao.save(getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });
@@ -105,12 +105,12 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldUpdate(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
       E mockUpdateEntity = getUpdatedMockEntity();
-      dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
+      dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -124,7 +124,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
     E mockUpdateEntity = getUpdatedMockEntity();
-    dao.update(mockUpdateEntity, TENANT_ID).setHandler(res -> {
+    dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
       context.assertEquals(expectedMessage, res.cause().getMessage());
@@ -135,11 +135,11 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldDelete(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.delete(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
+      dao.delete(dao.getId(getMockEntity()), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -152,7 +152,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldNotDelete(TestContext context) {
     Async async = context.async();
-    dao.delete(dao.getId(getMockEntity()), TENANT_ID).setHandler(res -> {
+    dao.delete(dao.getId(getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -164,7 +164,7 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   @Test
   public void shouldStreamGetByFilter(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntities(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntities(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }

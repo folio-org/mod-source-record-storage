@@ -1,12 +1,11 @@
 package org.folio.dao.impl;
 
-import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
-import java.time.Instant;
-import java.util.Date;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,7 +19,6 @@ import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -28,9 +26,9 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.sql.ResultSet;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="records_lb">
 //   <column name="id" type="uuid">
@@ -124,129 +122,123 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
-  protected JsonArray toParams(Record record, boolean generateIdIfNotExists) {
+  protected Tuple toTuple(Record record, boolean generateIdIfNotExists) {
     if (generateIdIfNotExists && StringUtils.isEmpty(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
     if (StringUtils.isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
-    JsonArray params = new JsonArray()
-      .add(record.getId())
-      .add(record.getSnapshotId())
-      .add(record.getMatchedProfileId())
-      .add(record.getMatchedId())
-      .add(record.getGeneration())
-      .add(record.getRecordType());
-    if (Objects.nonNull(record.getExternalIdsHolder())) {
-      params.add(record.getExternalIdsHolder().getInstanceId());
+    Tuple tuple = Tuple.tuple();
+    if (Objects.nonNull(record.getId())) {
+      tuple.addUUID(UUID.fromString(record.getId()));
     } else {
-      params.addNull();
+      tuple.addValue(null);
     }
-    params
-      .add(record.getState())
-      .add(record.getOrder());
-    if (Objects.nonNull(record.getAdditionalInfo())) {
-      params.add(record.getAdditionalInfo().getSuppressDiscovery());
+    if (Objects.nonNull(record.getSnapshotId())) {
+      tuple.addUUID(UUID.fromString(record.getSnapshotId()));
     } else {
-      params.addNull();
+      tuple.addValue(null);
+    }
+    if (Objects.nonNull(record.getMatchedProfileId())) {
+      tuple.addUUID(UUID.fromString(record.getMatchedProfileId()));
+    } else {
+      tuple.addValue(null);
+    }
+    if (Objects.nonNull(record.getMatchedId())) {
+      tuple.addUUID(UUID.fromString(record.getMatchedId()));
+    } else {
+      tuple.addValue(null);
+    }
+    tuple.addInteger(record.getGeneration());
+    if (Objects.nonNull(record.getRecordType())) {
+      tuple.addString(record.getRecordType().toString());
+    } else {
+      tuple.addValue(null);
+    }
+    if (Objects.nonNull(record.getExternalIdsHolder())) {
+      tuple.addUUID(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
+    } else {
+      tuple.addValue(null);
+    }
+    if (Objects.nonNull(record.getState())) {
+      tuple.addString(record.getState().toString());
+    } else {
+      tuple.addValue(null);
+    }
+    tuple.addInteger(record.getOrder());
+    if (Objects.nonNull(record.getAdditionalInfo())) {
+      tuple.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
+    } else {
+      tuple.addValue(null);
     }
     if (Objects.nonNull(record.getMetadata())) {
-      params.add(record.getMetadata().getCreatedByUserId());
-      if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
-        params.add(DATE_FORMATTER.format(record.getMetadata().getCreatedDate()));
+      if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
+        tuple.addUUID(UUID.fromString(record.getMetadata().getCreatedByUserId()));
       } else {
-        params.addNull();
+        tuple.addValue(null);
       }
-      params.add(record.getMetadata().getUpdatedByUserId());
-      if (Objects.nonNull(record.getMetadata().getUpdatedDate())) {
-        params.add(DATE_FORMATTER.format(record.getMetadata().getUpdatedDate()));
+      if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
+        tuple.addOffsetDateTime(record.getMetadata().getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
       } else {
-        params.addNull();
+        tuple.addValue(null);
+      }
+      if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
+        tuple.addUUID(UUID.fromString(record.getMetadata().getUpdatedByUserId()));
+      } else {
+        tuple.addValue(null);
+      }
+      if (Objects.nonNull(record.getMetadata().getUpdatedDate())) {
+        tuple.addOffsetDateTime(record.getMetadata().getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
+      } else {
+        tuple.addValue(null);
       }
     } else {
-      params.addNull().addNull().addNull().addNull();
+      tuple
+        .addValue(null)
+        .addValue(null)
+        .addValue(null)
+        .addValue(null);
     }
-    return params;
+    return tuple;
   }
 
   @Override
-  protected RecordCollection toCollection(ResultSet resultSet) {
+  protected RecordCollection toCollection(RowSet<Row> rowSet) {
     return new RecordCollection()
-      .withRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withRecords(stream(rowSet.spliterator(), false).map(this::toEntity).collect(Collectors.toList()))
+      .withTotalRecords(rowSet.rowCount());
   }
 
   @Override
-  protected Record toEntity(JsonObject result) {
+  protected Record toEntity(Row row) {
     Record record = new Record()
-      .withId(result.getString(ID_COLUMN_NAME))
-      .withSnapshotId(result.getString(SNAPSHOT_ID_COLUMN_NAME))
-      .withMatchedProfileId(result.getString(MATCHED_PROFILE_ID_COLUMN_NAME))
-      .withMatchedId(result.getString(MATCHED_ID_COLUMN_NAME))
-      .withGeneration(result.getInteger(GENERATION_COLUMN_NAME))
-      .withRecordType(RecordType.valueOf(result.getString(RECORD_TYPE_COLUMN_NAME)));
-    String instanceId = result.getString(INSTANCE_ID_COLUMN_NAME);
-    if (StringUtils.isNotEmpty(instanceId)) {
+      .withId(row.getUUID(ID_COLUMN_NAME).toString())
+      .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
+      .withMatchedProfileId(row.getUUID(MATCHED_PROFILE_ID_COLUMN_NAME).toString())
+      .withMatchedId(row.getUUID(MATCHED_ID_COLUMN_NAME).toString())
+      .withGeneration(row.getInteger(GENERATION_COLUMN_NAME))
+      .withRecordType(RecordType.valueOf(row.getString(RECORD_TYPE_COLUMN_NAME)));
+    UUID instanceId = row.getUUID(INSTANCE_ID_COLUMN_NAME);
+    if (Objects.nonNull(instanceId)) {
       ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
-      externalIdHolder.setInstanceId(instanceId);
+      externalIdHolder.setInstanceId(instanceId.toString());
       record.setExternalIdsHolder(externalIdHolder);
     }
-    record
-      .withState(State.valueOf(result.getString(STATE_COLUMN_NAME)))
-      .withOrder(result.getInteger(ORDER_IN_FILE_COLUMN_NAME));
-    if (result.containsKey(SUPPRESS_DISCOVERY_COLUMN_NAME)) {
-      AdditionalInfo additionalInfo = new AdditionalInfo();
-      additionalInfo.setSuppressDiscovery(result.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME));
-      record.setAdditionalInfo(additionalInfo);
-    }
-    Metadata metadata = new Metadata();
-    String createdByUserId = result.getString(CREATED_BY_USER_ID_COLUMN_NAME);
-    if (StringUtils.isNotEmpty(createdByUserId)) {
-      metadata.setCreatedByUserId(createdByUserId);
-    }
-    Instant createdDate = result.getInstant(CREATED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(createdDate)) {
-      metadata.setCreatedDate(Date.from(createdDate));
-    }
-    String updatedByUserId = result.getString(UPDATED_BY_USER_ID_COLUMN_NAME);
-    if (StringUtils.isNotEmpty(updatedByUserId)) {
-      metadata.setUpdatedByUserId(updatedByUserId);
-    }
-    Instant updatedDate = result.getInstant(UPDATED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(updatedDate)) {
-      metadata.setUpdatedDate(Date.from(updatedDate));
-    }
-    record.setMetadata(metadata);
-    return record;
-  }
-
-  @Override
-  protected Record toEntity(JsonArray row) {
-    Record record = new Record()
-      .withId(row.getString(0))
-      .withSnapshotId(row.getString(1))
-      .withMatchedProfileId(row.getString(2))
-      .withMatchedId(row.getString(3))
-      .withGeneration(row.getInteger(4))
-      .withRecordType(RecordType.valueOf(row.getString(5)));
-    String instanceId = row.getString(6);
-    if (StringUtils.isNotEmpty(instanceId)) {
-      ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
-      externalIdHolder.setInstanceId(instanceId);
-      record.setExternalIdsHolder(externalIdHolder);
-    }
-    record
-      .withState(State.valueOf(row.getString(7)))
-      .withOrder(row.getInteger(8));
-    Boolean suppressDiscovery = row.getBoolean(9);
+    record.withState(State.valueOf(row.getString(STATE_COLUMN_NAME)))
+      .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME));
+    Boolean suppressDiscovery = row.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME);
     if (Objects.nonNull(suppressDiscovery)) {
       AdditionalInfo additionalInfo = new AdditionalInfo();
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
       record.setAdditionalInfo(additionalInfo);
     }
-    record.setMetadata(DaoUtil.metadataFromJsonArray(row, new int[] { 10, 11, 12, 13 }));
-    return record;
+    return record.withMetadata(DaoUtil.metadataFromRow(row, new String[] {
+      CREATED_BY_USER_ID_COLUMN_NAME,
+      CREATED_DATE_COLUMN_NAME,
+      UPDATED_BY_USER_ID_COLUMN_NAME,
+      UPDATED_DATE_COLUMN_NAME
+    }));
   }
 
 }

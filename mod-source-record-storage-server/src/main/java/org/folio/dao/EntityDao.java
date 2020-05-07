@@ -10,7 +10,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Data access object interface for Entity with Collection and {@link EntityFilter}
+ * Data access object interface for <E> Entity with <C> Collection and <F> {@link EntityFilter}
  */
 public interface EntityDao<E, C, F extends EntityFilter> {
 
@@ -26,7 +26,7 @@ public interface EntityDao<E, C, F extends EntityFilter> {
   /**
    * Searchs for Entity by filter
    * 
-   * @param filter   Entity Filter which prepares WHERE clause for query
+   * @param filter   {@link EntityFilter} which prepares WHERE clause for query
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -37,7 +37,7 @@ public interface EntityDao<E, C, F extends EntityFilter> {
   /**
    * Searchs for Entity by filter and stream results
    * 
-   * @param filter       Entity Filter which prepares WHERE clause for query
+   * @param filter       {@link EntityFilter} which prepares WHERE clause for query
    * @param offset       starting index in a list of results
    * @param limit        maximum number of results to return
    * @param tenantId     tenant id
@@ -56,9 +56,9 @@ public interface EntityDao<E, C, F extends EntityFilter> {
   public Future<E> save(E entity, String tenantId);
 
   /**
-   * Saves batch of Entity to database
+   * Saves batch of Entities to database
    * 
-   * @param entities List of Entities to save
+   * @param entities {@link List} of Entities to save
    * @param tenantId tenant id
    * @return future with list of saved entities
    */

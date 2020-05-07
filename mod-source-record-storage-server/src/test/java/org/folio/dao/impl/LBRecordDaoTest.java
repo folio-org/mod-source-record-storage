@@ -1,6 +1,7 @@
 package org.folio.dao.impl;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(save -> {
+    snapshotDao.save(getSnapshots(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -66,11 +67,11 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Test
   public void shouldGetByMatchedId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByMatchedId(getMockEntity().getMatchedId(), TENANT_ID).setHandler(res -> {
+      dao.getByMatchedId(getMockEntity().getMatchedId(), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -84,11 +85,11 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Test
   public void shouldGetByInstanceId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntity(), TENANT_ID).setHandler(save -> {
+    dao.save(getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByInstanceId(getMockEntity().getExternalIdsHolder().getInstanceId(), TENANT_ID).setHandler(res -> {
+      dao.getByInstanceId(getMockEntity().getExternalIdsHolder().getInstanceId(), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -102,7 +103,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntityWithoutId(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntityWithoutId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -142,7 +143,8 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Override
   public Record getInvalidMockEntity() {
     String id = UUID.randomUUID().toString();
-    return new Record().withId(id)
+    return new Record()
+      .withId(id)
       .withRecordType(Record.RecordType.MARC)
       .withOrder(0)
       .withGeneration(1)
@@ -188,13 +190,13 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
     context.assertEquals(expected.getOrder(), actual.getOrder());
     context.assertEquals(expected.getState(), actual.getState());
     context.assertEquals(expected.getRecordType(), actual.getRecordType());
-    if (expected.getAdditionalInfo() != null) {
+    if (Objects.nonNull(expected.getAdditionalInfo())) {
       context.assertEquals(expected.getAdditionalInfo().getSuppressDiscovery(), actual.getAdditionalInfo().getSuppressDiscovery());
     }
-    if (expected.getExternalIdsHolder() != null) {
+    if (Objects.nonNull(expected.getExternalIdsHolder())) {
       context.assertEquals(expected.getExternalIdsHolder().getInstanceId(), actual.getExternalIdsHolder().getInstanceId());
     }
-    if (expected.getMetadata() != null) {
+    if (Objects.nonNull(expected.getMetadata())) {
       context.assertEquals(expected.getMetadata().getCreatedByUserId(), actual.getMetadata().getCreatedByUserId());
       context.assertNotNull(actual.getMetadata().getCreatedDate());
       context.assertEquals(expected.getMetadata().getUpdatedByUserId(), actual.getMetadata().getUpdatedByUserId());

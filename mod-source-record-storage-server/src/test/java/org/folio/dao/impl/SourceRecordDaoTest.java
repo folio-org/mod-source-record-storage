@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -72,11 +73,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
+    snapshotDao.save(getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
       }
-      recordDao.save(getRecords(), TENANT_ID).setHandler(saveRecords -> {
+      recordDao.save(getRecords(), TENANT_ID).onComplete(saveRecords -> {
         if (saveRecords.failed()) {
           context.fail(saveRecords.cause());
         }
@@ -84,7 +85,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
           rawRecordDao.save(getRawRecords(), TENANT_ID),
           parsedRecordDao.save(getParsedRecords(), TENANT_ID),
           errorRecordDao.save(getErrorRecords(), TENANT_ID)
-        ).setHandler(save -> {
+        ).onComplete(save -> {
           if (save.failed()) {
             context.fail();
           }
@@ -111,7 +112,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       rawRecordDeletePromise.future(),
       parsedRecordDeletePromise.future(),
       errorRecordDeletePromise.future()
-    ).setHandler(delete -> {
+    ).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -134,7 +135,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordById(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordById(getRecord(0).getId(), TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordById(getRecord(0).getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -146,7 +147,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordByIdAlt(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordByIdAlt(getRecord(0).getId(), TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordByIdAlt(getRecord(0).getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -161,7 +162,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void shouldGetSourceMarcRecordByInstanceId(TestContext context) {
     Async async = context.async();
     String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
-    sourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -174,7 +175,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void shouldGetSourceMarcRecordByInstanceIdAlt(TestContext context) {
     Async async = context.async();
     String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
-    sourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -188,7 +189,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecords(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecords(0, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecords(0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -203,7 +204,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordsAlt(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsAlt(0, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsAlt(0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -224,7 +225,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Date till = DateUtils.addHours(new Date(), 1);
     DateUtils.addHours(new Date(), 1);
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -242,7 +243,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
     Date till = DateUtils.addHours(new Date(), 1);
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -261,7 +262,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     String id = getRecord(0).getId();
-    sourceRecordDao.getSourceMarcRecordById(content, id, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordById(content, id, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -277,7 +278,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     String matchedId = getRecord(0).getMatchedId();
-    sourceRecordDao.getSourceMarcRecordByMatchedId(content, matchedId, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordByMatchedId(content, matchedId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -293,7 +294,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
-    sourceRecordDao.getSourceMarcRecordByInstanceId(content, instanceId, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordByInstanceId(content, instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -309,7 +310,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     RecordFilter filter = new RecordFilter();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -386,7 +387,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
 
     expectedRawRecords.forEach(expectedRawRecord -> {
       Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
-        return sourceRecord.getRawRecord() != null
+        return Objects.nonNull(sourceRecord.getRawRecord())
           && sourceRecord.getRawRecord().getId().equals(expectedRawRecord.getId());
       }).findAny();
       context.assertTrue(actualSourceRecord.isPresent());
@@ -396,7 +397,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
 
     expectedParsedRecords.forEach(expectedParsedRecord -> {
       Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
-        return sourceRecord.getParsedRecord() != null
+        return Objects.nonNull(sourceRecord.getParsedRecord())
           && sourceRecord.getParsedRecord().getId().equals(expectedParsedRecord.getId());
       }).findAny();
       context.assertTrue(actualSourceRecord.isPresent());
@@ -410,21 +411,21 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       Record expectedRecord = expectedRecords.get(i);
       SourceRecord actualSourceRecord = actualSourceRecords.get(i);
       context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
-      if (actualSourceRecord.getSnapshotId() != null) {
+      if (Objects.nonNull(actualSourceRecord.getSnapshotId())) {
         context.assertEquals(expectedRecord.getSnapshotId(), actualSourceRecord.getSnapshotId());
       }
-      if (actualSourceRecord.getOrder() != null) {
+      if (Objects.nonNull(actualSourceRecord.getOrder())) {
         context.assertEquals(expectedRecord.getOrder(), actualSourceRecord.getOrder());
       }
-      if (actualSourceRecord.getRecordType() != null) {
+      if (Objects.nonNull(actualSourceRecord.getRecordType())) {
         context.assertEquals(expectedRecord.getRecordType().toString(),
           actualSourceRecord.getRecordType().toString());
       }
-      if (actualSourceRecord.getExternalIdsHolder() != null) {
+      if (Objects.nonNull(actualSourceRecord.getExternalIdsHolder())) {
         context.assertEquals(expectedRecord.getExternalIdsHolder().getInstanceId(),
           actualSourceRecord.getExternalIdsHolder().getInstanceId());
       }
-      if (actualSourceRecord.getMetadata() != null) {
+      if (Objects.nonNull(actualSourceRecord.getMetadata())) {
         context.assertEquals(expectedRecord.getMetadata().getCreatedByUserId(),
           actualSourceRecord.getMetadata().getCreatedByUserId());
         context.assertNotNull(actualSourceRecord.getMetadata().getCreatedDate());

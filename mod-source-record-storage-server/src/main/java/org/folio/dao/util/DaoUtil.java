@@ -1,15 +1,16 @@
 package org.folio.dao.util;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.folio.rest.jaxrs.model.Metadata;
 
-import io.vertx.core.json.JsonArray;
+import io.vertx.sqlclient.Row;
 
 /**
  * Utility class for hosting DAO constants
@@ -32,11 +33,15 @@ public class DaoUtil {
   public static final String ERROR_RECORDS_TABLE_NAME = "error_records_lb";
 
   public static final String ID_COLUMN_NAME = "id";
-  public static final String JSON_COLUMN_NAME = "jsonb";
+  public static final String JSONB_COLUMN_NAME = "jsonb";
   public static final String CONTENT_COLUMN_NAME = "content";
 
   public static final String COMMA = ",";
-  public static final String QUESTION_MARK = "?";
+  public static final String VALUE_TEMPLATE_TEMPLATE = "$%s";
+
+  public static final String SINGLE_QUOTE = "'";
+  public static final String ESCAPED_SINGLE_QUOTE = "''";
+  public static final String NEW_LINE = "\n";
 
   public static final String WRAPPED_TEMPLATE = "'%s'";
   public static final String UNWRAPPED_TEMPLATE = "%s";
@@ -45,25 +50,27 @@ public class DaoUtil {
   public static final String WHERE_TEMPLATE = "WHERE %s";
   public static final String COLUMN_EQUALS_TEMPLATE = "%s = ";
 
+  public static final Pattern BOOLEAN_PATTERN = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+
   private DaoUtil() { }
 
-  public static Metadata metadataFromJsonArray(JsonArray row, int[] positions) {
+  public static Metadata metadataFromRow(Row row, String[] columns) {
     Metadata metadata = new Metadata();
-    String createdByUserId = row.getString(positions[0]);
-    if (StringUtils.isNotEmpty(createdByUserId)) {
-      metadata.setCreatedByUserId(createdByUserId);
+    UUID createdByUserId = row.getUUID(columns[0]);
+    if (Objects.nonNull(createdByUserId)) {
+      metadata.setCreatedByUserId(createdByUserId.toString());
     }
-    Instant createdDate = row.getInstant(positions[1]);
+    OffsetDateTime createdDate = row.getOffsetDateTime(columns[1]);
     if (Objects.nonNull(createdDate)) {
-      metadata.setCreatedDate(Date.from(createdDate));
+      metadata.setCreatedDate(Date.from(createdDate.toInstant()));
     }
-    String updatedByUserId = row.getString(positions[2]);
-    if (StringUtils.isNotEmpty(updatedByUserId)) {
-      metadata.setUpdatedByUserId(updatedByUserId);
+    UUID updatedByUserId = row.getUUID(columns[2]);
+    if (Objects.nonNull(updatedByUserId)) {
+      metadata.setUpdatedByUserId(updatedByUserId.toString());
     }
-    Instant updatedDate = row.getInstant(positions[3]);
+    OffsetDateTime updatedDate = row.getOffsetDateTime(columns[3]);
     if (Objects.nonNull(updatedDate)) {
-      metadata.setUpdatedDate(Date.from(updatedDate));
+      metadata.setUpdatedDate(Date.from(updatedDate.toInstant()));
     }
     return metadata;
   }

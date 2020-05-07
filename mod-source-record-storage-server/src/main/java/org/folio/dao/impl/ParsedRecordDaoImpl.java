@@ -1,10 +1,13 @@
 package org.folio.dao.impl;
 
+import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -16,9 +19,9 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.sql.ResultSet;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="marc_records_lb">
 //   <column name="id" type="uuid">
@@ -38,7 +41,8 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
 
   @Override
   public String getColumns() {
-    return ColumnBuilder.of(ID_COLUMN_NAME)
+    return ColumnBuilder
+      .of(ID_COLUMN_NAME)
       .append(CONTENT_COLUMN_NAME)
       .build();
   }
@@ -49,34 +53,32 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   }
 
   @Override
-  protected JsonArray toParams(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
+  protected Tuple toTuple(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // error_records id is foreign key with records_lb
-    return new JsonArray()
-      .add(parsedRecord.getId())
-      .add(parsedRecord.getContent());
+    // parsed_records id is foreign key with records_lb
+    Tuple tuple = Tuple.tuple();
+    if (Objects.nonNull(parsedRecord.getId())) {
+      tuple.addUUID(UUID.fromString(parsedRecord.getId()));
+    } else {
+      tuple.addValue(null);
+    }
+    tuple.addValue(parsedRecord.getContent());
+    return tuple;
   }
 
   @Override
-  protected ParsedRecordCollection toCollection(ResultSet resultSet) {
+  protected ParsedRecordCollection toCollection(RowSet<Row> rowSet) {
     return new ParsedRecordCollection()
-      .withParsedRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withParsedRecords(stream(rowSet.spliterator(), false)
+        .map(this::toEntity).collect(Collectors.toList()))
+      .withTotalRecords(rowSet.rowCount());
   }
 
   @Override
-  protected ParsedRecord toEntity(JsonObject result) {
-    String content = result.getString(CONTENT_COLUMN_NAME);
+  protected ParsedRecord toEntity(Row row) {
+    String content = row.getString(CONTENT_COLUMN_NAME);
     return formatContent(new ParsedRecord()
-      .withId(result.getString(ID_COLUMN_NAME))
-      .withContent(content));
-  }
-
-  @Override
-  protected ParsedRecord toEntity(JsonArray row) {
-    String content = row.getString(1);
-    return formatContent(new ParsedRecord()
-      .withId(row.getString(0))
+      .withId(row.getUUID(ID_COLUMN_NAME).toString())
       .withContent(content));
   }
 

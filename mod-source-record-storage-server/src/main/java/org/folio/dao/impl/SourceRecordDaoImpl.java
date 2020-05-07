@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
@@ -12,13 +13,15 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
-import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.dao.LBRecordDao;
@@ -45,11 +48,16 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
+import io.vertx.sqlclient.PreparedStatement;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.Tuple;
 
 @Component
 public class SourceRecordDaoImpl implements SourceRecordDao {
@@ -85,22 +93,22 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordById(String id, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORD_BY_ID_TEMPLATE, id, tenantId);
+    return selectById(GET_SOURCE_MARC_RECORD_BY_ID_TEMPLATE, id, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordByIdAlt(String id, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORD_BY_ID_ALT_TEMPLATE, id, tenantId);
+    return selectById(GET_SOURCE_MARC_RECORD_BY_ID_ALT_TEMPLATE, id, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORD_BY_INSTANCE_ID_TEMPLATE, instanceId, tenantId);
+    return selectById(GET_SOURCE_MARC_RECORD_BY_INSTANCE_ID_TEMPLATE, instanceId, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId, String tenantId) {
-    return select(GET_SOURCE_MARC_RECORD_BY_INSTANCE_ID_ALT_TEMPLATE, instanceId, tenantId);
+    return selectById(GET_SOURCE_MARC_RECORD_BY_INSTANCE_ID_ALT_TEMPLATE, instanceId, tenantId);
   }
 
   @Override
@@ -156,42 +164,49 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
     String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, filter.toWhereClause(), offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
-    postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
-      if (connection.failed()) {
-        LOG.error("Failed to get database connection", connection.cause());
-        endHandler.handle(Future.failedFuture(connection.cause()));
+    postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
+      if (ar1.failed()) {
+        LOG.error("Failed to get database connection", ar1.cause());
+        endHandler.handle(Future.failedFuture(ar1.cause()));
         return;
       }
-      connection.result().queryStream(sql, stream -> {
-        if (stream.failed()) {
-          LOG.error("Failed to get stream", stream.cause());
-          endHandler.handle(Future.failedFuture(stream.cause()));
+      SqlConnection connection = ar1.result();
+      connection.prepare(sql, ar2 -> {
+        if (ar2.failed()) {
+          LOG.error("Failed to prepare query", ar2.cause());
+          endHandler.handle(Future.failedFuture(ar2.cause()));
           return;
         }
-        stream.result()
-          .endHandler(x -> endHandler.handle(Future.succeededFuture()))
-          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
+        PreparedStatement pq = ar2.result();
+        Transaction tx = connection.begin();
+        RowStream<Row> stream = pq.createStream(limit, Tuple.tuple());
+        stream
           .handler(row -> {
-            stream.result().pause();
-            lookupContent(content, tenantId, toSourceRecord(row)).setHandler(res -> {
-              if (res.failed()) {
-                endHandler.handle(Future.failedFuture(res.cause()));
+            stream.pause();
+            lookupContent(content, tenantId, toSourceRecord(row)).onComplete(ar3 -> {
+              if (ar3.failed()) {
+                endHandler.handle(Future.failedFuture(ar3.cause()));
                 return;
               }
-              handler.handle(res.result());
-              stream.result().resume();
+              handler.handle(ar3.result());
+              stream.resume();
             });
+          })
+          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
+          .endHandler(x -> {
+            tx.commit();
+            endHandler.handle(Future.succeededFuture());
           });
       });
     });
   }
 
-  private Future<Optional<SourceRecord>> select(String template, String id, String tenantId) {
-    Promise<ResultSet> promise = Promise.promise();
+  private Future<Optional<SourceRecord>> selectById(String template, String id, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
     String sql = String.format(template, id);
     LOG.info("Attempting get source records: {}", sql);
-    postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toSourceRecord);
+    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    return promise.future().map(this::toPartialSourceRecord);
   }
 
   private Future<SourceRecordCollection> select(String template, Integer offset, Integer limit, String tenantId) {
@@ -199,56 +214,69 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     return select(sql, tenantId);
   }
 
-  private Future<SourceRecordCollection> select(String template, Date from, Date till, Integer offset, Integer limit,
-      String tenantId) {
+  private Future<SourceRecordCollection> select(String template, Date from, Date till, Integer offset, Integer limit, String tenantId) {
     String sql = String.format(template, DATE_FORMATTER.format(from), DATE_FORMATTER.format(till), offset, limit);
     return select(sql, tenantId);
   }
 
   private Future<SourceRecordCollection> select(String sql, String tenantId) {
-    Promise<ResultSet> promise = Promise.promise();
-    LOG.info("Attempting get by source records: {}", sql);
-    postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toSourceRecordCollection);
+    Promise<RowSet<Row>> promise = Promise.promise();
+    LOG.info("Attempting get source records: {}", sql);
+    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    return promise.future().map(this::toPartialSourceRecordCollection);
   }
 
-  private Optional<SourceRecord> toSourceRecord(ResultSet resultSet) {
-    return resultSet.getNumRows() > 0 ? Optional.of(toSourceRecord(resultSet.getRows().get(0))) : Optional.empty();
+  private Optional<SourceRecord> toPartialSourceRecord(RowSet<Row> rowSet) {
+    return rowSet.rowCount() > 0 ? Optional.of(toPartialSourceRecord(rowSet.iterator().next())) : Optional.empty();
   }
 
-  private SourceRecordCollection toSourceRecordCollection(ResultSet resultSet) {
+  private SourceRecordCollection toPartialSourceRecordCollection(RowSet<Row> rowSet) {
     return new SourceRecordCollection()
-      .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withSourceRecords(stream(rowSet.spliterator(), false)
+        .map(this::toPartialSourceRecord).collect(Collectors.toList()))
+      .withTotalRecords(rowSet.rowCount());
   }
 
-  private SourceRecord toSourceRecord(JsonObject jsonObject) {
-    String id = jsonObject.getString(ID_COLUMN_NAME);
-    JsonObject jsonb = new JsonObject(jsonObject.getString(JSON_COLUMN_NAME));
-    JsonObject content = jsonb.getJsonObject(CONTENT_COLUMN_NAME);
-    ParsedRecord parsedRecord = new ParsedRecord()
-      .withId(jsonb.getString(ID_COLUMN_NAME))
-      .withContent(content.encode());
-    try {
-      String formattedContent = MarcUtil.marcJsonToTxtMarc(content.encode());
-      parsedRecord.withFormattedContent(formattedContent);
-    } catch (IOException e) {
-      LOG.error("Error formatting content", e);
+  private SourceRecord toPartialSourceRecord(Row row) {
+    ParsedRecord parsedRecord = new ParsedRecord();
+    Object jsonb = row.getValue(JSONB_COLUMN_NAME);
+    if (Objects.nonNull(jsonb)) {
+      JsonObject json = (JsonObject) jsonb;
+      String content = json.getString(CONTENT_COLUMN_NAME);
+      parsedRecord
+        .withId(json.getString(ID_COLUMN_NAME))
+        .withContent(content);
+      try {
+        String formattedContent = MarcUtil.marcJsonToTxtMarc(content);
+        parsedRecord.withFormattedContent(formattedContent);
+      } catch (IOException e) {
+        LOG.error("Error formatting content", e);
+      }
     }
-    // NOTE: will be missing several properties; record type, snapshot id, etc.
-    return new SourceRecord()
-      .withRecordId(id)
+    return toMinimumSourceRecord(row)
       .withParsedRecord(parsedRecord);
   }
 
-  private SourceRecord toSourceRecord(JsonArray row) {
-    return new SourceRecord()
-      .withRecordId(row.getString(0))
-      .withSnapshotId(row.getString(1))
-      .withOrder(row.getInteger(2))
-      // NOTE: not ideal to have multiple record type enums
-      .withRecordType(RecordType.fromValue(row.getString(3)))
-      .withMetadata(DaoUtil.metadataFromJsonArray(row, new int[] { 4, 5, 6, 7 }));
+  private SourceRecord toSourceRecord(Row row) {
+    return toMinimumSourceRecord(row)
+      .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
+      .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME))
+      .withRecordType(RecordType.fromValue(row.getString(RECORD_TYPE_COLUMN_NAME)))
+      .withMetadata(DaoUtil.metadataFromRow(row, new String[] {
+        CREATED_BY_USER_ID_COLUMN_NAME,
+        CREATED_DATE_COLUMN_NAME,
+        UPDATED_BY_USER_ID_COLUMN_NAME,
+        UPDATED_DATE_COLUMN_NAME
+      }));
+  }
+
+  private SourceRecord toMinimumSourceRecord(Row row) {
+    SourceRecord sourceRecord = new SourceRecord();
+    UUID id = row.getUUID(ID_COLUMN_NAME);
+    if (Objects.nonNull(id)) {
+      sourceRecord.withRecordId(id.toString());
+    }
+    return sourceRecord;
   }
 
   private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {
@@ -275,7 +303,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
         .map(this::toSourceRecord)
         .map(sr -> lookupContent(content, tenantId, sr))
         .collect(Collectors.toList())
-    ).setHandler(lookup -> {
+    ).onComplete(lookup -> {
       List<SourceRecord> sourceRecords = lookup.result().list();
       promise.complete(new SourceRecordCollection()
         .withSourceRecords(sourceRecords)
@@ -299,15 +327,15 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
         CompositeFuture.all(
           rawRecordDao.getById(id, tenantId).map(rawRecord -> addRawRecordContent(sourceRecord, rawRecord)),
           parsedRecordDao.getById(id, tenantId).map(parsedRecord -> addParsedRecordContent(sourceRecord, parsedRecord))
-        ).setHandler(lookup -> promise.complete(sourceRecord));
+        ).onComplete(lookup -> promise.complete(sourceRecord));
         break;
       case PARSED_RECORD_ONLY:
         parsedRecordDao.getById(id, tenantId).map(parsedRecord -> addParsedRecordContent(sourceRecord, parsedRecord))
-          .setHandler(lookup -> promise.complete(sourceRecord));
+          .onComplete(lookup -> promise.complete(sourceRecord));
         break;
       case RAW_RECORD_ONLY:
         rawRecordDao.getById(id, tenantId).map(rawRecord -> addRawRecordContent(sourceRecord, rawRecord))
-          .setHandler(lookup -> promise.complete(sourceRecord));
+          .onComplete(lookup -> promise.complete(sourceRecord));
         break;
     }
     return promise.future();

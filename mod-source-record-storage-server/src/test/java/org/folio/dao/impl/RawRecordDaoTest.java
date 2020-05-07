@@ -37,11 +37,11 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
+    snapshotDao.save(getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
       }
-      recordDao.save(getRecords(), TENANT_ID).setHandler(saveRecords -> {
+      recordDao.save(getRecords(), TENANT_ID).onComplete(saveRecords -> {
         if (saveRecords.failed()) {
           context.fail(saveRecords.cause());
         }

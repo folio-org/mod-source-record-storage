@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -188,7 +189,7 @@ public abstract class DaoTestMocks {
           .withParsedRecord(sourceRecord.getParsedRecord())
           .withExternalIdsHolder(sourceRecord.getExternalIdsHolder())
           .withAdditionalInfo(sourceRecord.getAdditionalInfo());
-        if (sourceRecord.getMetadata() != null) {
+        if (Objects.nonNull(sourceRecord.getMetadata())) {
           record.withMetadata(sourceRecord.getMetadata());
         }
         Optional<ErrorRecord> errorRecord = errorRecords.stream()

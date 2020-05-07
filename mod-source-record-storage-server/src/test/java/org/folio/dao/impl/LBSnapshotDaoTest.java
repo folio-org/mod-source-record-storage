@@ -4,6 +4,7 @@ import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -51,7 +52,7 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntityWithoutId(), TENANT_ID).setHandler(res -> {
+    dao.save(getMockEntityWithoutId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -109,9 +110,9 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
       context.assertEquals(expected.getJobExecutionId(), actual.getJobExecutionId());
     }
     context.assertEquals(expected.getStatus(), actual.getStatus());
-    if (expected.getProcessingStartedDate() != null) {
-      context.assertEquals(DATE_FORMATTER.format(expected.getProcessingStartedDate()), 
-        DATE_FORMATTER.format(actual.getProcessingStartedDate().getTime()));
+    if (Objects.nonNull(expected.getProcessingStartedDate())) {
+      context.assertEquals(expected.getProcessingStartedDate().getTime(), 
+        actual.getProcessingStartedDate().getTime());
     }
   }
 

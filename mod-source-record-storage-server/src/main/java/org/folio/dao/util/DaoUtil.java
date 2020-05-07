@@ -17,6 +17,7 @@ import io.vertx.sqlclient.Row;
  */
 public class DaoUtil {
 
+  // NOTE: wherever this is used should be converted to sqlTemplate and Tuple to allow typing sql build
   public static final FastDateFormat DATE_FORMATTER = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT;
 
   public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT %s FROM %s WHERE id = '%s';";

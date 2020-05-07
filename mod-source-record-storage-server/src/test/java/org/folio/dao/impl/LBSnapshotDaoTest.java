@@ -1,7 +1,5 @@
 package org.folio.dao.impl;
 
-import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
-
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;

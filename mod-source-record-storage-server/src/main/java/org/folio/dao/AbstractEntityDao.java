@@ -85,8 +85,10 @@ public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements
 
   public Future<E> save(E entity, String tenantId) {
     Promise<E> promise = Promise.promise();
+    String table = getTableName();
     String columns = getColumns();
-    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, getTableName(), columns, getValuesTemplate(columns));
+    String valuesTemplate = getValuesTemplate(columns);
+    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     log.info("Attempting save: {}", sqlTemplate);
     postgresClientFactory.getClient(tenantId)
       .preparedQuery(sqlTemplate)
@@ -106,8 +108,8 @@ public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements
     log.info("Attempting batch save in {}", getTableName());
     String table = getTableName();
     String columns = getColumns();
-    String values = getValuesTemplate(columns);
-    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, values);
+    String valuesTemplate = getValuesTemplate(columns);
+    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     postgresClientFactory.getClient(tenantId)
       .preparedQuery(sqlTemplate)
       .executeBatch(toTuples(entities, true), batch -> {

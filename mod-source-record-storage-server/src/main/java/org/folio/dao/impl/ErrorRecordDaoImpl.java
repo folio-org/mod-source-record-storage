@@ -5,14 +5,13 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ERROR_RECORDS_TABLE_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.filter.ErrorRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.springframework.stereotype.Component;
@@ -60,16 +59,11 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
   protected Tuple toTuple(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // raw_records id is foreign key with records_lb
-    Tuple tuple = Tuple.tuple();
-    if (Objects.nonNull(errorRecord.getId())) {
-      tuple.addUUID(UUID.fromString(errorRecord.getId()));
-    } else {
-      tuple.addValue(null);
-    }
-    tuple
+    return TupleWrapper.of()
+      .addUUID(errorRecord.getId())
       .addValue(errorRecord.getContent())
-      .addString(errorRecord.getDescription());
-    return tuple;
+      .addString(errorRecord.getDescription())
+      .get();
   }
 
   @Override

@@ -5,7 +5,6 @@ import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
-import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +16,7 @@ import org.folio.dao.LBRecordDao;
 import org.folio.dao.filter.RecordFilter;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
@@ -129,78 +129,34 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     if (StringUtils.isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
-    Tuple tuple = Tuple.tuple();
-    if (Objects.nonNull(record.getId())) {
-      tuple.addUUID(UUID.fromString(record.getId()));
-    } else {
-      tuple.addValue(null);
-    }
-    if (Objects.nonNull(record.getSnapshotId())) {
-      tuple.addUUID(UUID.fromString(record.getSnapshotId()));
-    } else {
-      tuple.addValue(null);
-    }
-    if (Objects.nonNull(record.getMatchedProfileId())) {
-      tuple.addUUID(UUID.fromString(record.getMatchedProfileId()));
-    } else {
-      tuple.addValue(null);
-    }
-    if (Objects.nonNull(record.getMatchedId())) {
-      tuple.addUUID(UUID.fromString(record.getMatchedId()));
-    } else {
-      tuple.addValue(null);
-    }
-    tuple.addInteger(record.getGeneration());
-    if (Objects.nonNull(record.getRecordType())) {
-      tuple.addString(record.getRecordType().toString());
-    } else {
-      tuple.addValue(null);
-    }
+    TupleWrapper tupleWrapper = TupleWrapper.of()
+      .addUUID(record.getId())
+      .addUUID(record.getSnapshotId())
+      .addUUID(record.getMatchedProfileId())
+      .addUUID(record.getMatchedId())
+      .addInteger(record.getGeneration())
+      .addEnum(record.getRecordType());
     if (Objects.nonNull(record.getExternalIdsHolder())) {
-      tuple.addUUID(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
+      tupleWrapper.addUUID(record.getExternalIdsHolder().getInstanceId());
     } else {
-      tuple.addValue(null);
+      tupleWrapper.addNull();
     }
-    if (Objects.nonNull(record.getState())) {
-      tuple.addString(record.getState().toString());
-    } else {
-      tuple.addValue(null);
-    }
-    tuple.addInteger(record.getOrder());
+    tupleWrapper.addEnum(record.getState())
+      .addInteger(record.getOrder());
     if (Objects.nonNull(record.getAdditionalInfo())) {
-      tuple.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
+      tupleWrapper.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
     } else {
-      tuple.addValue(null);
+      tupleWrapper.addNull();
     }
     if (Objects.nonNull(record.getMetadata())) {
-      if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
-        tuple.addUUID(UUID.fromString(record.getMetadata().getCreatedByUserId()));
-      } else {
-        tuple.addValue(null);
-      }
-      if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
-        tuple.addOffsetDateTime(record.getMetadata().getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
-      } else {
-        tuple.addValue(null);
-      }
-      if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
-        tuple.addUUID(UUID.fromString(record.getMetadata().getUpdatedByUserId()));
-      } else {
-        tuple.addValue(null);
-      }
-      if (Objects.nonNull(record.getMetadata().getUpdatedDate())) {
-        tuple.addOffsetDateTime(record.getMetadata().getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
-      } else {
-        tuple.addValue(null);
-      }
+      tupleWrapper.addUUID(record.getMetadata().getCreatedByUserId())
+        .addOffsetDateTime(record.getMetadata().getCreatedDate())
+        .addUUID(record.getMetadata().getUpdatedByUserId())
+        .addOffsetDateTime(record.getMetadata().getUpdatedDate());
     } else {
-      tuple
-        .addValue(null)
-        .addValue(null)
-        .addValue(null)
-        .addValue(null);
+      tupleWrapper.addNull().addNull().addNull().addNull();
     }
-    return tuple;
+    return tupleWrapper.get();
   }
 
   @Override

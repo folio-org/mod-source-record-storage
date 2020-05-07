@@ -5,7 +5,6 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
 
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
@@ -16,6 +15,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.springframework.stereotype.Component;
@@ -63,19 +63,11 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    Tuple tuple = Tuple.tuple()
-      .addUUID(UUID.fromString(snapshot.getJobExecutionId()));
-    if (Objects.nonNull(snapshot.getStatus())) {
-      tuple.addString(snapshot.getStatus().toString());
-    } else {
-      tuple.addValue(null);
-    }
-    if (Objects.nonNull(snapshot.getProcessingStartedDate())) {
-      tuple.addOffsetDateTime(snapshot.getProcessingStartedDate().toInstant().atOffset(ZoneOffset.UTC));
-    } else {
-      tuple.addValue(null);
-    }
-    return tuple;
+    return TupleWrapper.of()
+      .addUUID(snapshot.getJobExecutionId())
+      .addEnum(snapshot.getStatus())
+      .addOffsetDateTime(snapshot.getProcessingStartedDate())
+      .get();
   }
 
   @Override

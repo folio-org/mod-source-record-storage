@@ -54,6 +54,13 @@ public class DaoUtil {
 
   private DaoUtil() { }
 
+  /**
+   * Creates {@link Metadata} from row and array of column names
+   * 
+   * @param row     result {@link Row}
+   * @param columns array of column names, must be exactly 4
+   * @return {@link Metadata}
+   */
   public static Metadata metadataFromRow(Row row, String[] columns) {
     Metadata metadata = new Metadata();
     UUID createdByUserId = row.getUUID(columns[0]);

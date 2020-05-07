@@ -6,8 +6,6 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 
 import java.io.IOException;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -15,6 +13,7 @@ import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.filter.ParsedRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.MarcUtil;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.springframework.stereotype.Component;
@@ -56,14 +55,10 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   protected Tuple toTuple(ParsedRecord parsedRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // parsed_records id is foreign key with records_lb
-    Tuple tuple = Tuple.tuple();
-    if (Objects.nonNull(parsedRecord.getId())) {
-      tuple.addUUID(UUID.fromString(parsedRecord.getId()));
-    } else {
-      tuple.addValue(null);
-    }
-    tuple.addValue(parsedRecord.getContent());
-    return tuple;
+    return TupleWrapper.of()
+      .addUUID(parsedRecord.getId())
+      .addValue(parsedRecord.getContent())
+      .get();
   }
 
   @Override

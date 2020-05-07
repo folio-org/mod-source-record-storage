@@ -5,14 +5,13 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
 
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.filter.RawRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.springframework.stereotype.Component;
@@ -54,14 +53,10 @@ public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordColl
   protected Tuple toTuple(RawRecord rawRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // raw_records id is foreign key with records_lb
-    Tuple tuple = Tuple.tuple();
-    if (Objects.nonNull(rawRecord.getId())) {
-      tuple.addUUID(UUID.fromString(rawRecord.getId()));
-    } else {
-      tuple.addValue(null);
-    }
-    tuple.addValue(rawRecord.getContent());
-    return tuple;
+    return TupleWrapper.of()
+      .addUUID(rawRecord.getId())
+      .addValue(rawRecord.getContent())
+      .get();
   }
 
   @Override

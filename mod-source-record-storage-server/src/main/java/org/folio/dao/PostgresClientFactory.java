@@ -26,7 +26,7 @@ public class PostgresClientFactory {
 
   private static final int POOL_SIZE = 5;
 
-  private static final Map<String, PgPool> pool = new HashMap<String, PgPool>();
+  private static final Map<String, PgPool> pool = new HashMap<>();
 
   private Vertx vertx;
 

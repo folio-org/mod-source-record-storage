@@ -232,7 +232,7 @@ public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements
   }
 
   /**
-   * Prepare tuple for INSERT and UPDATE query values
+   * Prepare tuple for INSERT and UPDATE query values. Must be in same order as columns.
    * 
    * @param entity                Entity for extracting values for params
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id

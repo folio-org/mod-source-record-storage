@@ -31,27 +31,25 @@ public class RecordQuery extends Record implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn;
-
-  public RecordQuery() {
-    setState(null);
-    Map<String, String> propertyToColumn = new HashMap<>();
-    propertyToColumn.put("id", ID_COLUMN_NAME);
-    propertyToColumn.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
-    propertyToColumn.put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
-    propertyToColumn.put("matchedId", MATCHED_ID_COLUMN_NAME);
-    propertyToColumn.put("generation", GENERATION_COLUMN_NAME);
-    propertyToColumn.put("recordType", RECORD_TYPE_COLUMN_NAME);
-    propertyToColumn.put("order", ORDER_IN_FILE_COLUMN_NAME);
-    propertyToColumn.put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
-    propertyToColumn.put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
-    propertyToColumn.put("state", STATE_COLUMN_NAME);
-    propertyToColumn.put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
-    propertyToColumn.put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
-    propertyToColumn.put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
-    propertyToColumn.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
-    this.propertyToColumn = ImmutableMap.copyOf(propertyToColumn);
-  }
+  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
+    private static final long serialVersionUID = -3715788293589367631L;
+    {
+      put("id", ID_COLUMN_NAME);
+      put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
+      put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
+      put("matchedId", MATCHED_ID_COLUMN_NAME);
+      put("generation", GENERATION_COLUMN_NAME);
+      put("recordType", RECORD_TYPE_COLUMN_NAME);
+      put("order", ORDER_IN_FILE_COLUMN_NAME);
+      put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
+      put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
+      put("state", STATE_COLUMN_NAME);
+      put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
+      put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
+      put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
+      put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
+    }
+  });
 
   @Override
   public Set<OrderBy> getSort() {
@@ -103,7 +101,7 @@ public class RecordQuery extends Record implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return Objects.nonNull(other) && DaoUtil.equals(sort, ((RecordQuery) other).getSort()) && super.equals(other);
+    return DaoUtil.equals(this, other) && super.equals(other);
   }
 
   @Override

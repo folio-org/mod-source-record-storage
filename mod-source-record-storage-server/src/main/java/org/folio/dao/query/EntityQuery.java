@@ -50,7 +50,7 @@ public interface EntityQuery {
    * @return ORDER BY claues for specific {@link EntityDAO} table
    * @throws BadRequestException
    */
-  public default String toOrderByClause() throws BadRequestException {
+  public default String toOrderByClause() {
     OrderByClauseBuilder orderByClauseBuilder = OrderByClauseBuilder.of();
     for (OrderBy orderBy : getSort()) {
       Optional<String> column = getPropertyColumnName(orderBy.getProperty());

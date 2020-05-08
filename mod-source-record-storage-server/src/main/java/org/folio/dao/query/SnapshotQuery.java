@@ -20,15 +20,14 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn;
-
-  public SnapshotQuery() {
-    Map<String, String> propertyToColumn = new HashMap<>();
-    propertyToColumn.put("jobExecutionId", ID_COLUMN_NAME);
-    propertyToColumn.put("status", STATUS_COLUMN_NAME);
-    propertyToColumn.put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
-    this.propertyToColumn = ImmutableMap.copyOf(propertyToColumn);
-  }
+  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
+    private static final long serialVersionUID = -3715788293589367631L;
+    {
+      put("jobExecutionId", ID_COLUMN_NAME);
+      put("status", STATUS_COLUMN_NAME);
+      put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
+    }
+  });
 
   @Override
   public Set<OrderBy> getSort() {
@@ -42,8 +41,9 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   @Override
   public String toWhereClause() {
-    WhereClauseBuilder whereClauseBuilder = WhereClauseBuilder.of().append(getJobExecutionId(), ID_COLUMN_NAME)
-        .append(getProcessingStartedDate(), PROCESSING_STARTED_DATE_COLUMN_NAME);
+    WhereClauseBuilder whereClauseBuilder = WhereClauseBuilder.of()
+      .append(getJobExecutionId(), ID_COLUMN_NAME)
+      .append(getProcessingStartedDate(), PROCESSING_STARTED_DATE_COLUMN_NAME);
     if (Objects.nonNull(getStatus())) {
       whereClauseBuilder.append(getStatus().toString(), STATUS_COLUMN_NAME);
     }
@@ -52,7 +52,7 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return Objects.nonNull(other) && DaoUtil.equals(sort, ((SnapshotQuery) other).getSort()) && super.equals(other);
+    return DaoUtil.equals(this, other) && super.equals(other);
   }
 
   @Override

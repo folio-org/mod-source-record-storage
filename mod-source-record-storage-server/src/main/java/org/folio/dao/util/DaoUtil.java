@@ -8,6 +8,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
+import org.folio.dao.query.EntityQuery;
 import org.folio.dao.query.OrderBy;
 import org.folio.rest.jaxrs.model.Metadata;
 
@@ -85,6 +86,10 @@ public class DaoUtil {
 
   public static boolean equals(Set<OrderBy> sort1, Set<OrderBy> sort2) {
     return sort1.size() == sort2.size() && sort1.containsAll(sort2);
+  }
+
+  public static boolean equals(EntityQuery entityQuery, Object other) {
+    return Objects.nonNull(other) && DaoUtil.equals(entityQuery.getSort(), ((EntityQuery) other).getSort());
   }
 
 }

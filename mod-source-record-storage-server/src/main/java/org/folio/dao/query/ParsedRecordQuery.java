@@ -6,7 +6,6 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
@@ -19,14 +18,13 @@ public class ParsedRecordQuery extends ParsedRecord implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn;
-
-  public ParsedRecordQuery() {
-    Map<String, String> propertyToColumn = new HashMap<>();
-    propertyToColumn.put("id", ID_COLUMN_NAME);
-    propertyToColumn.put("content", CONTENT_COLUMN_NAME);
-    this.propertyToColumn = ImmutableMap.copyOf(propertyToColumn);
-  }
+  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
+    private static final long serialVersionUID = -3715788293589367631L;
+    {
+      put("id", ID_COLUMN_NAME);
+      put("content", CONTENT_COLUMN_NAME);
+    }
+  });
 
   @Override
   public Set<OrderBy> getSort() {
@@ -47,7 +45,7 @@ public class ParsedRecordQuery extends ParsedRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return Objects.nonNull(other) && DaoUtil.equals(sort, ((ParsedRecordQuery) other).getSort()) && super.equals(other);
+    return DaoUtil.equals(this, other) && super.equals(other);
   }
 
   @Override

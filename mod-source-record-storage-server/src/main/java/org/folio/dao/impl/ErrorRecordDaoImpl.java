@@ -17,9 +17,6 @@ import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -36,8 +33,7 @@ import io.vertx.sqlclient.Tuple;
 //   </column>
 // </createTable>
 @Component
-public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery>
-    implements ErrorRecordDao {
+public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery> implements ErrorRecordDao {
 
   public static final String DESCRIPTION_COLUMN_NAME = "description";
 
@@ -60,21 +56,26 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
   protected Tuple toTuple(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
     // raw_records id is foreign key with records_lb
-    return TupleWrapper.of().addUUID(errorRecord.getId()).addValue(errorRecord.getContent())
-        .addString(errorRecord.getDescription()).get();
+    return TupleWrapper.of()
+      .addUUID(errorRecord.getId())
+      .addValue(errorRecord.getContent())
+      .addString(errorRecord.getDescription()).get();
   }
 
   @Override
   protected ErrorRecordCollection toCollection(RowSet<Row> rowSet) {
     return new ErrorRecordCollection()
-        .withErrorRecords(stream(rowSet.spliterator(), false).map(this::toEntity).collect(Collectors.toList()))
-        .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
+      .withErrorRecords(stream(rowSet.spliterator(), false)
+        .map(this::toEntity).collect(Collectors.toList()))
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override
   protected ErrorRecord toEntity(Row row) {
-    return new ErrorRecord().withId(row.getUUID(ID_COLUMN_NAME).toString())
-        .withContent(row.getString(CONTENT_COLUMN_NAME)).withDescription(row.getString(DESCRIPTION_COLUMN_NAME));
+    return new ErrorRecord()
+      .withId(row.getUUID(ID_COLUMN_NAME).toString())
+      .withContent(row.getString(CONTENT_COLUMN_NAME))
+      .withDescription(row.getString(DESCRIPTION_COLUMN_NAME));
   }
 
 }

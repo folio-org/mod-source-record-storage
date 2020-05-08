@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ParsedRecordDao;
-import org.folio.dao.filter.ParsedRecordFilter;
+import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
@@ -30,7 +30,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter> implements ParsedRecordDao {
+public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery> implements ParsedRecordDao {
 
   @Override
   public String getTableName() {

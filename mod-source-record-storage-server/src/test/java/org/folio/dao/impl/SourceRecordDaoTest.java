@@ -18,7 +18,7 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -305,11 +305,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldGetSourceMarcRecordsByFilter(TestContext context) {
+  public void shouldGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).setHandler(res -> {
+    RecordQuery filter = new RecordQuery();
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, filter, 0, 10, TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -322,12 +322,12 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldStreamGetSourceMarcRecordsByFilter(TestContext context) {
+  public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
+    RecordQuery filter = new RecordQuery();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
       actualSourceRecords.add(sourceRecord);
     }, finished -> {
       if (finished.failed()) {

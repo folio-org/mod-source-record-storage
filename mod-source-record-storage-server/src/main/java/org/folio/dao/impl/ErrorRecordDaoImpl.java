@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ErrorRecordDao;
-import org.folio.dao.filter.ErrorRecordFilter;
+import org.folio.dao.query.ErrorRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -31,7 +31,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> implements ErrorRecordDao {
+public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery> implements ErrorRecordDao {
 
   public static final String DESCRIPTION_COLUMN_NAME = "description";
 

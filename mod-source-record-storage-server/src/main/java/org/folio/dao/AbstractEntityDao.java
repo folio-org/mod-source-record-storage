@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
-import org.folio.dao.filter.EntityFilter;
+import org.folio.dao.query.EntityQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -30,7 +30,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 
-public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements EntityDao<E, C, F> {
+public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements EntityDao<E, C, Q> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -43,17 +43,17 @@ public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements
     return select(sql, tenantId);
   }
 
-  public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
+  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
-    log.info("Attempting get by filter: {}", sql);
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), query.toWhereClause(), offset, limit);
+    log.info("Attempting get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
 
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
-    log.info("Attempting stream get by filter: {}", sql);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), query.toWhereClause(), offset, limit);
+    log.info("Attempting stream get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
       if (connection.failed()) {
         log.error("Failed to get database connection", connection.cause());

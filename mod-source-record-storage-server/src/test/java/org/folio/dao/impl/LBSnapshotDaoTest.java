@@ -2,6 +2,7 @@ package org.folio.dao.impl;
 
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -9,7 +10,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.filter.SnapshotFilter;
+import org.folio.dao.query.SnapshotQuery;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -22,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotCollection, SnapshotFilter, LBSnapshotDao> {
+public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotCollection, SnapshotQuery, LBSnapshotDao> {
 
   @Override
   public void createDao(TestContext context) throws IllegalAccessException {
@@ -66,15 +67,21 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
-  public SnapshotFilter getNoopFilter() {
-    return new SnapshotFilter();
+  public SnapshotQuery getNoopQuery() {
+    return new SnapshotQuery();
   }
 
   @Override
-  public SnapshotFilter getArbitruaryFilter() {
-    SnapshotFilter snapshotFilter = new SnapshotFilter();
-    snapshotFilter.setStatus(Snapshot.Status.NEW);
-    return snapshotFilter;
+  public SnapshotQuery getArbitruaryQuery() {
+    SnapshotQuery snapshotQuery = new SnapshotQuery();
+    snapshotQuery.setStatus(Snapshot.Status.NEW);
+    return snapshotQuery;
+  }
+
+  @Override
+  public SnapshotQuery getArbitruarySortedQuery() {
+    return (SnapshotQuery) getArbitruaryQuery()
+      .orderBy("status");
   }
 
   @Override
@@ -116,7 +123,7 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
-  public void assertNoopFilterResults(TestContext context, SnapshotCollection actual) {
+  public void assertNoopQueryResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
@@ -124,9 +131,20 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
-  public void assertArbitruaryFilterResults(TestContext context, SnapshotCollection actual) {
+  public void assertArbitruaryQueryResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = getMockEntities().stream()
-      .filter(entity -> entity.getStatus().equals(getArbitruaryFilter().getStatus()))
+      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
+      .collect(Collectors.toList());
+    Collections.sort(expected, (s1, s2) -> s1.getStatus().compareTo(s2.getStatus()));
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
+      .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
+  }
+
+  @Override
+  public void assertArbitruarySortedQueryResults(TestContext context, SnapshotCollection actual) {
+    List<Snapshot> expected = getMockEntities().stream()
+      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
@@ -134,8 +152,8 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
-  public SnapshotFilter getCompleteFilter() {
-    SnapshotFilter filter = new SnapshotFilter();
+  public SnapshotQuery getCompleteQuery() {
+    SnapshotQuery filter = new SnapshotQuery();
     BeanUtils.copyProperties(getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), filter);
     filter.withProcessingStartedDate(null);
     return filter;

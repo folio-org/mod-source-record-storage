@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.RawRecordDao;
-import org.folio.dao.filter.RawRecordFilter;
+import org.folio.dao.query.RawRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -28,7 +28,7 @@ import io.vertx.ext.sql.ResultSet;
 //   </column>
 // </createTable>
 @Component
-public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordCollection, RawRecordFilter> implements RawRecordDao {
+public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordCollection, RawRecordQuery> implements RawRecordDao {
 
   @Override
   public String getTableName() {

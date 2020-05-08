@@ -1,4 +1,4 @@
-package org.folio.dao.filter;
+package org.folio.dao.query;
 
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
@@ -15,15 +15,35 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
-public class RecordFilter extends Record implements EntityFilter {
+public class RecordQuery extends Record implements EntityQuery {
 
-  public RecordFilter() {
+  private final Map<String, String> propertyToColumn = new HashMap<>();
+
+  public RecordQuery() {
     setState(null);
+    propertyToColumn.put("id", ID_COLUMN_NAME);
+    propertyToColumn.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
+    propertyToColumn.put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
+    propertyToColumn.put("matchedId", MATCHED_ID_COLUMN_NAME);
+    propertyToColumn.put("generation", GENERATION_COLUMN_NAME);
+    propertyToColumn.put("recordType", RECORD_TYPE_COLUMN_NAME);
+    propertyToColumn.put("order", ORDER_IN_FILE_COLUMN_NAME);
+    propertyToColumn.put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
+    propertyToColumn.put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
+    propertyToColumn.put("state", STATE_COLUMN_NAME);
+    propertyToColumn.put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
+    propertyToColumn.put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
+    propertyToColumn.put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
+    propertyToColumn.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
   }
 
   @Override
@@ -62,6 +82,16 @@ public class RecordFilter extends Record implements EntityFilter {
         .append(getMetadata().getUpdatedDate(), UPDATED_DATE_COLUMN_NAME);
     }
     return whereClauseBuilder.build();
+  }
+
+  @Override
+  public String toOrderByClause() {
+    return StringUtils.EMPTY;
+  }
+
+  @Override
+  public Optional<String> getPropertyColumnName(String property) {
+    return Optional.ofNullable(propertyToColumn.get(property));
   }
 
 }

@@ -1,0 +1,41 @@
+package org.folio.dao.query;
+
+import static org.folio.dao.impl.ErrorRecordDaoImpl.DESCRIPTION_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.WhereClauseBuilder;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+
+public class ErrorRecordQuery extends ErrorRecord implements EntityQuery {
+
+  private final Map<String, String> propertyToColumn = new HashMap<>();
+
+  public ErrorRecordQuery() {
+    propertyToColumn.put("id", ID_COLUMN_NAME);
+    propertyToColumn.put("content", CONTENT_COLUMN_NAME);
+    propertyToColumn.put("description", DESCRIPTION_COLUMN_NAME);
+  }
+
+  @Override
+  public String toWhereClause() {
+    return WhereClauseBuilder.of().append(getId(), ID_COLUMN_NAME).append(getDescription(), DESCRIPTION_COLUMN_NAME)
+        .build();
+  }
+
+  @Override
+  public String toOrderByClause() {
+    return StringUtils.EMPTY;
+  }
+
+  @Override
+  public Optional<String> getPropertyColumnName(String property) {
+    return Optional.ofNullable(propertyToColumn.get(property));
+  }
+
+}

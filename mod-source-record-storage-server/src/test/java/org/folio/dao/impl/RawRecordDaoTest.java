@@ -1,12 +1,13 @@
 package org.folio.dao.impl;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.RawRecordDao;
-import org.folio.dao.filter.RawRecordFilter;
+import org.folio.dao.query.RawRecordQuery;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -18,7 +19,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecordCollection, RawRecordFilter, RawRecordDao> {
+public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -76,15 +77,21 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public RawRecordFilter getNoopFilter() {
-    return new RawRecordFilter();
+  public RawRecordQuery getNoopQuery() {
+    return new RawRecordQuery();
   }
 
   @Override
-  public RawRecordFilter getArbitruaryFilter() {
-    RawRecordFilter snapshotFilter = new RawRecordFilter();
+  public RawRecordQuery getArbitruaryQuery() {
+    RawRecordQuery snapshotQuery = new RawRecordQuery();
     // NOTE: no reasonable field to filter on
-    return snapshotFilter;
+    return snapshotQuery;
+  }
+
+  @Override
+  public RawRecordQuery getArbitruarySortedQuery() {
+    return (RawRecordQuery) getArbitruaryQuery()
+      .orderBy("id");
   }
 
   @Override
@@ -117,7 +124,7 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public void assertNoopFilterResults(TestContext context, RawRecordCollection actual) {
+  public void assertNoopQueryResults(TestContext context, RawRecordCollection actual) {
     List<RawRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
@@ -125,7 +132,7 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public void assertArbitruaryFilterResults(TestContext context, RawRecordCollection actual) {
+  public void assertArbitruaryQueryResults(TestContext context, RawRecordCollection actual) {
     List<RawRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
@@ -133,8 +140,17 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public RawRecordFilter getCompleteFilter() {
-    RawRecordFilter filter = new RawRecordFilter();
+  public void assertArbitruarySortedQueryResults(TestContext context, RawRecordCollection actual) {
+    List<RawRecord> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    Collections.sort(expected, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
+    expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
+      .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
+  }
+
+  @Override
+  public RawRecordQuery getCompleteQuery() {
+    RawRecordQuery filter = new RawRecordQuery();
     BeanUtils.copyProperties(getRawRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
     return filter;
   }

@@ -103,7 +103,12 @@ public class RecordQuery extends Record implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(sort, ((RecordQuery) other).getSort()) && super.equals(other);
+    return Objects.nonNull(other) && DaoUtil.equals(sort, ((RecordQuery) other).getSort()) && super.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
 }

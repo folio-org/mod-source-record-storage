@@ -52,7 +52,12 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(sort, ((SnapshotQuery) other).getSort()) && super.equals(other);
+    return Objects.nonNull(other) && DaoUtil.equals(sort, ((SnapshotQuery) other).getSort()) && super.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
 }

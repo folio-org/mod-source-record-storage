@@ -7,6 +7,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
@@ -49,7 +50,12 @@ public class ErrorRecordQuery extends ErrorRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(sort, ((ErrorRecordQuery) other).getSort()) && super.equals(other);
+    return Objects.nonNull(other) && DaoUtil.equals(sort, ((ErrorRecordQuery) other).getSort()) && super.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
 }

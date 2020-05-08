@@ -18,17 +18,17 @@ import org.folio.rest.jaxrs.model.Snapshot;
 
 public class SnapshotQuery extends Snapshot implements EntityQuery {
 
-  private final Set<OrderBy> sort = new HashSet<>();
+  private static final Map<String, String> propertyToColumn;
 
-  private final Map<String, String> propertyToColumn;
-
-  public SnapshotQuery() {
+  static {
     Map<String, String> ptc = new HashMap<>();
     ptc.put("jobExecutionId", ID_COLUMN_NAME);
     ptc.put("status", STATUS_COLUMN_NAME);
     ptc.put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
     propertyToColumn = ImmutableMap.copyOf(ptc);
   }
+
+  private final Set<OrderBy> sort = new HashSet<>();
 
   @Override
   public Set<OrderBy> getSort() {

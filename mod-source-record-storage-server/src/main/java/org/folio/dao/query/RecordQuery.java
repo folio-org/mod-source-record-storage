@@ -29,11 +29,9 @@ import org.folio.rest.jaxrs.model.Record;
 
 public class RecordQuery extends Record implements EntityQuery {
 
-  private final Set<OrderBy> sort = new HashSet<>();
+  private static final Map<String, String> propertyToColumn;
 
-  private final Map<String, String> propertyToColumn;
-
-  public RecordQuery() {
+  static {
     Map<String, String> ptc = new HashMap<>();
     ptc.put("id", ID_COLUMN_NAME);
     ptc.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
@@ -51,6 +49,8 @@ public class RecordQuery extends Record implements EntityQuery {
     ptc.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
     propertyToColumn = ImmutableMap.copyOf(ptc);
   }
+
+  private final Set<OrderBy> sort = new HashSet<>();
 
   @Override
   public Set<OrderBy> getSort() {

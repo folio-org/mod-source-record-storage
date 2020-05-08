@@ -45,14 +45,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
     Promise<ResultSet> promise = Promise.promise();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), query.toWhereClause(), offset, limit);
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
     return promise.future().map(this::toCollection);
   }
 
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), query.toWhereClause(), offset, limit);
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
       if (connection.failed()) {

@@ -153,8 +153,10 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   @Override
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
-    Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, query.toWhereClause(), offset, limit);
+      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
       if (connection.failed()) {

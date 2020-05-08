@@ -85,6 +85,14 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
+  public SnapshotQuery getCompleteQuery() {
+    SnapshotQuery query = new SnapshotQuery();
+    BeanUtils.copyProperties(getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), query);
+    query.withProcessingStartedDate(null);
+    return query;
+  }
+
+  @Override
   public Snapshot getMockEntity() {
     return getSnapshot(0);
   }
@@ -149,14 +157,6 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
       .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
-  }
-
-  @Override
-  public SnapshotQuery getCompleteQuery() {
-    SnapshotQuery filter = new SnapshotQuery();
-    BeanUtils.copyProperties(getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), filter);
-    filter.withProcessingStartedDate(null);
-    return filter;
   }
 
   @Override

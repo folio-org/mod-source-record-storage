@@ -308,8 +308,25 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void shouldGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery filter = new RecordQuery();
-    sourceRecordDao.getSourceMarcRecordsByQuery(content, filter, 0, 10, TENANT_ID).setHandler(res -> {
+    RecordQuery query = new RecordQuery();
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID).setHandler(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<Record> expectedRecords = getRecords();
+      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordsByQuerySorted(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    RecordQuery query = (RecordQuery) new RecordQuery().orderBy("id");
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID).setHandler(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -325,9 +342,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery filter = new RecordQuery();
+    RecordQuery query = new RecordQuery();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
-    sourceRecordDao.getSourceMarcRecordsByQuery(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, sourceRecord -> {
       actualSourceRecords.add(sourceRecord);
     }, finished -> {
       if (finished.failed()) {

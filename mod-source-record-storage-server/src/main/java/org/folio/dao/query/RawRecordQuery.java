@@ -4,20 +4,37 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
+import com.google.common.collect.ImmutableMap;
+
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.RawRecord;
 
 public class RawRecordQuery extends RawRecord implements EntityQuery {
 
-  private final Map<String, String> propertyToColumn = new HashMap<>();
+  private final Set<OrderBy> sort = new HashSet<>();
+
+  private final Map<String, String> propertyToColumn;
 
   public RawRecordQuery() {
+    Map<String, String> propertyToColumn = new HashMap<>();
     propertyToColumn.put("id", ID_COLUMN_NAME);
     propertyToColumn.put("content", CONTENT_COLUMN_NAME);
+    this.propertyToColumn = ImmutableMap.copyOf(propertyToColumn);
+  }
+
+  @Override
+  public Set<OrderBy> getSort() {
+    return sort;
+  }
+
+  @Override
+  public Map<String, String> getPropertyToColumn() {
+    return propertyToColumn;
   }
 
   @Override
@@ -28,13 +45,8 @@ public class RawRecordQuery extends RawRecord implements EntityQuery {
   }
 
   @Override
-  public String toOrderByClause() {
-    return StringUtils.EMPTY;
-  }
-
-  @Override
-  public Optional<String> getPropertyColumnName(String property) {
-    return Optional.ofNullable(propertyToColumn.get(property));
+  public boolean equals(Object other) {
+    return DaoUtil.equals(sort, ((RawRecordQuery) other).getSort()) && super.equals(other);
   }
 
 }

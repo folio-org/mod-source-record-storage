@@ -155,9 +155,9 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
 
   @Override
   public ParsedRecordQuery getCompleteQuery() {
-    ParsedRecordQuery filter = new ParsedRecordQuery();
-    BeanUtils.copyProperties(getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
-    return filter;
+    ParsedRecordQuery query = new ParsedRecordQuery();
+    BeanUtils.copyProperties(getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
+    return query;
   }
 
   @Override

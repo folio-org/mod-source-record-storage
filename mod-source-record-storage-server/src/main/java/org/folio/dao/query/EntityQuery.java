@@ -1,8 +1,8 @@
 package org.folio.dao.query;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import javax.ws.rs.BadRequestException;
 
@@ -14,7 +14,28 @@ import org.folio.dao.util.OrderByClauseBuilder;
  */
 public interface EntityQuery {
 
-  public final List<OrderBy> orders = new ArrayList<>();
+  /**
+   * Get sort orders
+   * 
+   * @return {@link Set} of {@link OrderBy}
+   */
+  public Set<OrderBy> getSort();
+
+  /**
+   * Get property to column name map
+   * 
+   * @return property to column name map
+   */
+  public Map<String, String> getPropertyToColumn();
+
+  /**
+   * Lookup table column name for given property
+   * 
+   * @return column name for given property
+   */
+  public default Optional<String> getPropertyColumnName(String property) {
+    return Optional.ofNullable(getPropertyToColumn().get(property));
+  }
 
   /**
    * Checks extended model for values to query by and builds WHERE clause
@@ -31,7 +52,7 @@ public interface EntityQuery {
    */
   public default String toOrderByClause() throws BadRequestException {
     OrderByClauseBuilder orderByClauseBuilder = OrderByClauseBuilder.of();
-    for (OrderBy orderBy : orders) {
+    for (OrderBy orderBy : getSort()) {
       Optional<String> column = getPropertyColumnName(orderBy.getProperty());
       if (column.isPresent()) {
         orderByClauseBuilder.add(column.get(), orderBy.getDirection());
@@ -44,20 +65,13 @@ public interface EntityQuery {
   }
 
   /**
-   * Lookup table column name for given property
-   * 
-   * @return {@link Optional} of {@link String} column name for given property
-   */
-  public Optional<String> getPropertyColumnName(String property);
-
-  /**
    * Order by property default ascending
    * 
    * @param property
    * @return {@link EntityQuery} to allow fluent use
    */
   public default EntityQuery orderBy(String property) {
-    orders.add(OrderBy.of(property));
+    getSort().add(OrderBy.of(property));
     return this;
   }
 
@@ -69,7 +83,7 @@ public interface EntityQuery {
    * @return {@link EntityQuery} to allow fluent use
    */
   public default EntityQuery orderBy(String property, Direction direction) {
-    orders.add(OrderBy.of(property, direction));
+    getSort().add(OrderBy.of(property, direction));
     return this;
   }
 

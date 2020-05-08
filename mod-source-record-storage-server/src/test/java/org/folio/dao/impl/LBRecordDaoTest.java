@@ -142,6 +142,14 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
+  public RecordQuery getCompleteQuery() {
+    RecordQuery query = new RecordQuery();
+    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
+    query.withMetadata(query.getMetadata().withCreatedDate(null).withUpdatedDate(null));
+    return query;
+  }
+
+  @Override
   public Record getMockEntity() {
     return getRecord(0);
   }
@@ -238,14 +246,6 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
       .anyMatch(actualRecord -> actualRecord.getId().equals(expectedRecord.getId()))));
-  }
-
-  @Override
-  public RecordQuery getCompleteQuery() {
-    RecordQuery filter = new RecordQuery();
-    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
-    filter.withMetadata(filter.getMetadata().withCreatedDate(null).withUpdatedDate(null));
-    return filter;
   }
 
   @Override

@@ -16,20 +16,26 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
+import com.google.common.collect.ImmutableMap;
+
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
 public class RecordQuery extends Record implements EntityQuery {
 
-  private final Map<String, String> propertyToColumn = new HashMap<>();
+  private final Set<OrderBy> sort = new HashSet<>();
+
+  private final Map<String, String> propertyToColumn;
 
   public RecordQuery() {
     setState(null);
+    Map<String, String> propertyToColumn = new HashMap<>();
     propertyToColumn.put("id", ID_COLUMN_NAME);
     propertyToColumn.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
     propertyToColumn.put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
@@ -44,6 +50,17 @@ public class RecordQuery extends Record implements EntityQuery {
     propertyToColumn.put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
     propertyToColumn.put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
     propertyToColumn.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
+    this.propertyToColumn = ImmutableMap.copyOf(propertyToColumn);
+  }
+
+  @Override
+  public Set<OrderBy> getSort() {
+    return sort;
+  }
+
+  @Override
+  public Map<String, String> getPropertyToColumn() {
+    return propertyToColumn;
   }
 
   @Override
@@ -85,13 +102,8 @@ public class RecordQuery extends Record implements EntityQuery {
   }
 
   @Override
-  public String toOrderByClause() {
-    return StringUtils.EMPTY;
-  }
-
-  @Override
-  public Optional<String> getPropertyColumnName(String property) {
-    return Optional.ofNullable(propertyToColumn.get(property));
+  public boolean equals(Object other) {
+    return DaoUtil.equals(sort, ((RecordQuery) other).getSort()) && super.equals(other);
   }
 
 }

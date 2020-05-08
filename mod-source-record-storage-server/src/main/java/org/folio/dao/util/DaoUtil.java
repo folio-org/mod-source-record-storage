@@ -3,10 +3,12 @@ package org.folio.dao.util;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
+import org.folio.dao.query.OrderBy;
 import org.folio.rest.jaxrs.model.Metadata;
 
 import io.vertx.core.json.JsonArray;
@@ -21,7 +23,7 @@ public class DaoUtil {
 
   public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT %s FROM %s WHERE id = '%s';";
   public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT %s FROM %s WHERE %s = '%s';";
-  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s, count(*) OVER() total_count FROM %s %s OFFSET %s LIMIT %s;";
+  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s, count(*) OVER() total_count FROM %s %s %s OFFSET %s LIMIT %s;";
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
   public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
@@ -79,6 +81,10 @@ public class DaoUtil {
     }
     // returning -1 to indicate unknown total count
     return -1;
+  }
+
+  public static boolean equals(Set<OrderBy> sort1, Set<OrderBy> sort2) {
+    return sort1.size() == sort2.size() && sort1.containsAll(sort2);
   }
 
 }

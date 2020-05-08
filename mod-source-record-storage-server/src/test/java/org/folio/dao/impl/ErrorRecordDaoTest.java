@@ -99,9 +99,9 @@ public class ErrorRecordDaoTest
 
   @Override
   public ErrorRecordQuery getCompleteQuery() {
-    ErrorRecordQuery filter = new ErrorRecordQuery();
-    BeanUtils.copyProperties(getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), filter);
-    return filter;
+    ErrorRecordQuery query = new ErrorRecordQuery();
+    BeanUtils.copyProperties(getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), query);
+    return query;
   }
 
   @Override

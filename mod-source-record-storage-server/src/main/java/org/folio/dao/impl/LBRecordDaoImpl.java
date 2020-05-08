@@ -174,7 +174,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   protected RecordCollection toCollection(ResultSet resultSet) {
     return new RecordCollection()
       .withRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
   @Override

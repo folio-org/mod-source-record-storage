@@ -10,6 +10,7 @@ import org.apache.commons.lang3.time.FastDateFormat;
 import org.folio.rest.jaxrs.model.Metadata;
 
 import io.vertx.core.json.JsonArray;
+import io.vertx.ext.sql.ResultSet;
 
 /**
  * Utility class for hosting DAO constants
@@ -20,7 +21,7 @@ public class DaoUtil {
 
   public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT %s FROM %s WHERE id = '%s';";
   public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT %s FROM %s WHERE %s = '%s';";
-  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s, count(*) OVER() AS total_count FROM %s %s OFFSET %s LIMIT %s;";
+  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s, count(*) OVER() total_count FROM %s %s OFFSET %s LIMIT %s;";
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
   public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
@@ -68,6 +69,14 @@ public class DaoUtil {
       metadata.setUpdatedDate(Date.from(updatedDate));
     }
     return metadata;
+  }
+
+  public static Integer getTotalRecords(ResultSet resultSet) {
+    if (resultSet.getNumRows() > 0) {
+      return resultSet.getRows().get(0).getInteger(TOTAL_COUNT_COLUMN_NAME);
+    }
+    // returning -1 to indicate unknown total count
+    return -1;
   }
 
 }

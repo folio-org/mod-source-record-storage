@@ -85,7 +85,7 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
   @Override
   public ErrorRecordFilter getArbitruaryFilter() {
     ErrorRecordFilter snapshotFilter = new ErrorRecordFilter();
-    snapshotFilter.setDescription("Oops... something happened");
+    snapshotFilter.setDescription(getMockEntity().getDescription());
     return snapshotFilter;
   }
 

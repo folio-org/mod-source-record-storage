@@ -10,6 +10,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.filter.RawRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.springframework.stereotype.Component;
@@ -59,7 +60,7 @@ public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordColl
   protected RawRecordCollection toCollection(ResultSet resultSet) {
     return new RawRecordCollection()
       .withRawRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
   @Override

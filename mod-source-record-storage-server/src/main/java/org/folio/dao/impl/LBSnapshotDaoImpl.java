@@ -3,7 +3,6 @@ package org.folio.dao.impl;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
-import static org.folio.dao.util.DaoUtil.TOTAL_COUNT_COLUMN_NAME;
 
 import java.time.Instant;
 import java.util.Date;
@@ -16,6 +15,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.filter.SnapshotFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.springframework.stereotype.Component;
@@ -75,12 +75,9 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
 
   @Override
   protected SnapshotCollection toCollection(ResultSet resultSet) {
-    SnapshotCollection snapshotCollection = new SnapshotCollection()
-      .withSnapshots(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()));
-    if (resultSet.getNumRows() > 0) {
-      snapshotCollection.withTotalRecords(resultSet.getRows().get(0).getInteger(TOTAL_COUNT_COLUMN_NAME));
-    }
-    return snapshotCollection;
+    return new SnapshotCollection()
+      .withSnapshots(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
+      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
   @Override

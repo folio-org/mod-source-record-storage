@@ -11,6 +11,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.filter.ParsedRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
@@ -61,7 +62,7 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   protected ParsedRecordCollection toCollection(ResultSet resultSet) {
     return new ParsedRecordCollection()
       .withParsedRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
   @Override

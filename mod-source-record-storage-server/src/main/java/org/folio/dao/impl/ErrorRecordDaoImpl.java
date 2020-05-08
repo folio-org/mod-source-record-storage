@@ -10,6 +10,7 @@ import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.filter.ErrorRecordFilter;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.springframework.stereotype.Component;
@@ -67,7 +68,7 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
   protected ErrorRecordCollection toCollection(ResultSet resultSet) {
     return new ErrorRecordCollection()
       .withErrorRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(resultSet.getNumRows());
+      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
   @Override

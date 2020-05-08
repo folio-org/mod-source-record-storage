@@ -129,7 +129,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Override
   public RecordFilter getArbitruaryFilter() {
     RecordFilter snapshotFilter = new RecordFilter();
-    snapshotFilter.setMatchedProfileId("df7bf522-66e1-4b52-9d48-abd739f37934");
+    snapshotFilter.setMatchedProfileId(getMockEntity().getMatchedProfileId());
     snapshotFilter.setState(Record.State.ACTUAL);
     return snapshotFilter;
   }

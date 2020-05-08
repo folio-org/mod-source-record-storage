@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -7,7 +8,7 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.filter.ErrorRecordFilter;
+import org.folio.dao.query.ErrorRecordQuery;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -20,7 +21,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter, ErrorRecordDao> {
+public class ErrorRecordDaoTest
+    extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -78,15 +80,28 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
   }
 
   @Override
-  public ErrorRecordFilter getNoopFilter() {
-    return new ErrorRecordFilter();
+  public ErrorRecordQuery getNoopQuery() {
+    return new ErrorRecordQuery();
   }
 
   @Override
-  public ErrorRecordFilter getArbitruaryFilter() {
-    ErrorRecordFilter snapshotFilter = new ErrorRecordFilter();
-    snapshotFilter.setDescription("Oops... something happened");
-    return snapshotFilter;
+  public ErrorRecordQuery getArbitruaryQuery() {
+    ErrorRecordQuery snapshotQuery = new ErrorRecordQuery();
+    snapshotQuery.setDescription(getMockEntity().getDescription());
+    return snapshotQuery;
+  }
+
+  @Override
+  public ErrorRecordQuery getArbitruarySortedQuery() {
+    return (ErrorRecordQuery) getArbitruaryQuery()
+      .orderBy("description");
+  }
+
+  @Override
+  public ErrorRecordQuery getCompleteQuery() {
+    ErrorRecordQuery query = new ErrorRecordQuery();
+    BeanUtils.copyProperties(getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), query);
+    return query;
   }
 
   @Override
@@ -96,16 +111,13 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
 
   @Override
   public ErrorRecord getInvalidMockEntity() {
-    return new ErrorRecord()
-      .withId(getRecord(0).getId());
+    return new ErrorRecord().withId(getRecord(0).getId());
   }
 
   @Override
   public ErrorRecord getUpdatedMockEntity() {
-    return new ErrorRecord()
-      .withId(getMockEntity().getId())
-      .withContent(getMockEntity().getContent())
-      .withDescription("Something went really wrong");
+    return new ErrorRecord().withId(getMockEntity().getId()).withContent(getMockEntity().getContent())
+        .withDescription("Something went really wrong");
   }
 
   @Override
@@ -121,34 +133,37 @@ public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, Error
   }
 
   @Override
-  public void assertNoopFilterResults(TestContext context, ErrorRecordCollection actual) {
+  public void assertNoopQueryResults(TestContext context, ErrorRecordCollection actual) {
     List<ErrorRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override
-  public void assertArbitruaryFilterResults(TestContext context, ErrorRecordCollection actual) {
+  public void assertArbitruaryQueryResults(TestContext context, ErrorRecordCollection actual) {
     List<ErrorRecord> expected = getMockEntities().stream()
-      .filter(entity -> entity.getDescription().equals(getArbitruaryFilter().getDescription()))
-      .collect(Collectors.toList());
+        .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
+        .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override
-  public ErrorRecordFilter getCompleteFilter() {
-    ErrorRecordFilter filter = new ErrorRecordFilter();
-    BeanUtils.copyProperties(getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), filter);
-    return filter;
+  public void assertArbitruarySortedQueryResults(TestContext context, ErrorRecordCollection actual) {
+    List<ErrorRecord> expected = getMockEntities().stream()
+        .filter(entity -> entity.getDescription().equals(getArbitruarySortedQuery().getDescription()))
+        .collect(Collectors.toList());
+    Collections.sort(expected, (er1, er2) -> er1.getDescription().compareTo(er2.getDescription()));
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
+        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override
   public String getCompleteWhereClause() {
-    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'" +
-      " AND description = 'Opps... something went wrong'";
+    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'" + " AND description = 'Opps... something went wrong'";
   }
 
 }

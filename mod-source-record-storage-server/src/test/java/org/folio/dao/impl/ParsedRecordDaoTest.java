@@ -1,12 +1,14 @@
 package org.folio.dao.impl;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
-import org.folio.dao.filter.ParsedRecordFilter;
+import org.folio.dao.query.OrderBy.Direction;
+import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -19,7 +21,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, ParsedRecordCollection, ParsedRecordFilter, ParsedRecordDao> {
+public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery, ParsedRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -78,15 +80,21 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public ParsedRecordFilter getNoopFilter() {
-    return new ParsedRecordFilter();
+  public ParsedRecordQuery getNoopQuery() {
+    return new ParsedRecordQuery();
   }
 
   @Override
-  public ParsedRecordFilter getArbitruaryFilter() {
-    ParsedRecordFilter snapshotFilter = new ParsedRecordFilter();
+  public ParsedRecordQuery getArbitruaryQuery() {
+    ParsedRecordQuery snapshotQuery = new ParsedRecordQuery();
     // NOTE: no reasonable field to filter on
-    return snapshotFilter;
+    return snapshotQuery;
+  }
+
+  @Override
+  public ParsedRecordQuery getArbitruarySortedQuery() {
+    return (ParsedRecordQuery) getArbitruaryQuery()
+      .orderBy("id", Direction.DESC);
   }
 
   @Override
@@ -121,7 +129,7 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public void assertNoopFilterResults(TestContext context, ParsedRecordCollection actual) {
+  public void assertNoopQueryResults(TestContext context, ParsedRecordCollection actual) {
     List<ParsedRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
@@ -129,7 +137,7 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public void assertArbitruaryFilterResults(TestContext context, ParsedRecordCollection actual) {
+  public void assertArbitruaryQueryResults(TestContext context, ParsedRecordCollection actual) {
     List<ParsedRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
@@ -137,10 +145,19 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   }
 
   @Override
-  public ParsedRecordFilter getCompleteFilter() {
-    ParsedRecordFilter filter = new ParsedRecordFilter();
-    BeanUtils.copyProperties(getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
-    return filter;
+  public void assertArbitruarySortedQueryResults(TestContext context, ParsedRecordCollection actual) {
+    List<ParsedRecord> expected = getMockEntities();
+    Collections.sort(expected, (pr1, pr2) -> pr2.getId().compareTo(pr1.getId()));
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedParsedRecord -> context.assertTrue(actual.getParsedRecords().stream()
+      .anyMatch(actualParsedRecord -> actualParsedRecord.getId().equals(expectedParsedRecord.getId()))));
+  }
+
+  @Override
+  public ParsedRecordQuery getCompleteQuery() {
+    ParsedRecordQuery query = new ParsedRecordQuery();
+    BeanUtils.copyProperties(getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
+    return query;
   }
 
   @Override

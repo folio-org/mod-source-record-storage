@@ -13,8 +13,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.filter.SnapshotFilter;
+import org.folio.dao.query.SnapshotQuery;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -34,7 +35,7 @@ import io.vertx.sqlclient.Tuple;
 //   <column name="processing_started_date" type="timestamptz"></column>
 // </createTable>
 @Component
-public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotCollection, SnapshotFilter> implements LBSnapshotDao {
+public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotCollection, SnapshotQuery> implements LBSnapshotDao {
 
   public static final String STATUS_COLUMN_NAME = "status";
   public static final String PROCESSING_STARTED_DATE_COLUMN_NAME = "processing_started_date";
@@ -75,7 +76,7 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
     return new SnapshotCollection()
         .withSnapshots(stream(rowSet.spliterator(), false)
           .map(this::toEntity).collect(Collectors.toList()))
-        .withTotalRecords(rowSet.rowCount());
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override

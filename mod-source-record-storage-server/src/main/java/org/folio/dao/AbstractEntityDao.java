@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 
 import javax.ws.rs.NotFoundException;
 
-import org.folio.dao.filter.EntityFilter;
+import org.folio.dao.query.EntityQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -32,29 +32,34 @@ import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
-public abstract class AbstractEntityDao<E, C, F extends EntityFilter> implements EntityDao<E, C, F> {
+public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements EntityDao<E, C, Q> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
 
+  @Override
   public Future<Optional<E>> getById(String id, String tenantId) {
     String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
     log.info("Attempting get by id: {}", sql);
     return select(sql, tenantId);
   }
 
-  public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
+  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(this::toCollection);
   }
 
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), filter.toWhereClause(), offset, limit);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
       if (ar1.failed()) {

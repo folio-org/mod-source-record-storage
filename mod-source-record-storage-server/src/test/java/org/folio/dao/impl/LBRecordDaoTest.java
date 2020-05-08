@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -9,7 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.persist.PostgresClient;
@@ -22,7 +23,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollection, RecordFilter, LBRecordDao> {
+public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollection, RecordQuery, LBRecordDao> {
 
   private LBSnapshotDao snapshotDao;
 
@@ -123,16 +124,30 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
-  public RecordFilter getNoopFilter() {
-    return new RecordFilter();
+  public RecordQuery getNoopQuery() {
+    return new RecordQuery();
   }
 
   @Override
-  public RecordFilter getArbitruaryFilter() {
-    RecordFilter snapshotFilter = new RecordFilter();
-    snapshotFilter.setMatchedProfileId("df7bf522-66e1-4b52-9d48-abd739f37934");
-    snapshotFilter.setState(Record.State.ACTUAL);
-    return snapshotFilter;
+  public RecordQuery getArbitruaryQuery() {
+    RecordQuery snapshotQuery = new RecordQuery();
+    snapshotQuery.setMatchedProfileId(getMockEntity().getMatchedProfileId());
+    snapshotQuery.setState(Record.State.ACTUAL);
+    return snapshotQuery;
+  }
+
+  @Override
+  public RecordQuery getArbitruarySortedQuery() {
+    return (RecordQuery) getArbitruaryQuery()
+      .orderBy("matchedProfileId");
+  }
+
+  @Override
+  public RecordQuery getCompleteQuery() {
+    RecordQuery query = new RecordQuery();
+    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
+    query.withMetadata(query.getMetadata().withCreatedDate(null).withUpdatedDate(null));
+    return query;
   }
 
   @Override
@@ -205,7 +220,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
-  public void assertNoopFilterResults(TestContext context, RecordCollection actual) {
+  public void assertNoopQueryResults(TestContext context, RecordCollection actual) {
     List<Record> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
@@ -213,10 +228,10 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
-  public void assertArbitruaryFilterResults(TestContext context, RecordCollection actual) {
+  public void assertArbitruaryQueryResults(TestContext context, RecordCollection actual) {
     List<Record> expected = getMockEntities().stream()
-      .filter(entity -> entity.getState().equals(getArbitruaryFilter().getState()) &&
-        entity.getMatchedProfileId().equals(getArbitruaryFilter().getMatchedProfileId()))
+      .filter(entity -> entity.getState().equals(getArbitruaryQuery().getState()) &&
+        entity.getMatchedProfileId().equals(getArbitruaryQuery().getMatchedProfileId()))
       .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
@@ -224,11 +239,15 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
-  public RecordFilter getCompleteFilter() {
-    RecordFilter filter = new RecordFilter();
-    BeanUtils.copyProperties(getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), filter);
-    filter.withMetadata(filter.getMetadata().withCreatedDate(null).withUpdatedDate(null));
-    return filter;
+  public void assertArbitruarySortedQueryResults(TestContext context, RecordCollection actual) {
+    List<Record> expected = getMockEntities().stream()
+      .filter(entity -> entity.getState().equals(getArbitruaryQuery().getState()) &&
+        entity.getMatchedProfileId().equals(getArbitruaryQuery().getMatchedProfileId()))
+      .collect(Collectors.toList());
+    Collections.sort(expected, (r1, r2) -> r1.getMatchedProfileId().compareTo(r2.getMatchedProfileId()));
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    expected.forEach(expectedRecord -> context.assertTrue(actual.getRecords().stream()
+      .anyMatch(actualRecord -> actualRecord.getId().equals(expectedRecord.getId()))));
   }
 
   @Override

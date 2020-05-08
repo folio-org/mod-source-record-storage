@@ -7,13 +7,13 @@ import java.util.Collections;
 import java.util.List;
 
 import org.folio.dao.EntityDao;
-import org.folio.dao.filter.EntityFilter;
+import org.folio.dao.query.EntityQuery;
 import org.junit.Test;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>> extends AbstractDaoTest {
+public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>> extends AbstractDaoTest {
 
   DAO dao;
 
@@ -48,34 +48,51 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   }
 
   @Test
-  public void shouldGetByNoopFilter(TestContext context) {
+  public void shouldGetByNoopQuery(TestContext context) {
     Async async = context.async();
     dao.save(getMockEntities(), TENANT_ID).onComplete(create -> {
       if (create.failed()) {
         context.fail(create.cause());
       }
-      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID).onComplete(res -> {
+      dao.getByQuery(getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertNoopFilterResults(context, res.result());
+        assertNoopQueryResults(context, res.result());
         async.complete();
       });
     });
   }
 
   @Test
-  public void shouldGetByArbitruaryFilter(TestContext context) {
+  public void shouldGetByArbitruaryQuery(TestContext context) {
     Async async = context.async();
     dao.save(getMockEntities(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByFilter(getArbitruaryFilter(), 0, 10, TENANT_ID).onComplete(res -> {
+      dao.getByQuery(getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
-        assertArbitruaryFilterResults(context, res.result());
+        assertArbitruaryQueryResults(context, res.result());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetByArbitruarySortedQuery(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockEntities(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      dao.getByQuery(getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        assertArbitruarySortedQueryResults(context, res.result());
         async.complete();
       });
     });
@@ -162,14 +179,14 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   }
 
   @Test
-  public void shouldStreamGetByFilter(TestContext context) {
+  public void shouldStreamGetByQuery(TestContext context) {
     Async async = context.async();
     dao.save(getMockEntities(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       List<E> actual = new ArrayList<>();
-      dao.getByFilter(getNoopFilter(), 0, 10, TENANT_ID, entity -> {
+      dao.getByQuery(getNoopQuery(), 0, 10, TENANT_ID, entity -> {
         actual.add(entity);
       }, finished -> {
         if (finished.failed()) {
@@ -182,8 +199,8 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
   }
 
   @Test
-  public void shouldGenerateWhereClauseFromFilter(TestContext context) {
-    F filter = getCompleteFilter();
+  public void shouldGenerateWhereClauseFromQuery(TestContext context) {
+    Q filter = getCompleteQuery();
     assertEquals(getCompleteWhereClause().trim(), filter.toWhereClause().trim());
   }
 
@@ -194,11 +211,13 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
     }
   }
 
-  public abstract F getNoopFilter();
+  public abstract Q getNoopQuery();
 
-  public abstract F getArbitruaryFilter();
+  public abstract Q getArbitruaryQuery();
 
-  public abstract F getCompleteFilter();
+  public abstract Q getArbitruarySortedQuery();
+
+  public abstract Q getCompleteQuery();
 
   public abstract E getMockEntity();
 
@@ -210,9 +229,11 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
 
   public abstract void compareEntities(TestContext context, E expected, E actual);
 
-  public abstract void assertNoopFilterResults(TestContext context, C actual);
+  public abstract void assertNoopQueryResults(TestContext context, C actual);
 
-  public abstract void assertArbitruaryFilterResults(TestContext context, C actual);
+  public abstract void assertArbitruaryQueryResults(TestContext context, C actual);
+
+  public abstract void assertArbitruarySortedQueryResults(TestContext context, C actual);
 
   public abstract String getCompleteWhereClause();
 

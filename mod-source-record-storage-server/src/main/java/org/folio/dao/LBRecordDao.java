@@ -2,7 +2,7 @@ package org.folio.dao;
 
 import java.util.Optional;
 
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -12,7 +12,7 @@ import io.vertx.core.Future;
 /**
  * Data access object for {@link Record}
  */
-public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordFilter> {
+public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQuery> {
 
   /**
    * Searches for {@link Record} by id

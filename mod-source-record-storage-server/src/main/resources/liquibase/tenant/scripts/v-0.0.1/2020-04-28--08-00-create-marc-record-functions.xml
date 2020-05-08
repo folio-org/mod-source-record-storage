@@ -99,14 +99,15 @@
       create function ${database.defaultSchemaName}.get_all_source_marc_records(p_offset integer, p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
-      from (select matchedid, id
+      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
+      from (select matchedid, id, count(*) OVER() totalrows
             from (select id, matchedid
                   from ${database.defaultSchemaName}.records_lb
                   where state = 'ACTUAL'
@@ -123,15 +124,16 @@
       create function ${database.defaultSchemaName}.get_all_source_marc_records_alt(p_offset integer, p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
       from (
-              select matchedid, id
+              select matchedid, id, count(*) OVER() totalrows
               from (
                         select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
                         from ${database.defaultSchemaName}.records_lb
@@ -150,15 +152,16 @@
                                                                                        p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
       from (
-              select matchedid, id
+              select matchedid, id, count(*) OVER() totalrows
               from ${database.defaultSchemaName}.records_lb
               where updateddate between p_from and p_till
                 and state = 'ACTUAL'
@@ -176,15 +179,16 @@
                                                                                            p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
       from (
-              select matchedid, id
+              select matchedid, id, count(*) OVER() totalrows
               from (
                         select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
                         from ${database.defaultSchemaName}.records_lb

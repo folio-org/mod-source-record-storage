@@ -19,7 +19,7 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -306,11 +306,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldGetSourceMarcRecordsByFilter(TestContext context) {
+  public void shouldGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).onComplete(res -> {
+    RecordQuery query = new RecordQuery();
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -323,12 +323,29 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldStreamGetSourceMarcRecordsByFilter(TestContext context) {
+  public void shouldGetSourceMarcRecordsByQuerySorted(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
+    RecordQuery query = (RecordQuery) new RecordQuery().orderBy("id");
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<Record> expectedRecords = getRecords();
+      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
+      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
+    Async async = context.async();
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    RecordQuery query = new RecordQuery();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, sourceRecord -> {
       actualSourceRecords.add(sourceRecord);
     }, finished -> {
       if (finished.failed()) {

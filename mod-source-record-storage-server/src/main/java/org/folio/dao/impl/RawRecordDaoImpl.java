@@ -9,8 +9,9 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.RawRecordDao;
-import org.folio.dao.filter.RawRecordFilter;
+import org.folio.dao.query.RawRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
@@ -29,7 +30,7 @@ import io.vertx.sqlclient.Tuple;
 //   </column>
 // </createTable>
 @Component
-public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordCollection, RawRecordFilter> implements RawRecordDao {
+public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordCollection, RawRecordQuery> implements RawRecordDao {
 
   @Override
   public String getTableName() {
@@ -64,7 +65,7 @@ public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordColl
     return new RawRecordCollection()
       .withRawRecords(stream(rowSet.spliterator(), false)
         .map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(rowSet.rowCount());
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override

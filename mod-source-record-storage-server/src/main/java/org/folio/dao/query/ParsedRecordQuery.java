@@ -1,9 +1,7 @@
 package org.folio.dao.query;
 
-import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -18,13 +16,11 @@ public class ParsedRecordQuery extends ParsedRecord implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
-    private static final long serialVersionUID = -3715788293589367631L;
-    {
-      put("id", ID_COLUMN_NAME);
-      put("content", CONTENT_COLUMN_NAME);
-    }
-  });
+  private final Map<String, String> propertyToColumn;
+
+  public ParsedRecordQuery() {
+    propertyToColumn = ImmutableMap.copyOf(DaoUtil.contentPropertyToMap());
+  }
 
   @Override
   public Set<OrderBy> getSort() {

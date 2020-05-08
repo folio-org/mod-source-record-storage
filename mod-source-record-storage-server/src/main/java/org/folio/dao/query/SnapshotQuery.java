@@ -20,14 +20,15 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
-    private static final long serialVersionUID = -3715788293589367631L;
-    {
-      put("jobExecutionId", ID_COLUMN_NAME);
-      put("status", STATUS_COLUMN_NAME);
-      put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
-    }
-  });
+  private final Map<String, String> propertyToColumn;
+
+  public SnapshotQuery() {
+    Map<String, String> ptc = new HashMap<>();
+    ptc.put("jobExecutionId", ID_COLUMN_NAME);
+    ptc.put("status", STATUS_COLUMN_NAME);
+    ptc.put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
+    propertyToColumn = ImmutableMap.copyOf(ptc);
+  }
 
   @Override
   public Set<OrderBy> getSort() {

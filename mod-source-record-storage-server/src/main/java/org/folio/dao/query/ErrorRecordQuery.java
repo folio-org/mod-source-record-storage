@@ -1,10 +1,8 @@
 package org.folio.dao.query;
 
 import static org.folio.dao.impl.ErrorRecordDaoImpl.DESCRIPTION_COLUMN_NAME;
-import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -19,14 +17,13 @@ public class ErrorRecordQuery extends ErrorRecord implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
-    private static final long serialVersionUID = -3715788293589367631L;
-    {
-      put("id", ID_COLUMN_NAME);
-      put("content", CONTENT_COLUMN_NAME);
-      put("description", DESCRIPTION_COLUMN_NAME);
-    }
-  });
+  private final Map<String, String> propertyToColumn;
+
+  public ErrorRecordQuery() {
+    Map<String, String> ptc = DaoUtil.contentPropertyToMap();
+    ptc.put("description", DESCRIPTION_COLUMN_NAME);
+    propertyToColumn = ImmutableMap.copyOf(ptc);
+  }
 
   @Override
   public Set<OrderBy> getSort() {

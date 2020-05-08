@@ -2,6 +2,8 @@ package org.folio.dao.util;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -90,6 +92,13 @@ public class DaoUtil {
 
   public static boolean equals(EntityQuery entityQuery, Object other) {
     return Objects.nonNull(other) && DaoUtil.equals(entityQuery.getSort(), ((EntityQuery) other).getSort());
+  }
+
+  public static Map<String, String> contentPropertyToMap() {
+    Map<String, String> ptc = new HashMap<>();
+    ptc.put("id", ID_COLUMN_NAME);
+    ptc.put("content", CONTENT_COLUMN_NAME);
+    return ptc;
   }
 
 }

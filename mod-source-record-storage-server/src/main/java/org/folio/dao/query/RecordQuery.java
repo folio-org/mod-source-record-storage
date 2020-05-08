@@ -31,25 +31,26 @@ public class RecordQuery extends Record implements EntityQuery {
 
   private final Set<OrderBy> sort = new HashSet<>();
 
-  private final Map<String, String> propertyToColumn = ImmutableMap.copyOf(new HashMap<String, String>() {
-    private static final long serialVersionUID = -3715788293589367631L;
-    {
-      put("id", ID_COLUMN_NAME);
-      put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
-      put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
-      put("matchedId", MATCHED_ID_COLUMN_NAME);
-      put("generation", GENERATION_COLUMN_NAME);
-      put("recordType", RECORD_TYPE_COLUMN_NAME);
-      put("order", ORDER_IN_FILE_COLUMN_NAME);
-      put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
-      put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
-      put("state", STATE_COLUMN_NAME);
-      put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
-      put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
-      put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
-      put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
-    }
-  });
+  private final Map<String, String> propertyToColumn;
+
+  public RecordQuery() {
+    Map<String, String> ptc = new HashMap<>();
+    ptc.put("id", ID_COLUMN_NAME);
+    ptc.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
+    ptc.put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
+    ptc.put("matchedId", MATCHED_ID_COLUMN_NAME);
+    ptc.put("generation", GENERATION_COLUMN_NAME);
+    ptc.put("recordType", RECORD_TYPE_COLUMN_NAME);
+    ptc.put("order", ORDER_IN_FILE_COLUMN_NAME);
+    ptc.put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
+    ptc.put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
+    ptc.put("state", STATE_COLUMN_NAME);
+    ptc.put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
+    ptc.put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
+    ptc.put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
+    ptc.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
+    propertyToColumn = ImmutableMap.copyOf(ptc);
+  }
 
   @Override
   public Set<OrderBy> getSort() {

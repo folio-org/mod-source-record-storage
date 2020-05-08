@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
@@ -61,7 +61,7 @@ import io.vertx.sqlclient.Tuple;
 //   <column name="updateddate" type="timestamptz"></column>
 // </createTable>
 @Component
-public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection, RecordFilter> implements LBRecordDao {
+public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection, RecordQuery> implements LBRecordDao {
 
   public static final String MATCHED_ID_COLUMN_NAME = "matchedid";
   public static final String SNAPSHOT_ID_COLUMN_NAME = "snapshotid";
@@ -162,8 +162,9 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   @Override
   protected RecordCollection toCollection(RowSet<Row> rowSet) {
     return new RecordCollection()
-      .withRecords(stream(rowSet.spliterator(), false).map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(rowSet.rowCount());
+      .withRecords(stream(rowSet.spliterator(), false)
+        .map(this::toEntity).collect(Collectors.toList()))
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override

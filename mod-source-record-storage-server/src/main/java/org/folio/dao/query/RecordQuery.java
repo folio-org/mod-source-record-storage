@@ -1,4 +1,4 @@
-package org.folio.dao.filter;
+package org.folio.dao.query;
 
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
@@ -15,15 +15,51 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
+
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
-public class RecordFilter extends Record implements EntityFilter {
+public class RecordQuery extends Record implements EntityQuery {
 
-  public RecordFilter() {
-    setState(null);
+  private static final Map<String, String> propertyToColumn;
+
+  static {
+    Map<String, String> ptc = new HashMap<>();
+    ptc.put("id", ID_COLUMN_NAME);
+    ptc.put("snapshotId", SNAPSHOT_ID_COLUMN_NAME);
+    ptc.put("matchedProfileId", MATCHED_PROFILE_ID_COLUMN_NAME);
+    ptc.put("matchedId", MATCHED_ID_COLUMN_NAME);
+    ptc.put("generation", GENERATION_COLUMN_NAME);
+    ptc.put("recordType", RECORD_TYPE_COLUMN_NAME);
+    ptc.put("order", ORDER_IN_FILE_COLUMN_NAME);
+    ptc.put("externalIdsHolder.instanceId", INSTANCE_ID_COLUMN_NAME);
+    ptc.put("additionalInfo.suppressDiscovery", SUPPRESS_DISCOVERY_COLUMN_NAME);
+    ptc.put("state", STATE_COLUMN_NAME);
+    ptc.put("metadata.createdByUserId", CREATED_BY_USER_ID_COLUMN_NAME);
+    ptc.put("metadata.createdDate", CREATED_DATE_COLUMN_NAME);
+    ptc.put("metadata.updatedByUserId", UPDATED_BY_USER_ID_COLUMN_NAME);
+    ptc.put("metadata.updatedDate", UPDATED_DATE_COLUMN_NAME);
+    propertyToColumn = ImmutableMap.copyOf(ptc);
+  }
+
+  private final Set<OrderBy> sort = new HashSet<>();
+
+  @Override
+  public Set<OrderBy> getSort() {
+    return sort;
+  }
+
+  @Override
+  public Map<String, String> getPropertyToColumn() {
+    return propertyToColumn;
   }
 
   @Override
@@ -62,6 +98,16 @@ public class RecordFilter extends Record implements EntityFilter {
         .append(getMetadata().getUpdatedDate(), UPDATED_DATE_COLUMN_NAME);
     }
     return whereClauseBuilder.build();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return DaoUtil.equals(this, other) && super.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
 }

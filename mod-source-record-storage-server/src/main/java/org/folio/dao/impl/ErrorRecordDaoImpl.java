@@ -9,8 +9,9 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.ErrorRecordDao;
-import org.folio.dao.filter.ErrorRecordFilter;
+import org.folio.dao.query.ErrorRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
@@ -32,7 +33,7 @@ import io.vertx.sqlclient.Tuple;
 //   </column>
 // </createTable>
 @Component
-public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordFilter> implements ErrorRecordDao {
+public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery> implements ErrorRecordDao {
 
   public static final String DESCRIPTION_COLUMN_NAME = "description";
 
@@ -43,11 +44,7 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
 
   @Override
   public String getColumns() {
-    return ColumnBuilder
-      .of(ID_COLUMN_NAME)
-      .append(CONTENT_COLUMN_NAME)
-      .append(DESCRIPTION_COLUMN_NAME)
-      .build();
+    return ColumnBuilder.of(ID_COLUMN_NAME).append(CONTENT_COLUMN_NAME).append(DESCRIPTION_COLUMN_NAME).build();
   }
 
   @Override
@@ -62,8 +59,7 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
     return TupleWrapper.of()
       .addUUID(errorRecord.getId())
       .addValue(errorRecord.getContent())
-      .addString(errorRecord.getDescription())
-      .get();
+      .addString(errorRecord.getDescription()).get();
   }
 
   @Override
@@ -71,7 +67,7 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
     return new ErrorRecordCollection()
       .withErrorRecords(stream(rowSet.spliterator(), false)
         .map(this::toEntity).collect(Collectors.toList()))
-      .withTotalRecords(rowSet.rowCount());
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override

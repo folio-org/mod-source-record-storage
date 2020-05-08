@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.SourceRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.SourceRecordContent;
@@ -115,9 +115,11 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   @Override
-  public void getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId,
-    Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler) {
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, filter.toWhereClause(), offset, limit);
+  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
+      Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler) {
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
       if (ar1.failed()) {
@@ -189,7 +191,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     return new SourceRecordCollection()
       .withSourceRecords(stream(rowSet.spliterator(), false)
         .map(this::toPartialSourceRecord).collect(Collectors.toList()))
-      .withTotalRecords(rowSet.rowCount());
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   private SourceRecord toPartialSourceRecord(Row row) {

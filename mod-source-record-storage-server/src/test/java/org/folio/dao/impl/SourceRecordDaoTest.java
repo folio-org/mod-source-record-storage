@@ -19,7 +19,7 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -255,12 +255,12 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldStreamGetSourceMarcRecordsByFilter(TestContext context) {
+  public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
+    RecordQuery query = new RecordQuery();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, stream -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, stream -> {
       stream.handler(row -> actualSourceRecords.add(sourceRecordDao.toSourceRecord(row)));
     }, finished -> {
       if (finished.failed()) {
@@ -370,13 +370,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
 
   private List<Record> getRecords(State state) {
     return getRecords().stream()
-      .filter(expectedRecord -> expectedRecord.getState().equals(state)).collect(Collectors.toList());
-  }
-
-  private List<RawRecord> getRawRecords(List<Record> records) {
-    return records.stream()
-      .map(record -> getRawRecord(record.getId()))
-      .filter(rawRecord -> rawRecord.isPresent()).map(rawRecord -> rawRecord.get())
+      .filter(expectedRecord -> expectedRecord.getState().equals(state))
       .collect(Collectors.toList());
   }
 

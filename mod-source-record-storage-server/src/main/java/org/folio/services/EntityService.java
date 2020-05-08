@@ -1,8 +1,9 @@
-package org.folio.dao;
+package org.folio.services;
 
 import java.util.List;
 import java.util.Optional;
 
+import org.folio.dao.EntityDao;
 import org.folio.dao.filter.EntityFilter;
 
 import io.vertx.core.AsyncResult;
@@ -10,9 +11,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Data access object interface for <E> Entity with <C> Collection and <F> {@link EntityFilter}
+ * Entity service interface for <E> Entity with <C> Collection and <F> {@link EntityFilter} via <DAO> {@link EntityDao}
  */
-public interface EntityDao<E, C, F extends EntityFilter> {
+public interface EntityService<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>> {
 
   /**
    * Searches for Entity by id
@@ -81,27 +82,5 @@ public interface EntityDao<E, C, F extends EntityFilter> {
    * @return future with true if succeeded
    */
   public Future<Boolean> delete(String id, String tenantId);
-
-  /**
-   * Get table name for DAO
-   * 
-   * @return database table name for entity
-   */
-  public String getTableName();
-
-  /**
-   * Prepare columns list for SELECT, INSERT and UPDATE queries
-   * 
-   * @return comma seperated list of table column names
-   */
-  public String getColumns();
-
-  /**
-   * Get Entity id
-   * 
-   * @param entity Entity to retrieve id from
-   * @return id of given entity
-   */
-  public String getId(E entity);
-
+  
 }

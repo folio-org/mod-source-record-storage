@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.dao.EntityDao;
 import org.folio.dao.filter.EntityFilter;
 import org.junit.Test;
@@ -13,7 +16,8 @@ import org.junit.Test;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>> extends AbstractDaoTest {
+public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>>
+    extends AbstractDaoTest {
 
   DAO dao;
 
@@ -28,6 +32,17 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
         if (res.failed()) {
           context.fail(res.cause());
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        System.out.println("\n\n\n\n\n");
+        try {
+          System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(getMockEntity()));
+        } catch (JsonProcessingException e) {
+          e.printStackTrace();
+        }
+        System.out.println("\n\n\n\n\n");
+
         context.assertTrue(res.result().isPresent());
         compareEntities(context, getMockEntity(), res.result().get());
         async.complete();
@@ -58,6 +73,17 @@ public abstract class AbstractEntityDaoTest<E, C, F extends EntityFilter, DAO ex
         if (res.failed()) {
           context.fail(res.cause());
         }
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        System.out.println("\n\n\n\n\n");
+        try {
+          System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(getMockEntities()));
+        } catch (JsonProcessingException e) {
+          e.printStackTrace();
+        }
+        System.out.println("\n\n\n\n\n");
+
         assertNoopFilterResults(context, res.result());
         async.complete();
       });

@@ -65,9 +65,6 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     FieldUtils.writeField(errorRecordDao, "postgresClientFactory", postgresClientFactory, true);
     sourceRecordDao = new SourceRecordDaoImpl();
     FieldUtils.writeField(sourceRecordDao, "postgresClientFactory", postgresClientFactory, true);
-    FieldUtils.writeField(sourceRecordDao, "recordDao", recordDao, true);
-    FieldUtils.writeField(sourceRecordDao, "rawRecordDao", rawRecordDao, true);
-    FieldUtils.writeField(sourceRecordDao, "parsedRecordDao", parsedRecordDao, true);
   }
 
   @Override
@@ -258,85 +255,20 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
-  public void shouldGetSourceMarcRecordWithContentById(TestContext context) {
-    Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    String id = getRecord(0).getId();
-    sourceRecordDao.getSourceMarcRecordById(content, id, TENANT_ID).onComplete(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
-      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
-      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldGetSourceMarcRecordWithContentByMatchedId(TestContext context) {
-    Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    String matchedId = getRecord(0).getMatchedId();
-    sourceRecordDao.getSourceMarcRecordByMatchedId(content, matchedId, TENANT_ID).onComplete(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
-      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
-      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldGetSourceMarcRecordWithContentByInstanceId(TestContext context) {
-    Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
-    sourceRecordDao.getSourceMarcRecordByInstanceId(content, instanceId, TENANT_ID).onComplete(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
-      context.assertEquals(getRawRecord(0).getId(), res.result().get().getRawRecord().getId());
-      context.assertEquals(getRawRecord(0).getContent(), res.result().get().getRawRecord().getContent());
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldGetSourceMarcRecordsByFilter(TestContext context) {
-    Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordFilter filter = new RecordFilter();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID).onComplete(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      List<Record> expectedRecords = getRecords();
-      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
-      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-      compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
-      async.complete();
-    });
-  }
-
-  @Test
   public void shouldStreamGetSourceMarcRecordsByFilter(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     RecordFilter filter = new RecordFilter();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, sourceRecord -> {
-      actualSourceRecords.add(sourceRecord);
+    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, 0, 10, TENANT_ID, stream -> {
+      stream.handler(row -> actualSourceRecords.add(sourceRecordDao.toSourceRecord(row)));
     }, finished -> {
       if (finished.failed()) {
         context.fail(finished.cause());
       }
       List<Record> expectedRecords = getRecords();
-      List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
-      List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+      List<RawRecord> expectedRawRecords = new ArrayList<>();
+      List<ParsedRecord> expectedParsedRecords = new ArrayList<>();
       compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
       async.complete();
     });

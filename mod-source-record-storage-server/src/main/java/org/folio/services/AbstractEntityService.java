@@ -4,15 +4,15 @@ import java.util.List;
 import java.util.Optional;
 
 import org.folio.dao.EntityDao;
-import org.folio.dao.filter.EntityFilter;
+import org.folio.dao.query.EntityQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
-public abstract class AbstractEntityService<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>>
-    implements EntityService<E, C, F, DAO> {
+public abstract class AbstractEntityService<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>>
+    implements EntityService<E, C, Q, DAO> {
 
   @Autowired
   protected DAO dao;
@@ -21,13 +21,13 @@ public abstract class AbstractEntityService<E, C, F extends EntityFilter, DAO ex
     return dao.getById(id, tenantId);
   }
 
-  public Future<C> getByFilter(F filter, int offset, int limit, String tenantId) {
-    return dao.getByFilter(filter, offset, limit, tenantId);
+  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
+    return dao.getByQuery(query, offset, limit, tenantId);
   }
 
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, 
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, 
       Handler<AsyncResult<Void>> replyHandler) {
-    dao.getByFilter(filter, offset, limit, tenantId, handler, replyHandler);
+    dao.getByQuery(query, offset, limit, tenantId, handler, replyHandler);
   }
 
   public Future<E> save(E entity, String tenantId) {

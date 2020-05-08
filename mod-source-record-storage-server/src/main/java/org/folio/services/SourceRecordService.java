@@ -3,7 +3,7 @@ package org.folio.services;
 import java.util.Date;
 import java.util.Optional;
 
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -134,30 +134,30 @@ public interface SourceRecordService {
   public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} by {@link RecordFilter}
+   * Searches for collection of {@link SourceRecord} by {@link RecordQuery}
    * 
    * @param content  specific {@link SourceRecordContent}
-   * @param filter   {@link RecordFilter} to prepare WHERE clause
+   * @param query   {@link RecordQuery} to prepare WHERE clause
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with specified {@link SourceRecordContent}
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset,
+  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
       Integer limit, String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} by {@link RecordFilter} and streams response
+   * Searches for collection of {@link SourceRecord} by {@link RecordQuery} and streams response
    * 
    * @param content    specific {@link SourceRecordContent}
-   * @param filter     {@link RecordFilter} to prepare WHERE clause
+   * @param query     {@link RecordQuery} to prepare WHERE clause
    * @param offset     starting index in a list of results
    * @param limit      maximum number of results to return
    * @param tenantId   tenant id
    * @param handler    handler for each {@link SourceRecord}
    * @param endHandler handler for when stream is finished
    */
-  public void getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId,
+  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
       Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler);
 
 }

@@ -9,7 +9,7 @@ import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
-import org.folio.dao.filter.RecordFilter;
+import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -107,16 +107,16 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset,
+  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
       Integer limit, String tenantId) {
-    return recordDao.getByFilter(filter, offset, limit, tenantId)
+    return recordDao.getByQuery(query, offset, limit, tenantId)
       .compose(recordCollection -> lookupContent(content, tenantId, recordCollection));
   }
 
   @Override
-  public void getSourceMarcRecordsByFilter(SourceRecordContent content, RecordFilter filter, Integer offset, Integer limit, String tenantId,
+  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
       Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
-    sourceRecordDao.getSourceMarcRecordsByFilter(content, filter, offset, limit, tenantId, stream -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId, stream -> {
       stream
         .handler(row -> {
           stream.pause();

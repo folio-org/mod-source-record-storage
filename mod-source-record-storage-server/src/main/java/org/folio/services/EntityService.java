@@ -4,16 +4,16 @@ import java.util.List;
 import java.util.Optional;
 
 import org.folio.dao.EntityDao;
-import org.folio.dao.filter.EntityFilter;
+import org.folio.dao.query.EntityQuery;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Entity service interface for <E> Entity with <C> Collection and <F> {@link EntityFilter} via <DAO> {@link EntityDao}
+ * Entity service interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery} via <DAO> {@link EntityDao}
  */
-public interface EntityService<E, C, F extends EntityFilter, DAO extends EntityDao<E, C, F>> {
+public interface EntityService<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>> {
 
   /**
    * Searches for Entity by id
@@ -25,27 +25,27 @@ public interface EntityService<E, C, F extends EntityFilter, DAO extends EntityD
   public Future<Optional<E>> getById(String id, String tenantId);
 
   /**
-   * Searches for Entity by filter
+   * Searches for Entity by query
    * 
-   * @param filter   {@link EntityFilter} which prepares WHERE clause for query
+   * @param query    {@link EntityQuery} which prepares WHERE clause for query
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with entity collection
    */
-  public Future<C> getByFilter(F filter, int offset, int limit, String tenantId);
+  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
-   * Searches for Entity by filter and stream results
+   * Searches for Entity by query and stream results
    * 
-   * @param filter       {@link EntityFilter} which prepares WHERE clause for query
+   * @param query        {@link EntityQuery} which prepares WHERE clause for query
    * @param offset       starting index in a list of results
    * @param limit        maximum number of results to return
    * @param tenantId     tenant id
    * @param handler      handler for Entity stream
    * @param replyHandler handler for when stream is finished
    */
-  public void getByFilter(F filter, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> replyHandler);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> replyHandler);
 
   /**
    * Saves Entity to database

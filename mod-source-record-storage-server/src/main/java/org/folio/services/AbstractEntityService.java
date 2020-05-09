@@ -25,9 +25,9 @@ public abstract class AbstractEntityService<E, C, Q extends EntityQuery, D exten
     return dao.getByQuery(query, offset, limit, tenantId);
   }
 
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, 
-      Handler<AsyncResult<Void>> replyHandler) {
-    dao.getByQuery(query, offset, limit, tenantId, handler, replyHandler);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, 
+      Handler<AsyncResult<Void>> endHandler) {
+    dao.getByQuery(query, offset, limit, tenantId, entityHandler, endHandler);
   }
 
   public Future<E> save(E entity, String tenantId) {

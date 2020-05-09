@@ -17,8 +17,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * {@link SourceRecord} service interface. Lookup {@link Record} and combine
- * with related {@link RawRecord} and {@link ParsedRecord}.
+ * {@link SourceRecord} service interface. Lookup {@link Record} and enhance
+ * with related source {@link RawRecord} and {@link ParsedRecord}.
  *
  */
 public interface SourceRecordService {
@@ -26,7 +26,7 @@ public interface SourceRecordService {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record}
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -35,7 +35,7 @@ public interface SourceRecordService {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record} with latest generation
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -44,20 +44,23 @@ public interface SourceRecordService {
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
    * 
-   * @param id       Record instance id
-   * @param tenantId tenant id
+   * @param instanceId record instance id
+   * @param tenantId   tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId, String tenantId);
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId,
+      String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record} with latest generation
+   * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
+   * with latest generation
    * 
-   * @param id       Record instance id
-   * @param tenantId tenant id
+   * @param instanceId record instance id
+   * @param tenantId   tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId, String tenantId);
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId,
+      String tenantId);
 
   /**
    * Searches for collection of {@link SourceRecord} with {@link Record.State} of 'ACTUAL'
@@ -67,20 +70,24 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit,
+      String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} with {@link Record.State} of 'ACTUAL' and latest generation
+   * Searches for collection of {@link SourceRecord} with {@link Record.State} of 'ACTUAL'
+   * and latest generation
    * 
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit,
+      String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} for a given period with {@link Record.State} of 'ACTUAL'
+   * Searches for collection of {@link SourceRecord} for a given period with {@link Record.State}
+   * of 'ACTUAL'
    * 
    * @param from     starting updated date
    * @param till     ending updated date
@@ -89,10 +96,12 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till, Integer offset, Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till,
+      Integer offset, Integer limit, String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} for a given period with {@link Record.State} of 'ACTUAL' and latest generation
+   * Searches for collection of {@link SourceRecord} for a given period with {@link Record.State}
+   * of 'ACTUAL' and latest generation
    * 
    * @param from     starting updated date
    * @param till     ending updated date
@@ -101,63 +110,73 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset, Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till,
+      Integer offset, Integer limit, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by id of {@link Record}
+   * Searches for {@link SourceRecord} by id of {@link Record} and enhanced with {@link RawRecord},
+   * {@link ParsedRecord}, or both.
    * 
-   * @param content  specific {@link SourceRecordContent}
+   * @param content  {@link SourceRecordContent} to specify how to enhance
+   * @param id       record id
+   * @param tenantId tenant id
+   * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
+   */
+  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content,
+      String id, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} by matched id of {@link Record} and enhanced with
+   * {@link RawRecord}, {@link ParsedRecord}, or both.
+   * 
+   * @param content  {@link SourceRecordContent} to specify how to enhance
    * @param id       Record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id, String tenantId);
-
-  /**
-   * Searches for {@link SourceRecord} by matched id of {@link Record}
-   * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param id       Record id
-   * @param tenantId tenant id
-   * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
-   */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId, String tenantId);
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content,
+      String matchedId, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
+   * and enhanced with {@link RawRecord}, {@link ParsedRecord}, or both.
    * 
-   * @param content  specific {@link SourceRecordContent}
+   * @param content  {@link SourceRecordContent} to specify how to enhance
    * @param id       Record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId);
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content,
+      String instanceId, String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} by {@link RecordQuery}
+   * Searches for collection of {@link SourceRecord} by {@link RecordQuery} enhanced with
+   * {@link RawRecord}, {@link ParsedRecord}, or both.
    * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param query    {@link RecordQuery} to prepare WHERE clause
+   * @param content  {@link SourceRecordContent} to specify how to enhance
+   * @param query    {@link RecordQuery} to prepare WHERE and ORDER BY clause
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with specified {@link SourceRecordContent}
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
-      Integer limit, String tenantId);
+  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content,
+      RecordQuery query, Integer offset, Integer limit, String tenantId);
 
   /**
-   * Searches for collection of {@link SourceRecord} by {@link RecordQuery} and streams response
+   * Searches for and streams collection of {@link SourceRecord} by {@link RecordQuery} enhanced
+   * with {@link RawRecord}, {@link ParsedRecord}, or both.
    * 
-   * @param content    specific {@link SourceRecordContent}
-   * @param query      {@link RecordQuery} to prepare WHERE clause
-   * @param offset     starting index in a list of results
-   * @param limit      maximum number of results to return
-   * @param tenantId   tenant id
-   * @param handler    handler for each {@link SourceRecord}
-   * @param endHandler handler for when stream is finished
+   * @param content             {@link SourceRecordContent} to specify how to enhance
+   * @param query               {@link RecordQuery} to prepare WHERE and ORDER BY clause
+   * @param offset              starting index in a list of results
+   * @param limit               maximum number of results to return
+   * @param tenantId            tenant id
+   * @param sourceRecordHandler handler for each {@link SourceRecord}
+   * @param endHandler          handler for when stream is finished
    */
-  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
-      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler);
+  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
+      Integer offset, Integer limit, String tenantId,Handler<SourceRecord> sourceRecordHandler,
+      Handler<AsyncResult<Void>> endHandler);
 
 }

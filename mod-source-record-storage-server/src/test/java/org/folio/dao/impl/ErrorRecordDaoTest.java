@@ -21,8 +21,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ErrorRecordDaoTest
-    extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao> {
+public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -116,8 +115,10 @@ public class ErrorRecordDaoTest
 
   @Override
   public ErrorRecord getUpdatedMockEntity() {
-    return new ErrorRecord().withId(getMockEntity().getId()).withContent(getMockEntity().getContent())
-        .withDescription("Something went really wrong");
+    return new ErrorRecord()
+      .withId(getMockEntity().getId())
+      .withContent(getMockEntity().getContent())
+      .withDescription("Something went really wrong");
   }
 
   @Override
@@ -137,28 +138,28 @@ public class ErrorRecordDaoTest
     List<ErrorRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override
   public void assertArbitruaryQueryResults(TestContext context, ErrorRecordCollection actual) {
     List<ErrorRecord> expected = getMockEntities().stream()
-        .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
-        .collect(Collectors.toList());
+      .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
+      .collect(Collectors.toList());
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override
   public void assertArbitruarySortedQueryResults(TestContext context, ErrorRecordCollection actual) {
     List<ErrorRecord> expected = getMockEntities().stream()
-        .filter(entity -> entity.getDescription().equals(getArbitruarySortedQuery().getDescription()))
-        .collect(Collectors.toList());
+      .filter(entity -> entity.getDescription().equals(getArbitruarySortedQuery().getDescription()))
+      .collect(Collectors.toList());
     Collections.sort(expected, (er1, er2) -> er1.getDescription().compareTo(er2.getDescription()));
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
     expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-        .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
+      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
   }
 
   @Override

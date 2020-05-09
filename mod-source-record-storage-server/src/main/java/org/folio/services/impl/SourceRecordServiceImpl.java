@@ -54,68 +54,76 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId,
+      String tenantId) {
     return sourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId,
+      String tenantId) {
     return sourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit,
+      String tenantId) {
     return sourceRecordDao.getSourceMarcRecords(offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit,
+      String tenantId) {
     return sourceRecordDao.getSourceMarcRecordsAlt(offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till, Integer offset,
-      Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till,
+      Integer offset, Integer limit, String tenantId) {
     return sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset,
-      Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till,
+      Integer offset, Integer limit, String tenantId) {
     return sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content,
+      String id, String tenantId) {
     return recordDao.getById(id, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content,
+      String matchedId, String tenantId) {
     return recordDao.getByMatchedId(matchedId, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content,
+      String instanceId, String tenantId) {
     return recordDao.getByInstanceId(instanceId, tenantId)
       .map(this::toSourceRecord)
       .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
-      Integer limit, String tenantId) {
+  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content,
+      RecordQuery query, Integer offset, Integer limit, String tenantId) {
     return recordDao.getByQuery(query, offset, limit, tenantId)
       .compose(recordCollection -> lookupContent(content, tenantId, recordCollection));
   }
 
   @Override
-  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
-      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
+  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
+      Integer offset, Integer limit, String tenantId, Handler<SourceRecord> handler,
+      Handler<AsyncResult<Void>> endHandler) {
     sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId,
       stream -> stream
         .handler(row -> {
@@ -149,7 +157,8 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       .withMetadata(record.getMetadata());
   }
 
-  private Future<SourceRecordCollection> lookupContent(SourceRecordContent content, String tenantId, RecordCollection recordCollection) {
+  private Future<SourceRecordCollection> lookupContent(SourceRecordContent content, String tenantId,
+      RecordCollection recordCollection) {
     Promise<SourceRecordCollection> promise = Promise.promise();
     CompositeFuture.all(
       recordCollection.getRecords().stream()
@@ -165,14 +174,16 @@ public class SourceRecordServiceImpl implements SourceRecordService {
     return promise.future();
   }
 
-  private Future<Optional<SourceRecord>> lookupContent(SourceRecordContent content, String tenantId, Optional<SourceRecord> sourceRecord) {
+  private Future<Optional<SourceRecord>> lookupContent(SourceRecordContent content, String tenantId,
+      Optional<SourceRecord> sourceRecord) {
     if (sourceRecord.isPresent()) {
       return lookupContent(content, tenantId, sourceRecord.get()).map(Optional::of);
     }
     return Future.factory.succeededFuture(sourceRecord);
   }
 
-  private Future<SourceRecord> lookupContent(SourceRecordContent content, String tenantId, SourceRecord sourceRecord) {
+  private Future<SourceRecord> lookupContent(SourceRecordContent content, String tenantId,
+      SourceRecord sourceRecord) {
     String id = sourceRecord.getRecordId();
     Promise<SourceRecord> promise = Promise.promise();
     switch(content) {

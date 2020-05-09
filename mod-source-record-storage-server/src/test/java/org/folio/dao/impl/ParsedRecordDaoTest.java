@@ -40,7 +40,6 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    
     snapshotDao.save(getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());

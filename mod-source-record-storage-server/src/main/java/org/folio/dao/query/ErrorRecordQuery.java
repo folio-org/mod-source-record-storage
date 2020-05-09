@@ -45,7 +45,9 @@ public class ErrorRecordQuery extends ErrorRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(this, other) && super.equals(other);
+    return other instanceof ErrorRecordQuery
+      && DaoUtil.equals(this, (ErrorRecordQuery) other)
+      && super.equals(other);
   }
 
   @Override

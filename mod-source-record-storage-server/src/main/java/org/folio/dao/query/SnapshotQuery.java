@@ -53,7 +53,9 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(this, other) && super.equals(other);
+    return other instanceof SnapshotQuery
+      && DaoUtil.equals(this, (SnapshotQuery) other)
+      && super.equals(other);
   }
 
   @Override

@@ -134,8 +134,8 @@ public class DaoUtil {
    * @param other       other untyped entity query
    * @return true if other not null and sorts equal
    */
-  public static boolean equals(EntityQuery entityQuery, Object other) {
-    return Objects.nonNull(other) && DaoUtil.equals(entityQuery.getSort(), ((EntityQuery) other).getSort());
+  public static boolean equals(EntityQuery eq1, EntityQuery eq2) {
+    return Objects.nonNull(eq2) && DaoUtil.equals(eq1.getSort(), eq2.getSort());
   }
 
   public static Map<String, String> getBasicContentPropertyToColumnMap() {

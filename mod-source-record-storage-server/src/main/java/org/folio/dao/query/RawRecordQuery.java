@@ -35,7 +35,9 @@ public class RawRecordQuery extends RawRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(this, other) && super.equals(other);
+    return other instanceof RawRecordQuery
+      && DaoUtil.equals(this, (RawRecordQuery) other)
+      && super.equals(other);
   }
 
   @Override

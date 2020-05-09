@@ -35,7 +35,9 @@ public class ParsedRecordQuery extends ParsedRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return DaoUtil.equals(this, other) && super.equals(other);
+    return other instanceof ParsedRecordQuery
+      && DaoUtil.equals(this, (ParsedRecordQuery) other)
+      && super.equals(other);
   }
 
   @Override

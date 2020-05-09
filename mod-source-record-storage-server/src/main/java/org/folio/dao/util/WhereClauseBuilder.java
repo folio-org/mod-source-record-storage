@@ -13,6 +13,9 @@ import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 
+/**
+ * Builder to fluently process values and columns to build where clause.
+ */
 public class WhereClauseBuilder {
 
   private final StringBuilder whereClause;

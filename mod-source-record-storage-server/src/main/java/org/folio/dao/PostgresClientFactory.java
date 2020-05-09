@@ -9,12 +9,16 @@ import org.springframework.stereotype.Component;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 
 @Component
 public class PostgresClientFactory {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostgresClientFactory.class);
 
   private static final String HOST = "host";
   private static final String PORT = "port";
@@ -47,6 +51,7 @@ public class PostgresClientFactory {
   /**
    * Get database client
    *
+   * @param tenantId tenant id
    * @return {@link PgPool} database client
    */
   public PgPool getClient(String tenantId) {
@@ -55,8 +60,10 @@ public class PostgresClientFactory {
 
   private synchronized PgPool getPool(String tenantId) {
     if (pool.containsKey(tenantId)) {
+      LOG.info("Using existing database connection pool for tenant {}", tenantId);
       return pool.get(tenantId);
     }
+    LOG.info("Creating new database connection pool for tenant {}", tenantId);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
     PgPool client = PgPool.pool(connectOptions, poolOptions);
@@ -64,14 +71,24 @@ public class PostgresClientFactory {
     return client;
   }
 
+  // NOTE: This should be able to get database configuration without PostgresClient.
+  // Additionally, with knowledge of tenant at this time, we are not confined to 
+  // schema isolation and can provide database isolation.
   private PgConnectOptions getConnectOptions(String tenantId) {
-    JsonObject postgreSQLClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx);
+    JsonObject postgreSQLClientConfig = postgresClient.getConnectionConfig();
+    postgresClient.closeClient(closed -> {
+      if (closed.failed()) {
+        LOG.error("Unable to close PostgresClient", closed.cause());
+      }
+    });
     return new PgConnectOptions()
       .setHost(postgreSQLClientConfig.getString(HOST))
       .setPort(postgreSQLClientConfig.getInteger(PORT))
       .setDatabase(postgreSQLClientConfig.getString(DATABASE))
       .setUser(postgreSQLClientConfig.getString(USERNAME))
       .setPassword(postgreSQLClientConfig.getString(PASSWORD))
+      // using RMB convention driven tenant to schema name
       .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
   }
 

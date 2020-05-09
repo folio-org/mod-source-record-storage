@@ -13,9 +13,9 @@ import org.junit.Test;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>> extends AbstractDaoTest {
+public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>> extends AbstractDaoTest {
 
-  DAO dao;
+  D dao;
 
   @Test
   public void shouldGetById(TestContext context) {

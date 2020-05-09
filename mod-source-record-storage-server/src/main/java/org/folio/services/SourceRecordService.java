@@ -137,7 +137,7 @@ public interface SourceRecordService {
    * Searches for collection of {@link SourceRecord} by {@link RecordQuery}
    * 
    * @param content  specific {@link SourceRecordContent}
-   * @param query   {@link RecordQuery} to prepare WHERE clause
+   * @param query    {@link RecordQuery} to prepare WHERE clause
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -150,7 +150,7 @@ public interface SourceRecordService {
    * Searches for collection of {@link SourceRecord} by {@link RecordQuery} and streams response
    * 
    * @param content    specific {@link SourceRecordContent}
-   * @param query     {@link RecordQuery} to prepare WHERE clause
+   * @param query      {@link RecordQuery} to prepare WHERE clause
    * @param offset     starting index in a list of results
    * @param limit      maximum number of results to return
    * @param tenantId   tenant id

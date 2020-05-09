@@ -11,7 +11,7 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
-import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
@@ -119,7 +119,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
       if (ar1.failed()) {
@@ -150,12 +150,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
       .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME))
       .withRecordType(RecordType.fromValue(row.getString(RECORD_TYPE_COLUMN_NAME)))
-      .withMetadata(DaoUtil.metadataFromRow(row, new String[] {
-        CREATED_BY_USER_ID_COLUMN_NAME,
-        CREATED_DATE_COLUMN_NAME,
-        UPDATED_BY_USER_ID_COLUMN_NAME,
-        UPDATED_DATE_COLUMN_NAME
-      }));
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
   private Future<Optional<SourceRecord>> selectById(String template, String id, String tenantId) {

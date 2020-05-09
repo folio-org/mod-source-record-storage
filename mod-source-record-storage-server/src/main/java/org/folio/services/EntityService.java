@@ -15,16 +15,16 @@ import io.vertx.core.Handler;
 public interface EntityService<E, C, Q extends EntityQuery> {
 
   /**
-   * Searches for Entity by id
+   * Searches for entity by id
    * 
-   * @param id       Entity id
+   * @param id       entity id
    * @param tenantId tenant id
    * @return future with optional entity
    */
   public Future<Optional<E>> getById(String id, String tenantId);
 
   /**
-   * Searches for Entity by query
+   * Searches for entities by query
    * 
    * @param query    {@link EntityQuery} which prepares WHERE clause for query
    * @param offset   starting index in a list of results
@@ -35,7 +35,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
-   * Searches for Entity by query and stream results
+   * Searches for entities by query and stream results
    * 
    * @param query        {@link EntityQuery} which prepares WHERE clause for query
    * @param offset       starting index in a list of results

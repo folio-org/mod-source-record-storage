@@ -1,5 +1,10 @@
 package org.folio.dao.query;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.dao.util.DaoUtil.COMMA;
+import static org.folio.dao.util.DaoUtil.ORDER_BY_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.SPACE;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -7,10 +12,9 @@ import java.util.Set;
 import javax.ws.rs.BadRequestException;
 
 import org.folio.dao.query.OrderBy.Direction;
-import org.folio.dao.util.OrderByClauseBuilder;
 
 /**
- * Interface to prepare WHERE and ORDER BY clauses for database lookups
+ * Interface to prepare WHERE and ORDER BY clauses for database sql queries
  */
 public interface EntityQuery {
 
@@ -51,17 +55,25 @@ public interface EntityQuery {
    * @throws BadRequestException
    */
   public default String toOrderByClause() {
-    OrderByClauseBuilder orderByClauseBuilder = OrderByClauseBuilder.of();
+    StringBuilder oderByClause =  new StringBuilder();
     for (OrderBy orderBy : getSort()) {
       Optional<String> column = getPropertyColumnName(orderBy.getProperty());
       if (column.isPresent()) {
-        orderByClauseBuilder.add(column.get(), orderBy.getDirection());
+        if (oderByClause.length() > 0) {
+          oderByClause.append(COMMA);
+        }
+        oderByClause
+          .append(column.get())
+          .append(SPACE)
+          .append(orderBy.getDirection().toString());
       } else {
         throw new BadRequestException(String.format("%s cannot be mapped to a column",
           orderBy.getProperty()));
       }
     }
-    return orderByClauseBuilder.build();
+    return oderByClause.length() > 0
+      ? String.format(ORDER_BY_TEMPLATE, oderByClause.toString())
+      : EMPTY;
   }
 
   /**

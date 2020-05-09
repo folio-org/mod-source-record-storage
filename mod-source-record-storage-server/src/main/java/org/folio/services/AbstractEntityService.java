@@ -11,11 +11,11 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
-public abstract class AbstractEntityService<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>>
-    implements EntityService<E, C, Q, DAO> {
+public abstract class AbstractEntityService<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>>
+    implements EntityService<E, C, Q> {
 
   @Autowired
-  protected DAO dao;
+  protected D dao;
 
   public Future<Optional<E>> getById(String id, String tenantId) {
     return dao.getById(id, tenantId);

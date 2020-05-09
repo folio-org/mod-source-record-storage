@@ -3,7 +3,6 @@ package org.folio.services;
 import java.util.List;
 import java.util.Optional;
 
-import org.folio.dao.EntityDao;
 import org.folio.dao.query.EntityQuery;
 
 import io.vertx.core.AsyncResult;
@@ -11,9 +10,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Entity service interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery} via <DAO> {@link EntityDao}
+ * Entity service interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
  */
-public interface EntityService<E, C, Q extends EntityQuery, DAO extends EntityDao<E, C, Q>> {
+public interface EntityService<E, C, Q extends EntityQuery> {
 
   /**
    * Searches for Entity by id

@@ -116,8 +116,8 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   @Override
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
       Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
-    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId, stream -> {
-      stream
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId,
+      stream -> stream
         .handler(row -> {
           stream.pause();
           lookupContent(content, tenantId, sourceRecordDao.toSourceRecord(row)).onComplete(res -> {
@@ -128,9 +128,8 @@ public class SourceRecordServiceImpl implements SourceRecordService {
             handler.handle(res.result());
             stream.resume();
           });
-        })
-        .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)));
-    }, endHandler);
+        }).exceptionHandler(e -> endHandler.handle(Future.failedFuture(e))),
+      endHandler);
   }
 
   private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {

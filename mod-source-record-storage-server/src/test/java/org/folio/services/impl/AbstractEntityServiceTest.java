@@ -1,4 +1,4 @@
-package org.folio.dao.impl;
+package org.folio.services.impl;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,26 +6,29 @@ import java.util.List;
 import org.folio.EntityMocks;
 import org.folio.dao.EntityDao;
 import org.folio.dao.query.EntityQuery;
+import org.folio.services.EntityService;
 import org.junit.Test;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>, M extends EntityMocks<E, C, Q>>
-    extends AbstractDaoTest {
+public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>, S extends EntityService<E, C, Q>, M extends EntityMocks<E, C, Q>>
+    extends AbstractServiceTest {
 
-  D dao;
+  D mockDao;
+
+  S service;
 
   M mocks = initMocks();
 
   @Test
   public void shouldGetById(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getById(dao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+      service.getById(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -39,7 +42,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldNotFindWhenGetById(TestContext context) {
     Async async = context.async();
-    dao.getById(dao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+    service.getById(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -51,11 +54,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldGetByNoopQuery(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(create -> {
+    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(create -> {
       if (create.failed()) {
         context.fail(create.cause());
       }
-      dao.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -68,11 +71,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldGetByArbitruaryQuery(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
+    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      service.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -85,11 +88,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldGetByArbitruarySortedQuery(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
+    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      service.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -102,7 +105,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldSave(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
+    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -114,7 +117,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
+    service.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });
@@ -123,12 +126,12 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldUpdate(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
       E mockUpdateEntity = mocks.getUpdatedMockEntity();
-      dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
+      service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -142,9 +145,9 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
     E mockUpdateEntity = mocks.getUpdatedMockEntity();
-    dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
+    service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
-      String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
+      String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mockDao.getId(mockUpdateEntity));
       context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();
     });
@@ -153,11 +156,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldDelete(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.delete(dao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+      service.delete(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -170,7 +173,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldNotDelete(TestContext context) {
     Async async = context.async();
-    dao.delete(dao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+    service.delete(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -182,12 +185,12 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   @Test
   public void shouldStreamGetByQuery(TestContext context) {
     Async async = context.async();
-    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
+    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       List<E> actual = new ArrayList<>();
-      dao.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
+      service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
         actual.add(entity);
       }, finished -> {
         if (finished.failed()) {

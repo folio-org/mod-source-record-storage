@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.folio.TestMocks;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
@@ -70,18 +71,18 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao.save(getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
+    snapshotDao.save(TestMocks.getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
       }
-      recordDao.save(getRecords(), TENANT_ID).onComplete(saveRecords -> {
+      recordDao.save(TestMocks.getRecords(), TENANT_ID).onComplete(saveRecords -> {
         if (saveRecords.failed()) {
           context.fail(saveRecords.cause());
         }
         CompositeFuture.all(
-          rawRecordDao.save(getRawRecords(), TENANT_ID),
-          parsedRecordDao.save(getParsedRecords(), TENANT_ID),
-          errorRecordDao.save(getErrorRecords(), TENANT_ID)
+          rawRecordDao.save(TestMocks.getRawRecords(), TENANT_ID),
+          parsedRecordDao.save(TestMocks.getParsedRecords(), TENANT_ID),
+          errorRecordDao.save(TestMocks.getErrorRecords(), TENANT_ID)
         ).onComplete(save -> {
           if (save.failed()) {
             context.fail();
@@ -132,11 +133,11 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordById(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordById(getRecord(0).getId(), TENANT_ID).onComplete(res -> {
+    sourceRecordDao.getSourceMarcRecordById(TestMocks.getRecord(0).getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      compareSourceRecord(context, TestMocks.getRecord(0), TestMocks.getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -144,13 +145,13 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordByIdAlt(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordByIdAlt(getRecord(0).getId(), TENANT_ID).onComplete(res -> {
+    sourceRecordDao.getSourceMarcRecordByIdAlt(TestMocks.getRecord(0).getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       // NOTE: some new mock data should be introduced to ensure assertion of latest generation
       // when done the expected record and parsed record should be updated
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      compareSourceRecord(context, TestMocks.getRecord(0), TestMocks.getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -158,12 +159,12 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordByInstanceId(TestContext context) {
     Async async = context.async();
-    String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
+    String instanceId = TestMocks.getRecord(0).getExternalIdsHolder().getInstanceId();
     sourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      compareSourceRecord(context, TestMocks.getRecord(0), TestMocks.getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -171,14 +172,14 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordByInstanceIdAlt(TestContext context) {
     Async async = context.async();
-    String instanceId = getRecord(0).getExternalIdsHolder().getInstanceId();
+    String instanceId = TestMocks.getRecord(0).getExternalIdsHolder().getInstanceId();
     sourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       // NOTE: some new mock data should be introduced to ensure assertion of latest generation
       // when done the expected record and parsed record should be updated
-      compareSourceRecord(context, getRecord(0), getParsedRecord(0), res.result());
+      compareSourceRecord(context, TestMocks.getRecord(0), TestMocks.getParsedRecord(0), res.result());
       async.complete();
     });
   }
@@ -266,7 +267,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (finished.failed()) {
         context.fail(finished.cause());
       }
-      List<Record> expectedRecords = getRecords();
+      List<Record> expectedRecords = TestMocks.getRecords();
       List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = new ArrayList<>();
       compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
@@ -369,14 +370,14 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   private List<Record> getRecords(State state) {
-    return getRecords().stream()
+    return TestMocks.getRecords().stream()
       .filter(expectedRecord -> expectedRecord.getState().equals(state))
       .collect(Collectors.toList());
   }
 
   private List<ParsedRecord> getParsedRecords(List<Record> records) {
     return records.stream()
-      .map(record -> getParsedRecord(record.getId()))
+      .map(record -> TestMocks.getParsedRecord(record.getId()))
       .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
       .collect(Collectors.toList());
   }

@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -35,14 +37,25 @@ public class RawRecordQuery extends RawRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof RawRecordQuery
-      && DaoUtil.equals(this, (RawRecordQuery) other)
-      && super.equals(other);
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof RawRecordQuery)) {
+      return false;
+    }
+    RawRecordQuery rhs = ((RawRecordQuery) other);
+    return new EqualsBuilder()
+      .append(getId(), rhs.getId())
+      .append(getSort(), rhs.getSort())
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return new HashCodeBuilder()
+      .append(getId())
+      .append(getSort())
+      .toHashCode();
   }
 
 }

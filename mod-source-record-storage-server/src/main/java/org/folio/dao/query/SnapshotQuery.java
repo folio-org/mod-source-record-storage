@@ -12,7 +12,8 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
-import org.folio.dao.util.DaoUtil;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 
@@ -53,14 +54,29 @@ public class SnapshotQuery extends Snapshot implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof SnapshotQuery
-      && DaoUtil.equals(this, (SnapshotQuery) other)
-      && super.equals(other);
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof SnapshotQuery)) {
+      return false;
+    }
+    SnapshotQuery rhs = ((SnapshotQuery) other);
+    return new EqualsBuilder()
+      .append(getJobExecutionId(), rhs.getJobExecutionId())
+      .append(getStatus(), rhs.getStatus())
+      .append(getProcessingStartedDate(), rhs.getProcessingStartedDate())
+      .append(getSort(), rhs.getSort())
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return new HashCodeBuilder()
+      .append(getJobExecutionId())
+      .append(getStatus())
+      .append(getProcessingStartedDate())
+      .append(getSort())
+      .toHashCode();
   }
 
 }

@@ -23,7 +23,8 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
-import org.folio.dao.util.DaoUtil;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Record;
 
@@ -102,14 +103,45 @@ public class RecordQuery extends Record implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof RecordQuery
-      && DaoUtil.equals(this, (RecordQuery) other)
-      && super.equals(other);
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof RecordQuery)) {
+      return false;
+    }
+    RecordQuery rhs = ((RecordQuery) other);
+    return new EqualsBuilder()
+      .append(getId(), rhs.getId())
+      .append(getMatchedId(), rhs.getMatchedId())
+      .append(getSnapshotId(), rhs.getSnapshotId())
+      .append(getMatchedProfileId(), rhs.getMatchedProfileId())
+      .append(getGeneration(), rhs.getGeneration())
+      .append(getOrder(), rhs.getOrder())
+      .append(getRecordType(), rhs.getRecordType())
+      .append(getState(), rhs.getState())
+      .append(getExternalIdsHolder(), rhs.getExternalIdsHolder())
+      .append(getAdditionalInfo(), rhs.getAdditionalInfo())
+      .append(getMetadata(), rhs.getMetadata())
+      .append(getSort(), rhs.getSort())
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return new HashCodeBuilder()
+      .append(getId())
+      .append(getMatchedId())
+      .append(getSnapshotId())
+      .append(getMatchedProfileId())
+      .append(getGeneration())
+      .append(getOrder())
+      .append(getRecordType())
+      .append(getState())
+      .append(getExternalIdsHolder())
+      .append(getAdditionalInfo())
+      .append(getMetadata())
+      .append(getSort())
+      .toHashCode();
   }
 
 }

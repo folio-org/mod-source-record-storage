@@ -36,19 +36,11 @@ public class OrderBy {
   }
 
   @Override
-  public int hashCode() {
-    return new HashCodeBuilder()
-      .append(property)
-      .append(direction)
-      .toHashCode();
-  }
-
-  @Override
   public boolean equals(Object other) {
     if (other == this) {
       return true;
     }
-    if ((other instanceof OrderBy) == false) {
+    if (!(other instanceof OrderBy)) {
       return false;
     }
     OrderBy rhs = ((OrderBy) other);
@@ -56,6 +48,14 @@ public class OrderBy {
       .append(property, rhs.property)
       .append(direction, rhs.direction)
       .isEquals();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+      .append(property)
+      .append(direction)
+      .toHashCode();
   }
 
   public enum Direction {

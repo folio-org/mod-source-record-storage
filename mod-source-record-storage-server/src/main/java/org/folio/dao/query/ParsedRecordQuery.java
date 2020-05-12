@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -35,14 +37,25 @@ public class ParsedRecordQuery extends ParsedRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof ParsedRecordQuery
-      && DaoUtil.equals(this, (ParsedRecordQuery) other)
-      && super.equals(other);
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof ParsedRecordQuery)) {
+      return false;
+    }
+    ParsedRecordQuery rhs = ((ParsedRecordQuery) other);
+    return new EqualsBuilder()
+      .append(getId(), rhs.getId())
+      .append(getSort(), rhs.getSort())
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return new HashCodeBuilder()
+      .append(getId())
+      .append(getSort())
+      .toHashCode();
   }
 
 }

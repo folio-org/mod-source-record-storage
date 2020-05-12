@@ -9,6 +9,8 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -45,14 +47,27 @@ public class ErrorRecordQuery extends ErrorRecord implements EntityQuery {
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof ErrorRecordQuery
-      && DaoUtil.equals(this, (ErrorRecordQuery) other)
-      && super.equals(other);
+    if (other == this) {
+      return true;
+    }
+    if (!(other instanceof ErrorRecordQuery)) {
+      return false;
+    }
+    ErrorRecordQuery rhs = ((ErrorRecordQuery) other);
+    return new EqualsBuilder()
+      .append(getId(), rhs.getId())
+      .append(getDescription(), rhs.getDescription())
+      .append(getSort(), rhs.getSort())
+      .isEquals();
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return new HashCodeBuilder()
+      .append(getId())
+      .append(getDescription())
+      .append(getSort())
+      .toHashCode();
   }
 
 }

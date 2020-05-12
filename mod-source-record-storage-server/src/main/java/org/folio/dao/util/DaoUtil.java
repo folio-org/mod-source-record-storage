@@ -10,7 +10,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -18,8 +17,6 @@ import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
-import org.folio.dao.query.EntityQuery;
-import org.folio.dao.query.OrderBy;
 import org.folio.rest.jaxrs.model.Metadata;
 
 import io.vertx.sqlclient.Row;
@@ -114,28 +111,6 @@ public class DaoUtil {
     }
     // returning -1 to indicate unknown total count
     return -1;
-  }
-
-  /**
-   * Compare two set of {@link OrderBy}
-   * 
-   * @param sort1 first sort
-   * @param sort2 second sort
-   * @return true if sets are equal
-   */
-  public static boolean equals(Set<OrderBy> sort1, Set<OrderBy> sort2) {
-    return sort1.size() == sort2.size() && sort1.containsAll(sort2);
-  }
-
-  /**
-   * Initial compare of {@link EntityQuery} to another
-   * 
-   * @param entityQuery entity query
-   * @param other       other untyped entity query
-   * @return true if other not null and sorts equal
-   */
-  public static boolean equals(EntityQuery eq1, EntityQuery eq2) {
-    return Objects.nonNull(eq2) && DaoUtil.equals(eq1.getSort(), eq2.getSort());
   }
 
   public static Map<String, String> getBasicContentPropertyToColumnMap() {

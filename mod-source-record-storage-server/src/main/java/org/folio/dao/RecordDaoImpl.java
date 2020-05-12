@@ -40,7 +40,6 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -122,12 +121,14 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    return insertOrUpdateRecord(record, tenantId);
+    return executeInTransaction(pgClientFactory.createInstance(tenantId),
+      connection -> insertOrUpdateRecord(connection, record, tenantId));
   }
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
-    return insertOrUpdateRecord(record, tenantId);
+    return executeInTransaction(pgClientFactory.createInstance(tenantId),
+      connection -> insertOrUpdateRecord(connection, record, tenantId));
   }
 
   @Override
@@ -203,8 +204,6 @@ public class RecordDaoImpl implements RecordDao {
     return processResult(future);
   }
 
-
-
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Future<ResultSet> future = Future.future();
@@ -231,6 +230,14 @@ public class RecordDaoImpl implements RecordDao {
       .compose(v -> updateExternalIdsForRecord(connection, record, tenantId))
       .compose(updated -> updateParsedRecord(connection, record.getParsedRecord(), record.getRecordType(), tenantId))
     );
+  }
+
+  @Override
+  public Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId) {
+    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+    return executeInTransaction(pgClient, connection -> Future.succeededFuture()
+      .compose(v -> insertOrUpdateRecord(connection, oldRecord, tenantId))
+      .compose(v -> insertOrUpdateRecord(connection, newRecord, tenantId)));
   }
 
   /**
@@ -457,9 +464,8 @@ public class RecordDaoImpl implements RecordDao {
     return deleteFuture.map(deleted -> deleted.getUpdated() == 1);
   }
 
-  private Future<Record> insertOrUpdateRecord(Record record, String tenantId) {
+  private Future<Record> insertOrUpdateRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
 
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
     RecordModel recordModel = new RecordModel()
       .withId(record.getId())
       .withSnapshotId(record.getSnapshotId())
@@ -475,25 +481,23 @@ public class RecordDaoImpl implements RecordDao {
       .withAdditionalInfo(record.getAdditionalInfo())
       .withMetadata(record.getMetadata());
 
-    return executeInTransaction(pgClient, connection ->
-      Future.succeededFuture()
-        .compose(v -> insertOrUpdate(connection, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
-        .compose(v -> {
-          if (record.getParsedRecord() != null) {
-            recordModel.setParsedRecordId(record.getParsedRecord().getId());
-            return insertOrUpdateParsedRecord(connection, record, tenantId);
-          }
-          return Future.succeededFuture();
-        })
-        .compose(v -> {
-          if (record.getErrorRecord() != null) {
-            recordModel.setErrorRecordId(record.getErrorRecord().getId());
-            return insertOrUpdate(connection, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
-          }
-          return Future.succeededFuture();
-        })
-        .compose(v -> insertOrUpdate(connection, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId).map(updated -> record))
-    );
+    return Future.succeededFuture()
+      .compose(v -> insertOrUpdate(tx, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
+      .compose(v -> {
+        if (record.getParsedRecord() != null) {
+          recordModel.setParsedRecordId(record.getParsedRecord().getId());
+          return insertOrUpdateParsedRecord(tx, record, tenantId);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> {
+        if (record.getErrorRecord() != null) {
+          recordModel.setErrorRecordId(record.getErrorRecord().getId());
+          return insertOrUpdate(tx, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId).map(updated -> record));
   }
 
   private Future<Boolean> insertOrUpdate(AsyncResult<SQLConnection> tx, Object rawRecord, String id, String tableName, String tenantId) {

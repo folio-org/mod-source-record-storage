@@ -1,5 +1,8 @@
 package org.folio.rest.impl;
 
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
@@ -8,6 +11,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import java.util.Collections;
+import java.util.UUID;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -17,9 +22,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-
-import java.util.Collections;
-import java.util.UUID;
+import org.junit.Rule;
 
 public abstract class AbstractRestVerticleTest {
 
@@ -32,6 +35,12 @@ public abstract class AbstractRestVerticleTest {
   public static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
   private static String useExternalDatabase;
 
+  @Rule
+  public WireMockRule mockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true)));
+
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
@@ -39,7 +48,6 @@ public abstract class AbstractRestVerticleTest {
     int port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
     String okapiUserId = UUID.randomUUID().toString();
-
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");

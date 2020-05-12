@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -77,14 +78,13 @@ public interface RecordService {
 
   /**
    * Searches for source record by id via specific idType
-   * @param id - for searching
-   * @param idType - search type
+   *
+   * @param id       - for searching
+   * @param idType   - search type
    * @param tenantId - tenant id
    * @return future with optional source record
    */
   Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
-
-
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
@@ -99,8 +99,8 @@ public interface RecordService {
    * Searches for Record either by SRS id or external relation id
    *
    * @param externalIdIdentifier specifies of external relation id type
-   * @param id             either SRS id or external relation id
-   * @param tenantId       tenant id
+   * @param id                   either SRS id or external relation id
+   * @param tenantId             tenant id
    * @return future with {@link Record}
    */
   Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
@@ -122,5 +122,16 @@ public interface RecordService {
    * @return - future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
+
+  /**
+   * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,
+   * no data is deleted as a result of the update
+   *
+   * @param parsedRecordDto parsed record DTO containing updates to parsed record
+   * @param snapshotId      snapshot id to which new Record should be linked
+   * @param tenantId        tenant id
+   * @return future with updated Record
+   */
+  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
 }

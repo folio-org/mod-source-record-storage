@@ -1,7 +1,8 @@
 package org.folio.services.impl;
 
-import java.util.ArrayList;
-import java.util.List;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
 
 import org.folio.EntityMocks;
 import org.folio.dao.EntityDao;
@@ -9,6 +10,7 @@ import org.folio.dao.query.EntityQuery;
 import org.folio.services.EntityService;
 import org.junit.Test;
 
+import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
@@ -19,91 +21,88 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
 
   S service;
 
-  M mocks = initMocks();
+  M mocks = getMocks();
 
   @Test
   public void shouldGetById(TestContext context) {
+    Promise<Optional<E>> getByIdPromise = Promise.promise();
+    when(mockDao.getById(mocks.getId(mocks.getMockEntity()), TENANT_ID)).thenReturn(getByIdPromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    service.getById(mocks.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      service.getById(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        context.assertTrue(res.result().isPresent());
-        mocks.compareEntities(context, mocks.getMockEntity(), res.result().get());
-        async.complete();
-      });
+      context.assertTrue(res.result().isPresent());
+      mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+      async.complete();
     });
+    getByIdPromise.complete(Optional.of(mocks.getExpectedEntity()));
   }
 
   @Test
   public void shouldNotFindWhenGetById(TestContext context) {
+    Promise<Optional<E>> getByIdPromise = Promise.promise();
+    when(mockDao.getById(mocks.getId(mocks.getMockEntity()), TENANT_ID)).thenReturn(getByIdPromise.future());
     Async async = context.async();
-    service.getById(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+    service.getById(mocks.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       context.assertFalse(res.result().isPresent());
       async.complete();
     });
+    getByIdPromise.complete(Optional.empty());
   }
 
   @Test
   public void shouldGetByNoopQuery(TestContext context) {
+    Promise<C> getByQueryPromise = Promise.promise();
+    when(mockDao.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(create -> {
-      if (create.failed()) {
-        context.fail(create.cause());
+    service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        mocks.assertNoopQueryResults(context, res.result());
-        async.complete();
-      });
+      mocks.compareCollections(context, mocks.getExpectedCollection(), res.result());
+      async.complete();
     });
+    getByQueryPromise.complete(mocks.getExpectedCollection());
   }
 
   @Test
   public void shouldGetByArbitruaryQuery(TestContext context) {
+    Promise<C> getByQueryPromise = Promise.promise();
+    when(mockDao.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    service.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      service.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        mocks.assertArbitruaryQueryResults(context, res.result());
-        async.complete();
-      });
+      mocks.compareCollections(context, mocks.getExpectedCollectionForArbitraryQuery(), res.result());
+      async.complete();
     });
+    getByQueryPromise.complete(mocks.getExpectedCollectionForArbitraryQuery());
   }
 
   @Test
   public void shouldGetByArbitruarySortedQuery(TestContext context) {
+    Promise<C> getByQueryPromise = Promise.promise();
+    when(mockDao.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    service.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      service.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        mocks.assertArbitruarySortedQueryResults(context, res.result());
-        async.complete();
-      });
+      mocks.compareCollections(context, mocks.getExpectedCollectionForArbitrarySortedQuery(), res.result());
+      async.complete();
     });
+    getByQueryPromise.complete(mocks.getExpectedCollectionForArbitrarySortedQuery());
   }
 
   @Test
   public void shouldSave(TestContext context) {
+    Promise<E> savePromise = Promise.promise();
+    when(mockDao.save(mocks.getMockEntity(), TENANT_ID)).thenReturn(savePromise.future());
     Async async = context.async();
     service.save(mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -112,102 +111,105 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       mocks.compareEntities(context, mocks.getMockEntity(), res.result());
       async.complete();
     });
+    savePromise.complete(mocks.getExpectedEntity());
   }
 
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
+    Promise<E> savePromise = Promise.promise();
+    when(mockDao.save(mocks.getInvalidMockEntity(), TENANT_ID)).thenReturn(savePromise.future());
     Async async = context.async();
     service.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });
+    savePromise.fail("Invalid");
   }
 
   @Test
   public void shouldUpdate(TestContext context) {
+    Promise<E> updatePromise = Promise.promise();
+    when(mockDao.update(mocks.getUpdatedMockEntity(), TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    service.update(mocks.getUpdatedMockEntity(), TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      E mockUpdateEntity = mocks.getUpdatedMockEntity();
-      service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        mocks.compareEntities(context, mockUpdateEntity, res.result());
-        async.complete();
-      });
+      mocks.compareEntities(context, mocks.getExpectedUpdatedEntity(), res.result());
+      async.complete();
     });
+    updatePromise.complete(mocks.getExpectedUpdatedEntity());
   }
 
   @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
+    Promise<E> updatePromise = Promise.promise();
+    when(mockDao.update(mocks.getUpdatedMockEntity(), TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
     E mockUpdateEntity = mocks.getUpdatedMockEntity();
+    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdateEntity));
     service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
-      String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mockDao.getId(mockUpdateEntity));
       context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();
     });
+    updatePromise.fail(expectedMessage);
   }
 
   @Test
   public void shouldDelete(TestContext context) {
+    Promise<Boolean> deletePromise = Promise.promise();
+    when(mockDao.delete(mocks.getId(mocks.getMockEntity()), TENANT_ID)).thenReturn(deletePromise.future());
     Async async = context.async();
-    service.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
+    service.delete(mocks.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
       }
-      service.delete(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
-        if (res.failed()) {
-          context.fail(res.cause());
-        }
-        context.assertTrue(res.result());
-        async.complete();
-      });
+      context.assertTrue(res.result());
+      async.complete();
     });
+    deletePromise.complete(true);
   }
 
   @Test
   public void shouldNotDelete(TestContext context) {
+    Promise<Boolean> deletePromise = Promise.promise();
+    when(mockDao.delete(mocks.getId(mocks.getMockEntity()), TENANT_ID)).thenReturn(deletePromise.future());
     Async async = context.async();
-    service.delete(mockDao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+    service.delete(mocks.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
       context.assertFalse(res.result());
       async.complete();
     });
+    deletePromise.complete(false);
   }
 
-  @Test
-  public void shouldStreamGetByQuery(TestContext context) {
-    Async async = context.async();
-    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
-      if (res.failed()) {
-        context.fail(res.cause());
-      }
-      List<E> actual = new ArrayList<>();
-      service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
-        actual.add(entity);
-      }, finished -> {
-        if (finished.failed()) {
-          context.fail(finished.cause());
-        }
-        mocks.compareEntities(context, mocks.getMockEntities(), actual);
-        async.complete();
-      });
-    });
-  }
+  // @Test
+  // public void shouldStreamGetByQuery(TestContext context) {
+  //   Promise<List<E>> savePromise = Promise.promise();
+  //   when(mockDao.save(mocks.getMockEntities(), TENANT_ID)).thenReturn(savePromise.future());
+  //   doNothing().when(mockDao).getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, any(Handler.class), any(Handler.class));
+  //   Async async = context.async();
+  //   service.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
+  //     if (res.failed()) {
+  //       context.fail(res.cause());
+  //     }
+  //     List<E> actual = new ArrayList<>();
+  //     service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
+  //       actual.add(entity);
+  //     }, finished -> {
+  //       if (finished.failed()) {
+  //         context.fail(finished.cause());
+  //       }
+  //       mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
+  //       async.complete();
+  //     });
+  //   });
+  //   savePromise.complete(mocks.getExpectedEntities());
+  // }
 
-  @Test
-  public void shouldGenerateWhereClauseFromQuery(TestContext context) {
-    Q filter = mocks.getCompleteQuery();
-    context.assertEquals(mocks.getCompleteWhereClause().trim(), filter.toWhereClause().trim());
-  }
-
-  public abstract M initMocks();
+  public abstract M getMocks();
 
 }

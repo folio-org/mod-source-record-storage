@@ -18,25 +18,32 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
 
   private LBSnapshotMocks() { }
 
+  @Override
   public String getId(Snapshot snapshot) {
     return snapshot.getJobExecutionId();
   }
 
+  @Override
   public SnapshotQuery getNoopQuery() {
     return new SnapshotQuery();
   }
 
+  @Override
   public SnapshotQuery getArbitruaryQuery() {
     SnapshotQuery snapshotQuery = new SnapshotQuery();
     snapshotQuery.setStatus(Snapshot.Status.NEW);
     return snapshotQuery;
   }
 
+  @Override
   public SnapshotQuery getArbitruarySortedQuery() {
-    return (SnapshotQuery) getArbitruaryQuery()
-      .orderBy("status");
+    SnapshotQuery snapshotQuery = new SnapshotQuery();
+    snapshotQuery.setStatus(Snapshot.Status.NEW);
+    snapshotQuery.orderBy("status");
+    return snapshotQuery;
   }
 
+  @Override
   public SnapshotQuery getCompleteQuery() {
     SnapshotQuery query = new SnapshotQuery();
     BeanUtils.copyProperties(TestMocks.getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), query);
@@ -44,26 +51,96 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
     return query;
   }
 
+  @Override
   public Snapshot getMockEntity() {
     return TestMocks.getSnapshot(0);
   }
 
+  @Override
   public Snapshot getInvalidMockEntity() {
     return new Snapshot()
       .withJobExecutionId("f3ba7619-d9b6-4e7d-9ebf-587d2d3807d0");
   }
 
+  @Override
   public Snapshot getUpdatedMockEntity() {
     return new Snapshot()
       .withJobExecutionId(getMockEntity().getJobExecutionId())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS)
-      .withProcessingStartedDate(new Date());
+      .withProcessingStartedDate(new Date(1589218979000l));
   }
 
+  @Override
   public List<Snapshot> getMockEntities() {
     return TestMocks.getSnapshots();
   }
 
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = '6681ef31-03fe-4abc-9596-23de06d575c5'" +
+      " AND status = 'PROCESSING_IN_PROGRESS'";
+  }
+
+  @Override
+  public Snapshot getExpectedEntity() {
+    return getMockEntity();
+  }
+
+  @Override
+  public Snapshot getExpectedUpdatedEntity() {
+    return getUpdatedMockEntity();
+  }
+
+  @Override
+  public List<Snapshot> getExpectedEntities() {
+    return getMockEntities();
+  }
+
+  @Override
+  public List<Snapshot> getExpectedEntitiesForArbitraryQuery() {
+    return getExpectedEntities().stream()
+      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
+      .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<Snapshot> getExpectedEntitiesForArbitrarySortedQuery() {
+    List<Snapshot> expected = getExpectedEntitiesForArbitraryQuery();
+    Collections.sort(expected, (s1, s2) -> s1.getStatus().compareTo(s2.getStatus()));
+    return expected;
+  }
+
+  @Override
+  public SnapshotCollection getExpectedCollection() {
+    List<Snapshot> expected = getExpectedEntities();
+    return new SnapshotCollection()
+      .withSnapshots(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public SnapshotCollection getExpectedCollectionForArbitraryQuery() {
+    List<Snapshot> expected = getExpectedEntitiesForArbitraryQuery();
+    return new SnapshotCollection()
+      .withSnapshots(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public SnapshotCollection getExpectedCollectionForArbitrarySortedQuery() {
+    List<Snapshot> expected = getExpectedEntitiesForArbitrarySortedQuery();
+    return new SnapshotCollection()
+      .withSnapshots(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public void compareCollections(TestContext context, SnapshotCollection expected, SnapshotCollection actual) {
+    context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
+    compareEntities(context, expected.getSnapshots(), actual.getSnapshots());
+  }
+
+  @Override
   public void compareEntities(TestContext context, Snapshot expected, Snapshot actual) {
     if (StringUtils.isEmpty(expected.getJobExecutionId())) {
       context.assertNotNull(actual.getJobExecutionId());
@@ -75,37 +152,6 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
       context.assertEquals(expected.getProcessingStartedDate().getTime(), 
         actual.getProcessingStartedDate().getTime());
     }
-  }
-
-  public void assertNoopQueryResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
-      .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
-  }
-
-  public void assertArbitruaryQueryResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = getMockEntities().stream()
-      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
-      .collect(Collectors.toList());
-    Collections.sort(expected, (s1, s2) -> s1.getStatus().compareTo(s2.getStatus()));
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
-      .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
-  }
-
-  public void assertArbitruarySortedQueryResults(TestContext context, SnapshotCollection actual) {
-    List<Snapshot> expected = getMockEntities().stream()
-      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
-      .collect(Collectors.toList());
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedSnapshot -> context.assertTrue(actual.getSnapshots().stream()
-      .anyMatch(actualSnapshot -> actualSnapshot.getJobExecutionId().equals(expectedSnapshot.getJobExecutionId()))));
-  }
-
-  public String getCompleteWhereClause() {
-    return "WHERE id = '6681ef31-03fe-4abc-9596-23de06d575c5'" +
-      " AND status = 'PROCESSING_IN_PROGRESS'";
   }
 
   public static LBSnapshotMocks mock() {

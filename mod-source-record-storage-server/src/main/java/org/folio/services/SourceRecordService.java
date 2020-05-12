@@ -176,7 +176,15 @@ public interface SourceRecordService {
    * @param endHandler          handler for when stream is finished
    */
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
-      Integer offset, Integer limit, String tenantId,Handler<SourceRecord> sourceRecordHandler,
+      Integer offset, Integer limit, String tenantId, Handler<SourceRecord> sourceRecordHandler,
       Handler<AsyncResult<Void>> endHandler);
+
+  /**
+   * Convert {@link Record} to {@link SourceRecord}
+   * 
+   * @param record record
+   * @return source record
+   */
+  public SourceRecord toSourceRecord(Record record);
 
 }

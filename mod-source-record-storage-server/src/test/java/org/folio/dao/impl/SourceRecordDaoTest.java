@@ -1,15 +1,17 @@
 package org.folio.dao.impl;
 
+import static org.folio.SourceRecordTestHelper.compareSourceRecord;
+import static org.folio.SourceRecordTestHelper.compareSourceRecordCollection;
+import static org.folio.SourceRecordTestHelper.compareSourceRecords;
+import static org.folio.SourceRecordTestHelper.getParsedRecords;
+import static org.folio.SourceRecordTestHelper.getRecords;
+
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -27,7 +29,6 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,7 +37,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -273,113 +273,6 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
       async.complete();
     });
-  }
-
-  private void compareSourceRecord(
-    TestContext context,
-    Record expectedRecord,
-    ParsedRecord expectedParsedRecord,
-    Optional<SourceRecord> actualSourceRecord
-  ) {
-    context.assertTrue(actualSourceRecord.isPresent());
-    context.assertEquals(expectedRecord.getId(), actualSourceRecord.get().getRecordId());
-    context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()),
-      new JsonObject((String) actualSourceRecord.get().getParsedRecord().getContent()));
-    context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
-      actualSourceRecord.get().getParsedRecord().getFormattedContent().trim());
-  }
-
-  private void compareSourceRecordCollection(
-    TestContext context, 
-    List<Record> expectedRecords,
-    List<RawRecord> expectedRawRecords,
-    List<ParsedRecord> expectedParsedRecords, 
-    SourceRecordCollection actualSourceRecordCollection
-  ) {
-    List<SourceRecord> actualSourceRecords = actualSourceRecordCollection.getSourceRecords();
-    context.assertEquals(expectedRecords.size(), actualSourceRecordCollection.getTotalRecords());
-    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedRawRecords.size());
-    context.assertTrue(actualSourceRecordCollection.getTotalRecords() >= expectedParsedRecords.size());
-    compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
-  }
-
-  private void compareSourceRecords(
-    TestContext context, 
-    List<Record> expectedRecords,
-    List<RawRecord> expectedRawRecords,
-    List<ParsedRecord> expectedParsedRecords, 
-    List<SourceRecord> actualSourceRecords
-  ) {
-
-    context.assertEquals(expectedRecords.size(), actualSourceRecords.size());
-
-    Collections.sort(expectedRecords, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-    Collections.sort(expectedRawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
-    Collections.sort(expectedParsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
-    Collections.sort(actualSourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
-
-    expectedRawRecords.forEach(expectedRawRecord -> {
-      Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
-        return Objects.nonNull(sourceRecord.getRawRecord())
-          && sourceRecord.getRawRecord().getId().equals(expectedRawRecord.getId());
-      }).findAny();
-      context.assertTrue(actualSourceRecord.isPresent());
-      context.assertEquals(expectedRawRecord.getContent(),
-        actualSourceRecord.get().getRawRecord().getContent());
-    });
-
-    expectedParsedRecords.forEach(expectedParsedRecord -> {
-      Optional<SourceRecord> actualSourceRecord = actualSourceRecords.stream().filter(sourceRecord -> {
-        return Objects.nonNull(sourceRecord.getParsedRecord())
-          && sourceRecord.getParsedRecord().getId().equals(expectedParsedRecord.getId());
-      }).findAny();
-      context.assertTrue(actualSourceRecord.isPresent());
-      context.assertEquals(new JsonObject((String) expectedParsedRecord.getContent()).encode(),
-        new JsonObject((String) actualSourceRecord.get().getParsedRecord().getContent()).encode());
-      context.assertEquals(expectedParsedRecord.getFormattedContent().trim(),
-        actualSourceRecord.get().getParsedRecord().getFormattedContent().trim());
-    });
-
-    for (int i = 0; i < expectedRecords.size(); i++) {
-      Record expectedRecord = expectedRecords.get(i);
-      SourceRecord actualSourceRecord = actualSourceRecords.get(i);
-      context.assertEquals(expectedRecord.getId(), actualSourceRecord.getRecordId());
-      if (Objects.nonNull(actualSourceRecord.getSnapshotId())) {
-        context.assertEquals(expectedRecord.getSnapshotId(), actualSourceRecord.getSnapshotId());
-      }
-      if (Objects.nonNull(actualSourceRecord.getOrder())) {
-        context.assertEquals(expectedRecord.getOrder(), actualSourceRecord.getOrder());
-      }
-      if (Objects.nonNull(actualSourceRecord.getRecordType())) {
-        context.assertEquals(expectedRecord.getRecordType().toString(),
-          actualSourceRecord.getRecordType().toString());
-      }
-      if (Objects.nonNull(actualSourceRecord.getExternalIdsHolder())) {
-        context.assertEquals(expectedRecord.getExternalIdsHolder().getInstanceId(),
-          actualSourceRecord.getExternalIdsHolder().getInstanceId());
-      }
-      if (Objects.nonNull(actualSourceRecord.getMetadata())) {
-        context.assertEquals(expectedRecord.getMetadata().getCreatedByUserId(),
-          actualSourceRecord.getMetadata().getCreatedByUserId());
-        context.assertNotNull(actualSourceRecord.getMetadata().getCreatedDate());
-        context.assertEquals(expectedRecord.getMetadata().getUpdatedByUserId(),
-          actualSourceRecord.getMetadata().getUpdatedByUserId());
-        context.assertNotNull(actualSourceRecord.getMetadata().getUpdatedDate());
-      }
-    }
-  }
-
-  private List<Record> getRecords(State state) {
-    return TestMocks.getRecords().stream()
-      .filter(expectedRecord -> expectedRecord.getState().equals(state))
-      .collect(Collectors.toList());
-  }
-
-  private List<ParsedRecord> getParsedRecords(List<Record> records) {
-    return records.stream()
-      .map(record -> TestMocks.getParsedRecord(record.getId()))
-      .filter(parsedRecord -> parsedRecord.isPresent()).map(parsedRecord -> parsedRecord.get())
-      .collect(Collectors.toList());
   }
 
   private Handler<AsyncResult<UpdateResult>> deleteHandler(Promise<AsyncResult<UpdateResult>> promise) {

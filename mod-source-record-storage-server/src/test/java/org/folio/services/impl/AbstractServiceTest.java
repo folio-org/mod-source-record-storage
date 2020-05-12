@@ -11,7 +11,4 @@ public abstract class AbstractServiceTest {
   @Before
   public abstract void createService(TestContext context) throws IllegalAccessException;
 
-  @Before
-  public abstract void mockDaos(TestContext context) throws IllegalAccessException;
-
 }

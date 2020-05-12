@@ -16,39 +16,50 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
 
   private ErrorRecordMocks() { }
 
+  @Override
   public String getId(ErrorRecord errorRecord) {
     return errorRecord.getId();
   }
 
+  @Override
   public ErrorRecordQuery getNoopQuery() {
     return new ErrorRecordQuery();
   }
 
+  @Override
   public ErrorRecordQuery getArbitruaryQuery() {
     ErrorRecordQuery snapshotQuery = new ErrorRecordQuery();
     snapshotQuery.setDescription(getMockEntity().getDescription());
     return snapshotQuery;
   }
 
+  @Override
   public ErrorRecordQuery getArbitruarySortedQuery() {
-    return (ErrorRecordQuery) getArbitruaryQuery()
-      .orderBy("description");
+    ErrorRecordQuery snapshotQuery = new ErrorRecordQuery();
+    snapshotQuery.setDescription(getMockEntity().getDescription());
+    snapshotQuery.orderBy("description");
+    return snapshotQuery;
   }
 
+  @Override
   public ErrorRecordQuery getCompleteQuery() {
     ErrorRecordQuery query = new ErrorRecordQuery();
     BeanUtils.copyProperties(TestMocks.getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), query);
     return query;
   }
 
+  @Override
   public ErrorRecord getMockEntity() {
     return TestMocks.getErrorRecord(0);
   }
 
+  @Override
   public ErrorRecord getInvalidMockEntity() {
-    return new ErrorRecord().withId(TestMocks.getRecord(0).getId());
+    return new ErrorRecord()
+      .withId(TestMocks.getRecord(0).getId());
   }
 
+  @Override
   public ErrorRecord getUpdatedMockEntity() {
     return new ErrorRecord()
       .withId(getMockEntity().getId())
@@ -56,44 +67,81 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
       .withDescription("Something went really wrong");
   }
 
+  @Override
   public List<ErrorRecord> getMockEntities() {
     return TestMocks.getErrorRecords();
   }
 
+  @Override
+  public String getCompleteWhereClause() {
+    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'"
+      + " AND description = 'Opps... something went wrong'";
+  }
+
+  @Override
+  public ErrorRecord getExpectedEntity() {
+    return getMockEntity();
+  }
+
+  @Override
+  public ErrorRecord getExpectedUpdatedEntity() {
+    return getUpdatedMockEntity();
+  }
+
+  @Override
+  public List<ErrorRecord> getExpectedEntities() {
+    return getMockEntities();
+  }
+
+  @Override
+  public List<ErrorRecord> getExpectedEntitiesForArbitraryQuery() {
+    return getExpectedEntities().stream()
+      .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
+      .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<ErrorRecord> getExpectedEntitiesForArbitrarySortedQuery() {
+    List<ErrorRecord> expected = getExpectedEntitiesForArbitraryQuery();
+    Collections.sort(expected, (er1, er2) -> er1.getDescription().compareTo(er2.getDescription()));
+    return expected;
+  }
+
+  @Override
+  public ErrorRecordCollection getExpectedCollection() {
+    List<ErrorRecord> expected = getExpectedEntities();
+    return new ErrorRecordCollection()
+      .withErrorRecords(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public ErrorRecordCollection getExpectedCollectionForArbitraryQuery() {
+    List<ErrorRecord> expected = getExpectedEntitiesForArbitraryQuery();
+    return new ErrorRecordCollection()
+      .withErrorRecords(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public ErrorRecordCollection getExpectedCollectionForArbitrarySortedQuery() {
+    List<ErrorRecord> expected = getExpectedEntitiesForArbitrarySortedQuery();
+    return new ErrorRecordCollection()
+      .withErrorRecords(expected)
+      .withTotalRecords(expected.size());
+  }
+
+  @Override
+  public void compareCollections(TestContext context, ErrorRecordCollection expected, ErrorRecordCollection actual) {
+    context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
+    compareEntities(context, expected.getErrorRecords(), actual.getErrorRecords());
+  }
+
+  @Override
   public void compareEntities(TestContext context, ErrorRecord expected, ErrorRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getDescription(), actual.getDescription());
     context.assertEquals(new JsonObject((String) expected.getContent()), new JsonObject((String) actual.getContent()));
-  }
-
-  public void assertNoopQueryResults(TestContext context, ErrorRecordCollection actual) {
-    List<ErrorRecord> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
-  }
-
-  public void assertArbitruaryQueryResults(TestContext context, ErrorRecordCollection actual) {
-    List<ErrorRecord> expected = getMockEntities().stream()
-      .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
-      .collect(Collectors.toList());
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
-  }
-
-  public void assertArbitruarySortedQueryResults(TestContext context, ErrorRecordCollection actual) {
-    List<ErrorRecord> expected = getMockEntities().stream()
-      .filter(entity -> entity.getDescription().equals(getArbitruarySortedQuery().getDescription()))
-      .collect(Collectors.toList());
-    Collections.sort(expected, (er1, er2) -> er1.getDescription().compareTo(er2.getDescription()));
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedErrorRecord -> context.assertTrue(actual.getErrorRecords().stream()
-      .anyMatch(actualErrorRecord -> actualErrorRecord.getId().equals(expectedErrorRecord.getId()))));
-  }
-
-  public String getCompleteWhereClause() {
-    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'" + " AND description = 'Opps... something went wrong'";
   }
 
   public static ErrorRecordMocks mock() {

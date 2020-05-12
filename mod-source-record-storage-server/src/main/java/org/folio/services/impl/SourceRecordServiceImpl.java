@@ -140,14 +140,7 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       endHandler);
   }
 
-  private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {
-    if (record.isPresent()) {
-      return Optional.of(toSourceRecord(record.get()));
-    }
-    return Optional.empty();
-  }
-
-  private SourceRecord toSourceRecord(Record record) {
+  public SourceRecord toSourceRecord(Record record) {
     return new SourceRecord()
       .withRecordId(record.getId())
       .withSnapshotId(record.getSnapshotId())
@@ -155,6 +148,13 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       // NOTE: not ideal to have multiple record type enums
       .withRecordType(RecordType.fromValue(record.getRecordType().toString()))
       .withMetadata(record.getMetadata());
+  }
+
+  private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {
+    if (record.isPresent()) {
+      return Optional.of(toSourceRecord(record.get()));
+    }
+    return Optional.empty();
   }
 
   private Future<SourceRecordCollection> lookupContent(SourceRecordContent content, String tenantId,

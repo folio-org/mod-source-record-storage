@@ -1,6 +1,7 @@
 package org.folio.dao.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.folio.EntityMocks;
@@ -30,7 +31,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        mocks.compareEntities(context, mocks.getMockEntity(), res.result().get());
+        mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
         async.complete();
       });
     });
@@ -59,7 +60,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         if (res.failed()) {
           context.fail(res.cause());
         }
-        mocks.assertNoopQueryResults(context, res.result());
+        mocks.compareCollections(context, mocks.getExpectedCollection(), res.result());
         async.complete();
       });
     });
@@ -76,7 +77,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         if (res.failed()) {
           context.fail(res.cause());
         }
-        mocks.assertArbitruaryQueryResults(context, res.result());
+        mocks.compareCollections(context, mocks.getExpectedCollectionForArbitraryQuery(), res.result());
         async.complete();
       });
     });
@@ -93,7 +94,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         if (res.failed()) {
           context.fail(res.cause());
         }
-        mocks.assertArbitruarySortedQueryResults(context, res.result());
+        mocks.compareCollections(context, mocks.getExpectedCollectionForArbitrarySortedQuery(), res.result());
         async.complete();
       });
     });
@@ -106,7 +107,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, mocks.getMockEntity(), res.result());
+      mocks.compareEntities(context, mocks.getExpectedEntity(), res.result());
       async.complete();
     });
   }
@@ -127,12 +128,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       if (save.failed()) {
         context.fail(save.cause());
       }
-      E mockUpdateEntity = mocks.getUpdatedMockEntity();
-      dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
+      dao.update(mocks.getUpdatedMockEntity(), TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
-        mocks.compareEntities(context, mockUpdateEntity, res.result());
+        mocks.compareEntities(context, mocks.getExpectedUpdatedEntity(), res.result());
         async.complete();
       });
     });
@@ -193,7 +193,8 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         if (finished.failed()) {
           context.fail(finished.cause());
         }
-        mocks.compareEntities(context, mocks.getMockEntities(), actual);
+        Collections.sort(actual, (pr1, pr2) -> mocks.getId(pr1).compareTo(mocks.getId(pr2)));
+        mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
         async.complete();
       });
     });

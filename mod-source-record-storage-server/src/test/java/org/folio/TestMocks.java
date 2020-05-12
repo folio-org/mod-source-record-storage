@@ -145,7 +145,6 @@ public class TestMocks {
     return Optional.empty();
   }
 
-
   private static List<Snapshot> readSnapshots(List<SourceRecord> sourceRecords) {
     return sourceRecords.stream()
       .map(TestMocks::readSnapshot)

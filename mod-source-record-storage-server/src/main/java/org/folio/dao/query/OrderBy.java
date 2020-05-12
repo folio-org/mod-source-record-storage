@@ -1,5 +1,8 @@
 package org.folio.dao.query;
 
+import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+
 public class OrderBy {
 
   private final String property;
@@ -30,6 +33,29 @@ public class OrderBy {
 
   public static OrderBy of(String property, Direction direction) {
     return new OrderBy(property, direction);
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+      .append(property)
+      .append(direction)
+      .toHashCode();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other == this) {
+      return true;
+    }
+    if ((other instanceof OrderBy) == false) {
+      return false;
+    }
+    OrderBy rhs = ((OrderBy) other);
+    return new EqualsBuilder()
+      .append(property, rhs.property)
+      .append(direction, rhs.direction)
+      .isEquals();
   }
 
   public enum Direction {

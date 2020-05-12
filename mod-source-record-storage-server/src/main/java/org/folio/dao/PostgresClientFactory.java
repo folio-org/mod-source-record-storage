@@ -60,7 +60,7 @@ public class PostgresClientFactory {
 
   private synchronized PgPool getPool(String tenantId) {
     if (pool.containsKey(tenantId)) {
-      LOG.info("Using existing database connection pool for tenant {}", tenantId);
+      LOG.debug("Using existing database connection pool for tenant {}", tenantId);
       return pool.get(tenantId);
     }
     LOG.info("Creating new database connection pool for tenant {}", tenantId);

@@ -1,6 +1,5 @@
 package org.folio;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.folio.dao.query.EntityQuery;
@@ -27,18 +26,29 @@ public interface EntityMocks<E, C, Q extends EntityQuery> {
 
   public List<E> getMockEntities();
 
-  public void compareEntities(TestContext context, E expected, E actual);
-
-  public void assertNoopQueryResults(TestContext context, C actual);
-
-  public void assertArbitruaryQueryResults(TestContext context, C actual);
-
-  public void assertArbitruarySortedQueryResults(TestContext context, C actual);
-
   public String getCompleteWhereClause();
 
+  public E getExpectedEntity();
+
+  public E getExpectedUpdatedEntity();
+
+  public List<E> getExpectedEntities();
+
+  public List<E> getExpectedEntitiesForArbitraryQuery();
+
+  public List<E> getExpectedEntitiesForArbitrarySortedQuery();
+
+  public C getExpectedCollection();
+
+  public C getExpectedCollectionForArbitraryQuery();
+
+  public C getExpectedCollectionForArbitrarySortedQuery();
+
+  public void compareCollections(TestContext context, C expected, C actual);
+
+  public void compareEntities(TestContext context, E expected, E actual);
+
   public default void compareEntities(TestContext context, List<E> expected, List<E> actual) {
-    Collections.sort(actual, (b1, b2) -> getId(b1).compareTo(getId(b2)));
     for (int i = 0; i < expected.size() - 1; i++) {
       compareEntities(context, expected.get(i), actual.get(i));
     }

@@ -71,7 +71,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        mocks.compareEntities(context, mocks.getMockEntity(), res.result().get());
+        mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
         async.complete();
       });
     });
@@ -89,7 +89,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
           context.fail(res.cause());
         }
         context.assertTrue(res.result().isPresent());
-        mocks.compareEntities(context, mocks.getMockEntity(), res.result().get());
+        mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
         async.complete();
       });
     });

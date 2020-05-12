@@ -2,11 +2,26 @@ package org.folio.services.impl;
 
 import static org.folio.SourceRecordTestHelper.compareSourceRecord;
 import static org.folio.SourceRecordTestHelper.compareSourceRecordCollection;
+import static org.folio.SourceRecordTestHelper.compareSourceRecords;
 import static org.folio.SourceRecordTestHelper.enhanceWithParsedRecord;
 import static org.folio.SourceRecordTestHelper.enhanceWithRawRecord;
 import static org.folio.SourceRecordTestHelper.getParsedRecords;
 import static org.folio.SourceRecordTestHelper.getRawRecords;
 import static org.folio.SourceRecordTestHelper.getRecords;
+import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.GENERATION_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.INSTANCE_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_PROFILE_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.RECORD_TYPE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.SNAPSHOT_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.STATE_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.SUPPRESS_DISCOVERY_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,13 +31,18 @@ import static org.mockito.Mockito.when;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.folio.TestMocks;
@@ -31,6 +51,7 @@ import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -38,6 +59,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecord.RecordType;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.SourceRecordService;
 import org.junit.Test;
@@ -46,11 +68,16 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.impl.RowDesc;
 
 @RunWith(VertxUnitRunner.class)
 public class SourceRecordServiceTest extends AbstractServiceTest {
@@ -439,7 +466,6 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
 
   @Test
   public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
-
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     RecordQuery query = new RecordQuery();
 
@@ -459,26 +485,164 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
       return getParsedRecordByIdPromise;
     }).collect(Collectors.toList());
 
-    // NOTE: no clear way to mock RowStream<Row> from List<Record>
-
     doAnswer(new Answer<Void>() {
 
       @Override
       public Void answer(InvocationOnMock invocation) throws Throwable {
-        // ((Handler<RowStream<Row>>) invocation.getArgument(5)).handle(stream);
-        ((Handler<Void>) invocation.getArgument(6)).handle(null);
+        ((Handler<RowStream<Row>>) invocation.getArgument(5)).handle(new RowStream<Row>() {
+
+          private Handler<Row> rowHandler;
+
+          private int index = 0;
+
+          @Override
+          public synchronized RowStream<Row> exceptionHandler(Handler<Throwable> handler) {
+            return this;
+          }
+        
+          @Override
+          public RowStream<Row> handler(Handler<Row> handler) {
+            rowHandler = handler;
+            checkPending();
+            return this;
+          }
+        
+          @Override
+          public synchronized RowStream<Row> pause() {
+            return this;
+          }
+        
+          @Override
+          public RowStream<Row> fetch(long amount) {
+            checkPending();
+            return this;
+          }
+        
+          @Override
+          public RowStream<Row> resume() {
+            return fetch(Long.MAX_VALUE);
+          }
+        
+          @Override
+          public synchronized RowStream<Row> endHandler(Handler<Void> handler) {
+            return this;
+          }
+                
+          @Override
+          public void close() { }
+        
+          @Override
+          public void close(Handler<AsyncResult<Void>> completionHandler) { }
+
+          private void checkPending() {
+            synchronized (this) {
+              if (index < expectedRecords.size()) {
+                rowHandler.handle(toRow(expectedRecords.get(index++)));
+              } else {
+                ((Handler<Void>) invocation.getArgument(6)).handle(null);
+              }
+            }
+          }
+
+          private Row toRow(Record record) {
+            if (StringUtils.isEmpty(record.getId())) {
+              record.setId(UUID.randomUUID().toString());
+            }
+            if (StringUtils.isEmpty(record.getMatchedId())) {
+              record.setMatchedId(record.getId());
+            }
+
+            RowImpl row = new RowImpl(new RowDesc(Arrays.asList(
+              ID_COLUMN_NAME,
+              SNAPSHOT_ID_COLUMN_NAME,
+              MATCHED_PROFILE_ID_COLUMN_NAME,
+              MATCHED_ID_COLUMN_NAME,
+              GENERATION_COLUMN_NAME,
+              RECORD_TYPE_COLUMN_NAME,
+              INSTANCE_ID_COLUMN_NAME,
+              STATE_COLUMN_NAME,
+              ORDER_IN_FILE_COLUMN_NAME,
+              SUPPRESS_DISCOVERY_COLUMN_NAME,
+              CREATED_BY_USER_ID_COLUMN_NAME,
+              CREATED_DATE_COLUMN_NAME,
+              UPDATED_BY_USER_ID_COLUMN_NAME,
+              UPDATED_DATE_COLUMN_NAME
+            )));
+
+            row
+              .addUUID(UUID.fromString(record.getId()))
+              .addUUID(UUID.fromString(record.getSnapshotId()))
+              .addUUID(UUID.fromString(record.getMatchedProfileId()))
+              .addUUID(UUID.fromString(record.getMatchedId()))
+              .addInteger(record.getGeneration())
+              .addString(record.getRecordType().toString());
+            if (Objects.nonNull(record.getExternalIdsHolder())) {
+              row.addUUID(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
+            } else {
+              row.addValue(null);
+            }
+            row
+              .addString(record.getState().toString())
+              .addInteger(record.getOrder());
+            if (Objects.nonNull(record.getAdditionalInfo())) {
+              row.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
+            } else {
+              row.addValue(null);
+            }
+            if (Objects.nonNull(record.getMetadata())) {
+              row.addUUID(UUID.fromString(record.getMetadata().getCreatedByUserId()));
+              if (Objects.nonNull(record.getMetadata().getCreatedDate())) {
+                row.addOffsetDateTime(record.getMetadata().getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
+              } else {
+                row.addValue(null);
+              }
+              row.addUUID(UUID.fromString(record.getMetadata().getUpdatedByUserId()));
+              if (Objects.nonNull(record.getMetadata().getUpdatedDate())) {
+                row.addOffsetDateTime(record.getMetadata().getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
+              } else {
+                row.addValue(null);
+              }
+            } else {
+              row
+                .addValue(null)
+                .addValue(null)
+                .addValue(null)
+                .addValue(null);
+            }
+            return row;
+          }
+        });
         return null;
       }
 
     }).when(mockSourceRecordDao).getSourceMarcRecordsByQuery(eq(content), eq(query), eq(0), eq(10), eq(TENANT_ID), any(), any());
 
+    doAnswer(new Answer<SourceRecord>() {
+
+      @Override
+      public SourceRecord answer(InvocationOnMock invocation) throws Throwable {
+        return toSourceRecord((Row) invocation.getArgument(0));
+      }
+
+      private SourceRecord toSourceRecord(Row row) {
+        return new SourceRecord()
+          .withRecordId(row.getUUID(ID_COLUMN_NAME).toString())
+          .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
+          .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME))
+          .withRecordType(RecordType.fromValue(row.getString(RECORD_TYPE_COLUMN_NAME)))
+          .withMetadata(DaoUtil.metadataFromRow(row));
+      }
+
+    }).when(mockSourceRecordDao).toSourceRecord(any(Row.class));
+
     Async async = context.async();
-    
+
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
     sourceRecordService.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, sourceRecord -> {
-      // actualSourceRecords.add(sourceRecord);
+      context.assertNotNull(sourceRecord);
+      actualSourceRecords.add(sourceRecord);
     }, finished -> {
-      // compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
+      compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
       async.complete();
     });
 

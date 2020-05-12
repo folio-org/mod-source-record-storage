@@ -212,6 +212,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
     Async async = context.async();
     List<E> actual = new ArrayList<>();
     service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
+      context.assertNotNull(entity);
       actual.add(entity);
     }, finished -> {
       mocks.compareEntities(context, mocks.getExpectedEntities(), actual);

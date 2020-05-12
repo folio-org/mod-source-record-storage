@@ -40,8 +40,6 @@ public class SourceRecordTestHelper {
       .collect(Collectors.toList());
   }
 
-  
-
   public static SourceRecord enhanceWithRawRecord(SourceRecord sourceRecord, List<RawRecord> rawRecords) {
     Optional<RawRecord> rawRecord = rawRecords.stream()
       .filter(rr -> rr.getId().equals(sourceRecord.getRecordId()))

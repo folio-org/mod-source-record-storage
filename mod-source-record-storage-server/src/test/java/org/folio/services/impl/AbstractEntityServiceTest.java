@@ -1,7 +1,12 @@
 package org.folio.services.impl;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.folio.EntityMocks;
@@ -9,7 +14,10 @@ import org.folio.dao.EntityDao;
 import org.folio.dao.query.EntityQuery;
 import org.folio.services.EntityService;
 import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -186,29 +194,30 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
     deletePromise.complete(false);
   }
 
-  // @Test
-  // public void shouldStreamGetByQuery(TestContext context) {
-  //   Promise<List<E>> savePromise = Promise.promise();
-  //   when(mockDao.save(mocks.getMockEntities(), TENANT_ID)).thenReturn(savePromise.future());
-  //   doNothing().when(mockDao).getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, any(Handler.class), any(Handler.class));
-  //   Async async = context.async();
-  //   service.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
-  //     if (res.failed()) {
-  //       context.fail(res.cause());
-  //     }
-  //     List<E> actual = new ArrayList<>();
-  //     service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
-  //       actual.add(entity);
-  //     }, finished -> {
-  //       if (finished.failed()) {
-  //         context.fail(finished.cause());
-  //       }
-  //       mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
-  //       async.complete();
-  //     });
-  //   });
-  //   savePromise.complete(mocks.getExpectedEntities());
-  // }
+  @Test
+  public void shouldStreamGetByQuery(TestContext context) {
+    doAnswer(new Answer<Void>() {
+
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        mocks.getExpectedEntities().forEach(entity -> {
+          ((Handler<E>) invocation.getArgument(4)).handle(entity);
+        });
+        ((Handler<Void>) invocation.getArgument(5)).handle(null);
+        return null;
+      }
+
+    }).when(mockDao).getByQuery(eq(mocks.getNoopQuery()), eq(0), eq(10), eq(TENANT_ID), any(), any());
+
+    Async async = context.async();
+    List<E> actual = new ArrayList<>();
+    service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
+      actual.add(entity);
+    }, finished -> {
+      mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
+      async.complete();
+    });
+  }
 
   public abstract M getMocks();
 

@@ -8,6 +8,9 @@ import static org.folio.SourceRecordTestHelper.getParsedRecords;
 import static org.folio.SourceRecordTestHelper.getRawRecords;
 import static org.folio.SourceRecordTestHelper.getRecords;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import java.text.DateFormat;
@@ -40,7 +43,10 @@ import org.folio.services.SourceRecordService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -77,7 +83,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Promise<Optional<SourceRecord>> getByIdPromise = Promise.promise();
     Record expectedRecord = TestMocks.getRecord(0);
     ParsedRecord expectedParsedRecord = TestMocks.getParsedRecord(0);
-    when(mockSourceRecordDao.getSourceMarcRecordById(expectedRecord.getId(), TENANT_ID)).thenReturn(getByIdPromise.future());
+    when(mockSourceRecordDao.getSourceMarcRecordById(expectedRecord.getId(), TENANT_ID))
+      .thenReturn(getByIdPromise.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordById(expectedRecord.getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -86,8 +93,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
       compareSourceRecord(context, expectedRecord, expectedParsedRecord, res.result());
       async.complete();
     });
-    SourceRecord actualSourceRecord = new SourceRecord()
-      .withRecordId(expectedRecord.getId())
+    SourceRecord actualSourceRecord = new SourceRecord().withRecordId(expectedRecord.getId())
       .withParsedRecord(expectedParsedRecord);
     getByIdPromise.complete(Optional.of(actualSourceRecord));
   }
@@ -97,7 +103,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Promise<Optional<SourceRecord>> getByIdAltPromise = Promise.promise();
     Record expectedRecord = TestMocks.getRecord(0);
     ParsedRecord expectedParsedRecord = TestMocks.getParsedRecord(0);
-    when(mockSourceRecordDao.getSourceMarcRecordByIdAlt(expectedRecord.getId(), TENANT_ID)).thenReturn(getByIdAltPromise.future());
+    when(mockSourceRecordDao.getSourceMarcRecordByIdAlt(expectedRecord.getId(), TENANT_ID))
+      .thenReturn(getByIdAltPromise.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordByIdAlt(expectedRecord.getId(), TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -108,10 +115,9 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
       compareSourceRecord(context, expectedRecord, expectedParsedRecord, res.result());
       async.complete();
     });
-    SourceRecord actualSourceRecord = new SourceRecord()
-      .withRecordId(expectedRecord.getId())
+    SourceRecord actualSourceRecord = new SourceRecord().withRecordId(expectedRecord.getId())
       .withParsedRecord(expectedParsedRecord);
-      getByIdAltPromise.complete(Optional.of(actualSourceRecord));
+    getByIdAltPromise.complete(Optional.of(actualSourceRecord));
   }
 
   @Test
@@ -120,7 +126,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Record expectedRecord = TestMocks.getRecord(0);
     ParsedRecord expectedParsedRecord = TestMocks.getParsedRecord(0);
     String instanceId = expectedRecord.getExternalIdsHolder().getInstanceId();
-    when(mockSourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID)).thenReturn(getByInstanceIdPromise.future());
+    when(mockSourceRecordDao.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID))
+      .thenReturn(getByInstanceIdPromise.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordByInstanceId(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -129,10 +136,9 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
       compareSourceRecord(context, expectedRecord, expectedParsedRecord, res.result());
       async.complete();
     });
-    SourceRecord actualSourceRecord = new SourceRecord()
-      .withRecordId(expectedRecord.getId())
+    SourceRecord actualSourceRecord = new SourceRecord().withRecordId(expectedRecord.getId())
       .withParsedRecord(expectedParsedRecord);
-      getByInstanceIdPromise.complete(Optional.of(actualSourceRecord));
+    getByInstanceIdPromise.complete(Optional.of(actualSourceRecord));
   }
 
   @Test
@@ -141,7 +147,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Record expectedRecord = TestMocks.getRecord(0);
     ParsedRecord expectedParsedRecord = TestMocks.getParsedRecord(0);
     String instanceId = expectedRecord.getExternalIdsHolder().getInstanceId();
-    when(mockSourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID)).thenReturn(getByInstanceIdAltPromise.future());
+    when(mockSourceRecordDao.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID))
+      .thenReturn(getByInstanceIdAltPromise.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordByInstanceIdAlt(instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -152,10 +159,9 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
       compareSourceRecord(context, expectedRecord, expectedParsedRecord, res.result());
       async.complete();
     });
-    SourceRecord actualSourceRecord = new SourceRecord()
-      .withRecordId(expectedRecord.getId())
+    SourceRecord actualSourceRecord = new SourceRecord().withRecordId(expectedRecord.getId())
       .withParsedRecord(expectedParsedRecord);
-      getByInstanceIdAltPromise.complete(Optional.of(actualSourceRecord));
+    getByInstanceIdAltPromise.complete(Optional.of(actualSourceRecord));
   }
 
   @Test
@@ -206,7 +212,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
     Date till = DateUtils.addHours(new Date(), 1);
     DateUtils.addHours(new Date(), 1);
-    when(mockSourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID)).thenReturn(getSourceMarcRecords.future());
+    when(mockSourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID))
+      .thenReturn(getSourceMarcRecords.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordsForPeriod(from, till, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -229,7 +236,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
     Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
     Date till = DateUtils.addHours(new Date(), 1);
-    when(mockSourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID)).thenReturn(getSourceMarcRecords.future());
+    when(mockSourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID))
+      .thenReturn(getSourceMarcRecords.future());
     Async async = context.async();
     sourceRecordService.getSourceMarcRecordsForPeriodAlt(from, till, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
@@ -247,7 +255,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
     Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
     Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;    
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     Record expectedRecord = TestMocks.getRecord(0);
     Optional<RawRecord> expectedRawRecord = TestMocks.getRawRecord(expectedRecord.getId());
     assertTrue(expectedRawRecord.isPresent());
@@ -277,7 +285,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
     Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
     Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;    
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     Record expectedRecord = TestMocks.getRecord(0);
     Optional<RawRecord> expectedRawRecord = TestMocks.getRawRecord(expectedRecord.getMatchedId());
     assertTrue(expectedRawRecord.isPresent());
@@ -307,7 +315,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
     Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
     Async async = context.async();
-    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;    
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     Record expectedRecord = TestMocks.getRecord(0);
     Optional<RawRecord> expectedRawRecord = TestMocks.getRawRecord(expectedRecord.getId());
     assertTrue(expectedRawRecord.isPresent());
@@ -316,8 +324,8 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     String instanceId = expectedRecord.getExternalIdsHolder().getInstanceId();
     when(mockRecordDao.getByInstanceId(instanceId, TENANT_ID)).thenReturn(getRecordByIdPromise.future());
     when(mockRawRecordDao.getById(expectedRecord.getId(), TENANT_ID)).thenReturn(getRawRecordByIdPromise.future());
-    when(mockParsedRecordDao.getById(expectedRecord.getId(), TENANT_ID)).thenReturn(getParsedRecordByIdPromise.future());
-    
+    when(mockParsedRecordDao.getById(expectedRecord.getId(), TENANT_ID))
+      .thenReturn(getParsedRecordByIdPromise.future());
     sourceRecordService.getSourceMarcRecordByInstanceId(content, instanceId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
@@ -341,13 +349,13 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
 
     List<Promise<Optional<RawRecord>>> getRawRecordByIdPromises = expectedRawRecords.stream().map(rr -> {
-      Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise(); 
+      Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
       when(mockRawRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getRawRecordByIdPromise.future());
       return getRawRecordByIdPromise;
     }).collect(Collectors.toList());
 
     List<Promise<Optional<ParsedRecord>>> getParsedRecordByIdPromises = expectedParsedRecords.stream().map(rr -> {
-      Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise(); 
+      Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
       when(mockParsedRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getParsedRecordByIdPromise.future());
       return getParsedRecordByIdPromise;
     }).collect(Collectors.toList());
@@ -390,20 +398,21 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
 
     List<Promise<Optional<RawRecord>>> getRawRecordByIdPromises = expectedRawRecords.stream().map(rr -> {
-      Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise(); 
+      Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
       when(mockRawRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getRawRecordByIdPromise.future());
       return getRawRecordByIdPromise;
     }).collect(Collectors.toList());
 
     List<Promise<Optional<ParsedRecord>>> getParsedRecordByIdPromises = expectedParsedRecords.stream().map(rr -> {
-      Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise(); 
+      Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
       when(mockParsedRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getParsedRecordByIdPromise.future());
       return getParsedRecordByIdPromise;
     }).collect(Collectors.toList());
 
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery query = (RecordQuery) new RecordQuery().orderBy("id");
+    RecordQuery query = (RecordQuery) new RecordQuery()
+      .orderBy("id");
 
     when(mockRecordDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getRecordsByQueryPromise.future());
 
@@ -428,25 +437,58 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
     }
   }
 
-  // @Test
-  // public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
-  //   Async async = context.async();
-  //   SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-  //   RecordQuery query = new RecordQuery();
-  //   List<SourceRecord> actualSourceRecords = new ArrayList<>();
-  //   sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, sourceRecord -> {
-  //     actualSourceRecords.add(sourceRecord);
-  //   }, finished -> {
-  //     if (finished.failed()) {
-  //       context.fail(finished.cause());
-  //     }
-  //     List<Record> expectedRecords = getRecords();
-  //     List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
-  //     List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
-  //     compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
-  //     async.complete();
-  //   });
-  // }
+  @Test
+  public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
+
+    SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
+    RecordQuery query = new RecordQuery();
+
+    List<Record> expectedRecords = TestMocks.getRecords();
+    List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);
+    List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
+
+    List<Promise<Optional<RawRecord>>> getRawRecordByIdPromises = expectedRawRecords.stream().map(rr -> {
+      Promise<Optional<RawRecord>> getRawRecordByIdPromise = Promise.promise();
+      when(mockRawRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getRawRecordByIdPromise.future());
+      return getRawRecordByIdPromise;
+    }).collect(Collectors.toList());
+
+    List<Promise<Optional<ParsedRecord>>> getParsedRecordByIdPromises = expectedParsedRecords.stream().map(rr -> {
+      Promise<Optional<ParsedRecord>> getParsedRecordByIdPromise = Promise.promise();
+      when(mockParsedRecordDao.getById(rr.getId(), TENANT_ID)).thenReturn(getParsedRecordByIdPromise.future());
+      return getParsedRecordByIdPromise;
+    }).collect(Collectors.toList());
+
+    // NOTE: no clear way to mock RowStream<Row> from List<Record>
+
+    doAnswer(new Answer<Void>() {
+
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        // ((Handler<RowStream<Row>>) invocation.getArgument(5)).handle(stream);
+        ((Handler<Void>) invocation.getArgument(6)).handle(null);
+        return null;
+      }
+
+    }).when(mockSourceRecordDao).getSourceMarcRecordsByQuery(eq(content), eq(query), eq(0), eq(10), eq(TENANT_ID), any(), any());
+
+    Async async = context.async();
+    
+    List<SourceRecord> actualSourceRecords = new ArrayList<>();
+    sourceRecordService.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, sourceRecord -> {
+      // actualSourceRecords.add(sourceRecord);
+    }, finished -> {
+      // compareSourceRecords(context, expectedRecords, expectedRawRecords, expectedParsedRecords, actualSourceRecords);
+      async.complete();
+    });
+
+    for (int i = 0; i < getRawRecordByIdPromises.size(); i++) {
+      getRawRecordByIdPromises.get(i).complete(Optional.of(expectedRawRecords.get(i)));
+    }
+    for (int i = 0; i < getParsedRecordByIdPromises.size(); i++) {
+      getParsedRecordByIdPromises.get(i).complete(Optional.of(expectedParsedRecords.get(i)));
+    }
+  }
 
   private SourceRecordCollection toSourceRecordCollection(List<Record> expectedRecords, List<RawRecord> expectedRawRecords,
       List<ParsedRecord> expectedParsedRecords) {

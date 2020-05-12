@@ -140,6 +140,7 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       endHandler);
   }
 
+  @Override
   public SourceRecord toSourceRecord(Record record) {
     return new SourceRecord()
       .withRecordId(record.getId())

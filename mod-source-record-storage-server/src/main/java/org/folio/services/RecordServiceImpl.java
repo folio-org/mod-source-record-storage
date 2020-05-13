@@ -5,17 +5,27 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import org.folio.dao.RecordDao;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
@@ -25,17 +35,6 @@ import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -50,7 +49,6 @@ public class RecordServiceImpl implements RecordService {
   private SnapshotDao snapshotDao;
   @Autowired
   private ExternalIdProcessorFactory externalIdProcessorFactory;
-
 
   @Override
   public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
@@ -89,7 +87,7 @@ public class RecordServiceImpl implements RecordService {
         return Future.succeededFuture();
       })
       .compose(f -> {
-        if (record.getGeneration() == null){
+        if (record.getGeneration() == null) {
           return recordDao.calculateGeneration(record, tenantId);
         }
         return Future.succeededFuture(record.getGeneration());
@@ -200,6 +198,34 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
     return recordDao.deleteRecordsBySnapshotId(snapshotId, tenantId);
+  }
+
+  @Override
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+    return getRecordById(parsedRecordDto.getId(), tenantId)
+      .compose(optionalRecord -> optionalRecord
+        .map(existingRecord -> snapshotDao.saveSnapshot(new Snapshot()
+          .withJobExecutionId(snapshotId)
+          .withStatus(Snapshot.Status.COMMITTED), tenantId) // no processing of the record is performed apart from the update itself
+          .compose(s -> {
+            Record newRecord = new Record()
+              .withId(UUID.randomUUID().toString())
+              .withSnapshotId(s.getJobExecutionId())
+              .withMatchedId(parsedRecordDto.getId())
+              .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+              .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
+              .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+              .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+              .withMetadata(parsedRecordDto.getMetadata())
+              .withRawRecord(existingRecord.getRawRecord())
+              .withOrder(existingRecord.getOrder())
+              .withGeneration(existingRecord.getGeneration() + 1)
+              .withState(Record.State.ACTUAL);
+            return recordDao.saveUpdatedRecord(newRecord, existingRecord.withState(Record.State.OLD), tenantId);
+          }))
+        .orElse(Future.failedFuture(new NotFoundException(
+          format("Record with id '%s' was not found", parsedRecordDto.getId()))))
+      );
   }
 
   private Record formatMarcRecord(Record record) {

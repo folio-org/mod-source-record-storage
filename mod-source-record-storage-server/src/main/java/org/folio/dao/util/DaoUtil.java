@@ -127,6 +127,11 @@ public class DaoUtil {
     return -1; // this should not occur
   }
 
+  /**
+   * Get basic content property to column map for raw and parsed record query preperation.
+   * 
+   * @return property to column map
+   */
   public static Map<String, String> getBasicContentPropertyToColumnMap() {
     Map<String, String> ptc = new HashMap<>();
     ptc.put(ID_PROPERTY_NAME, ID_COLUMN_NAME);
@@ -134,6 +139,11 @@ public class DaoUtil {
     return ptc;
   }
 
+  /**
+   * Get immutable basic content property to column map.
+   * 
+   * @return immutable property to content map
+   */
   public static Map<String, String> getImmutableContentPropertyToColumnMap() {
     return ImmutableMap.copyOf(getBasicContentPropertyToColumnMap());
   }

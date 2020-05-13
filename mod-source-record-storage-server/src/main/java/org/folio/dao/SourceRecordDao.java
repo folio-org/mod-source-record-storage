@@ -25,7 +25,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record}
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -34,7 +34,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record} with latest generation
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -43,7 +43,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
    * 
-   * @param id       Record instance id
+   * @param id       record instance id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -52,7 +52,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record} with latest generation
    * 
-   * @param id       Record instance id
+   * @param id       record instance id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */

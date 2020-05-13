@@ -26,7 +26,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery}
    * 
-   * @param query    query dto which prepares WHERE AND ORDER BY clause for sql query
+   * @param query    query dto which prepares WHERE AND ORDER BY clause for SQL query
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -37,7 +37,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery} and stream results
    * 
-   * @param query         query dto which prepares WHERE AND ORDER BY clause for sql query
+   * @param query         query DTO which prepares WHERE AND ORDER BY clause for SQL query
    * @param offset        starting index in a list of results
    * @param limit         maximum number of results to return
    * @param tenantId      tenant id

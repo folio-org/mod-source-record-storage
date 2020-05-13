@@ -9,8 +9,7 @@ import org.folio.services.RawRecordService;
 import org.springframework.stereotype.Service;
 
 @Service
-public class RawRecordServiceImpl
-        extends AbstractEntityService<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao>
-        implements RawRecordService {
+public class RawRecordServiceImpl extends AbstractEntityService<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao>
+    implements RawRecordService {
 
 }

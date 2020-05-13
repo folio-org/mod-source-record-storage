@@ -168,7 +168,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Prepare list of tuples for multi-row INSERT and UPDATE query values
    * 
-   * @param entities              list of entities for extracting values for params
+   * @param entities              list of entities for extracting values for SQL template parameters
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return list of tuple as sql template parameters
    */
@@ -180,7 +180,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
    * Convert {@link RowSet} into entity
    * 
    * @param rowSet {@link RowSet} query results
-   * @return optional Entity
+   * @return optional entity
    */
   protected Optional<E> toEntity(RowSet<Row> rowSet)  {
     return rowSet.rowCount() > 0 ? Optional.of(toEntity(rowSet.iterator().next())) : Optional.empty();
@@ -245,7 +245,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Prepare {@link Tuple} for INSERT and UPDATE query values. Must be in same order as columns.
    * 
-   * @param entity                entity for extracting values for params
+   * @param entity                entity for extracting values for SQL template parameters
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
    * @return tuple for sql template paramters
    */

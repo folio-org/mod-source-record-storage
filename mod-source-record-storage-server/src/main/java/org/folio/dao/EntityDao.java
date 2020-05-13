@@ -17,7 +17,7 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Searches for entity by id
    * 
-   * @param id       Entity id
+   * @param id       entity id
    * @param tenantId tenant id
    * @return future with optional entity
    */
@@ -26,7 +26,7 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery}
    * 
-   * @param query    {@link EntityQuery} which prepares WHERE and ORDER BY clauses for sql template
+   * @param query    {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -37,7 +37,7 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery} and stream results
    * 
-   * @param query         {@link EntityQuery} which prepares WHERE and ORDER BY clauses for query
+   * @param query         {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
    * @param offset        starting index in a list of results
    * @param limit         maximum number of results to return
    * @param tenantId      tenant id

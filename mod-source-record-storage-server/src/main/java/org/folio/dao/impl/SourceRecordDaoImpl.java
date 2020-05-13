@@ -57,8 +57,16 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRecordDaoImpl.class);
 
-  private static final String SOURCE_RECORD_COLUMNS = String.join(COMMA, ID_COLUMN_NAME, SNAPSHOT_ID_COLUMN_NAME, ORDER_IN_FILE_COLUMN_NAME, RECORD_TYPE_COLUMN_NAME,
-    CREATED_BY_USER_ID_COLUMN_NAME, CREATED_DATE_COLUMN_NAME, UPDATED_BY_USER_ID_COLUMN_NAME, UPDATED_DATE_COLUMN_NAME);
+  private static final String SOURCE_RECORD_COLUMNS = String.join(COMMA,
+    ID_COLUMN_NAME,
+    SNAPSHOT_ID_COLUMN_NAME,
+    ORDER_IN_FILE_COLUMN_NAME,
+    RECORD_TYPE_COLUMN_NAME,
+    CREATED_BY_USER_ID_COLUMN_NAME,
+    CREATED_DATE_COLUMN_NAME,
+    UPDATED_BY_USER_ID_COLUMN_NAME,
+    UPDATED_DATE_COLUMN_NAME
+  );
 
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id('%s') as records;";
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_ALT_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id_alt('%s') as records;";
@@ -203,8 +211,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     if (Objects.nonNull(jsonb)) {
       JsonObject json = (JsonObject) jsonb;
       String content = json.getString(CONTENT_COLUMN_NAME);
-      parsedRecord
-        .withId(json.getString(ID_COLUMN_NAME))
+      parsedRecord.withId(json.getString(ID_COLUMN_NAME))
         .withContent(content);
       try {
         String formattedContent = MarcUtil.marcJsonToTxtMarc(content);

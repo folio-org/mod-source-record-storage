@@ -9,7 +9,9 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.resource.SourceStorageHandlers;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.EventHandlingService;
+import org.folio.services.UpdateRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -22,6 +24,8 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
 
   @Autowired
   private EventHandlingService instanceCreatedEventHandleService;
+  @Autowired
+  private UpdateRecordEventHandler updateRecordEventHandler;
 
   private String tenantId;
 
@@ -31,7 +35,8 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   }
 
   @Override
-  public void postSourceStorageHandlersCreatedInventoryInstance(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageHandlersCreatedInventoryInstance(String entity, Map<String, String> okapiHeaders,
+                                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       LOG.debug("Event DI_INVENTORY_INSTANCE_CREATED was received: {}", entity);
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
@@ -39,5 +44,14 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
       // response status doesn't depend on event handling result
       instanceCreatedEventHandleService.handle(entity, tenantId);
     });
+  }
+
+  @Override
+  public void postSourceStorageHandlersUpdatedRecord(String entity, Map<String, String> okapiHeaders,
+                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    LOG.debug("Received QM_RECORD_UPDATED event: {}", entity);
+    asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersUpdatedRecordResponse.respond204()));
+
+    updateRecordEventHandler.handle(entity, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()));
   }
 }

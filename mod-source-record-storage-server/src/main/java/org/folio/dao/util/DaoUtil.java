@@ -95,16 +95,16 @@ public class DaoUtil {
     return metadata;
   }
 
+  public static boolean hasRecords(RowSet<Row> rowSet) {
+    return rowSet.rowCount() >= 1 && Objects.nonNull(rowSet.iterator().next().getUUID(ID_COLUMN_NAME));
+  }
+
   public static Integer getTotalRecords(RowSet<Row> rowSet) {
     if (rowSet.rowCount() > 0) {
       return rowSet.iterator().next().getInteger(TOTAL_COUNT_COLUMN_NAME);
     }
     // returning -1 to indicate unknown total count
     return -1; // this should not occur
-  }
-
-  public static boolean hasRecords(RowSet<Row> rowSet) {
-    return rowSet.rowCount() >= 1 && Objects.nonNull(rowSet.iterator().next().getString(ID_COLUMN_NAME));
   }
 
   public static boolean equals(Set<OrderBy> sort1, Set<OrderBy> sort2) {

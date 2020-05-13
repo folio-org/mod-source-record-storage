@@ -15,7 +15,7 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (select rds.matchedid, rds.id
             from ${database.defaultSchemaName}.records_lb rds
             where rds.matchedid = p_id
@@ -36,11 +36,11 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (
               select rr.matchedid, rr.id
               from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
+                        select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
                         from ${database.defaultSchemaName}.records_lb rds
                         where rds.matchedid = p_id) rr
               where generation = max_generation) r
@@ -60,7 +60,7 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (select rds.matchedid, rds.id
             from ${database.defaultSchemaName}.records_lb rds
             where rds.instanceId = p_instanceId
@@ -81,11 +81,11 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (
               select rr.matchedid, rr.id
               from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
+                        select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
                         from ${database.defaultSchemaName}.records_lb rds
                         where rds.instanceid = p_instanceId) rr
               where generation = max_generation) r
@@ -99,21 +99,22 @@
       create function ${database.defaultSchemaName}.get_all_source_marc_records(p_offset integer, p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
-      from (select matchedid, id
-            from (select id, matchedid
-                  from ${database.defaultSchemaName}.records_lb
-                  where state = 'ACTUAL'
-                  order by matchedid) rr
-                offset p_offset
-            limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select id, matchedid
+          from ${database.defaultSchemaName}.records_lb
+          where state = 'ACTUAL'
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by matchedid offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
@@ -123,77 +124,82 @@
       create function ${database.defaultSchemaName}.get_all_source_marc_records_alt(p_offset integer, p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
-      from (
-              select matchedid, id
-              from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
-                        from ${database.defaultSchemaName}.records_lb
-                        order by matchedid) rr
-              where generation = max_generation
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select matchedid, id
+          from (
+              select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
+              from ${database.defaultSchemaName}.records_lb
+          ) rr
+          where generation = max_generation
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by matchedid offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
 
   <changeSet id="2020-04-28--08-06-create-get-source-marc-records-for-period" author="WilliamWelling">
     <createProcedure>
-      create function ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamp without time zone, p_till timestamp without time zone, p_offset integer,
+      create function ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamptz, p_till timestamptz, p_offset integer,
                                                                                        p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
-      from (
-              select matchedid, id
-              from ${database.defaultSchemaName}.records_lb
-              where updateddate between p_from and p_till
-                and state = 'ACTUAL'
-              order by updateddate
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select updateddate, matchedid, id
+          from ${database.defaultSchemaName}.records_lb
+          where updateddate between p_from and p_till
+            and state = 'ACTUAL'
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by updateddate offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
 
   <changeSet id="2020-04-28--08-07-create-get-source-marc-records-for-period-alt" author="WilliamWelling">
     <createProcedure>
-      create function ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamp without time zone, p_till timestamp without time zone, p_offset integer,
+      create function ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamptz, p_till timestamptz, p_offset integer,
                                                                                            p_limit integer)
           returns TABLE
                   (
-                      id    uuid,
-                      jsonb jsonb
+                      id          uuid,
+                      jsonb       jsonb,
+                      total_count bigint
                   )
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
-      from (
-              select matchedid, id
-              from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
-                        from ${database.defaultSchemaName}.records_lb
-                        where updateddate between p_from and p_till
-                        order by updateddate) r
-              where generation = max_generation
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select updateddate, matchedid, id
+          from (
+              select id, matchedid, updateddate, generation, max(generation) over (partition by matchedid) max_generation
+              from ${database.defaultSchemaName}.records_lb
+              where updateddate between p_from and p_till
+          ) r
+          where generation = max_generation
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by updateddate offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>

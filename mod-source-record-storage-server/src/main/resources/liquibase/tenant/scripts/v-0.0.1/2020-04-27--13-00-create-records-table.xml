@@ -50,9 +50,9 @@
       <column name="orderinfile" type="integer"></column>
       <column name="suppressdiscovery" type="boolean"></column>
       <column name="createdbyuserid" type="uuid"></column>
-      <column name="createddate" type="timestamp"></column>
+      <column name="createddate" type="timestamptz"></column>
       <column name="updatedbyuserid" type="uuid"></column>
-      <column name="updateddate" type="timestamp"></column>
+      <column name="updateddate" type="timestamptz"></column>
     </createTable>
   </changeSet>
 

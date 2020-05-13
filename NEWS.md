@@ -4,6 +4,7 @@
 * [MODSOURCE-129](https://issues.folio.org/browse/MODSOURCE-129) Add Liquibase schema management using [folio-liquibase-util](https://github.com/folio-org/folio-liquibase-util)
 * [MODSOURCE-116](https://issues.folio.org/browse/MODSOURCE-116) Add filtering of sourceRecords to return only latest generation.
 * [MODSOURCE-130](https://issues.folio.org/browse/MODSOURCE-130) Standard table creation using Liquibase
+* [MODSOURCE-102](https://issues.folio.org/browse/MODSOURCE-102) Add Data Access Objects for standard tables
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
 
 ## 2020-04-23 v3.1.4

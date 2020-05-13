@@ -128,6 +128,12 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
   }
 
   @Override
+  public void assertEmptyResult(TestContext context, int expectedTotal, ParsedRecordCollection actual) {
+    context.assertEquals(new Integer(expectedTotal), actual.getTotalRecords());
+    context.assertTrue(actual.getParsedRecords().isEmpty());
+  }
+
+  @Override
   public void compareCollections(TestContext context, ParsedRecordCollection expected, ParsedRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
     compareEntities(context, expected.getParsedRecords(), actual.getParsedRecords());

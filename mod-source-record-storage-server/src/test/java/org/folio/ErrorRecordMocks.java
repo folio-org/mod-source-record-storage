@@ -132,6 +132,12 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
   }
 
   @Override
+  public void assertEmptyResult(TestContext context, int expectedTotal, ErrorRecordCollection actual) {
+    context.assertEquals(new Integer(expectedTotal), actual.getTotalRecords());
+    context.assertTrue(actual.getErrorRecords().isEmpty());
+  }
+
+  @Override
   public void compareCollections(TestContext context, ErrorRecordCollection expected, ErrorRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
     compareEntities(context, expected.getErrorRecords(), actual.getErrorRecords());

@@ -135,6 +135,12 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
   }
 
   @Override
+  public void assertEmptyResult(TestContext context, int expectedTotal, SnapshotCollection actual) {
+    context.assertEquals(new Integer(expectedTotal), actual.getTotalRecords());
+    context.assertTrue(actual.getSnapshots().isEmpty());
+  }
+
+  @Override
   public void compareCollections(TestContext context, SnapshotCollection expected, SnapshotCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
     compareEntities(context, expected.getSnapshots(), actual.getSnapshots());

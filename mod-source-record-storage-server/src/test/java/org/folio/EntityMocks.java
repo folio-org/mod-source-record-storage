@@ -44,6 +44,8 @@ public interface EntityMocks<E, C, Q extends EntityQuery> {
 
   public C getExpectedCollectionForArbitrarySortedQuery();
 
+  public void assertEmptyResult(TestContext context, int expectedTotal, C actual);
+
   public void compareCollections(TestContext context, C expected, C actual);
 
   public void compareEntities(TestContext context, E expected, E actual);

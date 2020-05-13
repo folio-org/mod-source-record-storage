@@ -170,7 +170,7 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       List<SourceRecord> sourceRecords = lookup.result().list();
       promise.complete(new SourceRecordCollection()
         .withSourceRecords(sourceRecords)
-        .withTotalRecords(sourceRecords.size()));
+        .withTotalRecords(recordCollection.getTotalRecords()));
     });
     return promise.future();
   }

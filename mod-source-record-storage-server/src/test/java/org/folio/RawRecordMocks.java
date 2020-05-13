@@ -125,6 +125,12 @@ public class RawRecordMocks implements EntityMocks<RawRecord, RawRecordCollectio
   }
 
   @Override
+  public void assertEmptyResult(TestContext context, int expectedTotal, RawRecordCollection actual) {
+    context.assertEquals(new Integer(expectedTotal), actual.getTotalRecords());
+    context.assertTrue(actual.getRawRecords().isEmpty());
+  }
+
+  @Override
   public void compareCollections(TestContext context, RawRecordCollection expected, RawRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
     compareEntities(context, expected.getRawRecords(), actual.getRawRecords());

@@ -5,6 +5,7 @@ import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -161,9 +162,15 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   protected RecordCollection toCollection(RowSet<Row> rowSet) {
-    return new RecordCollection()
+    return toEmptyCollection(rowSet)
       .withRecords(stream(rowSet.spliterator(), false)
-        .map(this::toEntity).collect(Collectors.toList()))
+        .map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected RecordCollection toEmptyCollection(RowSet<Row> rowSet) {
+    return new RecordCollection()
+      .withRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 

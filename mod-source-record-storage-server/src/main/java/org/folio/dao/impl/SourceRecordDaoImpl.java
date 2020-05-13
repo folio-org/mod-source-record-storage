@@ -17,6 +17,7 @@ import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
@@ -175,7 +176,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     Promise<RowSet<Row>> promise = Promise.promise();
     LOG.info("Attempting get source records: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(this::toPartialSourceRecordCollection);
+    return promise.future().map(rowSet -> DaoUtil.hasRecords(rowSet)
+      ? toPartialSourceRecordCollection(rowSet)
+      : toEmptySourceRecordCollection(rowSet));
   }
 
   private Optional<SourceRecord> toPartialSourceRecord(RowSet<Row> rowSet) {
@@ -183,9 +186,14 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   private SourceRecordCollection toPartialSourceRecordCollection(RowSet<Row> rowSet) {
-    return new SourceRecordCollection()
+    return toEmptySourceRecordCollection(rowSet)
       .withSourceRecords(stream(rowSet.spliterator(), false)
-        .map(this::toPartialSourceRecord).collect(Collectors.toList()))
+        .map(this::toPartialSourceRecord).collect(Collectors.toList()));
+  }
+
+  private SourceRecordCollection toEmptySourceRecordCollection(RowSet<Row> rowSet) {
+    return new SourceRecordCollection()
+      .withSourceRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 

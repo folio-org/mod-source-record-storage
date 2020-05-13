@@ -5,6 +5,7 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
 
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -62,9 +63,15 @@ public class RawRecordDaoImpl extends AbstractEntityDao<RawRecord, RawRecordColl
 
   @Override
   protected RawRecordCollection toCollection(RowSet<Row> rowSet) {
-    return new RawRecordCollection()
+    return toEmptyCollection(rowSet)
       .withRawRecords(stream(rowSet.spliterator(), false)
-        .map(this::toEntity).collect(Collectors.toList()))
+        .map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected RawRecordCollection toEmptyCollection(RowSet<Row> rowSet) {
+    return new RawRecordCollection()
+      .withRawRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 

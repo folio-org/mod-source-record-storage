@@ -200,6 +200,20 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
+  public void shouldGetSourceMarcRecordsEmptyResults(TestContext context) {
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecords(10, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      context.assertEquals(new Integer(expectedRecords.size()), res.result().getTotalRecords());
+      context.assertTrue(res.result().getSourceRecords().isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
   public void shouldGetSourceMarcRecordsAlt(TestContext context) {
     Async async = context.async();
     sourceRecordDao.getSourceMarcRecordsAlt(0, 10, TENANT_ID).onComplete(res -> {
@@ -212,6 +226,22 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
       compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordsAltEmptyResults(TestContext context) {
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsAlt(0, 0, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected records and parsed records will have to be manually filtered
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      context.assertEquals(new Integer(expectedRecords.size()), res.result().getTotalRecords());
+      context.assertTrue(res.result().getSourceRecords().isEmpty());
       async.complete();
     });
   }
@@ -236,6 +266,24 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   }
 
   @Test
+  public void shouldGetSourceMarcRecordsForPeriodEmptyResults(TestContext context) throws ParseException {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
+    Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
+    Date till = DateUtils.addHours(new Date(), 1);
+    DateUtils.addHours(new Date(), 1);
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 0, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      context.assertEquals(new Integer(expectedRecords.size()), res.result().getTotalRecords());
+      context.assertTrue(res.result().getSourceRecords().isEmpty());
+      async.complete();
+    });
+  }
+
+  @Test
   public void shouldGetSourceMarcRecordsForPeriodAlt(TestContext context) throws ParseException {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
     Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
@@ -251,6 +299,25 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       List<RawRecord> expectedRawRecords = new ArrayList<>();
       List<ParsedRecord> expectedParsedRecords = getParsedRecords(expectedRecords);
       compareSourceRecordCollection(context, expectedRecords, expectedRawRecords, expectedParsedRecords, res.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldGetSourceMarcRecordsForPeriodAltEmptyResults(TestContext context) throws ParseException {
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZ");
+    Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
+    Date till = DateUtils.addHours(new Date(), 1);
+    Async async = context.async();
+    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 10, 10, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      // NOTE: some new mock data should be introduced to ensure assertion of latest generation
+      // when done the expected records and parsed records will have to be manually filtered
+      List<Record> expectedRecords = getRecords(State.ACTUAL);
+      context.assertEquals(new Integer(expectedRecords.size()), res.result().getTotalRecords());
+      context.assertTrue(res.result().getSourceRecords().isEmpty());
       async.complete();
     });
   }

@@ -4,6 +4,7 @@ import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.VALUE_TEMPLATE_TEMPLATE;
@@ -16,6 +17,7 @@ import java.util.stream.IntStream;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.query.EntityQuery;
+import org.folio.dao.util.DaoUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -50,10 +52,12 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     Promise<RowSet<Row>> promise = Promise.promise();
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(this::toCollection);
+    return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
+      ? toCollection(resultSet)
+      : toEmptyCollection(resultSet));
   }
 
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler) {
@@ -175,8 +179,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Convert {@link RowSet} into entity
    * 
-   * @param resultSet {@link RowSet} query results
-   * @return optional entity
+   * @param rowSet {@link RowSet} query results
+   * @return optional Entity
    */
   protected Optional<E> toEntity(RowSet<Row> rowSet)  {
     return rowSet.rowCount() > 0 ? Optional.of(toEntity(rowSet.iterator().next())) : Optional.empty();
@@ -250,10 +254,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Convert {@link RowSet} into Entity Collection
    * 
-   * @param resultSet query results
-   * @return entity collection
+   * @param rowSet {@link RowSet} query results
+   * @return Entity Collection
    */
-  protected abstract C toCollection(RowSet<Row> resultSet);
+  protected abstract C toCollection(RowSet<Row> rowSet);
+
+  /**
+   * Convert {@link RowSet} into an empty Entity Collection
+   * 
+   * @param rowSet {@link RowSet} query results
+   * @return Entity Collection with total results only
+   */
+  protected abstract C toEmptyCollection(RowSet<Row> rowSet);
 
   /**
    * Convert {@link Row} into Entity

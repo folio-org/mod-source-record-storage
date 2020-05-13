@@ -5,6 +5,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
 
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
@@ -73,9 +74,15 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
 
   @Override
   protected SnapshotCollection toCollection(RowSet<Row> rowSet) {
-    return new SnapshotCollection()
+    return toEmptyCollection(rowSet)
         .withSnapshots(stream(rowSet.spliterator(), false)
-          .map(this::toEntity).collect(Collectors.toList()))
+          .map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected SnapshotCollection toEmptyCollection(RowSet<Row> rowSet) {
+    return new SnapshotCollection()
+      .withSnapshots(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 

@@ -129,6 +129,13 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   }
 
   @Override
+  public void assertEmptyResults(TestContext context, ParsedRecordCollection actual) {
+    List<ParsedRecord> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    context.assertTrue(actual.getParsedRecords().isEmpty());
+  }
+
+  @Override
   public void assertNoopQueryResults(TestContext context, ParsedRecordCollection actual) {
     List<ParsedRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

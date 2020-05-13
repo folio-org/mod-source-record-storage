@@ -218,6 +218,13 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Override
+  public void assertEmptyResults(TestContext context, RecordCollection actual) {
+    List<Record> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    context.assertTrue(actual.getRecords().isEmpty());
+  }
+
+  @Override
   public void assertNoopQueryResults(TestContext context, RecordCollection actual) {
     List<Record> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

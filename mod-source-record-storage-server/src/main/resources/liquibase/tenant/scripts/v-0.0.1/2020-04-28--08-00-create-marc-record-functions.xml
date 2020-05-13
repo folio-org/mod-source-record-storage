@@ -15,7 +15,7 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (select rds.matchedid, rds.id
             from ${database.defaultSchemaName}.records_lb rds
             where rds.matchedid = p_id
@@ -36,11 +36,11 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (
               select rr.matchedid, rr.id
               from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
+                        select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
                         from ${database.defaultSchemaName}.records_lb rds
                         where rds.matchedid = p_id) rr
               where generation = max_generation) r
@@ -60,7 +60,7 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (select rds.matchedid, rds.id
             from ${database.defaultSchemaName}.records_lb rds
             where rds.instanceId = p_instanceId
@@ -81,11 +81,11 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb
       from (
               select rr.matchedid, rr.id
               from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
+                        select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
                         from ${database.defaultSchemaName}.records_lb rds
                         where rds.instanceid = p_instanceId) rr
               where generation = max_generation) r
@@ -106,15 +106,15 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
-      from (select matchedid, id, count(*) OVER() totalrows
-            from (select id, matchedid
-                  from ${database.defaultSchemaName}.records_lb
-                  where state = 'ACTUAL'
-                  order by matchedid) rr
-                offset p_offset
-            limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select id, matchedid
+          from ${database.defaultSchemaName}.records_lb
+          where state = 'ACTUAL'
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by matchedid offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
@@ -131,17 +131,18 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
-      from (
-              select matchedid, id, count(*) OVER() totalrows
-              from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
-                        from ${database.defaultSchemaName}.records_lb
-                        order by matchedid) rr
-              where generation = max_generation
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select matchedid, id
+          from (
+              select id, matchedid, generation, max(generation) over (partition by matchedid) max_generation
+              from ${database.defaultSchemaName}.records_lb
+          ) rr
+          where generation = max_generation
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by matchedid offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
@@ -159,16 +160,16 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
-      from (
-              select matchedid, id, count(*) OVER() totalrows
-              from ${database.defaultSchemaName}.records_lb
-              where updateddate between p_from and p_till
-                and state = 'ACTUAL'
-              order by updateddate
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select updateddate, matchedid, id
+          from ${database.defaultSchemaName}.records_lb
+          where updateddate between p_from and p_till
+            and state = 'ACTUAL'
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by updateddate offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>
@@ -186,18 +187,19 @@
           language sql
       as
       $$
-      select r.matchedId id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, r.totalrows total_count
-      from (
-              select matchedid, id, count(*) OVER() totalrows
-              from (
-                        select id, matchedid, generation, max(generation) over (partition by matchedId) max_generation
-                        from ${database.defaultSchemaName}.records_lb
-                        where updateddate between p_from and p_till
-                        order by updateddate) r
-              where generation = max_generation
-                  offset p_offset
-              limit p_limit) r
-              inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id;
+      WITH cte AS (
+          select updateddate, matchedid, id
+          from (
+              select id, matchedid, updateddate, generation, max(generation) over (partition by matchedid) max_generation
+              from ${database.defaultSchemaName}.records_lb
+              where updateddate between p_from and p_till
+          ) r
+          where generation = max_generation
+      )
+      select r.matchedid id, json_build_object('id', r.matchedid, 'content', mr.content)::jsonb jsonb, c.totalrows total_count
+      from (table cte order by updateddate offset p_offset limit p_limit) r
+      inner join ${database.defaultSchemaName}.marc_records_lb mr on r.id = mr.id
+      right join (select count(*) from cte) c(totalrows) on true;
       $$;
     </createProcedure>
   </changeSet>

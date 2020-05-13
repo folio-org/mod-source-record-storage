@@ -49,6 +49,23 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, DAO ext
   }
 
   @Test
+  public void shouldGetByEmptyResults(TestContext context) {
+    Async async = context.async();
+    dao.save(getMockEntities(), TENANT_ID).setHandler(create -> {
+      if (create.failed()) {
+        context.fail(create.cause());
+      }
+      dao.getByQuery(getNoopQuery(), 0, 0, TENANT_ID).setHandler(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        assertEmptyResults(context, res.result());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldGetByNoopQuery(TestContext context) {
     Async async = context.async();
     dao.save(getMockEntities(), TENANT_ID).setHandler(create -> {
@@ -229,6 +246,8 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, DAO ext
   public abstract List<E> getMockEntities();
 
   public abstract void compareEntities(TestContext context, E expected, E actual);
+
+  public abstract void assertEmptyResults(TestContext context, C actual);
 
   public abstract void assertNoopQueryResults(TestContext context, C actual);
 

@@ -10,12 +10,13 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
-import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSON_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -156,7 +157,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
       if (connection.failed()) {
@@ -211,7 +212,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     Promise<ResultSet> promise = Promise.promise();
     LOG.info("Attempting get by source records: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toSourceRecordCollection);
+    return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
+      ? toSourceRecordCollection(resultSet)
+      : toEmptySourceRecordCollection(resultSet));
   }
 
   private Optional<SourceRecord> toSourceRecord(ResultSet resultSet) {
@@ -219,8 +222,13 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   private SourceRecordCollection toSourceRecordCollection(ResultSet resultSet) {
+    return toEmptySourceRecordCollection(resultSet)
+      .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()));
+  }
+
+  private SourceRecordCollection toEmptySourceRecordCollection(ResultSet resultSet) {
     return new SourceRecordCollection()
-      .withSourceRecords(resultSet.getRows().stream().map(this::toSourceRecord).collect(Collectors.toList()))
+      .withSourceRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 
@@ -281,7 +289,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       List<SourceRecord> sourceRecords = lookup.result().list();
       promise.complete(new SourceRecordCollection()
         .withSourceRecords(sourceRecords)
-        .withTotalRecords(sourceRecords.size()));
+        .withTotalRecords(recordCollection.getTotalRecords()));
     });
     return promise.future();
   }

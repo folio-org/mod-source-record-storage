@@ -2,8 +2,9 @@ package org.folio.dao;
 
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
-import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.QUESTION_MARK;
 import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.query.EntityQuery;
+import org.folio.dao.util.DaoUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -47,16 +49,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     Promise<ResultSet> promise = Promise.promise();
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).select(sql, promise);
-    return promise.future().map(this::toCollection);
+    return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
+      ? toCollection(resultSet)
+      : toEmptyCollection(resultSet));
   }
 
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by query: {}", sql);
     postgresClientFactory.createInstance(tenantId).getClient().getConnection(connection -> {
       if (connection.failed()) {
@@ -233,6 +237,14 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
    * @return Entity Collection
    */
   protected abstract C toCollection(ResultSet resultSet);
+
+  /**
+   * Convert {@link ResultSet} into an empty Entity Collection
+   * 
+   * @param resultSet {@link ResultSet} query results
+   * @return Entity Collection with total results only
+   */
+  protected abstract C toEmptyCollection(ResultSet resultSet);
 
   /**
    * Convert {@link JsonObject} into Entity

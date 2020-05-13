@@ -6,6 +6,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
@@ -172,8 +173,14 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   protected RecordCollection toCollection(ResultSet resultSet) {
+    return toEmptyCollection(resultSet)
+      .withRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected RecordCollection toEmptyCollection(ResultSet resultSet) {
     return new RecordCollection()
-      .withRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
+      .withRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 

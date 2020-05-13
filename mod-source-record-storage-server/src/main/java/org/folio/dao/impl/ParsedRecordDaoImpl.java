@@ -5,6 +5,7 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -60,8 +61,14 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
 
   @Override
   protected ParsedRecordCollection toCollection(ResultSet resultSet) {
+    return toEmptyCollection(resultSet)
+      .withParsedRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected ParsedRecordCollection toEmptyCollection(ResultSet resultSet) {
     return new ParsedRecordCollection()
-      .withParsedRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()))
+      .withParsedRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
   }
 

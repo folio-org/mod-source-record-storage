@@ -204,7 +204,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordsEmptyResults(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecords(10, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecords(10, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -235,7 +235,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   @Test
   public void shouldGetSourceMarcRecordsAltEmptyResults(TestContext context) {
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsAlt(0, 0, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsAlt(0, 0, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -274,7 +274,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Date till = DateUtils.addHours(new Date(), 1);
     DateUtils.addHours(new Date(), 1);
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 0, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsForPeriod(from, till, 0, 0, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -311,7 +311,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Date from = dateFormat.parse("2020-03-01T12:00:00-0500");
     Date till = DateUtils.addHours(new Date(), 1);
     Async async = context.async();
-    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 10, 10, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsForPeriodAlt(from, till, 10, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -394,7 +394,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
     RecordQuery query = new RecordQuery();
-    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 0, TENANT_ID).setHandler(res -> {
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 0, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }

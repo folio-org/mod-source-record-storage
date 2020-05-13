@@ -50,11 +50,11 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, DAO ext
   @Test
   public void shouldGetByEmptyResults(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntities(), TENANT_ID).setHandler(create -> {
+    dao.save(getMockEntities(), TENANT_ID).onComplete(create -> {
       if (create.failed()) {
         context.fail(create.cause());
       }
-      dao.getByQuery(getNoopQuery(), 0, 0, TENANT_ID).setHandler(res -> {
+      dao.getByQuery(getNoopQuery(), 0, 0, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }

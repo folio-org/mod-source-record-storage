@@ -11,12 +11,13 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
-import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -162,9 +163,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   @Override
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
       Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
-        String where = query.toWhereClause();
-        String orderBy = query.toOrderByClause();
-        String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
+    String where = query.toWhereClause();
+    String orderBy = query.toOrderByClause();
+    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
       if (ar1.failed()) {
@@ -225,7 +226,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     Promise<RowSet<Row>> promise = Promise.promise();
     LOG.info("Attempting get source records: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(this::toPartialSourceRecordCollection);
+    return promise.future().map(rowSet -> DaoUtil.hasRecords(rowSet)
+      ? toPartialSourceRecordCollection(rowSet)
+      : toEmptySourceRecordCollection(rowSet));
   }
 
   private Optional<SourceRecord> toPartialSourceRecord(RowSet<Row> rowSet) {
@@ -233,9 +236,14 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   private SourceRecordCollection toPartialSourceRecordCollection(RowSet<Row> rowSet) {
-    return new SourceRecordCollection()
+    return toEmptySourceRecordCollection(rowSet)
       .withSourceRecords(stream(rowSet.spliterator(), false)
-        .map(this::toPartialSourceRecord).collect(Collectors.toList()))
+        .map(this::toPartialSourceRecord).collect(Collectors.toList()));
+  }
+
+  private SourceRecordCollection toEmptySourceRecordCollection(RowSet<Row> rowSet) {
+    return new SourceRecordCollection()
+      .withSourceRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
@@ -309,7 +317,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       List<SourceRecord> sourceRecords = lookup.result().list();
       promise.complete(new SourceRecordCollection()
         .withSourceRecords(sourceRecords)
-        .withTotalRecords(sourceRecords.size()));
+        .withTotalRecords(recordCollection.getTotalRecords()));
     });
     return promise.future();
   }

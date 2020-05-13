@@ -26,7 +26,11 @@ public class DaoUtil {
 
   public static final String GET_BY_ID_SQL_TEMPLATE = "SELECT %s FROM %s WHERE id = '%s';";
   public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT %s FROM %s WHERE %s = '%s';";
-  public static final String GET_BY_FILTER_SQL_TEMPLATE = "SELECT %s, count(*) OVER() total_count FROM %s %s %s OFFSET %s LIMIT %s;";
+  public static final String GET_BY_QUERY_SQL_TEMPLATE = "SELECT %s FROM %s %s %s OFFSET %s LIMIT %s;";
+  public static final String GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE = "WITH cte AS (SELECT %s FROM %s %s) " +
+    "SELECT * FROM (TABLE cte %s OFFSET %s LIMIT %s) sub " +
+    "RIGHT JOIN (SELECT count(*) FROM cte) c(total_count) ON true;";
+
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
   public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
@@ -96,7 +100,11 @@ public class DaoUtil {
       return rowSet.iterator().next().getInteger(TOTAL_COUNT_COLUMN_NAME);
     }
     // returning -1 to indicate unknown total count
-    return -1;
+    return -1; // this should not occur
+  }
+
+  public static boolean hasRecords(RowSet<Row> rowSet) {
+    return rowSet.rowCount() >= 1 && Objects.nonNull(rowSet.iterator().next().getString(ID_COLUMN_NAME));
   }
 
   public static boolean equals(Set<OrderBy> sort1, Set<OrderBy> sort2) {

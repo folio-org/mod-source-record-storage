@@ -21,8 +21,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ErrorRecordDaoTest
-    extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao> {
+public class ErrorRecordDaoTest extends AbstractEntityDaoTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao> {
 
   LBSnapshotDao snapshotDao;
 
@@ -130,6 +129,13 @@ public class ErrorRecordDaoTest
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getDescription(), actual.getDescription());
     context.assertEquals(new JsonObject((String) expected.getContent()), new JsonObject((String) actual.getContent()));
+  }
+
+  @Override
+  public void assertEmptyResults(TestContext context, ErrorRecordCollection actual) {
+    List<ErrorRecord> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    context.assertTrue(actual.getErrorRecords().isEmpty());
   }
 
   @Override

@@ -130,6 +130,13 @@ public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotC
   }
 
   @Override
+  public void assertEmptyResults(TestContext context, SnapshotCollection actual) {
+    List<Snapshot> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    context.assertTrue(actual.getSnapshots().isEmpty());
+  }
+
+  @Override
   public void assertNoopQueryResults(TestContext context, SnapshotCollection actual) {
     List<Snapshot> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

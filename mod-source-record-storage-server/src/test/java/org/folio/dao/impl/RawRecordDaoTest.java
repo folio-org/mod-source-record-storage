@@ -124,6 +124,13 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
+  public void assertEmptyResults(TestContext context, RawRecordCollection actual) {
+    List<RawRecord> expected = getMockEntities();
+    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
+    context.assertTrue(actual.getRawRecords().isEmpty());
+  }
+
+  @Override
   public void assertNoopQueryResults(TestContext context, RawRecordCollection actual) {
     List<RawRecord> expected = getMockEntities();
     context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());

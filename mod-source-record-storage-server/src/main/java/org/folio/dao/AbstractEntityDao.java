@@ -2,8 +2,9 @@ package org.folio.dao;
 
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
-import static org.folio.dao.util.DaoUtil.GET_BY_FILTER_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.VALUE_TEMPLATE_TEMPLATE;
@@ -16,6 +17,7 @@ import java.util.stream.IntStream;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.query.EntityQuery;
+import org.folio.dao.util.DaoUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -50,16 +52,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     Promise<RowSet<Row>> promise = Promise.promise();
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
-    log.info("Attempting get by filter: {}", sql);
+    String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    log.info("Attempting get by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(this::toCollection);
+    return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
+      ? toCollection(resultSet)
+      : toEmptyCollection(resultSet));
   }
 
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_FILTER_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
     postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
       if (ar1.failed()) {
@@ -175,7 +179,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Convert {@link RowSet} into Entity
    * 
-   * @param resultSet {@link RowSet} query results
+   * @param rowSet {@link RowSet} query results
    * @return optional Entity
    */
   protected Optional<E> toEntity(RowSet<Row> rowSet)  {
@@ -250,10 +254,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Convert {@link RowSet} into Entity Collection
    * 
-   * @param resultSet {@link RowSet} query results
+   * @param rowSet {@link RowSet} query results
    * @return Entity Collection
    */
-  protected abstract C toCollection(RowSet<Row> resultSet);
+  protected abstract C toCollection(RowSet<Row> rowSet);
+
+  /**
+   * Convert {@link RowSet} into an empty Entity Collection
+   * 
+   * @param rowSet {@link RowSet} query results
+   * @return Entity Collection with total results only
+   */
+  protected abstract C toEmptyCollection(RowSet<Row> rowSet);
 
   /**
    * Convert {@link Row} into Entity

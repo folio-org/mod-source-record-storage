@@ -5,6 +5,7 @@ import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ERROR_RECORDS_TABLE_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -64,9 +65,15 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
 
   @Override
   protected ErrorRecordCollection toCollection(RowSet<Row> rowSet) {
-    return new ErrorRecordCollection()
+    return toEmptyCollection(rowSet)
       .withErrorRecords(stream(rowSet.spliterator(), false)
-        .map(this::toEntity).collect(Collectors.toList()))
+        .map(this::toEntity).collect(Collectors.toList()));
+  }
+
+  @Override
+  protected ErrorRecordCollection toEmptyCollection(RowSet<Row> rowSet) {
+    return new ErrorRecordCollection()
+      .withErrorRecords(Collections.emptyList())
       .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 

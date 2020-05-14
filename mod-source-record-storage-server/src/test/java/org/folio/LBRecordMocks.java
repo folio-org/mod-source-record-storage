@@ -29,14 +29,14 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public RecordQuery getArbitruaryQuery() {
     return (RecordQuery) RecordQuery.query().builder()
-      .equal("matchedProfileId", getMockEntity().getMatchedProfileId())
+      .whereEqual("matchedProfileId", getMockEntity().getMatchedProfileId())
       .query();
   }
 
   @Override
   public RecordQuery getArbitruarySortedQuery() {
     return (RecordQuery) RecordQuery.query().builder()
-      .equal("matchedProfileId", getMockEntity().getMatchedProfileId())
+      .whereEqual("matchedProfileId", getMockEntity().getMatchedProfileId())
       .orderBy("matchedProfileId")
       .query();
   }

@@ -125,47 +125,47 @@ public class QueryBuilder {
     return this;
   }
 
-  public QueryBuilder equal(String property, Object value) {
+  public QueryBuilder whereEqual(String property, Object value) {
     filter.add(Where.equal(property, value));
     return this;
   }
 
-  public QueryBuilder greaterThen(String property, Object value) {
+  public QueryBuilder whereGreaterThen(String property, Object value) {
     filter.add(Where.greaterThen(property, value));
     return this;
   }
 
-  public QueryBuilder lessThen(String property, Object value) {
+  public QueryBuilder whereLessThen(String property, Object value) {
     filter.add(Where.lessThen(property, value));
     return this;
   }
 
-  public QueryBuilder greaterThenOrEqual(String property, Object value) {
+  public QueryBuilder whereGreaterThenOrEqual(String property, Object value) {
     filter.add(Where.greaterThenOrEqual(property, value));
     return this;
   }
 
-  public QueryBuilder lessThenOrEqual(String property, Object value) {
+  public QueryBuilder whereLessThenOrEqual(String property, Object value) {
     filter.add(Where.lessThenOrEqual(property, value));
     return this;
   }
 
-  public QueryBuilder notEqual(String property, Object value) {
+  public QueryBuilder whereNotEqual(String property, Object value) {
     filter.add(Where.notEqual(property, value));
     return this;
   }
 
-  public QueryBuilder like(String property, String value) {
+  public QueryBuilder whereLike(String property, String value) {
     filter.add(Where.like(property, value));
     return this;
   }
 
-  public <T> QueryBuilder between(String property, T from, T to) {
+  public <T> QueryBuilder whereBetween(String property, T from, T to) {
     filter.add(Where.between(property, from, to));
     return this;
   }
 
-  public <T> QueryBuilder in(String property, Collection<T> values) {
+  public <T> QueryBuilder whereIn(String property, Collection<T> values) {
     filter.add(Where.in(property, values));
     return this;
   }

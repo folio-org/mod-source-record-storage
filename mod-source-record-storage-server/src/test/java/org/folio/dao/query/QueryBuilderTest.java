@@ -63,9 +63,9 @@ public class QueryBuilderTest {
     RecordQuery query = RecordQuery.query();
     QueryBuilder builder = query.builder();
     builder
-      .lessThenOrEqual("generation", 1)
+      .whereLessThenOrEqual("generation", 1)
         .and()
-      .greaterThen("order", 1)
+      .whereGreaterThen("order", 1)
       .orderBy("metadata.createdDate", Direction.DESC);
     assertNotNull(builder);
     assertNotNull(builder.query());
@@ -90,22 +90,22 @@ public class QueryBuilderTest {
     ids.add(UUID.fromString("f00b0367-5267-43b3-8c4a-a5b2a31b0a8c"));
     builder
       .startExpression()
-        .equal("recordType", RecordType.MARC)
+        .whereEqual("recordType", RecordType.MARC)
           .and()
-        .greaterThenOrEqual("generation", 1)
+        .whereGreaterThenOrEqual("generation", 1)
           .and()
-        .notEqual("state", Record.State.DELETED)
+        .whereNotEqual("state", Record.State.DELETED)
           .and()
-        .between("metadata.createdDate", from, to)
+        .whereBetween("metadata.createdDate", from, to)
       .endExpression()
         .or()
       .startExpression()
-        .lessThen("order", 10)
+        .whereLessThen("order", 10)
           .or()
-        .equal("additionalInfo.suppressDiscovery", true)
+        .whereEqual("additionalInfo.suppressDiscovery", true)
       .endExpression()
         .or()
-      .in("id", ids)
+      .whereIn("id", ids)
       .orderBy("snapshotId")
       .orderBy("matchedId", Direction.ASC);
     String where = "WHERE ( recordtype = 'MARC' AND generation >= 1 AND state != 'DELETED' AND " +
@@ -134,7 +134,7 @@ public class QueryBuilderTest {
   public void shouldCreateErrorRecordQueryBuilder() {
     ErrorRecordQuery query = ErrorRecordQuery.query();
     QueryBuilder builder = query.builder();
-    builder.like("description", "%test%");
+    builder.whereLike("description", "%test%");
     String where = "WHERE description LIKE '%test%'";
     assertEquals(where, builder.buildWhereClause());
     String orderBy = StringUtils.EMPTY;

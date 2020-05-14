@@ -326,7 +326,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery query = new RecordQuery();
+    RecordQuery query = RecordQuery.query();
     List<SourceRecord> actualSourceRecords = new ArrayList<>();
     sourceRecordDao.getSourceMarcRecordsByQuery(content, query, 0, 10, TENANT_ID, stream -> {
       stream.handler(row -> actualSourceRecords.add(sourceRecordDao.toSourceRecord(row)));

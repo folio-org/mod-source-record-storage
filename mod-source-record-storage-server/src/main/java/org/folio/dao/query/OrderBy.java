@@ -27,11 +27,11 @@ public class OrderBy {
     return direction;
   }
 
-  public static OrderBy of(String property) {
+  public static OrderBy by(String property) {
     return new OrderBy(property);
   }
 
-  public static OrderBy of(String property, Direction direction) {
+  public static OrderBy by(String property, Direction direction) {
     return new OrderBy(property, direction);
   }
 

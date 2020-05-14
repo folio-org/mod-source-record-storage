@@ -5,78 +5,28 @@ import static org.folio.dao.impl.LBSnapshotDaoImpl.STATUS_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.folio.dao.util.WhereClauseBuilder;
 import org.folio.rest.jaxrs.model.Snapshot;
 
-public class SnapshotQuery extends Snapshot implements EntityQuery {
+public class SnapshotQuery extends AbstractEntityQuery {
 
-  private static final Map<String, String> propertyToColumn;
+  private static final Map<String, String> ptc = new HashMap<>();
 
   static {
-    Map<String, String> ptc = new HashMap<>();
     ptc.put("jobExecutionId", ID_COLUMN_NAME);
     ptc.put("status", STATUS_COLUMN_NAME);
     ptc.put("processingStartedDate", PROCESSING_STARTED_DATE_COLUMN_NAME);
-    propertyToColumn = ImmutableMap.copyOf(ptc);
   }
 
-  private final Set<OrderBy> sort = new HashSet<>();
-
-  @Override
-  public Set<OrderBy> getSort() {
-    return sort;
+  private SnapshotQuery() {
+    super(ImmutableMap.copyOf(ptc), Snapshot.class);
   }
 
-  @Override
-  public Map<String, String> getPropertyToColumn() {
-    return propertyToColumn;
-  }
-
-  @Override
-  public String toWhereClause() {
-    WhereClauseBuilder whereClauseBuilder = WhereClauseBuilder.of()
-      .append(getJobExecutionId(), ID_COLUMN_NAME)
-      .append(getProcessingStartedDate(), PROCESSING_STARTED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(getStatus())) {
-      whereClauseBuilder.append(getStatus().toString(), STATUS_COLUMN_NAME);
-    }
-    return whereClauseBuilder.build();
-  }
-
-  @Override
-  public boolean equals(Object other) {
-    if (other == this) {
-      return true;
-    }
-    if (!(other instanceof SnapshotQuery)) {
-      return false;
-    }
-    SnapshotQuery rhs = ((SnapshotQuery) other);
-    return new EqualsBuilder()
-      .append(getJobExecutionId(), rhs.getJobExecutionId())
-      .append(getStatus(), rhs.getStatus())
-      .append(getProcessingStartedDate(), rhs.getProcessingStartedDate())
-      .append(getSort(), rhs.getSort())
-      .isEquals();
-  }
-
-  @Override
-  public int hashCode() {
-    return new HashCodeBuilder()
-      .append(getJobExecutionId())
-      .append(getStatus())
-      .append(getProcessingStartedDate())
-      .append(getSort())
-      .toHashCode();
+  public static SnapshotQuery query() {
+    return new SnapshotQuery();
   }
 
 }

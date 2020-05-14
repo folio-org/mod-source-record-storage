@@ -389,7 +389,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
 
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery query = new RecordQuery();
+    RecordQuery query = RecordQuery.query();
 
     when(mockRecordDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getRecordsByQueryPromise.future());
 
@@ -438,8 +438,10 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
 
     Async async = context.async();
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery query = (RecordQuery) new RecordQuery()
-      .orderBy("id");
+    RecordQuery query = (RecordQuery) RecordQuery.query()
+      .builder()
+      .orderBy("id")
+      .query();
 
     when(mockRecordDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getRecordsByQueryPromise.future());
 
@@ -467,7 +469,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
   @Test
   public void shouldStreamGetSourceMarcRecordsByQuery(TestContext context) {
     SourceRecordContent content = SourceRecordContent.RAW_AND_PARSED_RECORD;
-    RecordQuery query = new RecordQuery();
+    RecordQuery query = RecordQuery.query();
 
     List<Record> expectedRecords = TestMocks.getRecords();
     List<RawRecord> expectedRawRecords = getRawRecords(expectedRecords);

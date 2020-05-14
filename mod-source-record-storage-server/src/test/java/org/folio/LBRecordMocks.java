@@ -9,7 +9,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.TestContext;
 
@@ -24,32 +23,22 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
 
   @Override
   public RecordQuery getNoopQuery() {
-    return new RecordQuery();
+    return RecordQuery.query();
   }
 
   @Override
   public RecordQuery getArbitruaryQuery() {
-    RecordQuery snapshotQuery = new RecordQuery();
-    snapshotQuery.setMatchedProfileId(getMockEntity().getMatchedProfileId());
-    snapshotQuery.setState(Record.State.ACTUAL);
-    return snapshotQuery;
+    return (RecordQuery) RecordQuery.query().builder()
+      .equal("matchedProfileId", getMockEntity().getMatchedProfileId())
+      .query();
   }
 
   @Override
   public RecordQuery getArbitruarySortedQuery() {
-    RecordQuery snapshotQuery = new RecordQuery();
-    snapshotQuery.setMatchedProfileId(getMockEntity().getMatchedProfileId());
-    // snapshotQuery.setState(Record.State.ACTUAL);
-    snapshotQuery.orderBy("matchedProfileId");
-    return snapshotQuery;
-  }
-
-  @Override
-  public RecordQuery getCompleteQuery() {
-    RecordQuery query = new RecordQuery();
-    BeanUtils.copyProperties(TestMocks.getRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
-    query.withMetadata(query.getMetadata().withCreatedDate(null).withUpdatedDate(null));
-    return query;
+    return (RecordQuery) RecordQuery.query().builder()
+      .equal("matchedProfileId", getMockEntity().getMatchedProfileId())
+      .orderBy("matchedProfileId")
+      .query();
   }
 
   @Override
@@ -89,22 +78,6 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   }
 
   @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'" +
-      " AND matchedid = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'" +
-      " AND snapshotid = '7f939c0b-618c-4eab-8276-a14e0bfe5728'" +
-      " AND matchedprofileid = '0731b68a-147e-4ad8-9de2-7eef7c1a5a99'" +
-      " AND generation = 0" +
-      " AND orderinfile = 1" +
-      " AND recordtype = 'MARC'" +
-      " AND state = 'ACTUAL'" +
-      " AND instanceid = '6b4ae089-e1ee-431f-af83-e1133f8e3da0'" +
-      " AND suppressdiscovery = false" +
-      " AND createdbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'" +
-      " AND updatedbyuserid = '4547e8af-638a-4595-8af8-4d396d6a9f7a'";
-  }
-
-  @Override
   public Record getExpectedEntity() {
     return getMockEntity();
   }
@@ -122,8 +95,7 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public List<Record> getExpectedEntitiesForArbitraryQuery() {
     return getExpectedEntities().stream()
-      .filter(entity -> entity.getState().equals(getArbitruaryQuery().getState()) &&
-        entity.getMatchedProfileId().equals(getArbitruaryQuery().getMatchedProfileId()))
+      .filter(entity -> entity.getMatchedProfileId().equals(getMockEntity().getMatchedProfileId()))
       .collect(Collectors.toList());
   }
 

@@ -217,12 +217,6 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
     });
   }
 
-  @Test
-  public void shouldGenerateWhereClauseFromQuery(TestContext context) {
-    Q filter = mocks.getCompleteQuery();
-    context.assertEquals(mocks.getCompleteWhereClause().trim(), filter.toWhereClause().trim());
-  }
-
   public abstract M initMocks();
 
 }

@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.folio.dao.query.ErrorRecordQuery;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -23,29 +22,22 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
 
   @Override
   public ErrorRecordQuery getNoopQuery() {
-    return new ErrorRecordQuery();
+    return ErrorRecordQuery.query();
   }
 
   @Override
   public ErrorRecordQuery getArbitruaryQuery() {
-    ErrorRecordQuery snapshotQuery = new ErrorRecordQuery();
-    snapshotQuery.setDescription(getMockEntity().getDescription());
-    return snapshotQuery;
+    return (ErrorRecordQuery) ErrorRecordQuery.query().builder()
+      .equal("description", getMockEntity().getDescription())
+      .query();
   }
 
   @Override
   public ErrorRecordQuery getArbitruarySortedQuery() {
-    ErrorRecordQuery snapshotQuery = new ErrorRecordQuery();
-    snapshotQuery.setDescription(getMockEntity().getDescription());
-    snapshotQuery.orderBy("description");
-    return snapshotQuery;
-  }
-
-  @Override
-  public ErrorRecordQuery getCompleteQuery() {
-    ErrorRecordQuery query = new ErrorRecordQuery();
-    BeanUtils.copyProperties(TestMocks.getErrorRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), query);
-    return query;
+    return (ErrorRecordQuery) ErrorRecordQuery.query().builder()
+      .equal("description", getMockEntity().getDescription())
+      .orderBy("description")
+      .query();
   }
 
   @Override
@@ -73,12 +65,6 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
   }
 
   @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = 'd3cd3e1e-a18c-4f7c-b053-9aa50343394e'"
-      + " AND description = 'Opps... something went wrong'";
-  }
-
-  @Override
   public ErrorRecord getExpectedEntity() {
     return getMockEntity();
   }
@@ -96,7 +82,7 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
   @Override
   public List<ErrorRecord> getExpectedEntitiesForArbitraryQuery() {
     return getExpectedEntities().stream()
-      .filter(entity -> entity.getDescription().equals(getArbitruaryQuery().getDescription()))
+      .filter(entity -> entity.getDescription().equals(getMockEntity().getDescription()))
       .collect(Collectors.toList());
   }
 

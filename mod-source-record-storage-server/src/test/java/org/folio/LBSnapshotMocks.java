@@ -10,7 +10,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.query.SnapshotQuery;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.TestContext;
 
@@ -25,30 +24,22 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
 
   @Override
   public SnapshotQuery getNoopQuery() {
-    return new SnapshotQuery();
+    return SnapshotQuery.query();
   }
 
   @Override
   public SnapshotQuery getArbitruaryQuery() {
-    SnapshotQuery snapshotQuery = new SnapshotQuery();
-    snapshotQuery.setStatus(Snapshot.Status.NEW);
-    return snapshotQuery;
+    return (SnapshotQuery) SnapshotQuery.query().builder()
+      .equal("status", Snapshot.Status.NEW)
+      .query();
   }
 
   @Override
   public SnapshotQuery getArbitruarySortedQuery() {
-    SnapshotQuery snapshotQuery = new SnapshotQuery();
-    snapshotQuery.setStatus(Snapshot.Status.NEW);
-    snapshotQuery.orderBy("status");
-    return snapshotQuery;
-  }
-
-  @Override
-  public SnapshotQuery getCompleteQuery() {
-    SnapshotQuery query = new SnapshotQuery();
-    BeanUtils.copyProperties(TestMocks.getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), query);
-    query.withProcessingStartedDate(null);
-    return query;
+    return (SnapshotQuery) SnapshotQuery.query().builder()
+      .equal("status", Snapshot.Status.NEW)
+      .orderBy("status")
+      .query();
   }
 
   @Override
@@ -76,12 +67,6 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
   }
 
   @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = '6681ef31-03fe-4abc-9596-23de06d575c5'" +
-      " AND status = 'PROCESSING_IN_PROGRESS'";
-  }
-
-  @Override
   public Snapshot getExpectedEntity() {
     return getMockEntity();
   }
@@ -99,7 +84,7 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
   @Override
   public List<Snapshot> getExpectedEntitiesForArbitraryQuery() {
     return getExpectedEntities().stream()
-      .filter(entity -> entity.getStatus().equals(getArbitruaryQuery().getStatus()))
+      .filter(entity -> entity.getStatus().equals(Snapshot.Status.NEW))
       .collect(Collectors.toList());
   }
 

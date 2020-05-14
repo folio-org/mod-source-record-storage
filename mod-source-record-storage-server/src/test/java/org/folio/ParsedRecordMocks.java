@@ -7,7 +7,6 @@ import org.folio.dao.query.OrderBy.Direction;
 import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -23,21 +22,20 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
 
   @Override
   public ParsedRecordQuery getNoopQuery() {
-    return new ParsedRecordQuery();
+    return ParsedRecordQuery.query();
   }
 
   @Override
   public ParsedRecordQuery getArbitruaryQuery() {
-    ParsedRecordQuery snapshotQuery = new ParsedRecordQuery();
     // NOTE: no reasonable field to filter on
-    return snapshotQuery;
+    return ParsedRecordQuery.query();
   }
 
   @Override
   public ParsedRecordQuery getArbitruarySortedQuery() {
-    ParsedRecordQuery snapshotQuery = new ParsedRecordQuery();
-    snapshotQuery.orderBy("id", Direction.DESC);
-    return snapshotQuery;
+    return (ParsedRecordQuery) ParsedRecordQuery.query().builder()
+      .orderBy("id", Direction.DESC)
+      .query();
   }
 
   @Override
@@ -62,18 +60,6 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
   @Override
   public List<ParsedRecord> getMockEntities() {
     return TestMocks.getParsedRecords();
-  }
-
-  @Override
-  public ParsedRecordQuery getCompleteQuery() {
-    ParsedRecordQuery query = new ParsedRecordQuery();
-    BeanUtils.copyProperties(TestMocks.getParsedRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
-    return query;
-  }
-
-  @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'";
   }
 
   @Override

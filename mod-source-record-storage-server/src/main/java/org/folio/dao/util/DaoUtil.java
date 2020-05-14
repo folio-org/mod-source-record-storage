@@ -63,15 +63,6 @@ public class DaoUtil {
   public static final String ESCAPED_SINGLE_QUOTE = "''";
   public static final String NEW_LINE = "\n";
 
-  public static final String WRAPPED_TEMPLATE = "'%s'";
-  public static final String UNWRAPPED_TEMPLATE = "%s";
-
-  public static final String SPACE = " ";
-  public static final String SPACED_AND = " AND ";
-  public static final String ORDER_BY_TEMPLATE = "ORDER BY %s";
-  public static final String WHERE_TEMPLATE = "WHERE %s";
-  public static final String COLUMN_EQUALS_TEMPLATE = "%s = ";
-
   public static final Pattern BOOLEAN_PATTERN = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
 
   private DaoUtil() { }

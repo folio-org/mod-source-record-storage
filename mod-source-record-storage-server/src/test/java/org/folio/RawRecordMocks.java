@@ -6,7 +6,6 @@ import java.util.List;
 import org.folio.dao.query.RawRecordQuery;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.TestContext;
 
@@ -21,21 +20,20 @@ public class RawRecordMocks implements EntityMocks<RawRecord, RawRecordCollectio
 
   @Override
   public RawRecordQuery getNoopQuery() {
-    return new RawRecordQuery();
+    return RawRecordQuery.query();
   }
 
   @Override
   public RawRecordQuery getArbitruaryQuery() {
-    RawRecordQuery snapshotQuery = new RawRecordQuery();
     // NOTE: no reasonable field to filter on
-    return snapshotQuery;
+    return RawRecordQuery.query();
   }
 
   @Override
   public RawRecordQuery getArbitruarySortedQuery() {
-    RawRecordQuery snapshotQuery = new RawRecordQuery();
-    snapshotQuery.orderBy("id");
-    return snapshotQuery;
+    return (RawRecordQuery) RawRecordQuery.query().builder()
+      .orderBy("id")
+      .query();
   }
 
   @Override
@@ -59,18 +57,6 @@ public class RawRecordMocks implements EntityMocks<RawRecord, RawRecordCollectio
   @Override
   public List<RawRecord> getMockEntities() {
     return TestMocks.getRawRecords();
-  }
-
-  @Override
-  public RawRecordQuery getCompleteQuery() {
-    RawRecordQuery query = new RawRecordQuery();
-    BeanUtils.copyProperties(TestMocks.getRawRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
-    return query;
-  }
-
-  @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'";
   }
 
   @Override

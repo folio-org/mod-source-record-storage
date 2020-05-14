@@ -65,9 +65,10 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldGetByNoopQuery(TestContext context) {
     Promise<C> getByQueryPromise = Promise.promise();
-    when(mockDao.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
+    Q query = mocks.getNoopQuery();
+    when(mockDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+    service.getByQuery(query, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -80,9 +81,10 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldGetByArbitruaryQuery(TestContext context) {
     Promise<C> getByQueryPromise = Promise.promise();
-    when(mockDao.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
+    Q query = mocks.getArbitruaryQuery();
+    when(mockDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.getByQuery(mocks.getArbitruaryQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+    service.getByQuery(query, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -95,9 +97,10 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldGetByArbitruarySortedQuery(TestContext context) {
     Promise<C> getByQueryPromise = Promise.promise();
-    when(mockDao.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
+    Q query = mocks.getArbitruarySortedQuery();
+    when(mockDao.getByQuery(query, 0, 10, TENANT_ID)).thenReturn(getByQueryPromise.future());
     Async async = context.async();
-    service.getByQuery(mocks.getArbitruarySortedQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+    service.getByQuery(query, 0, 10, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
@@ -196,6 +199,8 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
 
   @Test
   public void shouldStreamGetByQuery(TestContext context) {
+    Q query = mocks.getNoopQuery();
+
     doAnswer(new Answer<Void>() {
 
       @Override
@@ -207,11 +212,11 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
         return null;
       }
 
-    }).when(mockDao).getByQuery(eq(mocks.getNoopQuery()), eq(0), eq(10), eq(TENANT_ID), any(), any());
+    }).when(mockDao).getByQuery(eq(query), eq(0), eq(10), eq(TENANT_ID), any(), any());
 
     Async async = context.async();
     List<E> actual = new ArrayList<>();
-    service.getByQuery(mocks.getNoopQuery(), 0, 10, TENANT_ID, entity -> {
+    service.getByQuery(query, 0, 10, TENANT_ID, entity -> {
       context.assertNotNull(entity);
       actual.add(entity);
     }, finished -> {

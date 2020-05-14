@@ -16,8 +16,6 @@ public interface EntityMocks<E, C, Q extends EntityQuery> {
 
   public Q getArbitruarySortedQuery();
 
-  public Q getCompleteQuery();
-
   public E getMockEntity();
 
   public E getInvalidMockEntity();
@@ -25,8 +23,6 @@ public interface EntityMocks<E, C, Q extends EntityQuery> {
   public E getUpdatedMockEntity();
 
   public List<E> getMockEntities();
-
-  public String getCompleteWhereClause();
 
   public E getExpectedEntity();
 

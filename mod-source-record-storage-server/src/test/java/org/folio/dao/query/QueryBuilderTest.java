@@ -1,5 +1,7 @@
 package org.folio.dao.query;
 
+import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -107,7 +109,7 @@ public class QueryBuilderTest {
       .orderBy("snapshotId")
       .orderBy("matchedId", Direction.ASC);
     String where = "WHERE ( recordtype = 'MARC' AND generation >= 1 AND state != 'DELETED' AND " +
-      "createddate BETWEEN '2017-01-01T00:00:00-06:00' AND '2020-05-14T13:45:25-05:00' ) OR " + 
+      "createddate BETWEEN '" + DATE_FORMATTER.format(from) + "' AND '" + DATE_FORMATTER.format(to) + "' ) OR " + 
       "( orderinfile < 10 OR suppressdiscovery = true ) OR " +
       "id IN ('20dabed7-6e2a-41f4-96f9-4b4581d85caa','bc44dfc8-c348-4edc-978e-c84e7333bdba'," +
       "'e1e38a1c-2c38-40be-afc9-2bc5e301abe1','52ae8394-1133-4675-8f9a-0f67d0b74db1'," +

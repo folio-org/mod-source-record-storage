@@ -155,11 +155,11 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Promise<E> updatePromise = Promise.promise();
-    when(mockDao.update(mocks.getUpdatedMockEntity(), TENANT_ID)).thenReturn(updatePromise.future());
+    E mockUpdatedEntity = mocks.getUpdatedMockEntity();
+    when(mockDao.update(mockUpdatedEntity, TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
-    E mockUpdateEntity = mocks.getUpdatedMockEntity();
-    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdateEntity));
-    service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
+    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
+    service.update(mockUpdatedEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();

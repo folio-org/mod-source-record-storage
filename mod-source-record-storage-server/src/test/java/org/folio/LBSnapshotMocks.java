@@ -50,7 +50,7 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
   @Override
   public Snapshot getInvalidMockEntity() {
     return new Snapshot()
-      .withJobExecutionId("f3ba7619-d9b6-4e7d-9ebf-587d2d3807d0");
+      .withJobExecutionId(getMockEntity().getJobExecutionId());
   }
 
   @Override

@@ -83,6 +83,7 @@ public class Where {
 
   }
 
+  @SuppressWarnings("squid:S1221")
   public static Where equal(String property, Object value) {
     return new Where(property, value, Op.EQUAL);
   }

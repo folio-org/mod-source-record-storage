@@ -58,7 +58,8 @@ public class PostgresClientFactory {
     return getPool(tenantId);
   }
 
-  private synchronized PgPool getPool(String tenantId) {
+  private PgPool getPool(String tenantId) {
+    // assumes a single thread Vert.x model so no synchronized needed
     if (pool.containsKey(tenantId)) {
       LOG.debug("Using existing database connection pool for tenant {}", tenantId);
       return pool.get(tenantId);

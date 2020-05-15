@@ -10,23 +10,23 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Data access object interface for Entity with Collection and {@link EntityQuery}
+ * Data access object interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
  */
 public interface EntityDao<E, C, Q extends EntityQuery> {
 
   /**
-   * Searches for Entity by id
+   * Searches for entity by id
    * 
-   * @param id       Entity id
+   * @param id       entity id
    * @param tenantId tenant id
    * @return future with optional entity
    */
   public Future<Optional<E>> getById(String id, String tenantId);
 
   /**
-   * Searchs for Entity by query
+   * Searches for entities by {@link EntityQuery}
    * 
-   * @param query   Entity Query which prepares WHERE and ORDER BY clauses for query
+   * @param query    {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -35,52 +35,61 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
-   * Searchs for Entity by query and stream results
+   * Searches for entities by {@link EntityQuery} and stream results
    * 
-   * @param query       Entity Query which prepares WHERE and ORDER BY clauses for query
-   * @param offset       starting index in a list of results
-   * @param limit        maximum number of results to return
-   * @param tenantId     tenant id
-   * @param handler      handler for Entity stream
-   * @param replyHandler handler for when stream is finished
+   * @param query         {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
+   * @param offset        starting index in a list of results
+   * @param limit         maximum number of results to return
+   * @param tenantId      tenant id
+   * @param entityHandler handler for stream of Entities
+   * @param endHandler    handler for when stream is finished
    */
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> replyHandler);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler);
 
   /**
-   * Saves Entity to database
+   * Saves entity to database
    * 
-   * @param entity   Entity to save
+   * @param entity   entity to save
    * @param tenantId tenant id
    * @return future with saved entity
    */
   public Future<E> save(E entity, String tenantId);
 
   /**
-   * Saves batch of Entity to database
+   * Saves batch of entities to database
    * 
-   * @param entities List of Entities to save
+   * @param entities batch of entities to save
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
   public Future<List<E>> save(List<E> entities, String tenantId);
 
   /**
-   * Updates Entity in database
+   * Updates entity in database
    * 
-   * @param entity   Entity to save
+   * @param entity   entity to update
    * @param tenantId tenant id
    * @return future with updated entity
    */
   public Future<E> update(E entity, String tenantId);
 
   /**
-   * Deletes Entity from database
+   * Deletes entity with id from database
    * 
-   * @param id       Entity id
+   * @param id       entity id
    * @param tenantId tenant id
-   * @return future with true if succeeded
+   * @return future with true if succeeded, else false
    */
   public Future<Boolean> delete(String id, String tenantId);
+
+  /**
+   * Deletes entities by {@link EntityQuery} from database
+   * 
+   * @param query    entity query
+   * @param tenantId tenant id
+   * @return future with number of entities deleted
+   */
+  public Future<Integer> delete(Q query, String tenantId);
 
   /**
    * Get table name for DAO
@@ -97,9 +106,9 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public String getColumns();
 
   /**
-   * Get Entity id
+   * Get entity id
    * 
-   * @param entity Entity to retrieve id from
+   * @param entity entity to retrieve id from
    * @return id of given entity
    */
   public String getId(E entity);

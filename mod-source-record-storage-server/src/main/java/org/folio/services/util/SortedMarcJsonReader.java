@@ -20,6 +20,7 @@ public class SortedMarcJsonReader extends MarcJsonReader {
    *
    * @return record implementation with sorted fields {@link SortedRecordImpl}
    */
+  @Override
   public Record next() {
     Record record = super.next();
     Record sortedRecord = new SortedRecordImpl();

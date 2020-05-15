@@ -1,10 +1,10 @@
 package org.folio.dao.impl;
 
-import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
+import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
@@ -17,13 +17,14 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.SnapshotQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.sql.ResultSet;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="snapshots_lb">
 //   <column name="id" type="uuid">
@@ -47,7 +48,8 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
 
   @Override
   public String getColumns() {
-    return ColumnBuilder.of(ID_COLUMN_NAME)
+    return ColumnBuilder
+      .of(ID_COLUMN_NAME)
       .append(STATUS_COLUMN_NAME)
       .append(PROCESSING_STARTED_DATE_COLUMN_NAME)
       .build();
@@ -59,54 +61,39 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
   }
 
   @Override
-  protected JsonArray toParams(Snapshot snapshot, boolean generateIdIfNotExists) {
+  protected Tuple toTuple(Snapshot snapshot, boolean generateIdIfNotExists) {
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    JsonArray params = new JsonArray()
-      .add(snapshot.getJobExecutionId())
-      .add(snapshot.getStatus());
-    if (Objects.nonNull(snapshot.getProcessingStartedDate())) {
-      params.add(DATE_FORMATTER.format(snapshot.getProcessingStartedDate()));
-    } else {
-      params.addNull();
-    }
-    return params;
+    return TupleWrapper.of()
+      .addUUID(snapshot.getJobExecutionId())
+      .addEnum(snapshot.getStatus())
+      .addOffsetDateTime(snapshot.getProcessingStartedDate())
+      .get();
   }
 
   @Override
-  protected SnapshotCollection toCollection(ResultSet resultSet) {
-    return toEmptyCollection(resultSet)
-      .withSnapshots(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()));
+  protected SnapshotCollection toCollection(RowSet<Row> rowSet) {
+    return toEmptyCollection(rowSet)
+        .withSnapshots(stream(rowSet.spliterator(), false)
+          .map(this::toEntity).collect(Collectors.toList()));
   }
 
   @Override
-  protected SnapshotCollection toEmptyCollection(ResultSet resultSet) {
+  protected SnapshotCollection toEmptyCollection(RowSet<Row> rowSet) {
     return new SnapshotCollection()
       .withSnapshots(Collections.emptyList())
-      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override
-  protected Snapshot toEntity(JsonObject result) {
+  protected Snapshot toEntity(Row row) {
     Snapshot snapshot = new Snapshot()
-      .withJobExecutionId(result.getString(ID_COLUMN_NAME))
-      .withStatus(Snapshot.Status.fromValue(result.getString(STATUS_COLUMN_NAME)));
-    Instant processingStartedDate = result.getInstant(PROCESSING_STARTED_DATE_COLUMN_NAME);
+      .withJobExecutionId(row.getUUID(ID_COLUMN_NAME).toString())
+      .withStatus(Snapshot.Status.fromValue(row.getString(STATUS_COLUMN_NAME)));
+    OffsetDateTime processingStartedDate = row.getOffsetDateTime(PROCESSING_STARTED_DATE_COLUMN_NAME);
     if (Objects.nonNull(processingStartedDate)) {
-      snapshot.setProcessingStartedDate(Date.from(processingStartedDate));
-    }
-    return snapshot;
-  }
-
-  @Override
-  protected Snapshot toEntity(JsonArray row) {
-    Snapshot snapshot = new Snapshot()
-      .withJobExecutionId(row.getString(0))
-      .withStatus(Snapshot.Status.fromValue(row.getString(1)));
-    Instant processingStartedDate = row.getInstant(2);
-    if (Objects.nonNull(processingStartedDate)) {
-      snapshot.setProcessingStartedDate(Date.from(processingStartedDate));
+      snapshot.setProcessingStartedDate(Date.from(processingStartedDate.toInstant()));
     }
     return snapshot;
   }

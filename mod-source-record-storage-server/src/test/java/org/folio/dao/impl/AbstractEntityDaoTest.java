@@ -137,6 +137,17 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       async.complete();
     });
   }
+  @Test
+  public void shouldSaveBatch(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result());
+      async.complete();
+    });
+  }
 
   @Test
   public void shouldUpdate(TestContext context) {
@@ -168,7 +179,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   }
 
   @Test
-  public void shouldDelete(TestContext context) {
+  public void shouldDeleteById(TestContext context) {
     Async async = context.async();
     dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
@@ -193,6 +204,23 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       }
       context.assertFalse(res.result());
       async.complete();
+    });
+  }
+
+  @Test
+  public void shouldDeleteByQuery(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      dao.delete(mocks.getArbitruaryQuery(), TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertEquals(mocks.getExpectedEntitiesForArbitraryQuery().size(), res.result());
+        async.complete();
+      });
     });
   }
 

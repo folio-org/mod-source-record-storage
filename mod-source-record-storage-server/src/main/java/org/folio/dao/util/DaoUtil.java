@@ -39,7 +39,8 @@ public class DaoUtil {
 
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
-  public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
+  public static final String DELETE_BY_ID_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
+  public static final String DELETE_BY_QUERY_SQL_TEMPLATE = "DELETE FROM %s %s;";
 
   public static final String SNAPSHOTS_TABLE_NAME = "snapshots_lb";
   public static final String RECORDS_TABLE_NAME = "records_lb";

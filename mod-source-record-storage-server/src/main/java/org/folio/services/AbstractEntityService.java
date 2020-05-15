@@ -46,4 +46,8 @@ public abstract class AbstractEntityService<E, C, Q extends EntityQuery, D exten
     return dao.delete(id, tenantId);
   }
 
+  public Future<Integer> delete(Q query, String tenantId) {
+    return dao.delete(query, tenantId);
+  }
+
 }

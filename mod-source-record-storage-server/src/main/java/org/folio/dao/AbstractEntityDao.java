@@ -1,7 +1,8 @@
 package org.folio.dao;
 
 import static org.folio.dao.util.DaoUtil.COMMA;
-import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.DELETE_BY_ID_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.DELETE_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
@@ -159,10 +160,18 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   public Future<Boolean> delete(String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(DELETE_SQL_TEMPLATE, getTableName(), id);
-    log.info("Attempting delete: {}", sql);
+    String sql = String.format(DELETE_BY_ID_SQL_TEMPLATE, getTableName(), id);
+    log.info("Attempting delete by id: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  public Future<Integer> delete(Q query, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.toWhereClause());
+    log.info("Attempting delete by query: {}", sql);
+    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    return promise.future().map(updateResult -> updateResult.rowCount());
   }
 
   /**

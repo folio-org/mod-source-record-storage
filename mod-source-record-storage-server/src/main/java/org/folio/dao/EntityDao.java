@@ -83,6 +83,15 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<Boolean> delete(String id, String tenantId);
 
   /**
+   * Deletes entities by {@link EntityQuery} from database
+   * 
+   * @param query    entity query
+   * @param tenantId tenant id
+   * @return future with number of entities deleted
+   */
+  public Future<Integer> delete(Q query, String tenantId);
+
+  /**
    * Get table name for DAO
    * 
    * @return database table name for entity

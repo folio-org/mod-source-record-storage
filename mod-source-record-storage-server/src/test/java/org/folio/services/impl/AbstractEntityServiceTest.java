@@ -119,7 +119,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, mocks.getMockEntity(), res.result());
+      mocks.compareEntities(context, mocks.getExpectedEntity(), res.result());
       async.complete();
     });
     savePromise.complete(mocks.getExpectedEntity());
@@ -135,6 +135,21 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       async.complete();
     });
     savePromise.fail("Invalid");
+  }
+
+  @Test
+  public void shouldSaveBatch(TestContext context) {
+    Promise<List<E>> savePromise = Promise.promise();
+    when(mockDao.save(mocks.getMockEntities(), TENANT_ID)).thenReturn(savePromise.future());
+    Async async = context.async();
+    service.save(mocks.getMockEntities(), TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result());
+      async.complete();
+    });
+    savePromise.complete(mocks.getExpectedEntities());
   }
 
   @Test
@@ -168,7 +183,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   }
 
   @Test
-  public void shouldDelete(TestContext context) {
+  public void shouldDeleteById(TestContext context) {
     Promise<Boolean> deletePromise = Promise.promise();
     when(mockDao.delete(mocks.getId(mocks.getMockEntity()), TENANT_ID)).thenReturn(deletePromise.future());
     Async async = context.async();
@@ -195,6 +210,21 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       async.complete();
     });
     deletePromise.complete(false);
+  }
+  @Test
+  public void shouldDeleteByQuery(TestContext context) {
+    Promise<Integer> deletePromise = Promise.promise();
+    Q query = mocks.getArbitruaryQuery();
+    when(mockDao.delete(query, TENANT_ID)).thenReturn(deletePromise.future());
+    Async async = context.async();
+    service.delete(query, TENANT_ID).onComplete(res -> {
+      if (res.failed()) {
+        context.fail(res.cause());
+      }
+      context.assertEquals(mocks.getExpectedEntitiesForArbitraryQuery().size(), res.result());
+      async.complete();
+    });
+    deletePromise.complete(mocks.getExpectedEntitiesForArbitraryQuery().size());
   }
 
   @Test

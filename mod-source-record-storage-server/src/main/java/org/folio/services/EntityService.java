@@ -82,5 +82,14 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @return future with true if succeeded
    */
   public Future<Boolean> delete(String id, String tenantId);
-  
+
+  /**
+   * Deletes entities by {@link EntityQuery} from database
+   * 
+   * @param query    entity query
+   * @param tenantId tenant id
+   * @return future with number of entities deleted
+   */
+  public Future<Integer> delete(Q query, String tenantId);
+
 }

@@ -7,6 +7,7 @@
 * [MODSOURCE-102](https://issues.folio.org/browse/MODSOURCE-102) Add Data Access Objects for standard tables
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
 * [MODSOURCE-101](https://issues.folio.org/browse/MODSOURCE-101) Add Services for standard table DAOs
+* [MODDICORE-50](https://issues.folio.org/browse/MODDICORE-50) Fixed placement of newly-created 035 field
 
 ## 2020-04-23 v3.1.4
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table

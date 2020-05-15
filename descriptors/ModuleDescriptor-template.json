@@ -227,6 +227,18 @@
           "modulePermissions": [
             "pubsub.publish.post"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/handlers/updated-record",
+          "permissionsRequired": [
+            "source-storage.events.post"
+          ],
+          "modulePermissions": [
+            "pubsub.publish.post"
+          ]
         }
       ]
     },

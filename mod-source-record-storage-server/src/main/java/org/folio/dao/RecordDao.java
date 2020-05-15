@@ -79,8 +79,8 @@ public interface RecordDao {
   /**
    * Updates {@link ParsedRecord} in the db
    *
-   * @param record record dto from which {@link ParsedRecord} will be updated
-   * @param tenantId     tenant id
+   * @param record   record dto from which {@link ParsedRecord} will be updated
+   * @param tenantId tenant id
    * @return future with updated ParsedRecord
    */
   Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
@@ -88,16 +88,17 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record
    *
-   * @param externalId external relation id
+   * @param externalId     external relation id
    * @param externalIdType external id type
-   * @param tenantId   tenant id
+   * @param tenantId       tenant id
    * @return future with optional {@link Record}
    */
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by id (searches via "matchedId").
-   * @param id - id
+   *
+   * @param id       - id
    * @param tenantId - tenant id
    * @return - return future with optional {@link SourceRecord}
    */
@@ -105,9 +106,10 @@ public interface RecordDao {
 
   /**
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
-   * @param id - id
+   *
+   * @param id             - id
    * @param externalIdType - external id type on which source record will be searched
-   * @param tenantId - tenant id
+   * @param tenantId       - tenant id
    * @return - return future with optional {@link SourceRecord}
    */
   Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId);
@@ -129,5 +131,16 @@ public interface RecordDao {
    * @return - future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
+
+  /**
+   * Creates new Record and updates status of the "old" one,
+   * no data is overwritten as a result of update
+   *
+   * @param newRecord new Record to create
+   * @param oldRecord old Record that has to be marked as "old"
+   * @param tenantId  tenant id
+   * @return future with new "updated" Record
+   */
+  Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId);
 
 }

@@ -15,6 +15,7 @@ import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -48,8 +49,6 @@ import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
-import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
 @Component
@@ -130,27 +129,35 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     String orderBy = query.toOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
-    postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
-      if (ar1.failed()) {
-        LOG.error("Failed to get database connection", ar1.cause());
-        endHandler.handle(Future.failedFuture(ar1.cause()));
-        return;
-      }
-      SqlConnection connection = ar1.result();
-      connection.prepare(sql, ar2 -> {
+    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+      Promise<Void> promise = Promise.promise();
+      transaction.prepare(sql, ar2 -> {
         if (ar2.failed()) {
           LOG.error("Failed to prepare query", ar2.cause());
           endHandler.handle(Future.failedFuture(ar2.cause()));
           return;
         }
         PreparedStatement pq = ar2.result();
-        Transaction tx = connection.begin();
         RowStream<Row> stream = pq.createStream(limit, Tuple.tuple());
-        handler.handle(stream.endHandler(x -> {
-          tx.commit();
-          endHandler.handle(Future.succeededFuture());
-        }));
+        stream
+          .handler(row -> {
+            stream.pause();
+            lookupContent(content, tenantId, toSourceRecord(row)).onComplete(ar3 -> {
+              if (ar3.failed()) {
+                endHandler.handle(Future.failedFuture(ar3.cause()));
+                return;
+              }
+              handler.handle(ar3.result());
+              stream.resume();
+            });
+          })
+          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
+          .endHandler(e -> { 
+            endHandler.handle(Future.succeededFuture());
+            promise.complete();
+          });
       });
+      return promise.future();
     });
   }
 

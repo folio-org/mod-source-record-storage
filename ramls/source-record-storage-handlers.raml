@@ -14,6 +14,7 @@ types:
   dataImportEventPayload: !include raml-storage/schemas/common/dataImportEventPayload.json
   entityType: !include raml-storage/schemas/mod-data-import-converter-storage/entityType.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
+  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -27,3 +28,11 @@ traits:
           type: string
       responses:
         200:
+  /updated-record:
+    description: "Handler for QM_RECORD_UPDATED event"
+    post:
+      body:
+        application/json:
+          type: string
+      responses:
+        204:

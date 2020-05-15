@@ -9,6 +9,7 @@ import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.VALUE_TEMPLATE_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,8 +32,6 @@ import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
-import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
 public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements EntityDao<E, C, Q> {
@@ -65,31 +64,26 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
-    log.info("Attempting stream get by query: {}", sql);
-    postgresClientFactory.getClient(tenantId).getConnection(ar1 -> {
-      if (ar1.failed()) {
-        log.error("Failed to get database connection", ar1.cause());
-        endHandler.handle(Future.failedFuture(ar1.cause()));
-        return;
-      }
-      SqlConnection connection = ar1.result();
-      connection.prepare(sql, ar2 -> {
+    log.info("Attempting stream get by filter: {}", sql);
+    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+      Promise<Void> promise = Promise.promise();
+      transaction.prepare(sql, ar2 -> {
         if (ar2.failed()) {
           log.error("Failed to prepare query", ar2.cause());
           endHandler.handle(Future.failedFuture(ar2.cause()));
           return;
         }
         PreparedStatement pq = ar2.result();
-        Transaction tx = connection.begin();
         RowStream<Row> stream = pq.createStream(limit, Tuple.tuple());
         stream
           .handler(row -> entityHandler.handle(toEntity(row)))
           .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
-          .endHandler(x -> {
-            tx.commit();
+          .endHandler(e -> { 
             endHandler.handle(Future.succeededFuture());
+            promise.complete();
           });
       });
+      return promise.future();
     });
   }
 

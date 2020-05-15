@@ -46,7 +46,7 @@ public class DaoUtil {
     "SELECT * FROM (TABLE cte %s OFFSET %s LIMIT %s) sub " +
     "RIGHT JOIN (SELECT count(*) FROM cte) c(total_count) ON true;";
 
-  public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %s (%s) VALUES (%s);";
+  public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %1$s (%2$s) VALUES (%3$s) ON CONFLICT (id) DO UPDATE SET (%2$s) = (%3$s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
   public static final String DELETE_BY_ID_SQL_TEMPLATE = "DELETE FROM %s WHERE id = '%s';";
   public static final String DELETE_BY_QUERY_SQL_TEMPLATE = "DELETE FROM %s %s;";

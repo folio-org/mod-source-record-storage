@@ -1,7 +1,8 @@
 package org.folio.dao;
 
 import static org.folio.dao.util.DaoUtil.COMMA;
-import static org.folio.dao.util.DaoUtil.DELETE_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.DELETE_BY_ID_SQL_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.DELETE_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_ID_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
@@ -59,7 +60,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
       : toEmptyCollection(resultSet));
   }
 
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> handler, Handler<AsyncResult<Void>> endHandler) {
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
@@ -75,7 +76,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
         PreparedStatement pq = ar2.result();
         RowStream<Row> stream = pq.createStream(limit, Tuple.tuple());
         stream
-          .handler(row -> handler.handle(toEntity(row)))
+          .handler(row -> entityHandler.handle(toEntity(row)))
           .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
           .endHandler(e -> { 
             endHandler.handle(Future.succeededFuture());
@@ -131,8 +132,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     String id = getId(entity);
     String table = getTableName();
     String columns = getColumns();
-    String values = getValuesTemplate(columns);
-    String sqlTemplate = String.format(UPDATE_SQL_TEMPLATE, table, columns, values, id);
+    String valuesTemplate = getValuesTemplate(columns);
+    String sqlTemplate = String.format(UPDATE_SQL_TEMPLATE, table, columns, valuesTemplate, id);
     log.info("Attempting update: {}", sqlTemplate);
     postgresClientFactory.getClient(tenantId)
       .preparedQuery(sqlTemplate)
@@ -153,38 +154,46 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   public Future<Boolean> delete(String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(DELETE_SQL_TEMPLATE, getTableName(), id);
-    log.info("Attempting delete: {}", sql);
+    String sql = String.format(DELETE_BY_ID_SQL_TEMPLATE, getTableName(), id);
+    log.info("Attempting delete by id: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  public Future<Integer> delete(Q query, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.toWhereClause());
+    log.info("Attempting delete by query: {}", sql);
+    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    return promise.future().map(updateResult -> updateResult.rowCount());
   }
 
   /**
    * Prepare list of tuples for multi-row INSERT and UPDATE query values
    * 
-   * @param entities              list of Entities for extracting values for params
+   * @param entities              list of entities for extracting values for SQL template parameters
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
-   * @return {@link List} of {@link Tuple} params
+   * @return list of tuple as sql template parameters
    */
   protected List<Tuple> toTuples(List<E> entities, boolean generateIdIfNotExists) {
     return entities.stream().map(entity -> toTuple(entity, generateIdIfNotExists)).collect(Collectors.toList());
   }
 
   /**
-   * Convert {@link RowSet} into Entity
+   * Convert {@link RowSet} into entity
    * 
    * @param rowSet {@link RowSet} query results
-   * @return optional Entity
+   * @return optional entity
    */
   protected Optional<E> toEntity(RowSet<Row> rowSet)  {
     return rowSet.rowCount() > 0 ? Optional.of(toEntity(rowSet.iterator().next())) : Optional.empty();
   }
 
   /**
-   * Prepare values list for INSERT and UPDATE queries
+   * Prepare values template for INSERT and UPDATE queries
    * 
    * @param columns comma seperated list of column names
-   * @return comma seperated list of question marks matching number of columns
+   * @return comma seperated list of numbered template tokens
    */
   protected String getValuesTemplate(String columns) {
     return IntStream.range(1, columns.split(COMMA).length + 1)
@@ -194,11 +203,11 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   }
 
   /**
-   * Submit SQL query
+   * Submit SQL select query which returns result mapping to an entity
    * 
    * @param sql      SQL query
    * @param tenantId tenant id
-   * @return future of optional Entity
+   * @return future of optional entity
    */
   protected Future<Optional<E>> select(String sql, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
@@ -207,9 +216,9 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   }
 
   /**
-   * Post save processing of Entity
+   * Post save processing of entity
    * 
-   * @param entity saved Entity
+   * @param entity saved entity
    * @return entity after post save processing
    */
   protected E postSave(E entity) {
@@ -217,9 +226,9 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   }
 
   /**
-   * Post update processing of Entity
+   * Post update processing of entity
    * 
-   * @param entity updated Entity
+   * @param entity updated entity
    * @return entity after post update processing
    */
   protected E postUpdate(E entity) {
@@ -227,21 +236,21 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   }
 
   /**
-   * Post save processing of list of Entities
+   * Post save processing of list of entities. Do nothing by default.
    * 
-   * @param entities saved list of Entities
+   * @param entities saved list of entities
    * @return entity after post save processing
    */
   protected List<E> postSave(List<E> entities) {
-    return entities.stream().map(this::postSave).collect(Collectors.toList());
+    return entities;
   }
 
   /**
-   * Prepare tuple for INSERT and UPDATE query values. Must be in same order as columns.
+   * Prepare {@link Tuple} for INSERT and UPDATE query values. Must be in same order as columns.
    * 
-   * @param entity                Entity for extracting values for params
+   * @param entity                entity for extracting values for SQL template parameters
    * @param generateIdIfNotExists flag indicating whether to generate UUID for id
-   * @return {@link Tuple} tuple
+   * @return tuple for sql template paramters
    */
   protected abstract Tuple toTuple(E entity, boolean generateIdIfNotExists);
 
@@ -264,8 +273,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   /**
    * Convert {@link Row} into Entity
    * 
-   * @param result {@link Row} query result row
-   * @return Entity
+   * @param result query result row
+   * @return entity mapped from row
    */
   protected abstract E toEntity(Row row);
 

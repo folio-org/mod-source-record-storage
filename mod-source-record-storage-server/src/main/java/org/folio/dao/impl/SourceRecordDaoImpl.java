@@ -20,25 +20,18 @@ import static org.folio.dao.util.DaoUtil.executeInTransaction;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.folio.dao.LBRecordDao;
-import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.RawRecordDao;
 import org.folio.dao.SourceRecordDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.SourceRecordContent;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecord.RecordType;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
@@ -46,7 +39,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -64,8 +56,16 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRecordDaoImpl.class);
 
-  private static final String SOURCE_RECORD_COLUMNS = String.join(COMMA, ID_COLUMN_NAME, SNAPSHOT_ID_COLUMN_NAME, ORDER_IN_FILE_COLUMN_NAME, RECORD_TYPE_COLUMN_NAME,
-    CREATED_BY_USER_ID_COLUMN_NAME, CREATED_DATE_COLUMN_NAME, UPDATED_BY_USER_ID_COLUMN_NAME, UPDATED_DATE_COLUMN_NAME);
+  private static final String SOURCE_RECORD_COLUMNS = String.join(COMMA,
+    ID_COLUMN_NAME,
+    SNAPSHOT_ID_COLUMN_NAME,
+    ORDER_IN_FILE_COLUMN_NAME,
+    RECORD_TYPE_COLUMN_NAME,
+    CREATED_BY_USER_ID_COLUMN_NAME,
+    CREATED_DATE_COLUMN_NAME,
+    UPDATED_BY_USER_ID_COLUMN_NAME,
+    UPDATED_DATE_COLUMN_NAME
+  );
 
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id('%s') as records;";
   private static final String GET_SOURCE_MARC_RECORD_BY_ID_ALT_TEMPLATE = "SELECT * FROM get_source_marc_record_by_id_alt('%s') as records;";
@@ -81,15 +81,6 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   @Autowired
   private PostgresClientFactory postgresClientFactory;
-
-  @Autowired
-  private LBRecordDao recordDao;
-
-  @Autowired
-  private RawRecordDao rawRecordDao;
-
-  @Autowired
-  private ParsedRecordDao parsedRecordDao;
 
   @Override
   public Future<Optional<SourceRecord>> getSourceMarcRecordById(String id, String tenantId) {
@@ -132,36 +123,8 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id, String tenantId) {
-    return recordDao.getById(id, tenantId)
-      .map(this::toSourceRecord)
-      .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
-  }
-
-  @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId, String tenantId) {
-    return recordDao.getByMatchedId(matchedId, tenantId)
-      .map(this::toSourceRecord)
-      .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
-  }
-
-  @Override
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId) {
-    return recordDao.getByInstanceId(instanceId, tenantId)
-      .map(this::toSourceRecord)
-      .compose(sourceRecord -> lookupContent(content, tenantId, sourceRecord));
-  }
-
-  @Override
-  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
-      Integer limit, String tenantId) {
-    return recordDao.getByQuery(query, offset, limit, tenantId)
-      .compose(recordCollection -> lookupContent(content, tenantId, recordCollection));
-  }
-
-  @Override
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
-      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler) {
+      Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.toWhereClause();
     String orderBy = query.toOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
@@ -196,6 +159,14 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       });
       return promise.future();
     });
+  }
+
+  public SourceRecord toSourceRecord(Row row) {
+    return toMinimumSourceRecord(row)
+      .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
+      .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME))
+      .withRecordType(RecordType.fromValue(row.getString(RECORD_TYPE_COLUMN_NAME)))
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
   private Future<Optional<SourceRecord>> selectById(String template, String id, String tenantId) {
@@ -247,8 +218,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     if (Objects.nonNull(jsonb)) {
       JsonObject json = (JsonObject) jsonb;
       String content = json.getString(CONTENT_COLUMN_NAME);
-      parsedRecord
-        .withId(json.getString(ID_COLUMN_NAME))
+      parsedRecord.withId(json.getString(ID_COLUMN_NAME))
         .withContent(content);
       try {
         String formattedContent = MarcUtil.marcJsonToTxtMarc(content);
@@ -261,100 +231,11 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
       .withParsedRecord(parsedRecord);
   }
 
-  private SourceRecord toSourceRecord(Row row) {
-    return toMinimumSourceRecord(row)
-      .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
-      .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME))
-      .withRecordType(RecordType.fromValue(row.getString(RECORD_TYPE_COLUMN_NAME)))
-      .withMetadata(DaoUtil.metadataFromRow(row, new String[] {
-        CREATED_BY_USER_ID_COLUMN_NAME,
-        CREATED_DATE_COLUMN_NAME,
-        UPDATED_BY_USER_ID_COLUMN_NAME,
-        UPDATED_DATE_COLUMN_NAME
-      }));
-  }
-
   private SourceRecord toMinimumSourceRecord(Row row) {
     SourceRecord sourceRecord = new SourceRecord();
     UUID id = row.getUUID(ID_COLUMN_NAME);
     if (Objects.nonNull(id)) {
       sourceRecord.withRecordId(id.toString());
-    }
-    return sourceRecord;
-  }
-
-  private Optional<SourceRecord> toSourceRecord(Optional<Record> record) {
-    if (record.isPresent()) {
-      return Optional.of(toSourceRecord(record.get()));
-    }
-    return Optional.empty();
-  }
-
-  private SourceRecord toSourceRecord(Record record) {
-    return new SourceRecord()
-      .withRecordId(record.getId())
-      .withSnapshotId(record.getSnapshotId())
-      .withOrder(record.getOrder())
-      // NOTE: not ideal to have multiple record type enums
-      .withRecordType(RecordType.fromValue(record.getRecordType().toString()))
-      .withMetadata(record.getMetadata());
-  }
-
-  private Future<SourceRecordCollection> lookupContent(SourceRecordContent content, String tenantId, RecordCollection recordCollection) {
-    Promise<SourceRecordCollection> promise = Promise.promise();
-    CompositeFuture.all(
-      recordCollection.getRecords().stream()
-        .map(this::toSourceRecord)
-        .map(sr -> lookupContent(content, tenantId, sr))
-        .collect(Collectors.toList())
-    ).onComplete(lookup -> {
-      List<SourceRecord> sourceRecords = lookup.result().list();
-      promise.complete(new SourceRecordCollection()
-        .withSourceRecords(sourceRecords)
-        .withTotalRecords(recordCollection.getTotalRecords()));
-    });
-    return promise.future();
-  }
-
-  private Future<Optional<SourceRecord>> lookupContent(SourceRecordContent content, String tenantId, Optional<SourceRecord> sourceRecord) {
-    if (sourceRecord.isPresent()) {
-      return lookupContent(content, tenantId, sourceRecord.get()).map(Optional::of);
-    }
-    return Future.factory.succeededFuture(sourceRecord);
-  }
-
-  private Future<SourceRecord> lookupContent(SourceRecordContent content, String tenantId, SourceRecord sourceRecord) {
-    String id = sourceRecord.getRecordId();
-    Promise<SourceRecord> promise = Promise.promise();
-    switch(content) {
-      case RAW_AND_PARSED_RECORD:
-        CompositeFuture.all(
-          rawRecordDao.getById(id, tenantId).map(rawRecord -> addRawRecordContent(sourceRecord, rawRecord)),
-          parsedRecordDao.getById(id, tenantId).map(parsedRecord -> addParsedRecordContent(sourceRecord, parsedRecord))
-        ).onComplete(lookup -> promise.complete(sourceRecord));
-        break;
-      case PARSED_RECORD_ONLY:
-        parsedRecordDao.getById(id, tenantId).map(parsedRecord -> addParsedRecordContent(sourceRecord, parsedRecord))
-          .onComplete(lookup -> promise.complete(sourceRecord));
-        break;
-      case RAW_RECORD_ONLY:
-        rawRecordDao.getById(id, tenantId).map(rawRecord -> addRawRecordContent(sourceRecord, rawRecord))
-          .onComplete(lookup -> promise.complete(sourceRecord));
-        break;
-    }
-    return promise.future();
-  }
-
-  private SourceRecord addRawRecordContent(SourceRecord sourceRecord, Optional<RawRecord> rawRecord) {
-    if (rawRecord.isPresent()) {
-      sourceRecord.withRawRecord(rawRecord.get());
-    }
-    return sourceRecord;
-  }
-
-  private SourceRecord addParsedRecordContent(SourceRecord sourceRecord, Optional<ParsedRecord> parsedRecord) {
-    if (parsedRecord.isPresent()) {
-      sourceRecord.withParsedRecord(parsedRecord.get());
     }
     return sourceRecord;
   }

@@ -7,6 +7,7 @@ import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -93,6 +94,11 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   @Override
   protected ParsedRecord postUpdate(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
+  }
+
+  @Override
+  protected List<ParsedRecord> postSave(List<ParsedRecord> parsedRecords) {
+    return parsedRecords.stream().map(this::postSave).collect(Collectors.toList());
   }
 
   private ParsedRecord formatContent(ParsedRecord parsedRecord) {

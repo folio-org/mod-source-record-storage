@@ -14,6 +14,8 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowStream;
 
 /**
  * Data access object for {@link SourceRecord}
@@ -23,7 +25,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record}
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -32,7 +34,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record} with latest generation
    * 
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -41,7 +43,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
    * 
-   * @param id       Record instance id
+   * @param id       record instance id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -50,7 +52,7 @@ public interface SourceRecordDao {
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record} with latest generation
    * 
-   * @param id       Record instance id
+   * @param id       record instance id
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
@@ -101,60 +103,25 @@ public interface SourceRecordDao {
   public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till, Integer offset, Integer limit, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by id of {@link Record}
-   * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param id       Record id
-   * @param tenantId tenant id
-   * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
-   */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content, String id, String tenantId);
-
-  /**
-   * Searches for {@link SourceRecord} by matched id of {@link Record}
-   * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param id       Record id
-   * @param tenantId tenant id
-   * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
-   */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content, String matchedId, String tenantId);
-
-  /**
-   * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
-   * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param id       Record id
-   * @param tenantId tenant id
-   * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
-   */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content, String instanceId, String tenantId);
-
-  /**
-   * Searches for collection of {@link SourceRecord} by {@link RecordQuery}
-   * 
-   * @param content  specific {@link SourceRecordContent}
-   * @param query   {@link RecordQuery} to prepare WHERE clause
-   * @param offset   starting index in a list of results
-   * @param limit    maximum number of results to return
-   * @param tenantId tenant id
-   * @return future with {@link SourceRecordCollection} with specified {@link SourceRecordContent}
-   */
-  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset,
-      Integer limit, String tenantId);
-
-  /**
    * Searches for collection of {@link SourceRecord} by {@link RecordQuery} and streams response
    * 
    * @param content    specific {@link SourceRecordContent}
-   * @param query     {@link RecordQuery} to prepare WHERE clause
+   * @param query      {@link RecordQuery} to prepare WHERE clause
    * @param offset     starting index in a list of results
    * @param limit      maximum number of results to return
    * @param tenantId   tenant id
-   * @param handler    handler for each {@link SourceRecord}
+   * @param handler    handler for the {@link RowStream}
    * @param endHandler handler for when stream is finished
    */
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
-      Handler<SourceRecord> handler, Handler<AsyncResult<Void>> endHandler);
+      Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler);
+
+  /**
+   * Map {@link Row} to {@link SourceRecord} by available properties from {@link Record}
+   * 
+   * @param row row of result set
+   * @return mapped source record
+   */
+  public SourceRecord toSourceRecord(Row row);
 
 }

@@ -1,7 +1,8 @@
-package org.folio.dao.impl;
+package org.folio;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -16,11 +17,8 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.junit.BeforeClass;
 
-import io.vertx.ext.unit.TestContext;
-
-public abstract class DaoTestMocks {
+public class TestMocks {
 
   private static final String SOURCE_RECORDS_FOLDER_PATH = "src/test/resources/mock/sourceRecords";
 
@@ -38,13 +36,12 @@ public abstract class DaoTestMocks {
 
   private static List<ErrorRecord> errorRecords;
 
-  @BeforeClass
-  public static void setUpMocks(final TestContext context) throws Exception {
+  static { 
     List<SourceRecord> sourceRecords = readSourceRecords();
     Collections.sort(sourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
-    rawRecords = sourceRecords.stream().map(DaoTestMocks::toRawRecord).collect(Collectors.toList());
+    rawRecords = sourceRecords.stream().map(TestMocks::toRawRecord).collect(Collectors.toList());
     Collections.sort(rawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
-    parsedRecords = sourceRecords.stream().map(DaoTestMocks::toParsedRecord).collect(Collectors.toList());
+    parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).collect(Collectors.toList());
     Collections.sort(parsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
     errorRecords = readErrorRecords(sourceRecords);
     Collections.sort(errorRecords, (er1, er2) -> er1.getId().compareTo(er2.getId()));
@@ -54,63 +51,63 @@ public abstract class DaoTestMocks {
     Collections.sort(snapshots, (s1, s2) -> s1.getJobExecutionId().compareTo(s2.getJobExecutionId()));
   }
 
-  protected List<Snapshot> getSnapshots() {
-    return snapshots;
+  public static List<Snapshot> getSnapshots() {
+    return new ArrayList<>(snapshots);
   }
 
-  protected Snapshot getSnapshot(int index) {
+  public static Snapshot getSnapshot(int index) {
     return snapshots.get(index);
   }
 
-  protected List<Record> getRecords() {
-    return records;
+  public static List<Record> getRecords() {
+    return new ArrayList<>(records);
   }
 
-  protected Record getRecord(int index) {
+  public static Record getRecord(int index) {
     return records.get(index);
   }
 
-  protected List<ErrorRecord> getErrorRecords() {
-    return errorRecords;
+  public static List<ErrorRecord> getErrorRecords() {
+    return new ArrayList<>(errorRecords);
   }
 
-  protected ErrorRecord getErrorRecord(int index) {
+  public static ErrorRecord getErrorRecord(int index) {
     return errorRecords.get(index);
   }
 
-  protected List<RawRecord> getRawRecords() {
-    return rawRecords;
+  public static List<RawRecord> getRawRecords() {
+    return new ArrayList<>(rawRecords);
   }
 
-  protected RawRecord getRawRecord(int index) {
+  public static RawRecord getRawRecord(int index) {
     return rawRecords.get(index);
   }
 
-  protected List<ParsedRecord> getParsedRecords() {
-    return parsedRecords;
+  public static List<ParsedRecord> getParsedRecords() {
+    return new ArrayList<>(parsedRecords);
   }
 
-  protected ParsedRecord getParsedRecord(int index) {
+  public static ParsedRecord getParsedRecord(int index) {
     return parsedRecords.get(index);
   }
 
-  protected Optional<Snapshot> getSnapshot(String id) {
+  public static Optional<Snapshot> getSnapshot(String id) {
     return snapshots.stream().filter(s -> s.getJobExecutionId().equals(id)).findAny();
   }
 
-  protected Optional<Record> getRecord(String id) {
+  public static Optional<Record> getRecord(String id) {
     return records.stream().filter(r -> r.getId().equals(id)).findAny();
   }
 
-  protected Optional<ErrorRecord> getErrorRecord(String id) {
+  public static Optional<ErrorRecord> getErrorRecord(String id) {
     return errorRecords.stream().filter(er -> er.getId().equals(id)).findAny();
   }
 
-  protected Optional<RawRecord> getRawRecord(String id) {
+  public static Optional<RawRecord> getRawRecord(String id) {
     return rawRecords.stream().filter(rr -> rr.getId().equals(id)).findAny();
   }
 
-  protected Optional<ParsedRecord> getParsedRecord(String id) {
+  public static Optional<ParsedRecord> getParsedRecord(String id) {
     return parsedRecords.stream().filter(pr -> pr.getId().equals(id)).findAny();
   }
 
@@ -133,7 +130,7 @@ public abstract class DaoTestMocks {
     File sourceRecordsDirectory = new File(SOURCE_RECORDS_FOLDER_PATH);
     String[] extensions = new String[] { "json" };
     return FileUtils.listFiles(sourceRecordsDirectory, extensions, false).stream()
-      .map(DaoTestMocks::readSourceRecord)
+      .map(TestMocks::readSourceRecord)
       .filter(sr -> sr.isPresent())
       .map(sr -> sr.get())
       .collect(Collectors.toList());
@@ -148,10 +145,9 @@ public abstract class DaoTestMocks {
     return Optional.empty();
   }
 
-
   private static List<Snapshot> readSnapshots(List<SourceRecord> sourceRecords) {
     return sourceRecords.stream()
-      .map(DaoTestMocks::readSnapshot)
+      .map(TestMocks::readSnapshot)
       .filter(s -> s.isPresent())
       .map(s -> s.get())
       .distinct()
@@ -173,7 +169,7 @@ public abstract class DaoTestMocks {
 
   private static List<Record> readRecords(List<SourceRecord> sourceRecords) {
     return sourceRecords.stream()
-      .map(DaoTestMocks::readRecord)
+      .map(TestMocks::readRecord)
       .filter(r -> r.isPresent())
       .map(r -> r.get())
       .distinct()
@@ -207,7 +203,7 @@ public abstract class DaoTestMocks {
 
   private static List<ErrorRecord> readErrorRecords(List<SourceRecord> sourceRecords) {
     return sourceRecords.stream()
-      .map(DaoTestMocks::readErrorRecord)
+      .map(TestMocks::readErrorRecord)
       .filter(er -> er.isPresent())
       .map(er -> er.get())
       .distinct()

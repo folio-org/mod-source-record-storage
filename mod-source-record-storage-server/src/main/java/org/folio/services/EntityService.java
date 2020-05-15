@@ -1,4 +1,4 @@
-package org.folio.dao;
+package org.folio.services;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,9 +10,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
 /**
- * Data access object interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
+ * Entity service interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
  */
-public interface EntityDao<E, C, Q extends EntityQuery> {
+public interface EntityService<E, C, Q extends EntityQuery> {
 
   /**
    * Searches for entity by id
@@ -26,7 +26,7 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery}
    * 
-   * @param query    {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
+   * @param query    query dto which prepares WHERE AND ORDER BY clause for SQL query
    * @param offset   starting index in a list of results
    * @param limit    maximum number of results to return
    * @param tenantId tenant id
@@ -37,14 +37,15 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Searches for entities by {@link EntityQuery} and stream results
    * 
-   * @param query         {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
+   * @param query         query DTO which prepares WHERE AND ORDER BY clause for SQL query
    * @param offset        starting index in a list of results
    * @param limit         maximum number of results to return
    * @param tenantId      tenant id
-   * @param entityHandler handler for stream of Entities
+   * @param entityHandler handler for entity stream
    * @param endHandler    handler for when stream is finished
    */
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler);
+  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler,
+      Handler<AsyncResult<Void>> endHandler);
 
   /**
    * Saves entity to database
@@ -58,7 +59,7 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   /**
    * Saves batch of entities to database
    * 
-   * @param entities batch of entities to save
+   * @param entities list of entities to save
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
@@ -74,11 +75,11 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<E> update(E entity, String tenantId);
 
   /**
-   * Deletes entity with id from database
+   * Deletes entity from database
    * 
    * @param id       entity id
    * @param tenantId tenant id
-   * @return future with true if succeeded, else false
+   * @return future with true if succeeded
    */
   public Future<Boolean> delete(String id, String tenantId);
 
@@ -90,27 +91,5 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
    * @return future with number of entities deleted
    */
   public Future<Integer> delete(Q query, String tenantId);
-
-  /**
-   * Get table name for DAO
-   * 
-   * @return database table name for entity
-   */
-  public String getTableName();
-
-  /**
-   * Prepare columns list for SELECT, INSERT and UPDATE queries
-   * 
-   * @return comma seperated list of table column names
-   */
-  public String getColumns();
-
-  /**
-   * Get entity id
-   * 
-   * @param entity entity to retrieve id from
-   * @return id of given entity
-   */
-  public String getId(E entity);
 
 }

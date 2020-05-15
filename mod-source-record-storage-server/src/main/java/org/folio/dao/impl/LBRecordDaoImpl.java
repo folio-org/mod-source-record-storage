@@ -197,12 +197,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
       record.setAdditionalInfo(additionalInfo);
     }
-    return record.withMetadata(DaoUtil.metadataFromRow(row, new String[] {
-      CREATED_BY_USER_ID_COLUMN_NAME,
-      CREATED_DATE_COLUMN_NAME,
-      UPDATED_BY_USER_ID_COLUMN_NAME,
-      UPDATED_DATE_COLUMN_NAME
-    }));
+    return record.withMetadata(DaoUtil.metadataFromRow(row));
   }
 
 }

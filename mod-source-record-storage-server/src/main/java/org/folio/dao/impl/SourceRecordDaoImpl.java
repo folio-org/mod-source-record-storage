@@ -139,23 +139,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
         }
         PreparedStatement pq = ar2.result();
         RowStream<Row> stream = pq.createStream(limit, Tuple.tuple());
-        stream
-          .handler(row -> {
-            stream.pause();
-            lookupContent(content, tenantId, toSourceRecord(row)).onComplete(ar3 -> {
-              if (ar3.failed()) {
-                endHandler.handle(Future.failedFuture(ar3.cause()));
-                return;
-              }
-              handler.handle(ar3.result());
-              stream.resume();
-            });
-          })
-          .exceptionHandler(e -> endHandler.handle(Future.failedFuture(e)))
-          .endHandler(e -> { 
-            endHandler.handle(Future.succeededFuture());
-            promise.complete();
-          });
+        handler.handle(stream.endHandler(x -> endHandler.handle(Future.succeededFuture())));
       });
       return promise.future();
     });

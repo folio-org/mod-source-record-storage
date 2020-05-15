@@ -20,7 +20,6 @@ import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.folio.rest.jaxrs.model.Metadata;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;

@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
@@ -13,13 +14,22 @@ import org.folio.dao.query.EntityQuery;
 import org.folio.dao.query.OrderBy;
 import org.folio.rest.jaxrs.model.Metadata;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Transaction;
 
 /**
  * Utility class for hosting DAO constants
  */
 public class DaoUtil {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DaoUtil.class);
 
   // NOTE: wherever this is used should be converted to sqlTemplate and Tuple to allow typing sql build
   public static final FastDateFormat DATE_FORMATTER = DateFormatUtils.ISO_8601_EXTENDED_DATETIME_TIME_ZONE_FORMAT;
@@ -113,6 +123,38 @@ public class DaoUtil {
 
   public static boolean equals(EntityQuery entityQuery, Object other) {
     return Objects.nonNull(other) && DaoUtil.equals(entityQuery.getSort(), ((EntityQuery) other).getSort());
+  }
+
+  /**
+   * Executes passed action in transaction
+   *
+   * @param client {@link PgPool}
+   * @param action action that needs to be executed in transaction
+   * @param <T> result type returned from the action
+   * @return future with action result if succeeded or failed future
+   */
+  public static <T> Future<T> executeInTransaction(PgPool client,
+      Function<Transaction, Future<T>> action) {
+    Promise<T> promise = Promise.promise();
+    client.begin(begin -> {
+      if (begin.succeeded()) {
+        Transaction transaction = begin.result();
+        action.apply(transaction).onComplete(result -> {
+          if (result.succeeded()) {
+            transaction.commit(commit -> promise.complete(result.result()));
+            } else {
+              transaction.rollback(r -> {
+                LOG.error("Rollback transaction", result.cause());
+                promise.fail(result.cause());
+              });
+            }
+        });
+      } else {
+        LOG.error("Failed to begin transaction", begin.cause());
+        promise.fail(begin.cause());
+      }
+    });
+    return promise.future();
   }
 
 }

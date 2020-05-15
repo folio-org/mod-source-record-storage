@@ -165,7 +165,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.toWhereClause());
     log.info("Attempting delete by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(updateResult -> updateResult.rowCount());
+    return promise.future().map(this::toRowCount);
   }
 
   /**
@@ -277,5 +277,9 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
    * @return entity mapped from row
    */
   protected abstract E toEntity(Row row);
+
+  private Integer toRowCount(RowSet<Row> rowSet) {
+    return rowSet.rowCount();
+  }
 
 }

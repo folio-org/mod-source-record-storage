@@ -2,6 +2,10 @@ package org.folio.dao.util;
 
 import static org.folio.dao.util.DaoUtil.COMMA;
 
+/**
+ * Simple column builder. Produces comma delimited list of column names.
+ * e.g. id,content,description
+ */
 public class ColumnBuilder {
 
   private final StringBuilder columns;

@@ -6,6 +6,7 @@
 * [MODSOURCE-130](https://issues.folio.org/browse/MODSOURCE-130) Standard table creation using Liquibase
 * [MODSOURCE-102](https://issues.folio.org/browse/MODSOURCE-102) Add Data Access Objects for standard tables
 * [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
+* [MODSOURCE-101](https://issues.folio.org/browse/MODSOURCE-101) Add Services for standard table DAOs
 
 ## 2020-04-23 v3.1.4
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table

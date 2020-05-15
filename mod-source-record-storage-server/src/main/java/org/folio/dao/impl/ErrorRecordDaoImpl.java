@@ -1,5 +1,6 @@
 package org.folio.dao.impl;
 
+import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ERROR_RECORDS_TABLE_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
@@ -12,13 +13,14 @@ import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.query.ErrorRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
+import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ErrorRecordCollection;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.sql.ResultSet;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="error_records_lb">
 //   <column name="id" type="uuid">
@@ -43,11 +45,7 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
 
   @Override
   public String getColumns() {
-    return ColumnBuilder
-      .of(ID_COLUMN_NAME)
-      .append(CONTENT_COLUMN_NAME)
-      .append(DESCRIPTION_COLUMN_NAME)
-      .build();
+    return ColumnBuilder.of(ID_COLUMN_NAME).append(CONTENT_COLUMN_NAME).append(DESCRIPTION_COLUMN_NAME).build();
   }
 
   @Override
@@ -56,42 +54,35 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
   }
 
   @Override
-  protected JsonArray toParams(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
+  protected Tuple toTuple(ErrorRecord errorRecord, boolean generateIdIfNotExists) {
     // NOTE: ignoring generateIdIfNotExists, id is required
-    // error_records id is foreign key with records_lb
-    return new JsonArray()
-      .add(errorRecord.getId())
-      .add(errorRecord.getContent())
-      .add(errorRecord.getDescription());
+    // raw_records id is foreign key with records_lb
+    return TupleWrapper.of()
+      .addUUID(errorRecord.getId())
+      .addValue(errorRecord.getContent())
+      .addString(errorRecord.getDescription()).get();
   }
 
   @Override
-  protected ErrorRecordCollection toCollection(ResultSet resultSet) {
-    return toEmptyCollection(resultSet)
-      .withErrorRecords(resultSet.getRows().stream().map(this::toEntity).collect(Collectors.toList()));
+  protected ErrorRecordCollection toCollection(RowSet<Row> rowSet) {
+    return toEmptyCollection(rowSet)
+      .withErrorRecords(stream(rowSet.spliterator(), false)
+        .map(this::toEntity).collect(Collectors.toList()));
   }
 
   @Override
-  protected ErrorRecordCollection toEmptyCollection(ResultSet resultSet) {
+  protected ErrorRecordCollection toEmptyCollection(RowSet<Row> rowSet) {
     return new ErrorRecordCollection()
       .withErrorRecords(Collections.emptyList())
-      .withTotalRecords(DaoUtil.getTotalRecords(resultSet));
+      .withTotalRecords(DaoUtil.getTotalRecords(rowSet));
   }
 
   @Override
-  protected ErrorRecord toEntity(JsonObject result) {
+  protected ErrorRecord toEntity(Row row) {
     return new ErrorRecord()
-      .withId(result.getString(ID_COLUMN_NAME))
-      .withContent(result.getString(CONTENT_COLUMN_NAME))
-      .withDescription(result.getString(DESCRIPTION_COLUMN_NAME));
-  }
-
-  @Override
-  protected ErrorRecord toEntity(JsonArray row) {
-    return new ErrorRecord()
-      .withId(row.getString(0))
-      .withContent(row.getString(1))
-      .withDescription(row.getString(2));
+      .withId(row.getUUID(ID_COLUMN_NAME).toString())
+      .withContent(row.getString(CONTENT_COLUMN_NAME))
+      .withDescription(row.getString(DESCRIPTION_COLUMN_NAME));
   }
 
 }

@@ -1,9 +1,8 @@
 package org.folio.dao.impl;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.folio.RawRecordMocks;
+import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.RawRecordDao;
@@ -12,14 +11,13 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RawRecordCollection;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.runner.RunWith;
-import org.springframework.beans.BeanUtils;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao> {
+public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao, RawRecordMocks> {
 
   LBSnapshotDao snapshotDao;
 
@@ -38,11 +36,11 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   @Override
   public void createDependentEntities(TestContext context) throws IllegalAccessException {
     Async async = context.async();
-    snapshotDao.save(getSnapshots(), TENANT_ID).setHandler(saveSnapshots -> {
+    snapshotDao.save(TestMocks.getSnapshots(), TENANT_ID).onComplete(saveSnapshots -> {
       if (saveSnapshots.failed()) {
         context.fail(saveSnapshots.cause());
       }
-      recordDao.save(getRecords(), TENANT_ID).setHandler(saveRecords -> {
+      recordDao.save(TestMocks.getRecords(), TENANT_ID).onComplete(saveRecords -> {
         if (saveRecords.failed()) {
           context.fail(saveRecords.cause());
         }
@@ -77,94 +75,8 @@ public class RawRecordDaoTest extends AbstractEntityDaoTest<RawRecord, RawRecord
   }
 
   @Override
-  public RawRecordQuery getNoopQuery() {
-    return new RawRecordQuery();
-  }
-
-  @Override
-  public RawRecordQuery getArbitruaryQuery() {
-    RawRecordQuery snapshotQuery = new RawRecordQuery();
-    // NOTE: no reasonable field to filter on
-    return snapshotQuery;
-  }
-
-  @Override
-  public RawRecordQuery getArbitruarySortedQuery() {
-    return (RawRecordQuery) getArbitruaryQuery()
-      .orderBy("id");
-  }
-
-  @Override
-  public RawRecord getMockEntity() {
-    return getRawRecord(0);
-  }
-
-  @Override
-  public RawRecord getInvalidMockEntity() {
-    return new RawRecord()
-      .withId(getRecord(0).getId());
-  }
-
-  @Override
-  public RawRecord getUpdatedMockEntity() {
-    return new RawRecord()
-      .withId(getMockEntity().getId())
-      .withContent(getMockEntity().getContent());
-  }
-
-  @Override
-  public List<RawRecord> getMockEntities() {
-    return getRawRecords();
-  }
-
-  @Override
-  public void compareEntities(TestContext context, RawRecord expected, RawRecord actual) {
-    context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
-  }
-
-  @Override
-  public void assertEmptyResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    context.assertTrue(actual.getRawRecords().isEmpty());
-  }
-
-  @Override
-  public void assertNoopQueryResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
-      .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
-  }
-
-  @Override
-  public void assertArbitruaryQueryResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
-      .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
-  }
-
-  @Override
-  public void assertArbitruarySortedQueryResults(TestContext context, RawRecordCollection actual) {
-    List<RawRecord> expected = getMockEntities();
-    context.assertEquals(new Integer(expected.size()), actual.getTotalRecords());
-    Collections.sort(expected, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
-    expected.forEach(expectedRawRecord -> context.assertTrue(actual.getRawRecords().stream()
-      .anyMatch(actualRawRecord -> actualRawRecord.getId().equals(expectedRawRecord.getId()))));
-  }
-
-  @Override
-  public RawRecordQuery getCompleteQuery() {
-    RawRecordQuery query = new RawRecordQuery();
-    BeanUtils.copyProperties(getRawRecord("0f0fe962-d502-4a4f-9e74-7732bec94ee8").get(), query);
-    return query;
-  }
-
-  @Override
-  public String getCompleteWhereClause() {
-    return "WHERE id = '0f0fe962-d502-4a4f-9e74-7732bec94ee8'";
+  public RawRecordMocks initMocks() {
+    return RawRecordMocks.mock();
   }
 
 }

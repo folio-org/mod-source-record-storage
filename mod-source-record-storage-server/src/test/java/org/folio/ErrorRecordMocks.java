@@ -27,14 +27,14 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
 
   @Override
   public ErrorRecordQuery getArbitruaryQuery() {
-    return (ErrorRecordQuery) ErrorRecordQuery.query().builder()
+    return ErrorRecordQuery.query().builder()
       .whereEqual("description", getMockEntity().getDescription())
       .query();
   }
 
   @Override
   public ErrorRecordQuery getArbitruarySortedQuery() {
-    return (ErrorRecordQuery) ErrorRecordQuery.query().builder()
+    return ErrorRecordQuery.query().builder()
       .whereEqual("description", getMockEntity().getDescription())
       .orderBy("description")
       .query();

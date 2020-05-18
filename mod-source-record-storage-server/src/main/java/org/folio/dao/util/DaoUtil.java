@@ -7,14 +7,9 @@ import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 
 import java.time.OffsetDateTime;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-
-import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
@@ -43,8 +38,8 @@ public class DaoUtil {
   public static final String GET_BY_WHERE_SQL_TEMPLATE = "SELECT %s FROM %s WHERE %s = '%s';";
   public static final String GET_BY_QUERY_SQL_TEMPLATE = "SELECT %s FROM %s %s %s;";
   public static final String GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE = "WITH cte AS (SELECT %s FROM %s %s) " +
-    "SELECT * FROM (TABLE cte %s OFFSET %s LIMIT %s) sub " +
-    "RIGHT JOIN (SELECT count(*) FROM cte) c(total_count) ON true;";
+                                                                    "SELECT * FROM (TABLE cte %s OFFSET %s LIMIT %s) sub " +
+                                                                    "RIGHT JOIN (SELECT count(*) FROM cte) c(total_count) ON true;";
 
   public static final String SAVE_SQL_TEMPLATE = "INSERT INTO %1$s (%2$s) VALUES (%3$s) ON CONFLICT (id) DO UPDATE SET (%2$s) = (%3$s);";
   public static final String UPDATE_SQL_TEMPLATE = "UPDATE %s SET (%s) = (%s) WHERE id = '%s';";
@@ -57,23 +52,14 @@ public class DaoUtil {
   public static final String PARSED_RECORDS_TABLE_NAME = "marc_records_lb";
   public static final String ERROR_RECORDS_TABLE_NAME = "error_records_lb";
 
-  public static final String ID_PROPERTY_NAME = "id";
-  public static final String CONTENT_PROPERTY_NAME = "content";
-
-  public static final String ID_COLUMN_NAME = ID_PROPERTY_NAME;
+  public static final String ID_COLUMN_NAME = "id";
   public static final String JSONB_COLUMN_NAME = "jsonb";
-  public static final String CONTENT_COLUMN_NAME = CONTENT_PROPERTY_NAME;
+  public static final String CONTENT_COLUMN_NAME = "content";
 
   public static final String TOTAL_COUNT_COLUMN_NAME = "total_count";
 
   public static final String COMMA = ",";
   public static final String VALUE_TEMPLATE_TEMPLATE = "$%s";
-
-  public static final String SINGLE_QUOTE = "'";
-  public static final String ESCAPED_SINGLE_QUOTE = "''";
-  public static final String NEW_LINE = "\n";
-
-  public static final Pattern BOOLEAN_PATTERN = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
 
   private DaoUtil() { }
 
@@ -126,27 +112,6 @@ public class DaoUtil {
     }
     // returning -1 to indicate unknown total count
     return -1; // this should not occur
-  }
-
-  /**
-   * Get basic content property to column map for raw and parsed record query preperation.
-   * 
-   * @return property to column map
-   */
-  public static Map<String, String> getBasicContentPropertyToColumnMap() {
-    Map<String, String> ptc = new HashMap<>();
-    ptc.put(ID_PROPERTY_NAME, ID_COLUMN_NAME);
-    ptc.put(CONTENT_PROPERTY_NAME, CONTENT_COLUMN_NAME);
-    return ptc;
-  }
-
-  /**
-   * Get immutable basic content property to column map.
-   * 
-   * @return immutable property to content map
-   */
-  public static Map<String, String> getImmutableContentPropertyToColumnMap() {
-    return ImmutableMap.copyOf(getBasicContentPropertyToColumnMap());
   }
 
   /**

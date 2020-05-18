@@ -29,14 +29,14 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
 
   @Override
   public SnapshotQuery getArbitruaryQuery() {
-    return (SnapshotQuery) SnapshotQuery.query().builder()
+    return SnapshotQuery.query().builder()
       .whereEqual("status", Snapshot.Status.NEW)
       .query();
   }
 
   @Override
   public SnapshotQuery getArbitruarySortedQuery() {
-    return (SnapshotQuery) SnapshotQuery.query().builder()
+    return SnapshotQuery.query().builder()
       .whereEqual("status", Snapshot.Status.NEW)
       .orderBy("status")
       .query();

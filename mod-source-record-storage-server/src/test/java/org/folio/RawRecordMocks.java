@@ -31,7 +31,7 @@ public class RawRecordMocks implements EntityMocks<RawRecord, RawRecordCollectio
 
   @Override
   public RawRecordQuery getArbitruarySortedQuery() {
-    return (RawRecordQuery) RawRecordQuery.query().builder()
+    return RawRecordQuery.query().builder()
       .orderBy("id")
       .query();
   }

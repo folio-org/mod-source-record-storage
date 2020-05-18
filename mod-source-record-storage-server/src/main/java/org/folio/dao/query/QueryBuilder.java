@@ -15,13 +15,14 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.query.OrderBy.Direction;
 
-/**
- * 
- */
-public class QueryBuilder {
+public class QueryBuilder<Q extends EntityQuery> {
 
   public static final String ORDER_BY_TEMPLATE = "ORDER BY %s";
   public static final String WHERE_TEMPLATE = "WHERE %s";
@@ -29,16 +30,22 @@ public class QueryBuilder {
   public static final String SPACE = " ";
   public static final String DOUBLE_SPACE = "  ";
 
-  private final EntityQuery query;
+  private final Q query;
 
   private final List<Where> filter;
 
   private final List<OrderBy> sort;
 
-  private QueryBuilder(EntityQuery query) {
-    this.query = query;
+  private final Metamodel metamodel;
+
+  private final LoadingCache<String, Optional<String>> columnCache = CacheBuilder.newBuilder()
+    .build(CacheLoader.from(this::getColumn));
+
+  public QueryBuilder(EntityQuery query) {
+    this.query = (Q) query;
     this.filter = new ArrayList<>();
     this.sort = new ArrayList<>();
+    this.metamodel = this.query.getClass().getAnnotation(Metamodel.class);
   }
 
   /**
@@ -57,7 +64,7 @@ public class QueryBuilder {
           whereClause.append(String.format("%s ", where.getOp().getToken()));
           break;
         default:
-          Optional<String> column = query.propertyColumnName(where.getProperty());
+          Optional<String> column = columnCache.getUnchecked(where.getProperty());
           if (column.isPresent()) {
             whereClause.append(String.format("%s %s %s ", column.get(),
               where.getOp().getToken(), getValue(where)));
@@ -81,7 +88,7 @@ public class QueryBuilder {
   public String buildOrderByClause() {
     StringBuilder oderByClause =  new StringBuilder();
     for (OrderBy orderBy : sort) {
-      Optional<String> column = query.propertyColumnName(orderBy.getProperty());
+      Optional<String> column = columnCache.getUnchecked(orderBy.getProperty());
       if (column.isPresent()) {
         if (oderByClause.length() > 0) {
           oderByClause
@@ -108,7 +115,7 @@ public class QueryBuilder {
    * @param property
    * @return {@link EntityQuery} to allow fluent use
    */
-  public QueryBuilder orderBy(String property) {
+  public QueryBuilder<Q> orderBy(String property) {
     sort.add(OrderBy.by(property));
     return this;
   }
@@ -120,77 +127,77 @@ public class QueryBuilder {
    * @param direction {@link Direction} of sort
    * @return {@link EntityQuery} to allow fluent use
    */
-  public QueryBuilder orderBy(String property, Direction direction) {
+  public QueryBuilder<Q> orderBy(String property, Direction direction) {
     sort.add(OrderBy.by(property, direction));
     return this;
   }
 
-  public QueryBuilder whereEqual(String property, Object value) {
+  public QueryBuilder<Q> whereEqual(String property, Object value) {
     filter.add(Where.equal(property, value));
     return this;
   }
 
-  public QueryBuilder whereGreaterThen(String property, Object value) {
+  public QueryBuilder<Q> whereGreaterThen(String property, Object value) {
     filter.add(Where.greaterThen(property, value));
     return this;
   }
 
-  public QueryBuilder whereLessThen(String property, Object value) {
+  public QueryBuilder<Q> whereLessThen(String property, Object value) {
     filter.add(Where.lessThen(property, value));
     return this;
   }
 
-  public QueryBuilder whereGreaterThenOrEqual(String property, Object value) {
+  public QueryBuilder<Q> whereGreaterThenOrEqual(String property, Object value) {
     filter.add(Where.greaterThenOrEqual(property, value));
     return this;
   }
 
-  public QueryBuilder whereLessThenOrEqual(String property, Object value) {
+  public QueryBuilder<Q> whereLessThenOrEqual(String property, Object value) {
     filter.add(Where.lessThenOrEqual(property, value));
     return this;
   }
 
-  public QueryBuilder whereNotEqual(String property, Object value) {
+  public QueryBuilder<Q> whereNotEqual(String property, Object value) {
     filter.add(Where.notEqual(property, value));
     return this;
   }
 
-  public QueryBuilder whereLike(String property, String value) {
+  public QueryBuilder<Q> whereLike(String property, String value) {
     filter.add(Where.like(property, value));
     return this;
   }
 
-  public <T> QueryBuilder whereBetween(String property, T from, T to) {
+  public <T> QueryBuilder<Q> whereBetween(String property, T from, T to) {
     filter.add(Where.between(property, from, to));
     return this;
   }
 
-  public <T> QueryBuilder whereIn(String property, Collection<T> values) {
+  public <T> QueryBuilder<Q> whereIn(String property, Collection<T> values) {
     filter.add(Where.in(property, values));
     return this;
   }
 
-  public QueryBuilder and() {
+  public QueryBuilder<Q> and() {
     filter.add(Where.and());
     return this;
   }
 
-  public QueryBuilder or() {
+  public QueryBuilder<Q> or() {
     filter.add(Where.or());
     return this;
   }
 
-  public QueryBuilder startExpression() {
+  public QueryBuilder<Q> startExpression() {
     filter.add(Where.startExpression());
     return this;
   }
 
-  public QueryBuilder endExpression() {
+  public QueryBuilder<Q> endExpression() {
     filter.add(Where.endExpression());
     return this;
   }
 
-  public EntityQuery query() {
+  public Q query() {
     return query;
   }
 
@@ -219,7 +226,7 @@ public class QueryBuilder {
 
   private String getValue(String property, Object value) {
     List<String> path = new ArrayList<>(Arrays.asList(property.split("\\.")));
-    Field field = getField(query.queryFor(), path);
+    Field field = getField(metamodel.entity(), path);
     Class<?> type = field.getType();
     if (String.class.isAssignableFrom(type) || type.isEnum()) {
       return String.format("'%s'", String.valueOf(value));
@@ -242,8 +249,11 @@ public class QueryBuilder {
     return field;
   }
 
-  public static QueryBuilder builder(EntityQuery query) {
-    return new QueryBuilder(query);
+  private Optional<String> getColumn(String path) {
+    return Arrays.asList(metamodel.properties()).stream()
+      .filter(property -> property.path().equals(path))
+      .map(property -> property.column())
+      .findAny();
   }
 
 }

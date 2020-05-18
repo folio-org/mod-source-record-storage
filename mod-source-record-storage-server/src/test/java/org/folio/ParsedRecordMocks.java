@@ -33,7 +33,7 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
 
   @Override
   public ParsedRecordQuery getArbitruarySortedQuery() {
-    return (ParsedRecordQuery) ParsedRecordQuery.query().builder()
+    return ParsedRecordQuery.query().builder()
       .orderBy("id", Direction.DESC)
       .query();
   }

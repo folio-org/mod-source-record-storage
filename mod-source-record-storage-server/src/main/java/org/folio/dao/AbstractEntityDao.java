@@ -50,8 +50,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String where = query.toWhereClause();
-    String orderBy = query.toOrderByClause();
+    String where = query.getWhereClause();
+    String orderBy = query.getOrderByClause();
     String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
@@ -61,8 +61,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
   }
 
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler) {
-    String where = query.toWhereClause();
-    String orderBy = query.toOrderByClause();
+    String where = query.getWhereClause();
+    String orderBy = query.getOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
     executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
@@ -162,7 +162,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   public Future<Integer> delete(Q query, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.toWhereClause());
+    String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.getWhereClause());
     log.info("Attempting delete by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(this::toRowCount);

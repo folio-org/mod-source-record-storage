@@ -21,4 +21,14 @@ public interface LBRecordService extends EntityService<Record, RecordCollection,
    */
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
 
+  /**
+   * Searches for Record either by SRS id or external relation id
+   *
+   * @param externalIdIdentifier specifies of external relation id type
+   * @param id                   either SRS id or external relation id
+   * @param tenantId             tenant id
+   * @return future with {@link Record}
+   */
+  public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
+
 }

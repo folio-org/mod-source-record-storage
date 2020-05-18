@@ -2,6 +2,7 @@ package org.folio.services.impl;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
@@ -9,6 +10,7 @@ import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
+import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -29,6 +31,9 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Autowired
   private LBSnapshotDao snapshotDao;
+
+  @Autowired
+  private ParsedRecordDao parsedRecordDao;
 
   @Override
   public Future<Record> save(Record record, String tenantId) {
@@ -58,6 +63,25 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     return promise.future();
   }
 
+  @Override
+  public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
+    Future<Optional<Record>> future;
+    switch (externalIdIdentifier) {
+      case "instanceId": 
+        future = dao.getByInstanceId(id, tenantId);
+        break;
+      default:
+        future = dao.getById(id, tenantId);
+        break;
+    }
+    return future.map(record -> record
+      .orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", externalIdIdentifier, id))))
+      .compose(record -> parsedRecordDao.getById(record.getId(), tenantId)
+      .map(parsedRecord -> parsedRecord
+        .orElseThrow(() -> new NotFoundException(String.format("Couldn't find parsed record with id %s", record.getId()))))
+      .map(parsedRecord -> record.withParsedRecord(parsedRecord)));
+  }
+
   private Future<Void> validateSnapshotProcessing(String snapshotId, String tenantId) {
     return snapshotDao.getById(snapshotId, tenantId)
       .map(snapshot -> snapshot
@@ -72,6 +96,5 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     }
     return Future.succeededFuture();
   }
-
 
 }

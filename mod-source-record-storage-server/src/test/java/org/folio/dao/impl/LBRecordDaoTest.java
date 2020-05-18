@@ -96,6 +96,23 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Test
+  public void shouldCalculateGeneration(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      dao.calculateGeneration(mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        System.out.println("\n\n" + res.result() + "\n\n");
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
     dao.save(getMockEntityWithoutId(), TENANT_ID).onComplete(res -> {

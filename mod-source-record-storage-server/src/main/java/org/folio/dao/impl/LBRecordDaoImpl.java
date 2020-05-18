@@ -1,9 +1,13 @@
 package org.folio.dao.impl;
 
 import static java.util.stream.StreamSupport.stream;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 
 import java.util.Collections;
 import java.util.Objects;
@@ -27,6 +31,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -73,10 +78,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   public static final String STATE_COLUMN_NAME = "state";
   public static final String INSTANCE_ID_COLUMN_NAME = "instanceid";
   public static final String SUPPRESS_DISCOVERY_COLUMN_NAME = "suppressdiscovery";
-  public static final String CREATED_BY_USER_ID_COLUMN_NAME = "createdbyuserid";
-  public static final String CREATED_DATE_COLUMN_NAME = "createddate";
-  public static final String UPDATED_BY_USER_ID_COLUMN_NAME = "updatedbyuserid";
-  public static final String UPDATED_DATE_COLUMN_NAME = "updateddate";
+
+  private static final String GET_RECORD_GENERATION_TEMPLATE = "SELECT get_highest_generation_lb('%s','%s');";
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
@@ -90,6 +93,15 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
     log.info("Attempting get by instance id: {}", sql);
     return select(sql, tenantId);
+  }
+
+  @Override
+  public Future<Integer> calculateGeneration(Record record, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String sql = String.format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
+    log.info("Attempting get record generation: {}", sql);
+    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    return promise.future().map(resultSet -> resultSet.iterator().next().getInteger(0));
   }
 
   @Override
@@ -197,7 +209,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
       record.setAdditionalInfo(additionalInfo);
     }
-    return record.withMetadata(DaoUtil.metadataFromRow(row));
+    return record
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
 }

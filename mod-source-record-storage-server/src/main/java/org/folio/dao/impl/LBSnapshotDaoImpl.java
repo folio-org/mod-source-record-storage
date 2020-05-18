@@ -1,8 +1,12 @@
 package org.folio.dao.impl;
 
 import static java.util.stream.StreamSupport.stream;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
@@ -52,6 +56,10 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
       .of(ID_COLUMN_NAME)
       .append(STATUS_COLUMN_NAME)
       .append(PROCESSING_STARTED_DATE_COLUMN_NAME)
+      .append(CREATED_BY_USER_ID_COLUMN_NAME)
+      .append(CREATED_DATE_COLUMN_NAME)
+      .append(UPDATED_BY_USER_ID_COLUMN_NAME)
+      .append(UPDATED_DATE_COLUMN_NAME)
       .build();
   }
 
@@ -65,11 +73,19 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
     if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    return TupleWrapper.of()
+    TupleWrapper tupleWrapper = TupleWrapper.of()
       .addUUID(snapshot.getJobExecutionId())
       .addEnum(snapshot.getStatus())
-      .addOffsetDateTime(snapshot.getProcessingStartedDate())
-      .get();
+      .addOffsetDateTime(snapshot.getProcessingStartedDate());
+    if (Objects.nonNull(snapshot.getMetadata())) {
+      tupleWrapper.addUUID(snapshot.getMetadata().getCreatedByUserId())
+        .addOffsetDateTime(snapshot.getMetadata().getCreatedDate())
+        .addUUID(snapshot.getMetadata().getUpdatedByUserId())
+        .addOffsetDateTime(snapshot.getMetadata().getUpdatedDate());
+    } else {
+      tupleWrapper.addNull().addNull().addNull().addNull();
+    }
+    return tupleWrapper.get();
   }
 
   @Override
@@ -95,7 +111,8 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
     if (Objects.nonNull(processingStartedDate)) {
       snapshot.setProcessingStartedDate(Date.from(processingStartedDate.toInstant()));
     }
-    return snapshot;
+    return snapshot
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
 }

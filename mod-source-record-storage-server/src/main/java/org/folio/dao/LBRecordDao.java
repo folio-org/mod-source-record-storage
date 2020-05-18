@@ -31,4 +31,15 @@ public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQ
    */
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId);
 
+  /**
+   * Increments generation in case a record with the same matchedId exists
+   * and the snapshot it is linked to is COMMITTED before the processing
+   * of the current one started
+   *
+   * @param record   record
+   * @param tenantId tenant id
+   * @return future with generation
+   */
+  Future<Integer> calculateGeneration(Record record, String tenantId);
+
 }

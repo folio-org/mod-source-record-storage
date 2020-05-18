@@ -1,10 +1,5 @@
 package org.folio.dao.util;
 
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
-
 import java.time.OffsetDateTime;
 import java.util.Date;
 import java.util.Objects;
@@ -55,6 +50,11 @@ public class DaoUtil {
   public static final String ID_COLUMN_NAME = "id";
   public static final String JSONB_COLUMN_NAME = "jsonb";
   public static final String CONTENT_COLUMN_NAME = "content";
+
+  public static final String CREATED_BY_USER_ID_COLUMN_NAME = "createdbyuserid";
+  public static final String CREATED_DATE_COLUMN_NAME = "createddate";
+  public static final String UPDATED_BY_USER_ID_COLUMN_NAME = "updatedbyuserid";
+  public static final String UPDATED_DATE_COLUMN_NAME = "updateddate";
 
   public static final String TOTAL_COUNT_COLUMN_NAME = "total_count";
 

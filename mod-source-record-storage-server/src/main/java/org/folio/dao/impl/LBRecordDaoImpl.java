@@ -101,7 +101,13 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     String sql = String.format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
     log.info("Attempting get record generation: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(resultSet -> resultSet.iterator().next().getInteger(0));
+    return promise.future().map(resultSet -> {
+      Integer generation = resultSet.iterator().next().getInteger(0);
+      if (generation > 0) {
+        generation++;
+      }
+      return generation;
+    });
   }
 
   @Override

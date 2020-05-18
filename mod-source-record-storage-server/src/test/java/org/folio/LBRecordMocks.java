@@ -49,7 +49,8 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public Record getInvalidMockEntity() {
     return new Record()
-      .withId("be86e5ad-d0ac-4209-af40-875ffd9efa53")
+      .withId(getMockEntity().getId())
+      .withSnapshotId(getMockEntity().getSnapshotId())
       .withRecordType(Record.RecordType.MARC)
       .withOrder(0)
       .withGeneration(1)

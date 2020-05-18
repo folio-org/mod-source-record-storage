@@ -106,7 +106,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
         if (res.failed()) {
           context.fail(res.cause());
         }
-        System.out.println("\n\n" + res.result() + "\n\n");
+        context.assertEquals(new Integer(0), res.result());
         async.complete();
       });
     });

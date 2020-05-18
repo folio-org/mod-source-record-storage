@@ -180,6 +180,16 @@ public interface SourceRecordService {
       Handler<AsyncResult<Void>> endHandler);
 
   /**
+   * Searches for source record by id via specific idType
+   *
+   * @param id       - for searching
+   * @param idType   - search type
+   * @param tenantId - tenant id
+   * @return future with optional source record
+   */
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
+
+  /**
    * Convert {@link Record} to {@link SourceRecord}
    * 
    * @param record record

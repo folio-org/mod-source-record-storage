@@ -141,6 +141,16 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   }
 
   @Override
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
+    switch (idType.toLowerCase()) {
+      case "instance": 
+        return getSourceMarcRecordByInstanceId(id, tenantId);
+      default:
+        return getSourceMarcRecordById(id, tenantId);
+    }
+  }
+
+  @Override
   public SourceRecord toSourceRecord(Record record) {
     return new SourceRecord()
       .withRecordId(record.getId())
@@ -201,6 +211,9 @@ public class SourceRecordServiceImpl implements SourceRecordService {
       case RAW_RECORD_ONLY:
         rawRecordDao.getById(id, tenantId).map(rawRecord -> addRawRecordContent(sourceRecord, rawRecord))
           .onComplete(lookup -> promise.complete(sourceRecord));
+        break;
+      case NONE:
+        promise.complete(sourceRecord);
         break;
     }
     return promise.future();

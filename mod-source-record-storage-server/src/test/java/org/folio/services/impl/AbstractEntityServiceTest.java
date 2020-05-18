@@ -128,9 +128,10 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Promise<E> savePromise = Promise.promise();
-    when(mockDao.save(mocks.getInvalidMockEntity(), TENANT_ID)).thenReturn(savePromise.future());
+    E mockEntity = mocks.getInvalidMockEntity();
+    when(mockDao.save(mockEntity, TENANT_ID)).thenReturn(savePromise.future());
     Async async = context.async();
-    service.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
+    service.save(mockEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });

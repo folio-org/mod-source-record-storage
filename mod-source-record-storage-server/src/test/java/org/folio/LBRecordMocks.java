@@ -140,7 +140,7 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public void compareCollections(TestContext context, RecordCollection expected, RecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getRecords(), actual.getRecords(), true);
+    compareEntities(context, expected.getRecords(), actual.getRecords(), false);
   }
 
   @Override

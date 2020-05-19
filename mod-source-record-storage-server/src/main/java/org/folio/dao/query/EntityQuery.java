@@ -3,14 +3,14 @@ package org.folio.dao.query;
 /**
  * Interface to prepare WHERE and ORDER BY clauses for database sql queries
  */
-public interface EntityQuery {
+public interface EntityQuery<Q extends EntityQuery<Q>> {
 
   /**
    * Get {@link QueryBuilder}
    * 
    * @return query builder for this entity query
    */
-  public QueryBuilder<?> builder();
+  public QueryBuilder<Q> builder();
 
   /**
    * Builds and returns WHERE clause

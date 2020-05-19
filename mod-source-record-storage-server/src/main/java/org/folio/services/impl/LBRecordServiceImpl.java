@@ -55,13 +55,10 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
     Future<Optional<Record>> future;
-    switch (externalIdIdentifier) {
-      case "instanceId": 
-        future = dao.getByInstanceId(id, tenantId);
-        break;
-      default:
-        future = dao.getById(id, tenantId);
-        break;
+    if (externalIdIdentifier.equals("instanceId")) {
+      future = dao.getByInstanceId(id, tenantId);
+    } else {
+      future = dao.getById(id, tenantId);
     }
     return future.map(record -> record
       .orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", externalIdIdentifier, id))))

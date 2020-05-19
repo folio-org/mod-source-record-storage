@@ -105,11 +105,10 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       record.setMatchedId(record.getId());
     }
     // NOTE: not update raw record, parsed record, or error record
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> { 
-      return validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
-      .compose(v -> calculateGeneration(connection, record, tenantId))
-      .compose(generation -> save(connection, record.withGeneration(generation), tenantId));
-    });
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> 
+      validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
+        .compose(v -> calculateGeneration(connection, record, tenantId))
+        .compose(generation -> save(connection, record.withGeneration(generation), tenantId)));
   }
 
   @Override
@@ -149,9 +148,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
     Promise<Integer> promise = Promise.promise();
-    execute(postgresClientFactory.getClient(tenantId), connection -> {
-      return calculateGeneration(connection, record, tenantId).onComplete(promise);
-    });
+    execute(postgresClientFactory.getClient(tenantId), connection ->
+      calculateGeneration(connection, record, tenantId).onComplete(promise));
     return promise.future();
   }
 
@@ -172,21 +170,19 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
-    switch (idType) {
-      case INSTANCE:
-        return getByInstanceId(id, tenantId);
-      default:
-        return getById(id, tenantId);
+    if (idType == IncomingIdType.INSTANCE) {
+      return getByInstanceId(id, tenantId);
+    } else {
+      return getById(id, tenantId);
     }
   }
 
   @Override
   public Future<Optional<Record>> getRecordById(SqlConnection connection, String id, IncomingIdType idType, String tenantId) {
-    switch (idType) {
-      case INSTANCE:
-        return getByInstanceId(connection, id, tenantId);
-      default:
-        return getById(connection, id, tenantId);
+    if (idType == IncomingIdType.INSTANCE) {
+      return getByInstanceId(connection, id, tenantId);
+    } else {
+      return getById(connection, id, tenantId);
     }
   }
 
@@ -195,15 +191,12 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     String id = suppressFromDiscoveryDto.getId();
     IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
     Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
-    Promise<Boolean> promise = Promise.promise();
-    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
-      return getRecordById(connection, id, idType, tenantId)
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
+      getRecordById(connection, id, idType, tenantId)
         .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
         .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
         .compose(record -> update(connection, record, tenantId))
-        .map(record -> true).onComplete(promise);
-    });
-    return promise.future();
+        .map(record -> true));
   }
 
   @Override
@@ -213,8 +206,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(snapshotId)
       .withStatus(Snapshot.Status.COMMITTED);
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
-      return getById(connection, id, tenantId)
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
+      getById(connection, id, tenantId)
         .compose(optionalRecord -> optionalRecord
           .map(existingRecord -> snapshotDao.save(connection, snapshot, tenantId)
             .compose(s -> {
@@ -232,8 +225,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
                 .withGeneration(existingRecord.getGeneration() + 1)
                 .withState(Record.State.ACTUAL);
               return saveUpdatedRecord(connection, newRecord, existingRecord.withState(Record.State.OLD), tenantId);
-            })).orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", parsedRecordDto.getId())))));
-    });
+            })).orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))));
   }
 
   @Override

@@ -125,29 +125,28 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
       Integer offset, Integer limit, String tenantId, Handler<SourceRecord> handler,
       Handler<AsyncResult<Void>> endHandler) {
-    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId,
-      stream -> stream
-        .handler(row -> {
-          stream.pause();
-          lookupContent(content, tenantId, sourceRecordDao.toSourceRecord(row)).onComplete(res -> {
-            if (res.failed()) {
-              endHandler.handle(Future.failedFuture(res.cause()));
-              return;
-            }
-            handler.handle(res.result());
-            stream.resume();
-          });
-        }).exceptionHandler(e -> endHandler.handle(Future.failedFuture(e))),
-      endHandler);
+    sourceRecordDao.getSourceMarcRecordsByQuery(content, query, offset, limit, tenantId, stream ->
+      stream.handler(row -> {
+        stream.pause();
+        lookupContent(content, tenantId, sourceRecordDao.toSourceRecord(row)).onComplete(res -> {
+          if (res.failed()) {
+            endHandler.handle(Future.failedFuture(res.cause()));
+            return;
+          }
+          handler.handle(res.result());
+          stream.resume();
+        });
+      }).exceptionHandler(e -> endHandler.handle(Future.failedFuture(e))),
+    endHandler);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType, String tenantId) {
-    switch (idType) {
-      case INSTANCE:
-        return getSourceMarcRecordByInstanceId(id, tenantId);
-      default:
-        return getSourceMarcRecordById(id, tenantId);
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType,
+      String tenantId) {
+    if (idType == IncomingIdType.INSTANCE) {
+      return getSourceMarcRecordByInstanceId(id, tenantId);
+    } else {
+      return getSourceMarcRecordById(id, tenantId);
     }
   }
 

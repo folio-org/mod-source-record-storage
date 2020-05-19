@@ -11,6 +11,7 @@ import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.AbstractEntityService;
 import org.folio.services.ParsedRecordService;
@@ -26,7 +27,7 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
     List<Future> futures = recordCollection.getRecords().stream()
-      .peek(record -> validateParsedRecordId(record.getParsedRecord()))
+      .map(this::validateParsedRecordId)
       .map(record -> dao.update(record.getParsedRecord(), tenantId))
       .collect(Collectors.toList());
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
@@ -45,10 +46,11 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
     return promise.future();
   }
 
-  private void validateParsedRecordId(ParsedRecord record) {
-    if (Objects.isNull(record.getId())) {
+  private Record validateParsedRecordId(Record record) {
+    if (Objects.isNull(record.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
+    return record;
   }
 
 }

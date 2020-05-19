@@ -22,7 +22,7 @@ import com.google.common.cache.LoadingCache;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.dao.query.OrderBy.Direction;
 
-public class QueryBuilder<Q extends EntityQuery> {
+public class QueryBuilder<Q extends EntityQuery<Q>> {
 
   public static final String ORDER_BY_TEMPLATE = "ORDER BY %s";
   public static final String WHERE_TEMPLATE = "WHERE %s";
@@ -41,8 +41,8 @@ public class QueryBuilder<Q extends EntityQuery> {
   private final LoadingCache<String, Optional<String>> columnCache = CacheBuilder.newBuilder()
     .build(CacheLoader.from(this::getColumn));
 
-  public QueryBuilder(EntityQuery query) {
-    this.query = (Q) query;
+  public QueryBuilder(Q query) {
+    this.query = query;
     this.filter = new ArrayList<>();
     this.sort = new ArrayList<>();
     this.metamodel = this.query.getClass().getAnnotation(Metamodel.class);

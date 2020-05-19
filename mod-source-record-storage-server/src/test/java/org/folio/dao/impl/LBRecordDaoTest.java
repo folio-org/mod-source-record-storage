@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import static org.folio.dao.util.DaoUtil.execute;
+
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.LBRecordMocks;
 import org.folio.TestMocks;
@@ -79,13 +81,33 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   }
 
   @Test
+  public void shouldExecuteGetByMatchedId(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.getByMatchedId(connection, mocks.getMockEntity().getMatchedId(), TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          context.assertTrue(res.result().isPresent());
+          mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+          async.complete();
+        }));
+    });
+  }
+
+  @Test
   public void shouldGetByInstanceId(TestContext context) {
     Async async = context.async();
     dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      dao.getByInstanceId(mocks.getMockEntity().getExternalIdsHolder().getInstanceId(), TENANT_ID).onComplete(res -> {
+      String instanceId = mocks.getMockEntity().getExternalIdsHolder().getInstanceId();
+      dao.getByInstanceId(instanceId, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }
@@ -93,6 +115,26 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
         mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldExecuteGetByInstanceId(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String instanceId = mocks.getMockEntity().getExternalIdsHolder().getInstanceId();
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.getByInstanceId(connection, instanceId, TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          context.assertTrue(res.result().isPresent());
+          mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+          async.complete();
+        }));
     });
   }
 
@@ -110,6 +152,24 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
         context.assertEquals(new Integer(0), res.result());
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldExecuteCalculateGeneration(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.calculateGeneration(connection, mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          context.assertEquals(new Integer(0), res.result());
+          async.complete();
+        }));
     });
   }
 

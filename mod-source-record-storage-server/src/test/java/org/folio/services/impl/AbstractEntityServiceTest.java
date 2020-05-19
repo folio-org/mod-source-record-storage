@@ -22,7 +22,7 @@ import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>, S extends EntityService<E, C, Q>, M extends EntityMocks<E, C, Q>>
+public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery<Q>, D extends EntityDao<E, C, Q>, S extends EntityService<E, C, Q>, M extends EntityMocks<E, C, Q>>
     extends AbstractServiceTest {
 
   D mockDao;

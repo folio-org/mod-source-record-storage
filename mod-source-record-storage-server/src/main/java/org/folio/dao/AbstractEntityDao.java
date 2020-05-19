@@ -36,7 +36,7 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Tuple;
 
-public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements EntityDao<E, C, Q> {
+public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implements EntityDao<E, C, Q> {
 
   protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -59,12 +59,17 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
 
   @Override
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection -> getByQuery(connection, query, offset, limit, tenantId));
+  }
+
+  @Override
+  public Future<C> getByQuery(SqlConnection connection, Q query, int offset, int limit, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String where = query.getWhereClause();
     String orderBy = query.getOrderByClause();
     String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
-    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    connection.query(sql).execute(promise);
     return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
       ? toCollection(resultSet)
       : toEmptyCollection(resultSet));

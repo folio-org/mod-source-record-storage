@@ -11,7 +11,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 
-public abstract class AbstractEntityService<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>>
+public abstract class AbstractEntityService<E, C, Q extends EntityQuery<Q>, D extends EntityDao<E, C, Q>>
     implements EntityService<E, C, Q> {
 
   @Autowired

@@ -1,7 +1,8 @@
 package org.folio.dao.impl;
 
+import static org.folio.dao.util.DaoUtil.execute;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.folio.EntityMocks;
@@ -12,7 +13,7 @@ import org.junit.Test;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>, M extends EntityMocks<E, C, Q>>
+public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery<Q>, D extends EntityDao<E, C, Q>, M extends EntityMocks<E, C, Q>>
     extends AbstractDaoTest {
 
   D dao;
@@ -34,6 +35,25 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldExecuteGetById(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.getById(connection, mocks.getId(mocks.getMockEntity()), TENANT_ID)).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          context.assertTrue(res.result().isPresent());
+          mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+          async.complete();
+        });
     });
   }
 
@@ -84,6 +104,24 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   }
 
   @Test
+  public void shouldExecuteGetByNoopQuery(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(create -> {
+      if (create.failed()) {
+        context.fail(create.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.getByQuery(connection, mocks.getNoopQuery(), 0, 10, TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          mocks.compareCollections(context, mocks.getExpectedCollection(), res.result());
+          async.complete();
+        }));
+    });
+  }
+
+  @Test
   public void shouldGetByArbitruaryQuery(TestContext context) {
     Async async = context.async();
     dao.save(mocks.getMockEntities(), TENANT_ID).onComplete(save -> {
@@ -130,6 +168,19 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   }
 
   @Test
+  public void shouldExecuteSave(TestContext context) {
+    Async async = context.async();
+    execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+      dao.save(connection, mocks.getMockEntity(), TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        mocks.compareEntities(context, mocks.getExpectedEntity(), res.result());
+        async.complete();
+      }));
+  }
+
+  @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Async async = context.async();
     dao.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
@@ -137,6 +188,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       async.complete();
     });
   }
+
   @Test
   public void shouldSaveBatch(TestContext context) {
     Async async = context.async();
@@ -167,6 +219,24 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   }
 
   @Test
+  public void shouldExecuteUpdate(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.update(connection, mocks.getUpdatedMockEntity(), TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          mocks.compareEntities(context, mocks.getExpectedUpdatedEntity(), res.result());
+          async.complete();
+        }));
+    });
+  }
+
+  @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
     Async async = context.async();
     E mockUpdateEntity = mocks.getUpdatedMockEntity();
@@ -179,7 +249,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
   }
 
   @Test
-  public void shouldDeleteById(TestContext context) {
+  public void shouldDelete(TestContext context) {
     Async async = context.async();
     dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
       if (save.failed()) {
@@ -192,6 +262,24 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         context.assertTrue(res.result());
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldExecuteDelete(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      execute(postgresClientFactory.getClient(TENANT_ID), connection ->
+        dao.delete(connection, dao.getId(mocks.getMockEntity()), TENANT_ID).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          context.assertTrue(res.result());
+          async.complete();
+        }));
     });
   }
 

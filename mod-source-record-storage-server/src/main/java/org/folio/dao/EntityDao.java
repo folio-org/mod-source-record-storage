@@ -46,6 +46,18 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
+   * Searches for entities by {@link EntityQuery}
+   * 
+   * @param connection connection
+   * @param query    {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template
+   * @param offset   starting index in a list of results
+   * @param limit    maximum number of results to return
+   * @param tenantId tenant id
+   * @return future with entity collection
+   */
+  public Future<C> getByQuery(SqlConnection connection, Q query, int offset, int limit, String tenantId);
+
+  /**
    * Searches for entities by {@link EntityQuery} and stream results
    * 
    * @param query         {@link EntityQuery} which prepares WHERE and ORDER BY clauses for SQL template

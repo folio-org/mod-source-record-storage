@@ -18,18 +18,6 @@ import io.vertx.sqlclient.SqlConnection;
 public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQuery> {
 
   /**
-   * Creates new Record and updates status of the "old" one,
-   * no data is overwritten as a result of update
-   *
-   * @param connection connection
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param tenantId  tenant id
-   * @return future with new "updated" Record
-   */
-  public Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId);
-
-  /**
    * Searches for {@link Record} by id
    * 
    * @param matchedId record matched id
@@ -116,9 +104,9 @@ public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQ
    *
    * @param suppressFromDiscoveryDto dto that contains new value and id
    * @param tenantId                 tenant id
-   * @return - future with true if succeeded
+   * @return - future with record if succeeded
    */
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
+  public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
 
   /**
    * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,

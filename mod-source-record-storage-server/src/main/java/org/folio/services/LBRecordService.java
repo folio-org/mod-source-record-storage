@@ -51,9 +51,9 @@ public interface LBRecordService extends EntityService<Record, RecordCollection,
    *
    * @param suppressFromDiscoveryDto dto that contains new value and id
    * @param tenantId                 tenant id
-   * @return - future with true if succeeded
+   * @return - future with record if succeeded
    */
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
+  public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
 
   /**
    * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,

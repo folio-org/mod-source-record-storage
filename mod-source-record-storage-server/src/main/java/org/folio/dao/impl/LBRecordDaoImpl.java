@@ -112,12 +112,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId) {
-    // NOTE: doesn't update raw record, parsed record, or error record
-    return save(connection, oldRecord, tenantId).compose(r -> save(connection, newRecord, tenantId));
-  }
-
-  @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
     return execute(postgresClientFactory.getClient(tenantId), connection ->
       getByMatchedId(connection, matchedId, tenantId));
@@ -180,7 +174,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+  public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     String id = suppressFromDiscoveryDto.getId();
     IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
     Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
@@ -188,8 +182,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       getRecordById(connection, id, idType, tenantId)
         .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
         .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
-        .compose(record -> update(connection, record, tenantId))
-        .map(record -> true));
+        .compose(record -> update(connection, record, tenantId)));
   }
 
   @Override
@@ -328,6 +321,11 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     }
     return record
       .withMetadata(DaoUtil.metadataFromRow(row));
+  }
+
+  private Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId) {
+    // NOTE: doesn't update raw record, parsed record, or error record
+    return save(connection, oldRecord, tenantId).compose(r -> save(connection, newRecord, tenantId));
   }
 
   private Future<Void> validateSnapshotProcessing(SqlConnection connection, String snapshotId, String tenantId) {

@@ -6,8 +6,10 @@ import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
@@ -161,6 +163,31 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
         }
         context.assertTrue(res.result().isPresent());
         mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldUpdateSuppressFromDiscoveryForRecord(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String instanceId = mocks.getMockEntity().getExternalIdsHolder().getInstanceId();
+      Boolean suppressDiscovery = false;
+      AdditionalInfo additionalInfo = new AdditionalInfo()
+        .withSuppressDiscovery(suppressDiscovery);
+      SuppressFromDiscoveryDto suppressFromDiscoveryDto = new SuppressFromDiscoveryDto()
+        .withId(instanceId)
+        .withIncomingIdType(IncomingIdType.INSTANCE)
+        .withSuppressFromDiscovery(suppressDiscovery);
+      dao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        mocks.compareEntities(context, mocks.getExpectedEntity().withAdditionalInfo(additionalInfo), res.result());
         async.complete();
       });
     });

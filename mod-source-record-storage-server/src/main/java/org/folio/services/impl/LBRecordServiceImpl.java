@@ -75,7 +75,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+  public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     return dao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
   }
 

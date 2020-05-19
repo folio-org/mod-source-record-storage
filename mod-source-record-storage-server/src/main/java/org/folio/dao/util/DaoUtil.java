@@ -104,22 +104,24 @@ public class DaoUtil {
    * @return future with action result if succeeded or failed future
    */
   public static <T> Future<T> executeInTransaction(PgPool client,
-      Function<Transaction, Future<T>> action) {
+      Function<SqlConnection, Future<T>> action) {
     Promise<T> promise = Promise.promise();
-    client.begin(begin -> {
-      if (begin.succeeded()) {
-        Transaction transaction = begin.result();
-        action.apply(transaction).onComplete(result -> {
-          if (result.succeeded()) {
-            transaction.commit(commit -> promise.complete(result.result()));
+    client.getConnection(ac -> {
+      if (ac.succeeded()) {
+        SqlConnection connection = ac.result();
+        Transaction transaction = connection.begin();
+        action.apply(connection).onComplete(ar -> {
+          if (ar.succeeded()) {
+            transaction.commit(commit -> promise.complete(ar.result()));
           } else {
-            LOG.error("Execute failed, rollback transaction", result.cause());
-            transaction.rollback(r -> promise.fail(result.cause()));
+            LOG.error("Execute failed, rollback transaction", ar.cause());
+            transaction.rollback(r -> promise.fail(ar.cause()));
           }
+          connection.close();
         });
       } else {
-        LOG.error("Failed to begin transaction", begin.cause());
-        promise.fail(begin.cause());
+        LOG.error("Failed to get connection", ac.cause());
+        promise.fail(ac.cause());
       }
     });
     return promise.future();

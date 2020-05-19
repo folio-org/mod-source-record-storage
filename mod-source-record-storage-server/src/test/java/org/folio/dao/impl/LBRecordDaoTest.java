@@ -27,6 +27,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
     FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
     dao = new LBRecordDaoImpl();
     FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
+    FieldUtils.writeField(dao, "snapshotDao", snapshotDao, true);
   }
 
   @Override
@@ -115,22 +116,23 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   @Test
   public void shouldSaveGeneratingId(TestContext context) {
     Async async = context.async();
-    dao.save(getMockEntityWithoutId(), TENANT_ID).onComplete(res -> {
+    Record mockRecordWithoutId = getMockRecordWithoutId();
+    dao.save(mockRecordWithoutId, TENANT_ID).onComplete(res -> {
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, getMockEntityWithoutId(), res.result());
+      mocks.compareEntities(context, mockRecordWithoutId, res.result());
       async.complete();
     });
   }
 
-  public Record getMockEntityWithoutId() {
+  public Record getMockRecordWithoutId() {
     return new Record()
       .withSnapshotId(TestMocks.getSnapshot(1).getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
       .withOrder(0)
-      .withGeneration(1)
+      .withGeneration(0)
       .withState(Record.State.ACTUAL);
   }
 

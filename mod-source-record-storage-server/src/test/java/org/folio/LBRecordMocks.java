@@ -53,7 +53,7 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
       .withSnapshotId(getMockEntity().getSnapshotId())
       .withRecordType(Record.RecordType.MARC)
       .withOrder(0)
-      .withGeneration(1)
+      .withGeneration(0)
       .withState(Record.State.ACTUAL);
   }
 

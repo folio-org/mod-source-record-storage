@@ -76,9 +76,9 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     String orderBy = query.getOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
-    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
       Promise<Void> promise = Promise.promise();
-      transaction.prepare(sql, ar2 -> {
+      connection.prepare(sql, ar2 -> {
         if (ar2.failed()) {
           log.error("Failed to prepare query", ar2.cause());
           endHandler.handle(Future.failedFuture(ar2.cause()));

@@ -129,9 +129,9 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
     String orderBy = query.getOrderByClause();
     String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
-    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
       Promise<Void> promise = Promise.promise();
-      transaction.prepare(sql, ar2 -> {
+      connection.prepare(sql, ar2 -> {
         if (ar2.failed()) {
           LOG.error("Failed to prepare query", ar2.cause());
           endHandler.handle(Future.failedFuture(ar2.cause()));

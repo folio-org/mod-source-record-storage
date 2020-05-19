@@ -17,11 +17,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
+import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
@@ -32,8 +34,10 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
@@ -87,6 +91,24 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   public static final String SUPPRESS_DISCOVERY_COLUMN_NAME = "suppressdiscovery";
 
   private static final String GET_RECORD_GENERATION_TEMPLATE = "SELECT get_highest_generation_lb('%s','%s');";
+
+  @Autowired
+  private LBSnapshotDao snapshotDao;
+
+  @Override
+  public Future<Record> save(Record record, String tenantId) {
+    if (StringUtils.isEmpty(record.getId())) {
+      record.setId(UUID.randomUUID().toString());
+    }
+    if (StringUtils.isEmpty(record.getMatchedId())) {
+      record.setMatchedId(record.getId());
+    }
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> { 
+      return validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
+      .compose(v -> calculateGeneration(connection, record, tenantId))
+      .compose(generation -> save(connection, record.withGeneration(generation), tenantId));
+    });
+  }
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
@@ -166,11 +188,11 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
     Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
     Promise<Boolean> promise = Promise.promise();
-    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
-      return getRecordById((SqlConnection) transaction, id, idType, tenantId)
+    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
+      return getRecordById(connection, id, idType, tenantId)
         .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
         .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
-        .compose(record -> update((SqlConnection) transaction, record, tenantId))
+        .compose(record -> update(connection, record, tenantId))
         .map(record -> true).onComplete(promise);
     });
     return promise.future();
@@ -283,6 +305,20 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     }
     return record
       .withMetadata(DaoUtil.metadataFromRow(row));
+  }
+
+  private Future<Void> validateSnapshotProcessing(SqlConnection connection, String snapshotId, String tenantId) {
+    return snapshotDao.getById(connection, snapshotId, tenantId)
+      .map(snapshot -> snapshot.orElseThrow(() -> new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId))))
+      .compose(this::isProcessing);
+  }
+
+  private Future<Void> isProcessing(Snapshot snapshot) {
+    if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+      String message = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
+      return Future.failedFuture(new BadRequestException(String.format(message, snapshot.getStatus())));
+    }
+    return Future.succeededFuture();
   }
 
 }

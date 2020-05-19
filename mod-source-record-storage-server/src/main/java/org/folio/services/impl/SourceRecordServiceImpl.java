@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecord.RecordType;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.services.SourceRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -141,9 +142,9 @@ public class SourceRecordServiceImpl implements SourceRecordService {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    switch (idType.toLowerCase()) {
-      case "instance": 
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType, String tenantId) {
+    switch (idType) {
+      case INSTANCE:
         return getSourceMarcRecordByInstanceId(id, tenantId);
       default:
         return getSourceMarcRecordById(id, tenantId);

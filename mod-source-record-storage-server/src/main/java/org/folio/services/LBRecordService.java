@@ -1,9 +1,13 @@
 package org.folio.services;
 
+import java.util.Optional;
+
 import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 
 import io.vertx.core.Future;
 
@@ -30,5 +34,24 @@ public interface LBRecordService extends EntityService<Record, RecordCollection,
    * @return future with {@link Record}
    */
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
+
+  /**
+   * Searches for source record by id via specific {@link IncomingIdType}
+   *
+   * @param id       - for searching
+   * @param idType   - search type
+   * @param tenantId - tenant id
+   * @return future with optional record
+   */
+  public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId);
+
+  /**
+   * Change suppress from discovery flag for record by external relation id
+   *
+   * @param suppressFromDiscoveryDto dto that contains new value and id
+   * @param tenantId                 tenant id
+   * @return - future with true if succeeded
+   */
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
 
 }

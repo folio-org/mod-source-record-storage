@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.ws.rs.NotFoundException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
@@ -28,6 +30,8 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
@@ -108,6 +112,28 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       }
       return generation;
     });
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
+    switch (idType) {
+      case INSTANCE:
+        return getByInstanceId(id, tenantId);
+      default:
+        return getById(id, tenantId);
+    }
+  }
+
+  @Override
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+    String id = suppressFromDiscoveryDto.getId();
+    IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
+    Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
+    // TODO: perform in transaction
+    return getRecordById(id, idType, tenantId)
+      .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
+      .compose(record -> update(record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)), tenantId))
+      .map(record -> true);
   }
 
   @Override

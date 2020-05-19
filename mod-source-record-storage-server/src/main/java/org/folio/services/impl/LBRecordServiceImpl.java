@@ -16,6 +16,8 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.services.AbstractEntityService;
 import org.folio.services.LBRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Override
   public Future<Record> save(Record record, String tenantId) {
+    // TODO: perform in a transaction
     return validateSnapshotProcessing(record.getSnapshotId(), tenantId)
       .compose(v -> dao.calculateGeneration(record, tenantId))
       .compose(generation -> super.save(record.withGeneration(generation), tenantId));
@@ -80,6 +83,16 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
       .map(parsedRecord -> parsedRecord
         .orElseThrow(() -> new NotFoundException(String.format("Couldn't find parsed record with id %s", record.getId()))))
       .map(parsedRecord -> record.withParsedRecord(parsedRecord)));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
+    return dao.getRecordById(id, idType, tenantId);
+  }
+
+  @Override
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+    return dao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
   }
 
   private Future<Void> validateSnapshotProcessing(String snapshotId, String tenantId) {

@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -180,14 +181,14 @@ public interface SourceRecordService {
       Handler<AsyncResult<Void>> endHandler);
 
   /**
-   * Searches for source record by id via specific idType
+   * Searches for source record by id via specific {@link IncomingIdType}
    *
    * @param id       - for searching
    * @param idType   - search type
    * @param tenantId - tenant id
    * @return future with optional source record
    */
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType, String tenantId);
 
   /**
    * Convert {@link Record} to {@link SourceRecord}

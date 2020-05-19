@@ -30,6 +30,7 @@ import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -109,6 +110,12 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       .compose(v -> calculateGeneration(connection, record, tenantId))
       .compose(generation -> save(connection, record.withGeneration(generation), tenantId));
     });
+  }
+
+  @Override
+  public Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId) {
+    // NOTE: not update raw record, parsed record, or error record
+    return save(connection, oldRecord, tenantId).compose(r -> save(connection, newRecord, tenantId));
   }
 
   @Override
@@ -197,6 +204,36 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
         .map(record -> true).onComplete(promise);
     });
     return promise.future();
+  }
+
+  @Override
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+    String id = parsedRecordDto.getId();
+    // no processing of the record is performed apart from the update itself
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(snapshotId)
+      .withStatus(Snapshot.Status.COMMITTED);
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
+      return getById(connection, id, tenantId)
+        .compose(optionalRecord -> optionalRecord
+          .map(existingRecord -> snapshotDao.save(connection, snapshot, tenantId)
+            .compose(s -> {
+              Record newRecord = new Record()
+                .withId(UUID.randomUUID().toString())
+                .withSnapshotId(s.getJobExecutionId())
+                .withMatchedId(parsedRecordDto.getId())
+                .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+                .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
+                .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+                .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+                .withMetadata(parsedRecordDto.getMetadata())
+                .withRawRecord(existingRecord.getRawRecord())
+                .withOrder(existingRecord.getOrder())
+                .withGeneration(existingRecord.getGeneration() + 1)
+                .withState(Record.State.ACTUAL);
+              return saveUpdatedRecord(connection, newRecord, existingRecord.withState(Record.State.OLD), tenantId);
+            })).orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", parsedRecordDto.getId())))));
+    });
   }
 
   @Override

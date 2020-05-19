@@ -9,6 +9,7 @@ import javax.ws.rs.NotFoundException;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
@@ -78,6 +79,11 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     return dao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
+  }
+
+  @Override
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+    return dao.updateSourceRecord(parsedRecordDto, snapshotId, tenantId);
   }
 
 }

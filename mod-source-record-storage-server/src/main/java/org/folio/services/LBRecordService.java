@@ -3,6 +3,7 @@ package org.folio.services;
 import java.util.Optional;
 
 import org.folio.dao.query.RecordQuery;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
@@ -53,5 +54,16 @@ public interface LBRecordService extends EntityService<Record, RecordCollection,
    * @return - future with true if succeeded
    */
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
+
+  /**
+   * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,
+   * no data is deleted as a result of the update
+   *
+   * @param parsedRecordDto parsed record DTO containing updates to parsed record
+   * @param snapshotId      snapshot id to which new Record should be linked
+   * @param tenantId        tenant id
+   * @return future with updated Record
+   */
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
 }

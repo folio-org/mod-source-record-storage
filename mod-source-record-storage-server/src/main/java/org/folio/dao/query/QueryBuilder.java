@@ -20,6 +20,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.folio.dao.query.Metamodel.Property;
 import org.folio.dao.query.OrderBy.Direction;
 
 public class QueryBuilder<Q extends EntityQuery<Q>> {
@@ -252,8 +253,12 @@ public class QueryBuilder<Q extends EntityQuery<Q>> {
   private Optional<String> getColumn(String path) {
     return Arrays.asList(metamodel.properties()).stream()
       .filter(property -> property.path().equals(path))
-      .map(property -> property.column())
+      .map(this::toColumn)
       .findAny();
+  }
+
+  private String toColumn(Property property) {
+    return property.column();
   }
 
 }

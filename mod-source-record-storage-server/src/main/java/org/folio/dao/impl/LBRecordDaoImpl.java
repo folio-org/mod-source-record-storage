@@ -104,7 +104,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     if (StringUtils.isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
-    // NOTE: not update raw record, parsed record, or error record
+    // NOTE: doesn't update raw record, parsed record, or error record
     return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> 
       validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
         .compose(v -> calculateGeneration(connection, record, tenantId))
@@ -113,15 +113,14 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId) {
-    // NOTE: not update raw record, parsed record, or error record
+    // NOTE: doesn't update raw record, parsed record, or error record
     return save(connection, oldRecord, tenantId).compose(r -> save(connection, newRecord, tenantId));
   }
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
-    log.info("Attempting get by matched id: {}", sql);
-    return select(sql, tenantId);
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getByMatchedId(connection, matchedId, tenantId));
   }
 
   @Override
@@ -133,9 +132,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
-    log.info("Attempting get by instance id: {}", sql);
-    return select(sql, tenantId);
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getByInstanceId(connection, instanceId, tenantId));
   }
 
   @Override
@@ -147,10 +145,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
-    Promise<Integer> promise = Promise.promise();
-    execute(postgresClientFactory.getClient(tenantId), connection ->
-      calculateGeneration(connection, record, tenantId).onComplete(promise));
-    return promise.future();
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      calculateGeneration(connection, record, tenantId));
   }
 
   @Override
@@ -170,11 +166,8 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
-    if (idType == IncomingIdType.INSTANCE) {
-      return getByInstanceId(id, tenantId);
-    } else {
-      return getById(id, tenantId);
-    }
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getRecordById(connection, id, idType, tenantId));
   }
 
   @Override

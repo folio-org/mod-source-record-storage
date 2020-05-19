@@ -98,6 +98,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<List<E>> save(List<E> entities, String tenantId);
 
   /**
+   * Saves batch of entities to database
+   * 
+   * @param connection connection
+   * @param entities batch of entities to save
+   * @param tenantId tenant id
+   * @return future with list of saved entities
+   */
+  public Future<List<E>> save(SqlConnection connection, List<E> entities, String tenantId);
+
+  /**
    * Updates entity in database
    * 
    * @param entity   entity to update
@@ -143,6 +153,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
    * @return future with number of entities deleted
    */
   public Future<Integer> delete(Q query, String tenantId);
+
+  /**
+   * Deletes entities by {@link EntityQuery} from database
+   * 
+   * @param connection connection
+   * @param query    entity query
+   * @param tenantId tenant id
+   * @return future with number of entities deleted
+   */
+  public Future<Integer> delete(SqlConnection connection, Q query, String tenantId);
 
   /**
    * Get table name for DAO

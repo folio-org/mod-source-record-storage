@@ -54,7 +54,7 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
     ParsedRecord parsedRecord = record.getParsedRecord();
     ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
     Metadata metadata = record.getMetadata();
-    // NOTE: not updating raw record or error record from incoming record
+    // NOTE: doesn't update raw record or error record from incoming record
     return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
       recordDao.getById(connection, id, tenantId)
         .map(r -> r.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with id %s", id))))

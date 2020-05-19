@@ -9,6 +9,7 @@ import javax.ws.rs.NotFoundException;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -65,7 +66,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
       .compose(record -> parsedRecordDao.getById(record.getId(), tenantId)
       .map(parsedRecord -> parsedRecord
         .orElseThrow(() -> new NotFoundException(String.format("Couldn't find parsed record with id %s", record.getId()))))
-      .map(parsedRecord -> record.withParsedRecord(parsedRecord)));
+      .map(parsedRecord -> getRecordWithParsedRecord(record, parsedRecord)));
   }
 
   @Override
@@ -81,6 +82,10 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     return dao.updateSourceRecord(parsedRecordDto, snapshotId, tenantId);
+  }
+
+  private Record getRecordWithParsedRecord(Record record, ParsedRecord parsedRecord) {
+    return record.withParsedRecord(parsedRecord);
   }
 
 }

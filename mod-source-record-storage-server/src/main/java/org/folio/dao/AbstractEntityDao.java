@@ -45,9 +45,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<Optional<E>> getById(String id, String tenantId) {
-    String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
-    log.info("Attempting get by id: {}", sql);
-    return select(sql, tenantId);
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getById(connection, id, tenantId));
   }
 
   @Override
@@ -59,7 +58,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
-    return execute(postgresClientFactory.getClient(tenantId), connection -> getByQuery(connection, query, offset, limit, tenantId));
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getByQuery(connection, query, offset, limit, tenantId));
   }
 
   @Override
@@ -105,7 +105,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<E> save(E entity, String tenantId) {
-    return execute(postgresClientFactory.getClient(tenantId), connection -> save(connection, entity, tenantId));
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      save(connection, entity, tenantId));
   }
 
   @Override
@@ -131,13 +132,19 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<List<E>> save(List<E> entities, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      save(connection, entities, tenantId));
+  }
+
+  @Override
+  public Future<List<E>> save(SqlConnection connection, List<E> entities, String tenantId) {
     Promise<List<E>> promise = Promise.promise();
     log.info("Attempting batch save in {}", getTableName());
     String table = getTableName();
     String columns = getColumns();
     String valuesTemplate = getValuesTemplate(columns);
     String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
-    postgresClientFactory.getClient(tenantId)
+    connection
       .preparedQuery(sqlTemplate)
       .executeBatch(toTuples(entities, true), batch -> {
         if (batch.failed()) {
@@ -152,7 +159,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<E> update(E entity, String tenantId) {
-    return execute(postgresClientFactory.getClient(tenantId), connection -> update(connection, entity, tenantId));
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      update(connection, entity, tenantId));
   }
 
   @Override
@@ -183,7 +191,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<Boolean> delete(String id, String tenantId) {
-    return execute(postgresClientFactory.getClient(tenantId), connection -> delete(connection, id, tenantId));
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      delete(connection, id, tenantId));
   }
 
   @Override
@@ -197,10 +206,16 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<Integer> delete(Q query, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      delete(connection, query, tenantId));
+  }
+
+  @Override
+  public Future<Integer> delete(SqlConnection connection, Q query, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.getWhereClause());
     log.info("Attempting delete by query: {}", sql);
-    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    connection.query(sql).execute(promise);
     return promise.future().map(this::toRowCount);
   }
 
@@ -212,7 +227,8 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
    * @return future of optional entity
    */
   protected Future<Optional<E>> select(String sql, String tenantId) {
-    return execute(postgresClientFactory.getClient(tenantId), connection -> select(connection, sql, tenantId));
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      select(connection, sql, tenantId));
   }
 
   /**

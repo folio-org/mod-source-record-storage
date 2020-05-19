@@ -103,6 +103,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     if (StringUtils.isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
+    // NOTE: not update raw record, parsed record, or error record
     return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> { 
       return validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
       .compose(v -> calculateGeneration(connection, record, tenantId))

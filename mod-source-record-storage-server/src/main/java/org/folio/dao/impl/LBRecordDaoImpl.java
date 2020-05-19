@@ -8,6 +8,8 @@ import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.execute;
+import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.util.Collections;
 import java.util.Objects;
@@ -38,6 +40,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="records_lb">
@@ -93,6 +96,13 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
+  public Future<Optional<Record>> getByMatchedId(SqlConnection connetion, String matchedId, String tenantId) {
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
+    log.info("Attempting get by matched id: {}", sql);
+    return select(connetion, sql, tenantId);
+  }
+
+  @Override
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
     String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
     log.info("Attempting get by instance id: {}", sql);
@@ -100,11 +110,27 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
+  public Future<Optional<Record>> getByInstanceId(SqlConnection connetion, String instanceId, String tenantId) {
+    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
+    log.info("Attempting get by instance id: {}", sql);
+    return select(connetion, sql, tenantId);
+  }
+
+  @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
+    Promise<Integer> promise = Promise.promise();
+    execute(postgresClientFactory.getClient(tenantId), connection -> {
+      return calculateGeneration(connection, record, tenantId).onComplete(promise);
+    });
+    return promise.future();
+  }
+
+  @Override
+  public Future<Integer> calculateGeneration(SqlConnection connetion, Record record, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String sql = String.format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
     log.info("Attempting get record generation: {}", sql);
-    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    connetion.query(sql).execute(promise);
     return promise.future().map(resultSet -> {
       Integer generation = resultSet.iterator().next().getInteger(0);
       if (generation > 0) {
@@ -125,15 +151,29 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   }
 
   @Override
+  public Future<Optional<Record>> getRecordById(SqlConnection connection, String id, IncomingIdType idType, String tenantId) {
+    switch (idType) {
+      case INSTANCE:
+        return getByInstanceId(connection, id, tenantId);
+      default:
+        return getById(connection, id, tenantId);
+    }
+  }
+
+  @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     String id = suppressFromDiscoveryDto.getId();
     IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
     Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
-    // TODO: perform in transaction
-    return getRecordById(id, idType, tenantId)
-      .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
-      .compose(record -> update(record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)), tenantId))
-      .map(record -> true);
+    Promise<Boolean> promise = Promise.promise();
+    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+      return getRecordById((SqlConnection) transaction, id, idType, tenantId)
+        .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
+        .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
+        .compose(record -> update((SqlConnection) transaction, record, tenantId))
+        .map(record -> true).onComplete(promise);
+    });
+    return promise.future();
   }
 
   @Override

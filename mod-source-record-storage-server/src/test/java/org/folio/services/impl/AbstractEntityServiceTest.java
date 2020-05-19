@@ -147,7 +147,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result());
+      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result(), false);
       async.complete();
     });
     savePromise.complete(mocks.getExpectedEntities());
@@ -251,7 +251,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       context.assertNotNull(entity);
       actual.add(entity);
     }, finished -> {
-      mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
+      mocks.compareEntities(context, mocks.getExpectedEntities(), actual, false);
       async.complete();
     });
   }

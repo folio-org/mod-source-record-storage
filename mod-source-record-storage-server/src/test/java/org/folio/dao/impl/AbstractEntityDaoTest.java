@@ -144,7 +144,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result());
+      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result(), false);
       async.complete();
     });
   }
@@ -238,8 +238,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery, D exten
         if (finished.failed()) {
           context.fail(finished.cause());
         }
-        Collections.sort(actual, (pr1, pr2) -> mocks.getId(pr1).compareTo(mocks.getId(pr2)));
-        mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
+        mocks.compareEntities(context, mocks.getExpectedEntities(), actual, true);
         async.complete();
       });
     });

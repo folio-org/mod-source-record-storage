@@ -8,6 +8,8 @@ import org.folio.dao.query.EntityQuery;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.SqlConnection;
 
 /**
  * Data access object interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
@@ -22,6 +24,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
    * @return future with optional entity
    */
   public Future<Optional<E>> getById(String id, String tenantId);
+
+  /**
+   * Searches for entity by id
+   *
+   * @param connection connection
+   * @param id         entity id
+   * @param tenantId   tenant id
+   * @return future with optional entity
+   */
+  public Future<Optional<E>> getById(SqlConnection connection, String id, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery}
@@ -56,6 +68,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<E> save(E entity, String tenantId);
 
   /**
+   * Saves entity to database
+   * 
+   * @param connection connection
+   * @param entity     entity to save
+   * @param tenantId   tenant id
+   * @return future with saved entity
+   */
+  public Future<E> save(SqlConnection connection, E entity, String tenantId);
+
+  /**
    * Saves batch of entities to database
    * 
    * @param entities batch of entities to save
@@ -74,6 +96,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
   public Future<E> update(E entity, String tenantId);
 
   /**
+   * Updates entity in database
+   * 
+   * @param connection connection
+   * @param entity     entity to update
+   * @param tenantId   tenant id
+   * @return future with updated entity
+   */
+  public Future<E> update(SqlConnection connection, E entity, String tenantId);
+
+  /**
    * Deletes entity with id from database
    * 
    * @param id       entity id
@@ -81,6 +113,16 @@ public interface EntityDao<E, C, Q extends EntityQuery> {
    * @return future with true if succeeded, else false
    */
   public Future<Boolean> delete(String id, String tenantId);
+
+  /**
+   * Deletes entity with id from database
+   * 
+   * @param connection connection
+   * @param id         entity id
+   * @param tenantId   tenant id
+   * @return future with true if succeeded, else false
+   */
+  public Future<Boolean> delete(SqlConnection connection, String id, String tenantId);
 
   /**
    * Deletes entities by {@link EntityQuery} from database

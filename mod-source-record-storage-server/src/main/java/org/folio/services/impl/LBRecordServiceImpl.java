@@ -1,21 +1,17 @@
 package org.folio.services.impl;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.LBRecordDao;
-import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.services.AbstractEntityService;
@@ -32,18 +28,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     implements LBRecordService {
 
   @Autowired
-  private LBSnapshotDao snapshotDao;
-
-  @Autowired
   private ParsedRecordDao parsedRecordDao;
-
-  @Override
-  public Future<Record> save(Record record, String tenantId) {
-    // TODO: perform in a transaction
-    return validateSnapshotProcessing(record.getSnapshotId(), tenantId)
-      .compose(v -> dao.calculateGeneration(record, tenantId))
-      .compose(generation -> super.save(record.withGeneration(generation), tenantId));
-  }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
@@ -93,21 +78,6 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     return dao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
-  }
-
-  private Future<Void> validateSnapshotProcessing(String snapshotId, String tenantId) {
-    return snapshotDao.getById(snapshotId, tenantId)
-      .map(snapshot -> snapshot
-        .orElseThrow(() -> new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId))))
-      .compose(this::isProcessing);
-  }
-
-  private Future<Void> isProcessing(Snapshot snapshot) {
-    if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-      String message = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-      return Future.failedFuture(new BadRequestException(String.format(message, snapshot.getStatus())));
-    }
-    return Future.succeededFuture();
   }
 
 }

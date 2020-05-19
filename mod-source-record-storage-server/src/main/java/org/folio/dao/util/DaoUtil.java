@@ -17,6 +17,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 
 /**
@@ -62,6 +63,67 @@ public class DaoUtil {
   public static final String VALUE_TEMPLATE_TEMPLATE = "$%s";
 
   private DaoUtil() { }
+
+  /**
+   * Executes passed action
+   *
+   * @param client {@link PgPool}
+   * @param action action that needs to be executed in transaction
+   * @param <T> result type returned from the action
+   * @return future with action result if succeeded or failed future
+   */
+  public static <T> Future<T> execute(PgPool client,
+      Function<SqlConnection, Future<T>> action) {
+    Promise<T> promise = Promise.promise();
+    client.getConnection(ac -> {
+      if (ac.succeeded()) {
+        SqlConnection connection = ac.result();
+        action.apply(connection).onComplete(ar -> {
+          if (ar.succeeded()) {
+            promise.complete(ar.result());
+          } else {
+            LOG.error("Execute failed", ar.cause());
+            promise.fail(ar.cause());
+          }
+          connection.close();
+        });
+      } else {
+        LOG.error("Failed to get connection", ac.cause());
+        promise.fail(ac.cause());
+      }
+    });
+    return promise.future();
+  }
+
+  /**
+   * Executes passed action in transaction
+   *
+   * @param client {@link PgPool}
+   * @param action action that needs to be executed in transaction
+   * @param <T> result type returned from the action
+   * @return future with action result if succeeded or failed future
+   */
+  public static <T> Future<T> executeInTransaction(PgPool client,
+      Function<Transaction, Future<T>> action) {
+    Promise<T> promise = Promise.promise();
+    client.begin(begin -> {
+      if (begin.succeeded()) {
+        Transaction transaction = begin.result();
+        action.apply(transaction).onComplete(result -> {
+          if (result.succeeded()) {
+            transaction.commit(commit -> promise.complete(result.result()));
+          } else {
+            LOG.error("Execute failed, rollback transaction", result.cause());
+            transaction.rollback(r -> promise.fail(result.cause()));
+          }
+        });
+      } else {
+        LOG.error("Failed to begin transaction", begin.cause());
+        promise.fail(begin.cause());
+      }
+    });
+    return promise.future();
+  }
 
   /**
    * Creates {@link Metadata} from row
@@ -112,38 +174,6 @@ public class DaoUtil {
     }
     // returning -1 to indicate unknown total count
     return -1; // this should not occur
-  }
-
-  /**
-   * Executes passed action in transaction
-   *
-   * @param client {@link PgPool}
-   * @param action action that needs to be executed in transaction
-   * @param <T> result type returned from the action
-   * @return future with action result if succeeded or failed future
-   */
-  public static <T> Future<T> executeInTransaction(PgPool client,
-      Function<Transaction, Future<T>> action) {
-    Promise<T> promise = Promise.promise();
-    client.begin(begin -> {
-      if (begin.succeeded()) {
-        Transaction transaction = begin.result();
-        action.apply(transaction).onComplete(result -> {
-          if (result.succeeded()) {
-            transaction.commit(commit -> promise.complete(result.result()));
-            } else {
-              transaction.rollback(r -> {
-                LOG.error("Rollback transaction", result.cause());
-                promise.fail(result.cause());
-              });
-            }
-        });
-      } else {
-        LOG.error("Failed to begin transaction", begin.cause());
-        promise.fail(begin.cause());
-      }
-    });
-    return promise.future();
   }
 
 }

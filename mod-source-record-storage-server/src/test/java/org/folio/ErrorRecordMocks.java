@@ -126,7 +126,7 @@ public class ErrorRecordMocks implements EntityMocks<ErrorRecord, ErrorRecordCol
   @Override
   public void compareCollections(TestContext context, ErrorRecordCollection expected, ErrorRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getErrorRecords(), actual.getErrorRecords());
+    compareEntities(context, expected.getErrorRecords(), actual.getErrorRecords(), false);
   }
 
   @Override

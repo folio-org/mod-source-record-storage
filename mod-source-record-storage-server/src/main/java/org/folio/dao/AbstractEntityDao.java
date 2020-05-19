@@ -9,6 +9,7 @@ import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.SAVE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.UPDATE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.VALUE_TEMPLATE_TEMPLATE;
+import static org.folio.dao.util.DaoUtil.execute;
 import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.util.List;
@@ -32,6 +33,7 @@ import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Tuple;
 
 public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements EntityDao<E, C, Q> {
@@ -48,6 +50,14 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     return select(sql, tenantId);
   }
 
+  @Override
+  public Future<Optional<E>> getById(SqlConnection connection, String id, String tenantId) {
+    String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
+    log.info("Attempting get by id: {}", sql);
+    return select(connection, sql, tenantId);
+  }
+
+  @Override
   public Future<C> getByQuery(Q query, int offset, int limit, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String where = query.getWhereClause();
@@ -60,6 +70,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
       : toEmptyCollection(resultSet));
   }
 
+  @Override
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.getWhereClause();
     String orderBy = query.getOrderByClause();
@@ -87,14 +98,20 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     });
   }
 
+  @Override
   public Future<E> save(E entity, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection -> save(connection, entity, tenantId));
+  }
+
+  @Override
+  public Future<E> save(SqlConnection connection, E entity, String tenantId) {
     Promise<E> promise = Promise.promise();
     String table = getTableName();
     String columns = getColumns();
     String valuesTemplate = getValuesTemplate(columns);
     String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     log.info("Attempting save: {}", sqlTemplate);
-    postgresClientFactory.getClient(tenantId)
+    connection
       .preparedQuery(sqlTemplate)
       .execute(toTuple(entity, true), save -> {
         if (save.failed()) {
@@ -107,6 +124,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     return promise.future();
   }
 
+  @Override
   public Future<List<E>> save(List<E> entities, String tenantId) {
     Promise<List<E>> promise = Promise.promise();
     log.info("Attempting batch save in {}", getTableName());
@@ -127,7 +145,13 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     return promise.future();
   }
 
+  @Override
   public Future<E> update(E entity, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection -> update(connection, entity, tenantId));
+  }
+
+  @Override
+  public Future<E> update(SqlConnection connection, E entity, String tenantId) {
     Promise<E> promise = Promise.promise();
     String id = getId(entity);
     String table = getTableName();
@@ -135,7 +159,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     String valuesTemplate = getValuesTemplate(columns);
     String sqlTemplate = String.format(UPDATE_SQL_TEMPLATE, table, columns, valuesTemplate, id);
     log.info("Attempting update: {}", sqlTemplate);
-    postgresClientFactory.getClient(tenantId)
+    connection
       .preparedQuery(sqlTemplate)
       .execute(toTuple(entity, false), update -> {
         if (update.failed()) {
@@ -152,20 +176,52 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
     return promise.future();
   }
 
+  @Override
   public Future<Boolean> delete(String id, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection -> delete(connection, id, tenantId));
+  }
+
+  @Override
+  public Future<Boolean> delete(SqlConnection connection, String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String sql = String.format(DELETE_BY_ID_SQL_TEMPLATE, getTableName(), id);
     log.info("Attempting delete by id: {}", sql);
-    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
+    connection.query(sql).execute(promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
+  @Override
   public Future<Integer> delete(Q query, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.getWhereClause());
     log.info("Attempting delete by query: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(this::toRowCount);
+  }
+
+  /**
+   * Submit SQL select query which returns result mapping to an entity
+   * 
+   * @param sql      SQL query
+   * @param tenantId tenant id
+   * @return future of optional entity
+   */
+  protected Future<Optional<E>> select(String sql, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection -> select(connection, sql, tenantId));
+  }
+
+  /**
+   * Submit SQL select query which returns result mapping to an entity
+   * 
+   * @param connection connection
+   * @param sql        SQL query
+   * @param tenantId   tenant id
+   * @return future of optional entity
+   */
+  protected Future<Optional<E>> select(SqlConnection connection, String sql, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    connection.query(sql).execute(promise);
+    return promise.future().map(this::toEntity);
   }
 
   /**
@@ -200,19 +256,6 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery> implements 
       .mapToObj(Integer::toString)
       .map(i -> String.format(VALUE_TEMPLATE_TEMPLATE, i))
       .collect(Collectors.joining(COMMA));
-  }
-
-  /**
-   * Submit SQL select query which returns result mapping to an entity
-   * 
-   * @param sql      SQL query
-   * @param tenantId tenant id
-   * @return future of optional entity
-   */
-  protected Future<Optional<E>> select(String sql, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
-    return promise.future().map(this::toEntity);
   }
 
   /**

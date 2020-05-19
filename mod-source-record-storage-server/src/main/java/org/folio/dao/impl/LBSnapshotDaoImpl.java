@@ -38,6 +38,10 @@ import io.vertx.sqlclient.Tuple;
 //     <constraints nullable="false"/>
 //   </column>
 //   <column name="processing_started_date" type="timestamptz"></column>
+//   <column name="createdbyuserid" type="uuid"></column>
+//   <column name="createddate" type="timestamptz"></column>
+//   <column name="updatedbyuserid" type="uuid"></column>
+//   <column name="updateddate" type="timestamptz"></column>
 // </createTable>
 @Component
 public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotCollection, SnapshotQuery> implements LBSnapshotDao {

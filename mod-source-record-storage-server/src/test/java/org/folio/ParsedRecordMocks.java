@@ -122,7 +122,7 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
   @Override
   public void compareCollections(TestContext context, ParsedRecordCollection expected, ParsedRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getParsedRecords(), actual.getParsedRecords());
+    compareEntities(context, expected.getParsedRecords(), actual.getParsedRecords(), true);
   }
 
   @Override

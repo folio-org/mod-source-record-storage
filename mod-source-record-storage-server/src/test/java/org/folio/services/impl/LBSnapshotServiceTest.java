@@ -1,5 +1,6 @@
 package org.folio.services.impl;
 
+import static java.lang.String.format;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -56,7 +57,7 @@ public class LBSnapshotServiceTest extends AbstractEntityServiceTest<Snapshot, S
     when(mockDao.getById(mockUpdateEntity.getJobExecutionId(), TENANT_ID)).thenReturn(getByIdPromise.future());
     when(mockDao.update(mockUpdateEntity, TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
-    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdateEntity));
+    String expectedMessage = format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdateEntity));
     service.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       context.assertEquals(expectedMessage, res.cause().getMessage());

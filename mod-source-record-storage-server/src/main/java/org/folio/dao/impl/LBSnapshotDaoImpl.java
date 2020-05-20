@@ -1,6 +1,8 @@
 package org.folio.dao.impl;
 
+import static java.util.Objects.nonNull;
 import static java.util.stream.StreamSupport.stream;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
@@ -11,11 +13,9 @@ import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.SnapshotQuery;
@@ -74,14 +74,14 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
 
   @Override
   protected Tuple toTuple(Snapshot snapshot, boolean generateIdIfNotExists) {
-    if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
+    if (generateIdIfNotExists && isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
     TupleWrapper tupleWrapper = TupleWrapper.of()
       .addUUID(snapshot.getJobExecutionId())
       .addEnum(snapshot.getStatus())
       .addOffsetDateTime(snapshot.getProcessingStartedDate());
-    if (Objects.nonNull(snapshot.getMetadata())) {
+    if (nonNull(snapshot.getMetadata())) {
       tupleWrapper.addUUID(snapshot.getMetadata().getCreatedByUserId())
         .addOffsetDateTime(snapshot.getMetadata().getCreatedDate())
         .addUUID(snapshot.getMetadata().getUpdatedByUserId())
@@ -112,7 +112,7 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
       .withJobExecutionId(row.getUUID(ID_COLUMN_NAME).toString())
       .withStatus(Snapshot.Status.fromValue(row.getString(STATUS_COLUMN_NAME)));
     OffsetDateTime processingStartedDate = row.getOffsetDateTime(PROCESSING_STARTED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(processingStartedDate)) {
+    if (nonNull(processingStartedDate)) {
       snapshot.setProcessingStartedDate(Date.from(processingStartedDate.toInstant()));
     }
     return snapshot

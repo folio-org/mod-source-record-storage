@@ -1,5 +1,6 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.DELETE_BY_ID_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.DELETE_BY_QUERY_SQL_TEMPLATE;
@@ -57,7 +58,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Override
   public Future<Optional<E>> getById(SqlConnection connection, String id, String tenantId) {
-    String sql = String.format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
+    String sql = format(GET_BY_ID_SQL_TEMPLATE, getColumns(), getTableName(), id);
     log.info("Attempting get by id: {}", sql);
     return select(connection, sql, tenantId);
   }
@@ -73,7 +74,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     Promise<RowSet<Row>> promise = Promise.promise();
     String where = query.getWhereClause();
     String orderBy = query.getOrderByClause();
-    String sql = String.format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = format(GET_BY_QUERY_WITH_TOTAL_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting get by query: {}", sql);
     connection.query(sql).execute(promise);
     return promise.future().map(resultSet -> DaoUtil.hasRecords(resultSet)
@@ -85,9 +86,9 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
   public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler) {
     String where = query.getWhereClause();
     String orderBy = query.getOrderByClause();
-    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
+    String sql = format(GET_BY_QUERY_SQL_TEMPLATE, getColumns(), getTableName(), where, orderBy, offset, limit);
     log.info("Attempting stream get by filter: {}", sql);
-    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
+    inTransaction(tenantId, connection -> {
       Promise<Void> promise = Promise.promise();
       connection.prepare(sql, ar2 -> {
         if (ar2.failed()) {
@@ -121,7 +122,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     String table = getTableName();
     String columns = getColumns();
     String valuesTemplate = getValuesTemplate(columns);
-    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
+    String sqlTemplate = format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     log.info("Attempting save: {}", sqlTemplate);
     connection
       .preparedQuery(sqlTemplate)
@@ -149,7 +150,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     String table = getTableName();
     String columns = getColumns();
     String valuesTemplate = getValuesTemplate(columns);
-    String sqlTemplate = String.format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
+    String sqlTemplate = format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     connection
       .preparedQuery(sqlTemplate)
       .executeBatch(toTuples(entities, true), batch -> {
@@ -176,7 +177,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     String table = getTableName();
     String columns = getColumns();
     String valuesTemplate = getValuesTemplate(columns);
-    String sqlTemplate = String.format(UPDATE_SQL_TEMPLATE, table, columns, valuesTemplate, id);
+    String sqlTemplate = format(UPDATE_SQL_TEMPLATE, table, columns, valuesTemplate, id);
     log.info("Attempting update: {}", sqlTemplate);
     connection
       .preparedQuery(sqlTemplate)
@@ -187,7 +188,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
           return;
         }
         if (update.result().rowCount() == 0) {
-          promise.fail(new NotFoundException(String.format("%s row with id %s was not updated", getTableName(), id)));
+          promise.fail(new NotFoundException(format("%s row with id %s was not updated", getTableName(), id)));
           return;
         }
         promise.complete(postUpdate(entity));
@@ -204,7 +205,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
   @Override
   public Future<Boolean> delete(SqlConnection connection, String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(DELETE_BY_ID_SQL_TEMPLATE, getTableName(), id);
+    String sql = format(DELETE_BY_ID_SQL_TEMPLATE, getTableName(), id);
     log.info("Attempting delete by id: {}", sql);
     connection.query(sql).execute(promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
@@ -219,7 +220,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
   @Override
   public Future<Integer> delete(SqlConnection connection, Q query, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.getWhereClause());
+    String sql = format(DELETE_BY_QUERY_SQL_TEMPLATE, getTableName(), query.getWhereClause());
     log.info("Attempting delete by query: {}", sql);
     connection.query(sql).execute(promise);
     return promise.future().map(this::toRowCount);
@@ -281,7 +282,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
   protected String getValuesTemplate(String columns) {
     return IntStream.range(1, columns.split(COMMA).length + 1)
       .mapToObj(Integer::toString)
-      .map(i -> String.format(VALUE_TEMPLATE_TEMPLATE, i))
+      .map(i -> format(VALUE_TEMPLATE_TEMPLATE, i))
       .collect(Collectors.joining(COMMA));
   }
 

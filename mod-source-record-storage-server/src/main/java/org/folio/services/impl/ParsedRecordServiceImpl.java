@@ -1,7 +1,11 @@
 package org.folio.services.impl;
 
+import static java.lang.String.format;
+import static java.util.Objects.isNull;
+
 import java.util.List;
-import java.util.Objects;
+import static org.mockito.ArgumentMatchers.isNull;
+
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
@@ -35,6 +39,7 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
       .map(this::validateParsedRecordId)
       .map(record -> updateParsedRecord(record, tenantId))
@@ -63,13 +68,13 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
     Metadata metadata = record.getMetadata();
     return dao.inTransaction(tenantId, connection ->
       recordDao.getById(connection, id, tenantId)
-        .map(r -> r.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with id %s", id))))
+        .map(r -> r.orElseThrow(() -> new NotFoundException(format("Couldn't find record with id %s", id))))
         .compose(r -> recordDao.save(connection, r.withExternalIdsHolder(externalIdsHolder).withMetadata(metadata), tenantId))
         .compose(r -> dao.save(connection, parsedRecord, tenantId)));
   }
 
   private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord().getId())) {
+    if (isNull(record.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
     return record;

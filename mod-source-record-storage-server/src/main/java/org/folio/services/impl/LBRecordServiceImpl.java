@@ -1,7 +1,12 @@
 package org.folio.services.impl;
 
+import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -9,7 +14,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.ErrorRecordDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
@@ -55,19 +59,19 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Override
   public Future<Record> save(Record record, String tenantId) {
-    if (StringUtils.isEmpty(record.getId())) {
+    if (isEmpty(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
-    if (StringUtils.isEmpty(record.getMatchedId())) {
+    if (isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
-    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+    if (nonNull(record.getParsedRecord()) && isEmpty(record.getParsedRecord().getId())) {
       record.getParsedRecord().setId(record.getId());
     }
-    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+    if (nonNull(record.getErrorRecord()) && isEmpty(record.getErrorRecord().getId())) {
       record.getErrorRecord().setId(record.getId());
     }
-    if (Objects.isNull(record.getAdditionalInfo())) {
+    if (isNull(record.getAdditionalInfo())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
     return dao.inTransaction(tenantId, connection -> validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
@@ -77,6 +81,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
       .map(record -> save(record, tenantId))
       .collect(Collectors.toList());
@@ -101,16 +106,16 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     return dao.inTransaction(tenantId, connection -> dao.getById(connection, record.getId(), tenantId)
       .compose(optionalRecord -> optionalRecord
         .map(r -> {
-          if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+          if (nonNull(record.getParsedRecord()) && isEmpty(record.getParsedRecord().getId())) {
             record.getParsedRecord().setId(record.getId());
           }
-          if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+          if (nonNull(record.getErrorRecord()) && isEmpty(record.getErrorRecord().getId())) {
             record.getErrorRecord().setId(record.getId());
           }
           return insertOrUpdateRecord(connection, record, tenantId);
         })
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", record.getId())))))
+          format("Record with id '%s' was not found", record.getId())))))
       );
   }
 
@@ -118,17 +123,17 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
     // TODO: this should use SQL functions to get partial record with parsed record
     Future<Optional<Record>> future;
-    if (StringUtils.isNotEmpty(externalIdIdentifier)) {
+    if (isNotEmpty(externalIdIdentifier)) {
       ExternalIdType externalIdType = getExternalIdType(externalIdIdentifier);
       future = dao.getRecordByExternalId(id, externalIdType, tenantId);
     } else {
       future = dao.getById(id, tenantId);
     }
     return future.map(record -> record
-      .orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", externalIdIdentifier, id))))
+      .orElseThrow(() -> new NotFoundException(format("Couldn't find record with %s %s", externalIdIdentifier, id))))
       .compose(record -> parsedRecordDao.getById(record.getId(), tenantId)
       .map(parsedRecord -> parsedRecord
-        .orElseThrow(() -> new NotFoundException(String.format("Couldn't find parsed record with id %s", record.getId()))))
+        .orElseThrow(() -> new NotFoundException(format("Couldn't find parsed record with id %s", record.getId()))))
       .map(parsedRecord -> getRecordWithParsedRecord(record, parsedRecord)));
   }
 
@@ -139,7 +144,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
     return dao.inTransaction(tenantId, connection ->
       dao.getRecordById(connection, id, idType, tenantId)
-        .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
+        .map(record -> record.orElseThrow(() -> new NotFoundException(format("Couldn't find record with %s %s", idType, id))))
         .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
         .compose(record -> dao.update(connection, record, tenantId)));
   }
@@ -171,7 +176,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
               return saveUpdatedRecord(connection, newRecord, existingRecord.withState(Record.State.OLD), tenantId);
             }))
           .orElse(Future.failedFuture(new NotFoundException(
-            String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))));
+            format("Record with id '%s' was not found", parsedRecordDto.getId()))))));
   }
 
   private Record getRecordWithParsedRecord(Record record, ParsedRecord parsedRecord) {
@@ -181,13 +186,13 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   private Future<Record> insertOrUpdateRecord(SqlConnection connection, Record record, String tenantId) {
     return rawRecordDao.save(connection, record.getRawRecord(), tenantId)
         .compose(rr -> {
-          if (Objects.nonNull(record.getParsedRecord())) {
+          if (nonNull(record.getParsedRecord())) {
             return insertOrUpdateParsedRecord(connection, record, tenantId);
           }
           return Future.succeededFuture();
         })
         .compose(succeeded -> {
-          if (Boolean.FALSE.equals(succeeded) && Objects.nonNull(record.getErrorRecord())) {
+          if (Boolean.FALSE.equals(succeeded) && nonNull(record.getErrorRecord())) {
             return errorRecordDao.save(connection, record.getErrorRecord(), tenantId);
           }
           return Future.succeededFuture();
@@ -221,14 +226,14 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   private Future<Void> validateSnapshotProcessing(SqlConnection connection, String snapshotId, String tenantId) {
     return snapshotDao.getById(connection, snapshotId, tenantId)
-      .map(snapshot -> snapshot.orElseThrow(() -> new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId))))
+      .map(snapshot -> snapshot.orElseThrow(() -> new NotFoundException(format("Couldn't find snapshot with id %s", snapshotId))))
       .compose(this::isProcessing);
   }
 
   private Future<Void> isProcessing(Snapshot snapshot) {
-    if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+    if (isNull(snapshot.getProcessingStartedDate())) {
       String message = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-      return Future.failedFuture(new BadRequestException(String.format(message, snapshot.getStatus())));
+      return Future.failedFuture(new BadRequestException(format(message, snapshot.getStatus())));
     }
     return Future.succeededFuture();
   }
@@ -238,7 +243,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
       return ExternalIdType.valueOf(externalIdIdentifier);
     } catch (IllegalArgumentException e) {
       String message = "The external Id type: %s is wrong.";
-      throw new BadRequestException(String.format(message, externalIdIdentifier));
+      throw new BadRequestException(format(message, externalIdIdentifier));
     }
   }
 

@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -172,7 +174,7 @@ public abstract class AbstractEntityDaoTest<E, C, Q extends EntityQuery<Q>, D ex
     E mockUpdateEntity = mocks.getUpdatedMockEntity();
     dao.update(mockUpdateEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
-      String expectedMessage = String.format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
+      String expectedMessage = format("%s row with id %s was not updated", dao.getTableName(), dao.getId(mockUpdateEntity));
       context.assertEquals(expectedMessage, res.cause().getMessage());
       async.complete();
     });

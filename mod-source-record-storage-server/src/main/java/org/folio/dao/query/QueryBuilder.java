@@ -1,5 +1,6 @@
 package org.folio.dao.query;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
@@ -62,22 +63,22 @@ public class QueryBuilder<Q extends EntityQuery<Q>> {
         case OR:
         case START_EXPRESSION:
         case END_EXPRESSION:
-          whereClause.append(String.format("%s ", where.getOp().getToken()));
+          whereClause.append(format("%s ", where.getOp().getToken()));
           break;
         default:
           Optional<String> column = columnCache.getUnchecked(where.getProperty());
           if (column.isPresent()) {
-            whereClause.append(String.format("%s %s %s ", column.get(),
+            whereClause.append(format("%s %s %s ", column.get(),
               where.getOp().getToken(), getValue(where)));
           } else {
-            throw new BadRequestException(String.format("%s cannot be mapped to a column",
+            throw new BadRequestException(format("%s cannot be mapped to a column",
               where.getProperty()));
           }
           break;
       }
     }
     return whereClause.length() > 0
-      ? String.format(WHERE_TEMPLATE, whereClause.toString().replace(DOUBLE_SPACE, SPACE)).trim()
+      ? format(WHERE_TEMPLATE, whereClause.toString().replace(DOUBLE_SPACE, SPACE)).trim()
       : EMPTY;
   }
 
@@ -101,12 +102,12 @@ public class QueryBuilder<Q extends EntityQuery<Q>> {
           .append(SPACE)
           .append(orderBy.getDirection().toString());
       } else {
-        throw new BadRequestException(String.format("%s cannot be mapped to a column",
+        throw new BadRequestException(format("%s cannot be mapped to a column",
           orderBy.getProperty()));
       }
     }
     return oderByClause.length() > 0
-      ? String.format(ORDER_BY_TEMPLATE, oderByClause.toString())
+      ? format(ORDER_BY_TEMPLATE, oderByClause.toString())
       : EMPTY;
   }
 
@@ -213,14 +214,14 @@ public class QueryBuilder<Q extends EntityQuery<Q>> {
         break;
       case BETWEEN:
         Object[] value = (Object[]) where.getValue();
-        return String.format("%s AND %s ",
+        return format("%s AND %s ",
           getValue(property, value[0]),
           getValue(property, value[1]));
       case IN:
         Collection<?> values = (Collection<?>) where.getValue();
-        return String.format("(%s) ", getListValue(property, values));
+        return format("(%s) ", getListValue(property, values));
       default:
-        return String.format("%s ", getValue(property, where.getValue()));
+        return format("%s ", getValue(property, where.getValue()));
     }
     return EMPTY;
   }
@@ -230,9 +231,9 @@ public class QueryBuilder<Q extends EntityQuery<Q>> {
     Field field = getField(metamodel.entity(), path);
     Class<?> type = field.getType();
     if (String.class.isAssignableFrom(type) || type.isEnum()) {
-      return String.format("'%s'", String.valueOf(value));
+      return format("'%s'", String.valueOf(value));
     } else if (Date.class.isAssignableFrom(type)) {
-      return String.format("'%s'", DATE_FORMATTER.format((Date) value));
+      return format("'%s'", DATE_FORMATTER.format((Date) value));
     } else {
       return String.valueOf(value);
     }

@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.ParsedRecordMocks;
 import org.folio.TestMocks;
@@ -53,17 +55,17 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    String sql = String.format(DELETE_SQL_TEMPLATE, dao.getTableName());
+    String sql = format(DELETE_SQL_TEMPLATE, dao.getTableName());
     pgClient.execute(sql, delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      String recordSql = String.format(DELETE_SQL_TEMPLATE, recordDao.getTableName());
+      String recordSql = format(DELETE_SQL_TEMPLATE, recordDao.getTableName());
       pgClient.execute(recordSql, recordDelete -> {
         if (recordDelete.failed()) {
           context.fail(recordDelete.cause());
         }
-        String snapshotSql = String.format(DELETE_SQL_TEMPLATE, snapshotDao.getTableName());
+        String snapshotSql = format(DELETE_SQL_TEMPLATE, snapshotDao.getTableName());
         pgClient.execute(snapshotSql, snapshotDelete -> {
           if (snapshotDelete.failed()) {
             context.fail(snapshotDelete.cause());

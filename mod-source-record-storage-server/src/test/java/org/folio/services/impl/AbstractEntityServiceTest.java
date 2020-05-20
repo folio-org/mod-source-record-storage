@@ -1,5 +1,6 @@
 package org.folio.services.impl;
 
+import static java.lang.String.format;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -174,7 +175,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery<Q>, 
     E mockUpdatedEntity = mocks.getUpdatedMockEntity();
     when(mockDao.update(mockUpdatedEntity, TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
-    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
+    String expectedMessage = format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
     service.update(mockUpdatedEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       context.assertEquals(expectedMessage, res.cause().getMessage());

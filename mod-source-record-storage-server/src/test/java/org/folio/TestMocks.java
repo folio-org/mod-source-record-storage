@@ -1,5 +1,6 @@
 package org.folio;
 
+import static java.lang.String.format;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -148,7 +149,7 @@ public class TestMocks {
   }
 
   private static Optional<Snapshot> readSnapshot(SourceRecord sourceRecord) {
-    File file = new File(String.format(SNAPSHOT_PATH_TEMPLATE, sourceRecord.getSnapshotId()));
+    File file = new File(format(SNAPSHOT_PATH_TEMPLATE, sourceRecord.getSnapshotId()));
     if (file.exists()) {
       try {
         Snapshot snapshot = ObjectMapperTool.getDefaultMapper().readValue(file, Snapshot.class);
@@ -170,7 +171,7 @@ public class TestMocks {
   }
 
   private static Optional<Record> readRecord(SourceRecord sourceRecord) {
-    File file = new File(String.format(RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
+    File file = new File(format(RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
         Record record = ObjectMapperTool.getDefaultMapper().readValue(file, Record.class)
@@ -204,7 +205,7 @@ public class TestMocks {
   }
 
   private static Optional<ErrorRecord> readErrorRecord(SourceRecord sourceRecord) {
-    File file = new File(String.format(ERROR_RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
+    File file = new File(format(ERROR_RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
         ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);

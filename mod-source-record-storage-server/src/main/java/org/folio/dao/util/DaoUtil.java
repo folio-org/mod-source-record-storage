@@ -1,8 +1,9 @@
 package org.folio.dao.util;
 
+import static java.util.Objects.nonNull;
+
 import java.time.OffsetDateTime;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -136,19 +137,19 @@ public class DaoUtil {
   public static Metadata metadataFromRow(Row row) {
     Metadata metadata = new Metadata();
     UUID createdByUserId = row.getUUID(CREATED_BY_USER_ID_COLUMN_NAME);
-    if (Objects.nonNull(createdByUserId)) {
+    if (nonNull(createdByUserId)) {
       metadata.setCreatedByUserId(createdByUserId.toString());
     }
     OffsetDateTime createdDate = row.getOffsetDateTime(CREATED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(createdDate)) {
+    if (nonNull(createdDate)) {
       metadata.setCreatedDate(Date.from(createdDate.toInstant()));
     }
     UUID updatedByUserId = row.getUUID(UPDATED_BY_USER_ID_COLUMN_NAME);
-    if (Objects.nonNull(updatedByUserId)) {
+    if (nonNull(updatedByUserId)) {
       metadata.setUpdatedByUserId(updatedByUserId.toString());
     }
     OffsetDateTime updatedDate = row.getOffsetDateTime(UPDATED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(updatedDate)) {
+    if (nonNull(updatedDate)) {
       metadata.setUpdatedDate(Date.from(updatedDate.toInstant()));
     }
     return metadata;
@@ -161,7 +162,7 @@ public class DaoUtil {
    * @return true if result set has actual result defined by having id defined
    */
   public static boolean hasRecords(RowSet<Row> rowSet) {
-    return rowSet.rowCount() >= 1 && Objects.nonNull(rowSet.iterator().next().getUUID(ID_COLUMN_NAME));
+    return rowSet.rowCount() >= 1 && nonNull(rowSet.iterator().next().getUUID(ID_COLUMN_NAME));
   }
 
   /**

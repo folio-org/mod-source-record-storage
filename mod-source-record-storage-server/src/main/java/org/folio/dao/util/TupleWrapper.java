@@ -1,8 +1,9 @@
 package org.folio.dao.util;
 
+import static java.util.Objects.nonNull;
+
 import java.time.ZoneOffset;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 
 import io.vertx.sqlclient.Tuple;
@@ -19,7 +20,7 @@ public class TupleWrapper {
   }
 
   public TupleWrapper addUUID(String uuid) {
-    if (Objects.nonNull(uuid)) {
+    if (nonNull(uuid)) {
       tuple.addUUID(UUID.fromString(uuid));
     } else {
       tuple.addValue(null);
@@ -53,7 +54,7 @@ public class TupleWrapper {
   }
 
   public TupleWrapper addEnum(Enum<?> e) {
-    if (Objects.nonNull(e)) {
+    if (nonNull(e)) {
       tuple.addString(e.toString());
     } else {
       tuple.addValue(null);
@@ -62,7 +63,7 @@ public class TupleWrapper {
   }
 
   public TupleWrapper addOffsetDateTime(Date date) {
-    if (Objects.nonNull(date)) {
+    if (nonNull(date)) {
       tuple.addOffsetDateTime(date.toInstant().atOffset(ZoneOffset.UTC));
     } else {
       tuple.addValue(null);

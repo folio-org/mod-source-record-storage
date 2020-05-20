@@ -1,6 +1,9 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static java.util.stream.StreamSupport.stream;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
@@ -11,12 +14,10 @@ import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.execute;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.query.RecordQuery;
@@ -93,7 +94,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getByMatchedId(SqlConnection connetion, String matchedId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
+    String sql = format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
     log.info("Attempting get by matched id: {}", sql);
     return select(connetion, sql, tenantId);
   }
@@ -106,7 +107,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getByInstanceId(SqlConnection connetion, String instanceId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
+    String sql = format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
     log.info("Attempting get by instance id: {}", sql);
     return select(connetion, sql, tenantId);
   }
@@ -120,7 +121,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   @Override
   public Future<Integer> calculateGeneration(SqlConnection connetion, Record record, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
+    String sql = format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
     log.info("Attempting get record generation: {}", sql);
     connetion.query(sql).execute(promise);
     return promise.future().map(resultSet -> {
@@ -188,10 +189,10 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   protected Tuple toTuple(Record record, boolean generateIdIfNotExists) {
-    if (generateIdIfNotExists && StringUtils.isEmpty(record.getId())) {
+    if (generateIdIfNotExists && isEmpty(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
-    if (StringUtils.isEmpty(record.getMatchedId())) {
+    if (isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
     TupleWrapper tupleWrapper = TupleWrapper.of()
@@ -201,19 +202,19 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       .addUUID(record.getMatchedId())
       .addInteger(record.getGeneration())
       .addEnum(record.getRecordType());
-    if (Objects.nonNull(record.getExternalIdsHolder())) {
+    if (nonNull(record.getExternalIdsHolder())) {
       tupleWrapper.addUUID(record.getExternalIdsHolder().getInstanceId());
     } else {
       tupleWrapper.addNull();
     }
     tupleWrapper.addEnum(record.getState())
       .addInteger(record.getOrder());
-    if (Objects.nonNull(record.getAdditionalInfo())) {
+    if (nonNull(record.getAdditionalInfo())) {
       tupleWrapper.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
     } else {
       tupleWrapper.addNull();
     }
-    if (Objects.nonNull(record.getMetadata())) {
+    if (nonNull(record.getMetadata())) {
       tupleWrapper.addUUID(record.getMetadata().getCreatedByUserId())
         .addOffsetDateTime(record.getMetadata().getCreatedDate())
         .addUUID(record.getMetadata().getUpdatedByUserId())
@@ -248,7 +249,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       .withGeneration(row.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(row.getString(RECORD_TYPE_COLUMN_NAME)));
     UUID instanceId = row.getUUID(INSTANCE_ID_COLUMN_NAME);
-    if (Objects.nonNull(instanceId)) {
+    if (nonNull(instanceId)) {
       ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
       externalIdHolder.setInstanceId(instanceId.toString());
       record.setExternalIdsHolder(externalIdHolder);
@@ -256,7 +257,7 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     record.withState(State.valueOf(row.getString(STATE_COLUMN_NAME)))
       .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME));
     Boolean suppressDiscovery = row.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME);
-    if (Objects.nonNull(suppressDiscovery)) {
+    if (nonNull(suppressDiscovery)) {
       AdditionalInfo additionalInfo = new AdditionalInfo();
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
       record.setAdditionalInfo(additionalInfo);

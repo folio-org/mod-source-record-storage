@@ -8,6 +8,7 @@ import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
@@ -157,6 +158,25 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
       }
       String id = mocks.getMockEntity().getId();
       dao.getRecordById(id, null, TENANT_ID).onComplete(res -> {
+        if (res.failed()) {
+          context.fail(res.cause());
+        }
+        context.assertTrue(res.result().isPresent());
+        mocks.compareEntities(context, mocks.getExpectedEntity(), res.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetRecordByExternalId(TestContext context) {
+    Async async = context.async();
+    dao.save(mocks.getMockEntity(), TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String instanceId = mocks.getMockEntity().getExternalIdsHolder().getInstanceId();
+      dao.getRecordByExternalId(instanceId, ExternalIdType.INSTANCE, TENANT_ID).onComplete(res -> {
         if (res.failed()) {
           context.fail(res.cause());
         }

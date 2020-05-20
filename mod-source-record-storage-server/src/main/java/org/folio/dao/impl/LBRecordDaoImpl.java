@@ -150,11 +150,16 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getRecordByExternalId(connection, externalId, externalIdType, tenantId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(SqlConnection connection, String externalId, ExternalIdType externalIdType, String tenantId) {
     if (externalIdType == ExternalIdType.INSTANCE) {
       return getByInstanceId(externalId, tenantId);
-    } else {
-      return getById(externalId, tenantId);
     }
+    return getById(externalId, tenantId);
   }
 
   @Override

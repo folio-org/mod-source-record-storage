@@ -108,4 +108,15 @@ public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQ
    */
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
+  /**
+   * Searches for {@link Record} by id of external entity which was created from desired record
+   *
+   * @param connection     connection
+   * @param externalId     external relation id
+   * @param externalIdType external id type
+   * @param tenantId       tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByExternalId(SqlConnection connection, String externalId, ExternalIdType externalIdType, String tenantId);
+
 }

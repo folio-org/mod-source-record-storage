@@ -1,5 +1,7 @@
 package org.folio.services.impl;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.LBRecordMocks;
 import org.folio.dao.ErrorRecordDao;
@@ -48,21 +50,21 @@ public class LBRecordServiceTest extends AbstractEntityServiceTest<Record, Recor
   @Test
   public void shouldSave(TestContext context) {
     Promise<Record> savePromise = Promise.promise();
-
+    assertEquals("TODO", "TODO");
     savePromise.complete(mocks.getExpectedEntity());
   }
 
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Promise<Record> savePromise = Promise.promise();
-
+    assertEquals("TODO", "TODO");
     savePromise.fail("Invalid");
   }
 
   @Test
   public void shouldUpdate(TestContext context) {
     Promise<Record> updatePromise = Promise.promise();
-
+    assertEquals("TODO", "TODO");
     updatePromise.complete(mocks.getExpectedUpdatedEntity());
   }
 
@@ -71,7 +73,7 @@ public class LBRecordServiceTest extends AbstractEntityServiceTest<Record, Recor
     Promise<Record> updatePromise = Promise.promise();
     Record mockUpdatedEntity = mocks.getUpdatedMockEntity();
     String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
-
+    assertEquals("TODO", "TODO");
     updatePromise.fail(expectedMessage);
   }
 

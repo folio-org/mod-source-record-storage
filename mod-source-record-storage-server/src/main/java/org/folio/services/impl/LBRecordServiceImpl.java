@@ -16,6 +16,7 @@ import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.RawRecordDao;
 import org.folio.dao.query.RecordQuery;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -69,7 +70,9 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     if (Objects.isNull(record.getAdditionalInfo())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    return dao.inTransaction(tenantId, connection -> insertOrUpdateRecord(connection, record, tenantId));
+    return dao.inTransaction(tenantId, connection -> validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
+      .compose(v -> dao.calculateGeneration(connection, record, tenantId))
+      .compose(generation -> insertOrUpdateRecord(connection, record.withGeneration(generation), tenantId)));
   }
 
   @Override
@@ -113,9 +116,11 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
+    // TODO: this should use SQL functions to get partial record with parsed record
     Future<Optional<Record>> future;
-    if (externalIdIdentifier.equals("instanceId")) {
-      future = dao.getByInstanceId(id, tenantId);
+    if (StringUtils.isNotEmpty(externalIdIdentifier)) {
+      ExternalIdType externalIdType = getExternalIdType(externalIdIdentifier);
+      future = dao.getRecordByExternalId(id, externalIdType, tenantId);
     } else {
       future = dao.getById(id, tenantId);
     }
@@ -179,27 +184,20 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   }
 
   private Future<Record> insertOrUpdateRecord(SqlConnection connection, Record record, String tenantId) {
-    return validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
-        // update raw record
-        .compose(v -> rawRecordDao.save(connection, record.getRawRecord(), tenantId))
-        // update parsed record if exists
+    return rawRecordDao.save(connection, record.getRawRecord(), tenantId)
         .compose(rr -> {
           if (Objects.nonNull(record.getParsedRecord())) {
             return insertOrUpdateParsedRecord(connection, record, tenantId);
           }
           return Future.succeededFuture();
         })
-        // update error record if exists
         .compose(succeeded -> {
-          if (!succeeded && Objects.nonNull(record.getErrorRecord())) {
+          if (Boolean.FALSE.equals(succeeded) && Objects.nonNull(record.getErrorRecord())) {
             return errorRecordDao.save(connection, record.getErrorRecord(), tenantId);
           }
           return Future.succeededFuture();
         })
-        // calculate generation
-        .compose(er -> dao.calculateGeneration(connection, record, tenantId))
-        // save record with generation
-        .compose(generation -> dao.save(connection, record.withGeneration(generation), tenantId));
+        .compose(er -> dao.save(connection, record, tenantId));
   }
 
   private Future<Boolean> insertOrUpdateParsedRecord(SqlConnection connection, Record record, String tenantId) {
@@ -238,6 +236,15 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
       return Future.failedFuture(new BadRequestException(String.format(message, snapshot.getStatus())));
     }
     return Future.succeededFuture();
+  }
+
+  private ExternalIdType getExternalIdType(String externalIdIdentifier) {
+    try {
+      return ExternalIdType.valueOf(externalIdIdentifier);
+    } catch (IllegalArgumentException e) {
+      String message = "The external Id type: %s is wrong.";
+      throw new BadRequestException(String.format(message, externalIdIdentifier));
+    }
   }
 
 }

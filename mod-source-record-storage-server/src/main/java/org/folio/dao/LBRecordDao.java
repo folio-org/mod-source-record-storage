@@ -3,6 +3,7 @@ package org.folio.dao;
 import java.util.Optional;
 
 import org.folio.dao.query.RecordQuery;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
@@ -96,5 +97,15 @@ public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQ
    * @return future with optional record
    */
   Future<Optional<Record>> getRecordById(SqlConnection connection, String id, IncomingIdType idType, String tenantId);
+
+  /**
+   * Searches for {@link Record} by id of external entity which was created from desired record
+   *
+   * @param externalId     external relation id
+   * @param externalIdType external id type
+   * @param tenantId       tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
 }

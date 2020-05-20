@@ -27,7 +27,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 
 @Service
-public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery, ParsedRecordDao> implements ParsedRecordService {
+public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery, ParsedRecordDao>
+    implements ParsedRecordService {
 
   @Autowired
   private LBRecordDao recordDao;

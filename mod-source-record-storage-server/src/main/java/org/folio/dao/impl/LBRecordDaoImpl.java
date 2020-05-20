@@ -22,6 +22,7 @@ import org.folio.dao.LBRecordDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -143,6 +144,15 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
       return getByInstanceId(connection, id, tenantId);
     } else {
       return getById(connection, id, tenantId);
+    }
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    if (externalIdType == ExternalIdType.INSTANCE) {
+      return getByInstanceId(externalId, tenantId);
+    } else {
+      return getById(externalId, tenantId);
     }
   }
 

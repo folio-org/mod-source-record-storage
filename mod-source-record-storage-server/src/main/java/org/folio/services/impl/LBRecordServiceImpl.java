@@ -148,6 +148,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
         .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
         .compose(record -> dao.update(connection, record, tenantId)));
   }
+
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     String id = parsedRecordDto.getId();
@@ -155,28 +156,36 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(snapshotId)
       .withStatus(Snapshot.Status.COMMITTED);
-    return dao.inTransaction(tenantId, connection -> 
-      dao.getById(connection, id, tenantId)
-        .compose(optionalRecord -> optionalRecord
-          .map(existingRecord -> snapshotDao.save(connection, snapshot, tenantId)
-            .compose(s -> {
-              Record newRecord = new Record()
-                .withId(UUID.randomUUID().toString())
-                .withSnapshotId(s.getJobExecutionId())
-                .withMatchedId(parsedRecordDto.getId())
-                .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-                .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
-                .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-                .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-                .withMetadata(parsedRecordDto.getMetadata())
-                .withRawRecord(existingRecord.getRawRecord())
-                .withOrder(existingRecord.getOrder())
-                .withGeneration(existingRecord.getGeneration() + 1)
-                .withState(Record.State.ACTUAL);
-              return saveUpdatedRecord(connection, newRecord, existingRecord.withState(Record.State.OLD), tenantId);
-            }))
+    return dao.inTransaction(tenantId, connection ->
+      rawRecordDao.getById(connection, id, tenantId)
+        .compose(optionalRawRecord -> optionalRawRecord
+          .map(existingRawRecord -> dao.getById(connection, id, tenantId)
+            .compose(optionalRecord -> optionalRecord
+              .map(existingRecord -> snapshotDao.save(connection, snapshot, tenantId)
+                .compose(s -> {
+                  Record newRecord = new Record()
+                    .withId(UUID.randomUUID().toString())
+                    .withSnapshotId(s.getJobExecutionId())
+                    .withMatchedId(id)
+                    .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+                    .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
+                    .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+                    .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+                    .withMetadata(parsedRecordDto.getMetadata())
+                    .withRawRecord(existingRawRecord)
+                    .withOrder(existingRecord.getOrder())
+                    .withGeneration(existingRecord.getGeneration() + 1)
+                    .withMatchedProfileId(existingRecord.getMatchedProfileId())
+                    .withState(Record.State.ACTUAL);
+                  existingRecord
+                    .withRawRecord(existingRawRecord)
+                    .withState(Record.State.OLD);
+                  return saveUpdatedRecord(connection, newRecord, existingRecord, tenantId);
+                }))
+              .orElse(Future.failedFuture(new NotFoundException(
+                format("Record with id '%s' was not found", id))))))
           .orElse(Future.failedFuture(new NotFoundException(
-            format("Record with id '%s' was not found", parsedRecordDto.getId()))))));
+            format("Raw record with id '%s' was not found", id))))));
   }
 
   private Record getRecordWithParsedRecord(Record record, ParsedRecord parsedRecord) {

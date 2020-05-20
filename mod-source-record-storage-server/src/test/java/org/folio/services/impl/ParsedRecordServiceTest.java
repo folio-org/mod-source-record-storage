@@ -8,6 +8,7 @@ import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.services.ParsedRecordService;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
@@ -26,6 +27,16 @@ public class ParsedRecordServiceTest extends AbstractEntityServiceTest<ParsedRec
     service = new ParsedRecordServiceImpl();
     FieldUtils.writeField(service, "dao", mockDao, true);
     FieldUtils.writeField(service, "recordDao", mockRecordDao, true);
+  }
+
+  @Test
+  public void shouldUpdateParsedRecords(TestContext context) {
+    context.assertTrue(true);
+  }
+
+  @Test
+  public void shouldUpdateParsedRecord(TestContext context) {
+    context.assertTrue(true);
   }
 
   @Override

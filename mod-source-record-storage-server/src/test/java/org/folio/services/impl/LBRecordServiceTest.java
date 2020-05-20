@@ -1,7 +1,5 @@
 package org.folio.services.impl;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.LBRecordMocks;
 import org.folio.dao.ErrorRecordDao;
@@ -17,7 +15,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
-import io.vertx.core.Promise;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
@@ -49,32 +46,42 @@ public class LBRecordServiceTest extends AbstractEntityServiceTest<Record, Recor
 
   @Test
   public void shouldSave(TestContext context) {
-    Promise<Record> savePromise = Promise.promise();
-    assertEquals("TODO", "TODO");
-    savePromise.complete(mocks.getExpectedEntity());
+    context.assertTrue(true);
+  }
+
+  @Test
+  public void shouldSaveRecords(TestContext context) {
+    context.assertTrue(true);
   }
 
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
-    Promise<Record> savePromise = Promise.promise();
-    assertEquals("TODO", "TODO");
-    savePromise.fail("Invalid");
+    context.assertTrue(true);
   }
 
   @Test
   public void shouldUpdate(TestContext context) {
-    Promise<Record> updatePromise = Promise.promise();
-    assertEquals("TODO", "TODO");
-    updatePromise.complete(mocks.getExpectedUpdatedEntity());
+    context.assertTrue(true);
   }
 
   @Test
   public void shouldErrorWithNotFoundWhileTryingToUpdate(TestContext context) {
-    Promise<Record> updatePromise = Promise.promise();
-    Record mockUpdatedEntity = mocks.getUpdatedMockEntity();
-    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
-    assertEquals("TODO", "TODO");
-    updatePromise.fail(expectedMessage);
+    context.assertTrue(true);
+  }
+
+  @Test
+  public void shouldGetFormattedRecord(TestContext context) {
+    context.assertTrue(true);
+  }
+
+  @Test
+  public void shouldUpdateSuppressFromDiscoveryForRecord(TestContext context) {
+    context.assertTrue(true);
+  }
+
+  @Test
+  public void shouldUpdateSourceRecord(TestContext context) {
+    context.assertTrue(true);
   }
 
   @Override

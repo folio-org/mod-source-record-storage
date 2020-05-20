@@ -133,11 +133,6 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
-    return dao.getRecordById(id, idType, tenantId);
-  }
-
-  @Override
   public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     String id = suppressFromDiscoveryDto.getId();
     IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();

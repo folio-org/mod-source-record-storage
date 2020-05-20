@@ -6,7 +6,6 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.rest.jaxrs.model.Record;
-import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamWriter;
@@ -270,7 +269,7 @@ public final class AdditionalFieldsUtil {
   }
 
   private static MarcReader buildMarcReader(Record record) {
-    return new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes(StandardCharsets.UTF_8)));
+    return new SortedMarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes(StandardCharsets.UTF_8)));
   }
 
   private static VariableField getSingleFieldByIndicators(List<VariableField> list, char ind1, char ind2) {

@@ -13,7 +13,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
+
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 @RunWith(BlockJUnit4ClassRunner.class)
 public class AdditionalFieldsUtilTest {
@@ -184,5 +187,36 @@ public class AdditionalFieldsUtilTest {
       }
     }
     Assert.assertTrue(passed);
+  }
+
+  @Test
+  public void shouldSortFieldsInRecordWhenAddedFieldToRecord() throws IOException {
+    // given
+    String instanceHrId = UUID.randomUUID().toString();
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_RECORD_PATH);
+    ParsedRecord parsedRecord = new ParsedRecord();
+    String leader = new JsonObject(parsedRecordContent).getString("leader");
+    parsedRecord.setContent(parsedRecordContent);
+    Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
+    // when
+    boolean added = AdditionalFieldsUtil.addDataFieldToMarcRecord(record,"035", ' ', ' ', 'a', instanceHrId);
+    // then
+    Assert.assertTrue(added);
+    JsonObject content = new JsonObject(parsedRecord.getContent().toString());
+    JsonArray fields = content.getJsonArray("fields");
+    String newLeader = content.getString("leader");
+    Assert.assertNotEquals(leader, newLeader);
+    Assert.assertFalse(fields.isEmpty());
+    boolean existsNewField = false;
+    for (int i = 0; i < fields.size() - 1; i++) {
+      JsonObject targetField = fields.getJsonObject(i);
+      if (targetField.containsKey("035")) {
+        existsNewField = true;
+      }
+      String tag = fields.getJsonObject(i).stream().map(Map.Entry::getKey).findFirst().get();
+      String nextTag = fields.getJsonObject(i + 1).stream().map(Map.Entry::getKey).findFirst().get();
+      Assert.assertThat(tag, lessThanOrEqualTo(nextTag));
+    }
+    Assert.assertTrue(existsNewField);
   }
 }

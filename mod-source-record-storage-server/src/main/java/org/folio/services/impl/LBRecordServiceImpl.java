@@ -121,7 +121,7 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
 
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
-    // TODO: this should use SQL functions to get partial record with parsed record
+    // NOTE: if this needs optimization, can try SQL functions to get partial record with parsed record and format
     Future<Optional<Record>> future;
     if (isNotEmpty(externalIdIdentifier)) {
       ExternalIdType externalIdType = getExternalIdType(externalIdIdentifier);

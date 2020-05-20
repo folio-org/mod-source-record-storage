@@ -4,7 +4,6 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 
 import java.util.List;
-import static org.mockito.ArgumentMatchers.isNull;
 
 import java.util.stream.Collectors;
 

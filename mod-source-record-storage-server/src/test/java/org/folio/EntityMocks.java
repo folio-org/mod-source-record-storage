@@ -7,7 +7,7 @@ import org.folio.dao.query.EntityQuery;
 
 import io.vertx.ext.unit.TestContext;
 
-public interface EntityMocks<E, C, Q extends EntityQuery> {
+public interface EntityMocks<E, C, Q extends EntityQuery<Q>> {
 
   public String getId(E entity);
 

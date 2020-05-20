@@ -31,7 +31,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(String id, String tenantId);
+  Future<Optional<SourceRecord>> getSourceMarcRecordById(String id, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by matched id of {@link Record} with latest generation
@@ -40,7 +40,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByIdAlt(String id, String tenantId);
+  Future<Optional<SourceRecord>> getSourceMarcRecordByIdAlt(String id, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link ExternalIdsHolder} instance id of {@link Record}
@@ -49,7 +49,7 @@ public interface SourceRecordService {
    * @param tenantId   tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId,
+  Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(String instanceId,
       String tenantId);
 
   /**
@@ -60,7 +60,7 @@ public interface SourceRecordService {
    * @param tenantId   tenant id
    * @return future with optional {@link SourceRecord} with {@link ParsedRecord} only
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId,
+  Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceIdAlt(String instanceId,
       String tenantId);
 
   /**
@@ -71,7 +71,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit,
+  Future<SourceRecordCollection> getSourceMarcRecords(Integer offset, Integer limit,
       String tenantId);
 
   /**
@@ -83,7 +83,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit,
+  Future<SourceRecordCollection> getSourceMarcRecordsAlt(Integer offset, Integer limit,
       String tenantId);
 
   /**
@@ -97,7 +97,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till,
+  Future<SourceRecordCollection> getSourceMarcRecordsForPeriod(Date from, Date till,
       Integer offset, Integer limit, String tenantId);
 
   /**
@@ -111,7 +111,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with list of {@link ParsedRecord} only
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till,
+  Future<SourceRecordCollection> getSourceMarcRecordsForPeriodAlt(Date from, Date till,
       Integer offset, Integer limit, String tenantId);
 
   /**
@@ -123,7 +123,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content,
+  Future<Optional<SourceRecord>> getSourceMarcRecordById(SourceRecordContent content,
       String id, String tenantId);
 
   /**
@@ -135,7 +135,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content,
+  Future<Optional<SourceRecord>> getSourceMarcRecordByMatchedId(SourceRecordContent content,
       String matchedId, String tenantId);
 
   /**
@@ -147,7 +147,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with optional {@link SourceRecord} with specified {@link SourceRecordContent}
    */
-  public Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content,
+  Future<Optional<SourceRecord>> getSourceMarcRecordByInstanceId(SourceRecordContent content,
       String instanceId, String tenantId);
 
   /**
@@ -161,7 +161,7 @@ public interface SourceRecordService {
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection} with specified {@link SourceRecordContent}
    */
-  public Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content,
+  Future<SourceRecordCollection> getSourceMarcRecordsByQuery(SourceRecordContent content,
       RecordQuery query, Integer offset, Integer limit, String tenantId);
 
   /**
@@ -176,7 +176,7 @@ public interface SourceRecordService {
    * @param sourceRecordHandler handler for each {@link SourceRecord}
    * @param endHandler          handler for when stream is finished
    */
-  public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
+  void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query,
       Integer offset, Integer limit, String tenantId, Handler<SourceRecord> sourceRecordHandler,
       Handler<AsyncResult<Void>> endHandler);
 
@@ -188,7 +188,7 @@ public interface SourceRecordService {
    * @param tenantId - tenant id
    * @return future with optional source record
    */
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, IncomingIdType idType, String tenantId);
 
   /**
    * Convert {@link Record} to {@link SourceRecord}
@@ -196,6 +196,6 @@ public interface SourceRecordService {
    * @param record record
    * @return source record
    */
-  public SourceRecord toSourceRecord(Record record);
+  SourceRecord toSourceRecord(Record record);
 
 }

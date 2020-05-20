@@ -9,7 +9,6 @@ import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
 import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.execute;
-import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.util.Collections;
 import java.util.Objects;
@@ -17,28 +16,20 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
-import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
@@ -92,24 +83,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
   public static final String SUPPRESS_DISCOVERY_COLUMN_NAME = "suppressdiscovery";
 
   private static final String GET_RECORD_GENERATION_TEMPLATE = "SELECT get_highest_generation_lb('%s','%s');";
-
-  @Autowired
-  private LBSnapshotDao snapshotDao;
-
-  @Override
-  public Future<Record> save(Record record, String tenantId) {
-    if (StringUtils.isEmpty(record.getId())) {
-      record.setId(UUID.randomUUID().toString());
-    }
-    if (StringUtils.isEmpty(record.getMatchedId())) {
-      record.setMatchedId(record.getId());
-    }
-    // NOTE: doesn't update raw record, parsed record, or error record
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> 
-      validateSnapshotProcessing(connection, record.getSnapshotId(), tenantId)
-        .compose(v -> calculateGeneration(connection, record, tenantId))
-        .compose(generation -> save(connection, record.withGeneration(generation), tenantId)));
-  }
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
@@ -171,47 +144,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     } else {
       return getById(connection, id, tenantId);
     }
-  }
-
-  @Override
-  public Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
-    String id = suppressFromDiscoveryDto.getId();
-    IncomingIdType idType = suppressFromDiscoveryDto.getIncomingIdType();
-    Boolean suppressDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
-      getRecordById(connection, id, idType, tenantId)
-        .map(record -> record.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with %s %s", idType, id))))
-        .map(record -> record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressDiscovery)))
-        .compose(record -> update(connection, record, tenantId)));
-  }
-
-  @Override
-  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
-    String id = parsedRecordDto.getId();
-    // no processing of the record is performed apart from the update itself
-    Snapshot snapshot = new Snapshot()
-      .withJobExecutionId(snapshotId)
-      .withStatus(Snapshot.Status.COMMITTED);
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
-      getById(connection, id, tenantId)
-        .compose(optionalRecord -> optionalRecord
-          .map(existingRecord -> snapshotDao.save(connection, snapshot, tenantId)
-            .compose(s -> {
-              Record newRecord = new Record()
-                .withId(UUID.randomUUID().toString())
-                .withSnapshotId(s.getJobExecutionId())
-                .withMatchedId(parsedRecordDto.getId())
-                .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-                .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
-                .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-                .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-                .withMetadata(parsedRecordDto.getMetadata())
-                .withRawRecord(existingRecord.getRawRecord())
-                .withOrder(existingRecord.getOrder())
-                .withGeneration(existingRecord.getGeneration() + 1)
-                .withState(Record.State.ACTUAL);
-              return saveUpdatedRecord(connection, newRecord, existingRecord.withState(Record.State.OLD), tenantId);
-            })).orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))));
   }
 
   @Override
@@ -321,25 +253,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     }
     return record
       .withMetadata(DaoUtil.metadataFromRow(row));
-  }
-
-  private Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, String tenantId) {
-    // NOTE: doesn't update raw record, parsed record, or error record
-    return save(connection, oldRecord, tenantId).compose(r -> save(connection, newRecord, tenantId));
-  }
-
-  private Future<Void> validateSnapshotProcessing(SqlConnection connection, String snapshotId, String tenantId) {
-    return snapshotDao.getById(connection, snapshotId, tenantId)
-      .map(snapshot -> snapshot.orElseThrow(() -> new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId))))
-      .compose(this::isProcessing);
-  }
-
-  private Future<Void> isProcessing(Snapshot snapshot) {
-    if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-      String message = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-      return Future.failedFuture(new BadRequestException(String.format(message, snapshot.getStatus())));
-    }
-    return Future.succeededFuture();
   }
 
 }

@@ -23,7 +23,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param action   action
    * @return future with <T>
    */
-  public <T> Future<T> inTransaction(String tenantId, Function<SqlConnection, Future<T>> action);
+  <T> Future<T> inTransaction(String tenantId, Function<SqlConnection, Future<T>> action);
 
   /**
    * Searches for entity by id
@@ -32,7 +32,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with optional entity
    */
-  public Future<Optional<E>> getById(String id, String tenantId);
+  Future<Optional<E>> getById(String id, String tenantId);
 
   /**
    * Searches for entity by id
@@ -42,7 +42,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId   tenant id
    * @return future with optional entity
    */
-  public Future<Optional<E>> getById(SqlConnection connection, String id, String tenantId);
+  Future<Optional<E>> getById(SqlConnection connection, String id, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery}
@@ -53,7 +53,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with entity collection
    */
-  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
+  Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery}
@@ -65,7 +65,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with entity collection
    */
-  public Future<C> getByQuery(SqlConnection connection, Q query, int offset, int limit, String tenantId);
+  Future<C> getByQuery(SqlConnection connection, Q query, int offset, int limit, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery} and stream results
@@ -77,7 +77,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param entityHandler handler for stream of Entities
    * @param endHandler    handler for when stream is finished
    */
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler);
+  void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler, Handler<AsyncResult<Void>> endHandler);
 
   /**
    * Saves entity to database
@@ -86,7 +86,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with saved entity
    */
-  public Future<E> save(E entity, String tenantId);
+  Future<E> save(E entity, String tenantId);
 
   /**
    * Saves entity to database
@@ -96,7 +96,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId   tenant id
    * @return future with saved entity
    */
-  public Future<E> save(SqlConnection connection, E entity, String tenantId);
+  Future<E> save(SqlConnection connection, E entity, String tenantId);
 
   /**
    * Saves batch of entities to database
@@ -105,7 +105,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
-  public Future<List<E>> save(List<E> entities, String tenantId);
+  Future<List<E>> save(List<E> entities, String tenantId);
 
   /**
    * Saves batch of entities to database
@@ -115,7 +115,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
-  public Future<List<E>> save(SqlConnection connection, List<E> entities, String tenantId);
+  Future<List<E>> save(SqlConnection connection, List<E> entities, String tenantId);
 
   /**
    * Updates entity in database
@@ -124,7 +124,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with updated entity
    */
-  public Future<E> update(E entity, String tenantId);
+  Future<E> update(E entity, String tenantId);
 
   /**
    * Updates entity in database
@@ -134,7 +134,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId   tenant id
    * @return future with updated entity
    */
-  public Future<E> update(SqlConnection connection, E entity, String tenantId);
+  Future<E> update(SqlConnection connection, E entity, String tenantId);
 
   /**
    * Deletes entity with id from database
@@ -143,7 +143,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with true if succeeded, else false
    */
-  public Future<Boolean> delete(String id, String tenantId);
+  Future<Boolean> delete(String id, String tenantId);
 
   /**
    * Deletes entity with id from database
@@ -153,7 +153,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId   tenant id
    * @return future with true if succeeded, else false
    */
-  public Future<Boolean> delete(SqlConnection connection, String id, String tenantId);
+  Future<Boolean> delete(SqlConnection connection, String id, String tenantId);
 
   /**
    * Deletes entities by {@link EntityQuery} from database
@@ -162,7 +162,7 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with number of entities deleted
    */
-  public Future<Integer> delete(Q query, String tenantId);
+  Future<Integer> delete(Q query, String tenantId);
 
   /**
    * Deletes entities by {@link EntityQuery} from database
@@ -172,21 +172,21 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param tenantId tenant id
    * @return future with number of entities deleted
    */
-  public Future<Integer> delete(SqlConnection connection, Q query, String tenantId);
+  Future<Integer> delete(SqlConnection connection, Q query, String tenantId);
 
   /**
    * Get table name for DAO
    * 
    * @return database table name for entity
    */
-  public String getTableName();
+  String getTableName();
 
   /**
    * Prepare columns list for SELECT, INSERT and UPDATE queries
    * 
    * @return comma seperated list of table column names
    */
-  public String getColumns();
+  String getColumns();
 
   /**
    * Get entity id
@@ -194,6 +194,6 @@ public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
    * @param entity entity to retrieve id from
    * @return id of given entity
    */
-  public String getId(E entity);
+  String getId(E entity);
 
 }

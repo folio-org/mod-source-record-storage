@@ -12,7 +12,7 @@ import io.vertx.core.Handler;
 /**
  * Entity service interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
  */
-public interface EntityService<E, C, Q extends EntityQuery> {
+public interface EntityService<E, C, Q extends EntityQuery<Q>> {
 
   /**
    * Searches for entity by id
@@ -21,7 +21,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with optional entity
    */
-  public Future<Optional<E>> getById(String id, String tenantId);
+  Future<Optional<E>> getById(String id, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery}
@@ -32,7 +32,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with entity collection
    */
-  public Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
+  Future<C> getByQuery(Q query, int offset, int limit, String tenantId);
 
   /**
    * Searches for entities by {@link EntityQuery} and stream results
@@ -44,7 +44,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param entityHandler handler for entity stream
    * @param endHandler    handler for when stream is finished
    */
-  public void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler,
+  void getByQuery(Q query, int offset, int limit, String tenantId, Handler<E> entityHandler,
       Handler<AsyncResult<Void>> endHandler);
 
   /**
@@ -54,7 +54,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with saved entity
    */
-  public Future<E> save(E entity, String tenantId);
+  Future<E> save(E entity, String tenantId);
 
   /**
    * Saves batch of entities to database
@@ -63,7 +63,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with list of saved entities
    */
-  public Future<List<E>> save(List<E> entities, String tenantId);
+  Future<List<E>> save(List<E> entities, String tenantId);
 
   /**
    * Updates entity in database
@@ -72,7 +72,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with updated entity
    */
-  public Future<E> update(E entity, String tenantId);
+  Future<E> update(E entity, String tenantId);
 
   /**
    * Deletes entity from database
@@ -81,7 +81,7 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with true if succeeded
    */
-  public Future<Boolean> delete(String id, String tenantId);
+  Future<Boolean> delete(String id, String tenantId);
 
   /**
    * Deletes entities by {@link EntityQuery} from database
@@ -90,6 +90,6 @@ public interface EntityService<E, C, Q extends EntityQuery> {
    * @param tenantId tenant id
    * @return future with number of entities deleted
    */
-  public Future<Integer> delete(Q query, String tenantId);
+  Future<Integer> delete(Q query, String tenantId);
 
 }

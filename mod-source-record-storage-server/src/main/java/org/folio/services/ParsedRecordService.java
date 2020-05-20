@@ -15,6 +15,15 @@ import io.vertx.core.Future;
 public interface ParsedRecordService extends EntityService<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery> {
 
   /**
+   * Updates {@link ParsedRecord} in the db
+   *
+   * @param record   record dto from which {@link ParsedRecord} will be updated
+   * @param tenantId tenant id
+   * @return future with updated ParsedRecord
+   */
+  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
+
+  /**
    * Update parsed records from collection of records and external relations ids in one transaction
    *
    * @param recordCollection collection of records from which parsed records will be updated
@@ -23,14 +32,5 @@ public interface ParsedRecordService extends EntityService<ParsedRecord, ParsedR
    *         and error messages for records that were not updated
    */
   Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
-
-  /**
-   * Updates {@link ParsedRecord} in the db
-   *
-   * @param record   record dto from which {@link ParsedRecord} will be updated
-   * @param tenantId tenant id
-   * @return future with updated ParsedRecord
-   */
-  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
 }

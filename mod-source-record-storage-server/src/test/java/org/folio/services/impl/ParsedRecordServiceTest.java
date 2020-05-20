@@ -45,6 +45,25 @@ public class ParsedRecordServiceTest extends
     FieldUtils.writeField(service, "recordDao", mockRecordDao, true);
   }
 
+  // NOTE: tests mocking inTransaction are not a good measure of correctness
+  // will have to use integration tests
+
+  @Test
+  public void shouldUpdateParsedRecord(TestContext context) {
+    Promise<ParsedRecord> saveParsedRecord = Promise.promise();
+    Record record = TestMocks.getRecord(0);
+    ParsedRecord parsedRecord = record.getParsedRecord();
+    when(mockDao.inTransaction(eq(TENANT_ID), any(Function.class))).thenReturn(saveParsedRecord.future());
+    service.updateParsedRecord(record, TENANT_ID).onComplete(update -> {
+      if (update.failed()) {
+        context.fail(update.cause());
+      }
+      context.assertTrue(update.succeeded());
+      mocks.compareEntities(context, parsedRecord, update.result());
+    });
+    saveParsedRecord.complete(parsedRecord);
+  }
+
   @Test
   public void shouldUpdateParsedRecords(TestContext context) {
     List<Record> records = TestMocks.getRecords();
@@ -81,22 +100,6 @@ public class ParsedRecordServiceTest extends
       context.assertEquals(0, update.result().getErrorMessages().size());
       mocks.compareEntities(context, parsedRecords, update.result().getParsedRecords(), true);
     });
-  }
-
-  @Test
-  public void shouldUpdateParsedRecord(TestContext context) {
-    Promise<ParsedRecord> saveParsedRecord = Promise.promise();
-    Record record = TestMocks.getRecord(0);
-    ParsedRecord parsedRecord = record.getParsedRecord();
-    when(mockDao.inTransaction(eq(TENANT_ID), any(Function.class))).thenReturn(saveParsedRecord.future());
-    service.updateParsedRecord(record, TENANT_ID).onComplete(update -> {
-      if (update.failed()) {
-        context.fail(update.cause());
-      }
-      context.assertTrue(update.succeeded());
-      mocks.compareEntities(context, parsedRecord, update.result());
-    });
-    saveParsedRecord.complete(parsedRecord);
   }
 
   @Override

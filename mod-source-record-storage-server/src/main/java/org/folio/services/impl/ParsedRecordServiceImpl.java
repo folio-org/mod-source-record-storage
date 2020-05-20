@@ -37,6 +37,19 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
   private LBRecordDao recordDao;
 
   @Override
+  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
+    String id = record.getId();
+    ParsedRecord parsedRecord = record.getParsedRecord();
+    ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
+    Metadata metadata = record.getMetadata();
+    return dao.inTransaction(tenantId, connection ->
+      recordDao.getById(connection, id, tenantId)
+        .map(r -> r.orElseThrow(() -> new NotFoundException(format("Couldn't find record with id %s", id))))
+        .compose(r -> recordDao.save(connection, r.withExternalIdsHolder(externalIdsHolder).withMetadata(metadata), tenantId))
+        .compose(r -> dao.save(connection, parsedRecord, tenantId)));
+  }
+
+  @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
@@ -57,19 +70,6 @@ public class ParsedRecordServiceImpl extends AbstractEntityService<ParsedRecord,
       promise.complete(response);
     });
     return promise.future();
-  }
-
-  @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    String id = record.getId();
-    ParsedRecord parsedRecord = record.getParsedRecord();
-    ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
-    Metadata metadata = record.getMetadata();
-    return dao.inTransaction(tenantId, connection ->
-      recordDao.getById(connection, id, tenantId)
-        .map(r -> r.orElseThrow(() -> new NotFoundException(format("Couldn't find record with id %s", id))))
-        .compose(r -> recordDao.save(connection, r.withExternalIdsHolder(externalIdsHolder).withMetadata(metadata), tenantId))
-        .compose(r -> dao.save(connection, parsedRecord, tenantId)));
   }
 
   private Record validateParsedRecordId(Record record) {

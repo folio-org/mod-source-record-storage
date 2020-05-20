@@ -8,6 +8,7 @@ import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.folio.dao.AbstractEntityDao;
@@ -21,6 +22,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -68,7 +70,8 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   protected ParsedRecordCollection toCollection(RowSet<Row> rowSet) {
     return toEmptyCollection(rowSet)
       .withParsedRecords(stream(rowSet.spliterator(), false)
-        .map(this::toEntity).collect(Collectors.toList()));
+        .map(this::toEntity)
+        .collect(Collectors.toList()));
   }
 
   @Override
@@ -87,6 +90,21 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
   }
 
   @Override
+  protected ParsedRecord preSave(ParsedRecord parsedRecord) {
+    return normalizeContent(parsedRecord);
+  }
+
+  @Override
+  protected ParsedRecord preUpdate(ParsedRecord parsedRecord) {
+    return normalizeContent(parsedRecord);
+  }
+
+  @Override
+  protected List<ParsedRecord> preSave(List<ParsedRecord> parsedRecords) {
+    return parsedRecords.stream().map(this::preSave).collect(Collectors.toList());
+  }
+
+  @Override
   protected ParsedRecord postSave(ParsedRecord parsedRecord) {
     return formatContent(parsedRecord);
   }
@@ -101,12 +119,37 @@ public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedR
     return parsedRecords.stream().map(this::postSave).collect(Collectors.toList());
   }
 
+  /**
+   * Convert parsed record content to {@link JsonObject}
+   *
+   * @param parsedRecord parsed record
+   * @return parsed record with normalized content
+   */
+  private ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      if (parsedRecord.getContent() instanceof String) {
+        parsedRecord.setContent(parsedRecord.getContent());
+      } else {
+        parsedRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
+      }
+    }
+    return parsedRecord;
+  }
+
+  /**
+   * Format parsed record content
+   * 
+   * @param parsedRecord parsed record
+   * @return parsed record with formatted content
+   */
   private ParsedRecord formatContent(ParsedRecord parsedRecord) {
-    try {
-      String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
-      parsedRecord.withFormattedContent(formattedContent);
-    } catch (IOException e) {
-      log.error("Error formatting content", e);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      try {
+        String formattedContent = MarcUtil.marcJsonToTxtMarc((String) parsedRecord.getContent());
+        parsedRecord.withFormattedContent(formattedContent);
+      } catch (IOException e) {
+        log.error("Error formatting content", e);
+      }
     }
     return parsedRecord;
   }

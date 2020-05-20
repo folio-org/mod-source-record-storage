@@ -31,13 +31,12 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class ParsedRecordServiceTest extends
-    AbstractEntityServiceTest<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery, ParsedRecordDao, ParsedRecordService, ParsedRecordMocks> {
+public class ParsedRecordServiceTest extends AbstractEntityServiceTest<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery, ParsedRecordDao, ParsedRecordService, ParsedRecordMocks> {
 
   LBRecordDao mockRecordDao;
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockDao = Mockito.mock(ParsedRecordDao.class);
     mockRecordDao = Mockito.mock(LBRecordDao.class);
     service = new ParsedRecordServiceImpl();

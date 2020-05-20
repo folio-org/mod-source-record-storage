@@ -24,7 +24,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class LBSnapshotServiceTest extends AbstractEntityServiceTest<Snapshot, SnapshotCollection, SnapshotQuery, LBSnapshotDao, LBSnapshotService, LBSnapshotMocks> {
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockDao = Mockito.mock(LBSnapshotDao.class);
     service = new LBSnapshotServiceImpl();
     FieldUtils.writeField(service, "dao", mockDao, true);

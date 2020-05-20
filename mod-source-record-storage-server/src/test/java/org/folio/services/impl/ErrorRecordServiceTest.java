@@ -17,7 +17,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class ErrorRecordServiceTest extends AbstractEntityServiceTest<ErrorRecord, ErrorRecordCollection, ErrorRecordQuery, ErrorRecordDao, ErrorRecordService, ErrorRecordMocks> {
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockDao = Mockito.mock(ErrorRecordDao.class);
     service = new ErrorRecordServiceImpl();
     FieldUtils.writeField(service, "dao", mockDao, true);

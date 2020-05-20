@@ -9,6 +9,6 @@ public abstract class AbstractServiceTest {
   static final String TENANT_ID = "diku";
 
   @Before
-  public abstract void createService(TestContext context) throws IllegalAccessException;
+  public abstract void createBeans(TestContext context) throws IllegalAccessException;
 
 }

@@ -126,7 +126,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     log.info("Attempting save: {}", sqlTemplate);
     connection
       .preparedQuery(sqlTemplate)
-      .execute(toTuple(entity, true), save -> {
+      .execute(toTuple(preSave(entity), true), save -> {
         if (save.failed()) {
           log.error("Failed to insert row in {}", save.cause(), getTableName());
           promise.fail(save.cause());
@@ -153,7 +153,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     String sqlTemplate = format(SAVE_SQL_TEMPLATE, table, columns, valuesTemplate);
     connection
       .preparedQuery(sqlTemplate)
-      .executeBatch(toTuples(entities, true), batch -> {
+      .executeBatch(toTuples(preSave(entities), true), batch -> {
         if (batch.failed()) {
           log.error("Failed to insert multiple rows in {}", batch.cause(), getTableName());
           promise.fail(batch.cause());
@@ -181,7 +181,7 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
     log.info("Attempting update: {}", sqlTemplate);
     connection
       .preparedQuery(sqlTemplate)
-      .execute(toTuple(entity, false), update -> {
+      .execute(toTuple(preUpdate(entity), false), update -> {
         if (update.failed()) {
           log.error("Failed to update row in {} with id {}", update.cause(), getTableName(), id);
           promise.fail(update.cause());
@@ -284,6 +284,36 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
       .mapToObj(Integer::toString)
       .map(i -> format(VALUE_TEMPLATE_TEMPLATE, i))
       .collect(Collectors.joining(COMMA));
+  }
+
+  /**
+   * Pre save processing of entity
+   * 
+   * @param entity entity to save
+   * @return entity after pre save processing
+   */
+  protected E preSave(E entity) {
+    return entity;
+  }
+
+  /**
+   * Pre update processing of entity
+   * 
+   * @param entity entity to update
+   * @return entity after pre update processing
+   */
+  protected E preUpdate(E entity) {
+    return entity;
+  }
+
+  /**
+   * Pre save processing of list of entities. Do nothing by default.
+   * 
+   * @param entities list of entities to be saved
+   * @return entities after pre save processing
+   */
+  protected List<E> preSave(List<E> entities) {
+    return entities;
   }
 
   /**

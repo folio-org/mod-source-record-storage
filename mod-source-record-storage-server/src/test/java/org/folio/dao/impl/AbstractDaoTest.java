@@ -19,13 +19,13 @@ import io.vertx.ext.unit.TestContext;
 
 public abstract class AbstractDaoTest {
 
-  static final String TENANT_ID = "diku";
+  public static final String TENANT_ID = "diku";
 
-  static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s;";
+  public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s;";
 
-  static Vertx vertx;
+  public static PostgresClientFactory postgresClientFactory;
 
-  static PostgresClientFactory postgresClientFactory;
+  public static Vertx vertx;
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
@@ -64,7 +64,7 @@ public abstract class AbstractDaoTest {
   }
 
   @Before
-  public abstract void createDao(TestContext context) throws IllegalAccessException;
+  public abstract void createBeans(TestContext context) throws IllegalAccessException;
 
   @Before
   public abstract void createDependentEntities(TestContext context) throws IllegalAccessException;

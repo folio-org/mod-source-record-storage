@@ -93,7 +93,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
   private ParsedRecordDao mockParsedRecordDao;
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockSourceRecordDao = Mockito.mock(SourceRecordDao.class);
     mockRecordDao = Mockito.mock(LBRecordDao.class);
     mockRawRecordDao = Mockito.mock(RawRecordDao.class);

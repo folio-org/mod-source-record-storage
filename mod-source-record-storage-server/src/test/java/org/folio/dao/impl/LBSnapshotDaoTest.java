@@ -20,7 +20,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class LBSnapshotDaoTest extends AbstractEntityDaoTest<Snapshot, SnapshotCollection, SnapshotQuery, LBSnapshotDao, LBSnapshotMocks> {
 
   @Override
-  public void createDao(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     dao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
   }

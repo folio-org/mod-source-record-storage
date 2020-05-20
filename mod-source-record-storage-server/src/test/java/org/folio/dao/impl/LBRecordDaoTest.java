@@ -26,7 +26,7 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
   private LBSnapshotDao snapshotDao;
 
   @Override
-  public void createDao(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     snapshotDao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
     dao = new LBRecordDaoImpl();

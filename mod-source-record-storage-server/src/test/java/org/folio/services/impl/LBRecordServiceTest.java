@@ -48,7 +48,7 @@ public class LBRecordServiceTest extends AbstractEntityServiceTest<Record, Recor
   private ErrorRecordDao mockErrorRecordDao;
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockDao = Mockito.mock(LBRecordDao.class);
     mockSnapshotDao = Mockito.mock(LBSnapshotDao.class);
     mockRawRecordDao = Mockito.mock(RawRecordDao.class);

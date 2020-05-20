@@ -31,7 +31,6 @@ public class ParsedRecordDaoTest extends AbstractEntityDaoTest<ParsedRecord, Par
     FieldUtils.writeField(recordDao, "postgresClientFactory", postgresClientFactory, true);
     dao = new ParsedRecordDaoImpl();
     FieldUtils.writeField(dao, "postgresClientFactory", postgresClientFactory, true);
-    FieldUtils.writeField(dao, "recordDao", recordDao, true);
   }
 
   @Override

@@ -14,6 +14,7 @@ import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -42,6 +43,11 @@ public abstract class AbstractEntityDao<E, C, Q extends EntityQuery<Q>> implemen
 
   @Autowired
   protected PostgresClientFactory postgresClientFactory;
+
+  @Override
+  public <T> Future<T> inTransaction(String tenantId, Function<SqlConnection, Future<T>> action) {
+    return executeInTransaction(postgresClientFactory.getClient(tenantId), action);
+  }
 
   @Override
   public Future<Optional<E>> getById(String id, String tenantId) {

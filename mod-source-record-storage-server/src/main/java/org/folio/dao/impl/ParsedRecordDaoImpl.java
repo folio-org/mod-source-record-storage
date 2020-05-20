@@ -4,32 +4,23 @@ import static java.util.stream.StreamSupport.stream;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.PARSED_RECORDS_TABLE_NAME;
-import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.NotFoundException;
-
 import org.folio.dao.AbstractEntityDao;
-import org.folio.dao.LBRecordDao;
 import org.folio.dao.ParsedRecordDao;
 import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.TupleWrapper;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
-import org.folio.rest.jaxrs.model.Record;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -44,23 +35,6 @@ import io.vertx.sqlclient.Tuple;
 // </createTable>
 @Component
 public class ParsedRecordDaoImpl extends AbstractEntityDao<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery> implements ParsedRecordDao {
-
-  @Autowired
-  private LBRecordDao recordDao;
-
-  @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    String id = record.getId();
-    ParsedRecord parsedRecord = record.getParsedRecord();
-    ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
-    Metadata metadata = record.getMetadata();
-    // NOTE: doesn't update raw record or error record from incoming record
-    return executeInTransaction(postgresClientFactory.getClient(tenantId), connection ->
-      recordDao.getById(connection, id, tenantId)
-        .map(r -> r.orElseThrow(() -> new NotFoundException(String.format("Couldn't find record with id %s", id))))
-        .compose(r -> recordDao.save(connection, r.withExternalIdsHolder(externalIdsHolder).withMetadata(metadata), tenantId))
-        .compose(r -> save(connection, parsedRecord, tenantId)));
-  }
 
   @Override
   public String getTableName() {

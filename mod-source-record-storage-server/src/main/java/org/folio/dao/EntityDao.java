@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 import org.folio.dao.query.EntityQuery;
 
@@ -13,7 +14,16 @@ import io.vertx.sqlclient.SqlConnection;
 /**
  * Data access object interface for <E> Entity with <C> Collection and <Q> {@link EntityQuery}
  */
-public interface EntityDao<E, C, Q extends EntityQuery> {
+public interface EntityDao<E, C, Q extends EntityQuery<Q>> {
+
+  /**
+   * Ability to execute action within transaction
+   * 
+   * @param tenantId tenant id
+   * @param action   action
+   * @return future with <T>
+   */
+  public <T> Future<T> inTransaction(String tenantId, Function<SqlConnection, Future<T>> action);
 
   /**
    * Searches for entity by id

@@ -4,6 +4,7 @@ import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 
 import io.vertx.core.Future;
@@ -24,5 +25,14 @@ public interface ParsedRecordService extends EntityService<ParsedRecord, ParsedR
    *         and error messages for records that were not updated
    */
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
+
+  /**
+   * Updates {@link ParsedRecord} in the db
+   *
+   * @param record   record dto from which {@link ParsedRecord} will be updated
+   * @param tenantId tenant id
+   * @return future with updated ParsedRecord
+   */
+  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
 }

@@ -175,7 +175,6 @@ public class LBRecordServiceImpl extends AbstractEntityService<Record, RecordCol
                     .withRawRecord(existingRawRecord)
                     .withOrder(existingRecord.getOrder())
                     .withGeneration(existingRecord.getGeneration() + 1)
-                    .withMatchedProfileId(existingRecord.getMatchedProfileId())
                     .withState(Record.State.ACTUAL);
                   existingRecord
                     .withRawRecord(existingRawRecord)

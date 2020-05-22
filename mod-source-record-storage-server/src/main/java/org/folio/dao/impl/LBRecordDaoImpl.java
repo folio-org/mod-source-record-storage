@@ -48,9 +48,6 @@ import io.vertx.sqlclient.Tuple;
 //   <column name="snapshotid" type="uuid">
 //     <constraints nullable="false"/>
 //   </column>
-//   <column name="matchedprofileid" type="uuid">
-//     <constraints nullable="false"/>
-//   </column>
 //   <column name="matchedid" type="uuid">
 //     <constraints nullable="false"/>
 //   </column>
@@ -76,7 +73,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   public static final String MATCHED_ID_COLUMN_NAME = "matchedid";
   public static final String SNAPSHOT_ID_COLUMN_NAME = "snapshotid";
-  public static final String MATCHED_PROFILE_ID_COLUMN_NAME = "matchedprofileid";
   public static final String GENERATION_COLUMN_NAME = "generation";
   public static final String ORDER_IN_FILE_COLUMN_NAME = "orderinfile";
   public static final String RECORD_TYPE_COLUMN_NAME = "recordtype";
@@ -172,7 +168,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     return ColumnBuilder
       .of(ID_COLUMN_NAME)
       .append(SNAPSHOT_ID_COLUMN_NAME)
-      .append(MATCHED_PROFILE_ID_COLUMN_NAME)
       .append(MATCHED_ID_COLUMN_NAME)
       .append(GENERATION_COLUMN_NAME)
       .append(RECORD_TYPE_COLUMN_NAME)
@@ -203,7 +198,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     TupleWrapper tupleWrapper = TupleWrapper.of()
       .addUUID(record.getId())
       .addUUID(record.getSnapshotId())
-      .addUUID(record.getMatchedProfileId())
       .addUUID(record.getMatchedId())
       .addInteger(record.getGeneration())
       .addEnum(record.getRecordType());
@@ -249,7 +243,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     Record record = new Record()
       .withId(row.getUUID(ID_COLUMN_NAME).toString())
       .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
-      .withMatchedProfileId(row.getUUID(MATCHED_PROFILE_ID_COLUMN_NAME).toString())
       .withMatchedId(row.getUUID(MATCHED_ID_COLUMN_NAME).toString())
       .withGeneration(row.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(row.getString(RECORD_TYPE_COLUMN_NAME)));

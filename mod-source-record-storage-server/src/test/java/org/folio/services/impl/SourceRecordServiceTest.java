@@ -11,7 +11,6 @@ import static org.folio.SourceRecordTestHelper.getRecords;
 import static org.folio.dao.impl.LBRecordDaoImpl.GENERATION_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.INSTANCE_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_PROFILE_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.RECORD_TYPE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.SNAPSHOT_ID_COLUMN_NAME;
@@ -557,7 +556,6 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
             RowImpl row = new RowImpl(new RowDesc(Arrays.asList(
               ID_COLUMN_NAME,
               SNAPSHOT_ID_COLUMN_NAME,
-              MATCHED_PROFILE_ID_COLUMN_NAME,
               MATCHED_ID_COLUMN_NAME,
               GENERATION_COLUMN_NAME,
               RECORD_TYPE_COLUMN_NAME,
@@ -574,7 +572,6 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
             row
               .addUUID(UUID.fromString(record.getId()))
               .addUUID(UUID.fromString(record.getSnapshotId()))
-              .addUUID(UUID.fromString(record.getMatchedProfileId()))
               .addUUID(UUID.fromString(record.getMatchedId()))
               .addInteger(record.getGeneration())
               .addString(record.getRecordType().toString());

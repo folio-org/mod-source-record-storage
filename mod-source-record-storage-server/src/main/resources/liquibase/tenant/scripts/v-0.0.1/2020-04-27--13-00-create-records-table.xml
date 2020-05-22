@@ -31,9 +31,6 @@
       <column name="snapshotid" type="uuid">
         <constraints nullable="false"/>
       </column>
-      <column name="matchedprofileid" type="uuid">
-        <constraints nullable="false"/>
-      </column>
       <column name="matchedid" type="uuid">
         <constraints nullable="false"/>
       </column>

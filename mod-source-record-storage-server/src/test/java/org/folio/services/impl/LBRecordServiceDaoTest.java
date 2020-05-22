@@ -166,7 +166,6 @@ public class LBRecordServiceDaoTest extends AbstractDaoTest {
         .withId(record.getId())
         .withSnapshotId(record.getSnapshotId())
         .withMatchedId(TestMocks.getRecord(1).getMatchedId())
-        .withMatchedProfileId(record.getMatchedProfileId())
         .withGeneration(record.getGeneration())
         .withOrder(record.getOrder())
         .withRecordType(record.getRecordType())

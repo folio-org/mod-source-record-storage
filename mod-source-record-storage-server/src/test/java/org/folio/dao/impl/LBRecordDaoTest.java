@@ -191,7 +191,6 @@ public class LBRecordDaoTest extends AbstractEntityDaoTest<Record, RecordCollect
     return new Record()
       .withSnapshotId(TestMocks.getSnapshot(1).getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
-      .withMatchedProfileId("f9926e86-883b-4455-a807-fc5eeb9a951a")
       .withOrder(0)
       .withGeneration(0)
       .withState(Record.State.ACTUAL);

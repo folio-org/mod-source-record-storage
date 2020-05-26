@@ -1,5 +1,7 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+
 import static org.folio.SourceRecordTestHelper.compareSourceRecord;
 import static org.folio.SourceRecordTestHelper.compareSourceRecordCollection;
 import static org.folio.SourceRecordTestHelper.compareSourceRecords;
@@ -53,7 +55,7 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   private SourceRecordDao sourceRecordDao;
 
   @Override
-  public void createDao(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     snapshotDao = new LBSnapshotDaoImpl();
     FieldUtils.writeField(snapshotDao, "postgresClientFactory", postgresClientFactory, true);
     recordDao = new LBRecordDaoImpl();
@@ -97,9 +99,9 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    String rawRecordSql = String.format(DELETE_SQL_TEMPLATE, rawRecordDao.getTableName());
-    String parsedRecordSql = String.format(DELETE_SQL_TEMPLATE, parsedRecordDao.getTableName());
-    String errorRecordSql = String.format(DELETE_SQL_TEMPLATE, errorRecordDao.getTableName());
+    String rawRecordSql = format(DELETE_SQL_TEMPLATE, rawRecordDao.getTableName());
+    String parsedRecordSql = format(DELETE_SQL_TEMPLATE, parsedRecordDao.getTableName());
+    String errorRecordSql = format(DELETE_SQL_TEMPLATE, errorRecordDao.getTableName());
     Promise<AsyncResult<UpdateResult>> rawRecordDeletePromise = Promise.promise();
     Promise<AsyncResult<UpdateResult>> parsedRecordDeletePromise = Promise.promise();
     Promise<AsyncResult<UpdateResult>> errorRecordDeletePromise = Promise.promise();
@@ -114,12 +116,12 @@ public class SourceRecordDaoTest extends AbstractDaoTest {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      String recordSql = String.format(DELETE_SQL_TEMPLATE, recordDao.getTableName());
+      String recordSql = format(DELETE_SQL_TEMPLATE, recordDao.getTableName());
       pgClient.execute(recordSql, recordDelete -> {
         if (recordDelete.failed()) {
           context.fail(recordDelete.cause());
         }
-        String snapshotSql = String.format(DELETE_SQL_TEMPLATE, snapshotDao.getTableName());
+        String snapshotSql = format(DELETE_SQL_TEMPLATE, snapshotDao.getTableName());
         pgClient.execute(snapshotSql, snapshotDelete -> {
           if (snapshotDelete.failed()) {
             context.fail(snapshotDelete.cause());

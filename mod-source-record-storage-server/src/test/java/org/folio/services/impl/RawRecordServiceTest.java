@@ -17,7 +17,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class RawRecordServiceTest extends AbstractEntityServiceTest<RawRecord, RawRecordCollection, RawRecordQuery, RawRecordDao, RawRecordService, RawRecordMocks> {
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockDao = Mockito.mock(RawRecordDao.class);
     service = new RawRecordServiceImpl();
     FieldUtils.writeField(service, "dao", mockDao, true);

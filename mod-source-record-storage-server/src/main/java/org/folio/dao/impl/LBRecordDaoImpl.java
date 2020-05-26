@@ -1,22 +1,29 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static java.util.stream.StreamSupport.stream;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.GET_BY_WHERE_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.execute;
 
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.query.RecordQuery;
 import org.folio.dao.util.ColumnBuilder;
 import org.folio.dao.util.DaoUtil;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.TupleWrapper;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -24,11 +31,14 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.springframework.stereotype.Component;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Tuple;
 
 // <createTable tableName="records_lb">
@@ -36,9 +46,6 @@ import io.vertx.sqlclient.Tuple;
 //     <constraints primaryKey="true" nullable="false"/>
 //   </column>
 //   <column name="snapshotid" type="uuid">
-//     <constraints nullable="false"/>
-//   </column>
-//   <column name="matchedprofileid" type="uuid">
 //     <constraints nullable="false"/>
 //   </column>
 //   <column name="matchedid" type="uuid">
@@ -66,30 +73,89 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   public static final String MATCHED_ID_COLUMN_NAME = "matchedid";
   public static final String SNAPSHOT_ID_COLUMN_NAME = "snapshotid";
-  public static final String MATCHED_PROFILE_ID_COLUMN_NAME = "matchedprofileid";
   public static final String GENERATION_COLUMN_NAME = "generation";
   public static final String ORDER_IN_FILE_COLUMN_NAME = "orderinfile";
   public static final String RECORD_TYPE_COLUMN_NAME = "recordtype";
   public static final String STATE_COLUMN_NAME = "state";
   public static final String INSTANCE_ID_COLUMN_NAME = "instanceid";
   public static final String SUPPRESS_DISCOVERY_COLUMN_NAME = "suppressdiscovery";
-  public static final String CREATED_BY_USER_ID_COLUMN_NAME = "createdbyuserid";
-  public static final String CREATED_DATE_COLUMN_NAME = "createddate";
-  public static final String UPDATED_BY_USER_ID_COLUMN_NAME = "updatedbyuserid";
-  public static final String UPDATED_DATE_COLUMN_NAME = "updateddate";
+
+  private static final String GET_RECORD_GENERATION_TEMPLATE = "SELECT get_highest_generation_lb('%s','%s');";
 
   @Override
   public Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getByMatchedId(connection, matchedId, tenantId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getByMatchedId(SqlConnection connetion, String matchedId, String tenantId) {
+    String sql = format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), MATCHED_ID_COLUMN_NAME, matchedId);
     log.info("Attempting get by matched id: {}", sql);
-    return select(sql, tenantId);
+    return select(connetion, sql, tenantId);
   }
 
   @Override
   public Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId) {
-    String sql = String.format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getByInstanceId(connection, instanceId, tenantId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getByInstanceId(SqlConnection connetion, String instanceId, String tenantId) {
+    String sql = format(GET_BY_WHERE_SQL_TEMPLATE, getColumns(), getTableName(), INSTANCE_ID_COLUMN_NAME, instanceId);
     log.info("Attempting get by instance id: {}", sql);
-    return select(sql, tenantId);
+    return select(connetion, sql, tenantId);
+  }
+
+  @Override
+  public Future<Integer> calculateGeneration(Record record, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      calculateGeneration(connection, record, tenantId));
+  }
+
+  @Override
+  public Future<Integer> calculateGeneration(SqlConnection connetion, Record record, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String sql = format(GET_RECORD_GENERATION_TEMPLATE, record.getMatchedId(), record.getSnapshotId());
+    log.info("Attempting get record generation: {}", sql);
+    connetion.query(sql).execute(promise);
+    return promise.future().map(resultSet -> {
+      Integer generation = resultSet.iterator().next().getInteger(0);
+      if (generation > 0) {
+        generation++;
+      }
+      return generation;
+    });
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getRecordById(connection, id, idType, tenantId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordById(SqlConnection connection, String id, IncomingIdType idType, String tenantId) {
+    if (idType == IncomingIdType.INSTANCE) {
+      return getByInstanceId(connection, id, tenantId);
+    } else {
+      return getById(connection, id, tenantId);
+    }
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    return execute(postgresClientFactory.getClient(tenantId), connection ->
+      getRecordByExternalId(connection, externalId, externalIdType, tenantId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(SqlConnection connection, String externalId, ExternalIdType externalIdType, String tenantId) {
+    if (externalIdType == ExternalIdType.INSTANCE) {
+      return getByInstanceId(externalId, tenantId);
+    }
+    return getById(externalId, tenantId);
   }
 
   @Override
@@ -102,7 +168,6 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     return ColumnBuilder
       .of(ID_COLUMN_NAME)
       .append(SNAPSHOT_ID_COLUMN_NAME)
-      .append(MATCHED_PROFILE_ID_COLUMN_NAME)
       .append(MATCHED_ID_COLUMN_NAME)
       .append(GENERATION_COLUMN_NAME)
       .append(RECORD_TYPE_COLUMN_NAME)
@@ -124,32 +189,31 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
 
   @Override
   protected Tuple toTuple(Record record, boolean generateIdIfNotExists) {
-    if (generateIdIfNotExists && StringUtils.isEmpty(record.getId())) {
+    if (generateIdIfNotExists && isEmpty(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
-    if (StringUtils.isEmpty(record.getMatchedId())) {
+    if (isEmpty(record.getMatchedId())) {
       record.setMatchedId(record.getId());
     }
     TupleWrapper tupleWrapper = TupleWrapper.of()
       .addUUID(record.getId())
       .addUUID(record.getSnapshotId())
-      .addUUID(record.getMatchedProfileId())
       .addUUID(record.getMatchedId())
       .addInteger(record.getGeneration())
       .addEnum(record.getRecordType());
-    if (Objects.nonNull(record.getExternalIdsHolder())) {
+    if (nonNull(record.getExternalIdsHolder())) {
       tupleWrapper.addUUID(record.getExternalIdsHolder().getInstanceId());
     } else {
       tupleWrapper.addNull();
     }
     tupleWrapper.addEnum(record.getState())
       .addInteger(record.getOrder());
-    if (Objects.nonNull(record.getAdditionalInfo())) {
+    if (nonNull(record.getAdditionalInfo())) {
       tupleWrapper.addBoolean(record.getAdditionalInfo().getSuppressDiscovery());
     } else {
       tupleWrapper.addNull();
     }
-    if (Objects.nonNull(record.getMetadata())) {
+    if (nonNull(record.getMetadata())) {
       tupleWrapper.addUUID(record.getMetadata().getCreatedByUserId())
         .addOffsetDateTime(record.getMetadata().getCreatedDate())
         .addUUID(record.getMetadata().getUpdatedByUserId())
@@ -179,12 +243,11 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     Record record = new Record()
       .withId(row.getUUID(ID_COLUMN_NAME).toString())
       .withSnapshotId(row.getUUID(SNAPSHOT_ID_COLUMN_NAME).toString())
-      .withMatchedProfileId(row.getUUID(MATCHED_PROFILE_ID_COLUMN_NAME).toString())
       .withMatchedId(row.getUUID(MATCHED_ID_COLUMN_NAME).toString())
       .withGeneration(row.getInteger(GENERATION_COLUMN_NAME))
       .withRecordType(RecordType.valueOf(row.getString(RECORD_TYPE_COLUMN_NAME)));
     UUID instanceId = row.getUUID(INSTANCE_ID_COLUMN_NAME);
-    if (Objects.nonNull(instanceId)) {
+    if (nonNull(instanceId)) {
       ExternalIdsHolder externalIdHolder = new ExternalIdsHolder();
       externalIdHolder.setInstanceId(instanceId.toString());
       record.setExternalIdsHolder(externalIdHolder);
@@ -192,12 +255,13 @@ public class LBRecordDaoImpl extends AbstractEntityDao<Record, RecordCollection,
     record.withState(State.valueOf(row.getString(STATE_COLUMN_NAME)))
       .withOrder(row.getInteger(ORDER_IN_FILE_COLUMN_NAME));
     Boolean suppressDiscovery = row.getBoolean(SUPPRESS_DISCOVERY_COLUMN_NAME);
-    if (Objects.nonNull(suppressDiscovery)) {
+    if (nonNull(suppressDiscovery)) {
       AdditionalInfo additionalInfo = new AdditionalInfo();
       additionalInfo.setSuppressDiscovery(suppressDiscovery);
       record.setAdditionalInfo(additionalInfo);
     }
-    return record.withMetadata(DaoUtil.metadataFromRow(row));
+    return record
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
 }

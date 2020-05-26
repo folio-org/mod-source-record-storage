@@ -1,26 +1,27 @@
 package org.folio.dao.impl;
 
+import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static java.util.stream.StreamSupport.stream;
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.RECORD_TYPE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.SNAPSHOT_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.COMMA;
 import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.DATE_FORMATTER;
 import static org.folio.dao.util.DaoUtil.GET_BY_QUERY_SQL_TEMPLATE;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.JSONB_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.executeInTransaction;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -125,13 +126,13 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   @Override
   public void getSourceMarcRecordsByQuery(SourceRecordContent content, RecordQuery query, Integer offset, Integer limit, String tenantId,
       Handler<RowStream<Row>> handler, Handler<AsyncResult<Void>> endHandler) {
-    String where = query.toWhereClause();
-    String orderBy = query.toOrderByClause();
-    String sql = String.format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
+    String where = query.getWhereClause();
+    String orderBy = query.getOrderByClause();
+    String sql = format(GET_BY_QUERY_SQL_TEMPLATE, SOURCE_RECORD_COLUMNS, RECORDS_TABLE_NAME, where, orderBy, offset, limit);
     LOG.info("Attempting stream get by filter: {}", sql);
-    executeInTransaction(postgresClientFactory.getClient(tenantId), transaction -> {
+    executeInTransaction(postgresClientFactory.getClient(tenantId), connection -> {
       Promise<Void> promise = Promise.promise();
-      transaction.prepare(sql, ar2 -> {
+      connection.prepare(sql, ar2 -> {
         if (ar2.failed()) {
           LOG.error("Failed to prepare query", ar2.cause());
           endHandler.handle(Future.failedFuture(ar2.cause()));
@@ -155,19 +156,19 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
 
   private Future<Optional<SourceRecord>> selectById(String template, String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-    String sql = String.format(template, id);
+    String sql = format(template, id);
     LOG.info("Attempting get source records: {}", sql);
     postgresClientFactory.getClient(tenantId).query(sql).execute(promise);
     return promise.future().map(this::toPartialSourceRecord);
   }
 
   private Future<SourceRecordCollection> select(String template, Integer offset, Integer limit, String tenantId) {
-    String sql = String.format(template, offset, limit);
+    String sql = format(template, offset, limit);
     return select(sql, tenantId);
   }
 
   private Future<SourceRecordCollection> select(String template, Date from, Date till, Integer offset, Integer limit, String tenantId) {
-    String sql = String.format(template, DATE_FORMATTER.format(from), DATE_FORMATTER.format(till), offset, limit);
+    String sql = format(template, DATE_FORMATTER.format(from), DATE_FORMATTER.format(till), offset, limit);
     return select(sql, tenantId);
   }
 
@@ -199,7 +200,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   private SourceRecord toPartialSourceRecord(Row row) {
     ParsedRecord parsedRecord = new ParsedRecord();
     Object jsonb = row.getValue(JSONB_COLUMN_NAME);
-    if (Objects.nonNull(jsonb)) {
+    if (nonNull(jsonb)) {
       JsonObject json = (JsonObject) jsonb;
       String content = json.getString(CONTENT_COLUMN_NAME);
       parsedRecord.withId(json.getString(ID_COLUMN_NAME))
@@ -218,7 +219,7 @@ public class SourceRecordDaoImpl implements SourceRecordDao {
   private SourceRecord toMinimumSourceRecord(Row row) {
     SourceRecord sourceRecord = new SourceRecord();
     UUID id = row.getUUID(ID_COLUMN_NAME);
-    if (Objects.nonNull(id)) {
+    if (nonNull(id)) {
       sourceRecord.withRecordId(id.toString());
     }
     return sourceRecord;

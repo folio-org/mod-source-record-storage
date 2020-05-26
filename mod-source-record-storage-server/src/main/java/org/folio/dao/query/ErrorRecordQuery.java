@@ -1,25 +1,23 @@
 package org.folio.dao.query;
 
 import static org.folio.dao.impl.ErrorRecordDaoImpl.DESCRIPTION_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ERROR_RECORDS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 
-import java.util.Map;
-
-import com.google.common.collect.ImmutableMap;
-
-import org.folio.dao.util.DaoUtil;
+import org.folio.dao.query.Metamodel.Property;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 
-public class ErrorRecordQuery extends AbstractEntityQuery {
-
-  private static final Map<String, String> ptc = DaoUtil.getBasicContentPropertyToColumnMap();
-  
-  static {
-    ptc.put("description", DESCRIPTION_COLUMN_NAME);
+@Metamodel(
+  entity = ErrorRecord.class,
+  table = ERROR_RECORDS_TABLE_NAME,
+  properties = {
+    @Property(path = "id", column = ID_COLUMN_NAME),
+    @Property(path = "content", column = CONTENT_COLUMN_NAME),
+    @Property(path = "description", column = DESCRIPTION_COLUMN_NAME)
   }
-
-  private ErrorRecordQuery() {
-    super(ImmutableMap.copyOf(ptc), ErrorRecord.class);
-  }
+)
+public class ErrorRecordQuery extends AbstractEntityQuery<ErrorRecordQuery> {
 
   public static ErrorRecordQuery query() {
     return new ErrorRecordQuery();

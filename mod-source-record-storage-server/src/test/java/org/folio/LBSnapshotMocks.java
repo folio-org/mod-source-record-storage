@@ -29,14 +29,14 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
 
   @Override
   public SnapshotQuery getArbitruaryQuery() {
-    return (SnapshotQuery) SnapshotQuery.query().builder()
+    return SnapshotQuery.query().builder()
       .whereEqual("status", Snapshot.Status.NEW)
       .query();
   }
 
   @Override
   public SnapshotQuery getArbitruarySortedQuery() {
-    return (SnapshotQuery) SnapshotQuery.query().builder()
+    return SnapshotQuery.query().builder()
       .whereEqual("status", Snapshot.Status.NEW)
       .orderBy("status")
       .query();
@@ -58,7 +58,8 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
     return new Snapshot()
       .withJobExecutionId(getMockEntity().getJobExecutionId())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS)
-      .withProcessingStartedDate(new Date(1589218979000l));
+      .withProcessingStartedDate(new Date(1589218979000l))
+      .withMetadata(getMockEntity().getMetadata());
   }
 
   @Override
@@ -128,7 +129,7 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
   @Override
   public void compareCollections(TestContext context, SnapshotCollection expected, SnapshotCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getSnapshots(), actual.getSnapshots());
+    compareEntities(context, expected.getSnapshots(), actual.getSnapshots(), false);
   }
 
   @Override
@@ -142,6 +143,12 @@ public class LBSnapshotMocks implements EntityMocks<Snapshot, SnapshotCollection
     if (Objects.nonNull(expected.getProcessingStartedDate())) {
       context.assertEquals(expected.getProcessingStartedDate().getTime(), 
         actual.getProcessingStartedDate().getTime());
+    }
+    if (Objects.nonNull(expected.getMetadata())) {
+      context.assertEquals(expected.getMetadata().getCreatedByUserId(), actual.getMetadata().getCreatedByUserId());
+      // context.assertNotNull(actual.getMetadata().getCreatedDate());
+      context.assertEquals(expected.getMetadata().getUpdatedByUserId(), actual.getMetadata().getUpdatedByUserId());
+      // context.assertNotNull(actual.getMetadata().getUpdatedDate());
     }
   }
 

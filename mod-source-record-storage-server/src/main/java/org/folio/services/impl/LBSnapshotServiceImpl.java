@@ -22,14 +22,17 @@ import io.vertx.core.Future;
 public class LBSnapshotServiceImpl extends AbstractEntityService<Snapshot, SnapshotCollection, SnapshotQuery, LBSnapshotDao>
     implements LBSnapshotService {
 
+  @Override
   public Future<Snapshot> save(Snapshot snapshot, String tenantId) {
     return dao.save(setProcessingStartedDate(snapshot), tenantId);
   }
 
+  @Override
   public Future<List<Snapshot>> save(List<Snapshot> snapshots, String tenantId) {
     return dao.save(snapshots.stream().map(this::setProcessingStartedDate).collect(Collectors.toList()), tenantId);
   }
 
+  @Override
   public Future<Snapshot> update(Snapshot snapshot, String tenantId) {
     return getById(snapshot.getJobExecutionId(), tenantId)
       .compose(optionalSnapshot -> optionalSnapshot

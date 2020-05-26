@@ -28,16 +28,16 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
 
   @Override
   public RecordQuery getArbitruaryQuery() {
-    return (RecordQuery) RecordQuery.query().builder()
-      .whereEqual("matchedProfileId", getMockEntity().getMatchedProfileId())
+    return RecordQuery.query().builder()
+      .whereEqual("snapshotId", getMockEntity().getSnapshotId())
       .query();
   }
 
   @Override
   public RecordQuery getArbitruarySortedQuery() {
-    return (RecordQuery) RecordQuery.query().builder()
-      .whereEqual("matchedProfileId", getMockEntity().getMatchedProfileId())
-      .orderBy("matchedProfileId")
+    return RecordQuery.query().builder()
+      .whereEqual("snapshotId", getMockEntity().getSnapshotId())
+      .orderBy("snapshotId")
       .query();
   }
 
@@ -49,10 +49,10 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public Record getInvalidMockEntity() {
     return new Record()
-      .withId("be86e5ad-d0ac-4209-af40-875ffd9efa53")
+      .withId(getMockEntity().getId())
       .withRecordType(Record.RecordType.MARC)
       .withOrder(0)
-      .withGeneration(1)
+      .withGeneration(0)
       .withState(Record.State.ACTUAL);
   }
 
@@ -61,7 +61,6 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
     return new Record()
       .withId(getMockEntity().getId())
       .withMatchedId(getMockEntity().getMatchedId())
-      .withMatchedProfileId(getMockEntity().getMatchedProfileId())
       .withSnapshotId(getMockEntity().getSnapshotId())
       .withGeneration(getMockEntity().getGeneration())
       .withRecordType(getMockEntity().getRecordType())
@@ -95,14 +94,14 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public List<Record> getExpectedEntitiesForArbitraryQuery() {
     return getExpectedEntities().stream()
-      .filter(entity -> entity.getMatchedProfileId().equals(getMockEntity().getMatchedProfileId()))
+      .filter(entity -> entity.getSnapshotId().equals(getMockEntity().getSnapshotId()))
       .collect(Collectors.toList());
   }
 
   @Override
   public List<Record> getExpectedEntitiesForArbitrarySortedQuery() {
     List<Record> expected = getExpectedEntitiesForArbitraryQuery();
-    Collections.sort(expected, (r1, r2) -> r1.getMatchedProfileId().compareTo(r2.getMatchedProfileId()));
+    Collections.sort(expected, (r1, r2) -> r1.getSnapshotId().compareTo(r2.getSnapshotId()));
     return expected;
   }
 
@@ -139,7 +138,7 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
   @Override
   public void compareCollections(TestContext context, RecordCollection expected, RecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getRecords(), actual.getRecords());
+    compareEntities(context, expected.getRecords(), actual.getRecords(), false);
   }
 
   @Override
@@ -156,7 +155,6 @@ public class LBRecordMocks implements EntityMocks<Record, RecordCollection, Reco
       context.assertEquals(expected.getMatchedId(), actual.getMatchedId());
     }
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
-    context.assertEquals(expected.getMatchedProfileId(), actual.getMatchedProfileId());
     context.assertEquals(expected.getGeneration(), actual.getGeneration());
     context.assertEquals(expected.getOrder(), actual.getOrder());
     context.assertEquals(expected.getState(), actual.getState());

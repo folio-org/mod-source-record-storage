@@ -31,7 +31,60 @@
         <constraints nullable="false"/>
       </column>
       <column name="processing_started_date" type="timestamptz"></column>
+      <column name="createdbyuserid" type="uuid"></column>
+      <column name="createddate" type="timestamptz"></column>
+      <column name="updatedbyuserid" type="uuid"></column>
+      <column name="updateddate" type="timestamptz"></column>
     </createTable>
+  </changeSet>
+
+  <changeSet id="2020-04-27--12-02-create-update-snapshots-set-updated-date-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.update_snapshots_set_updated_date() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          NEW.updateddate := current_timestamp;
+          RETURN NEW;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-04-27--12-03-create-update-snapshots-set-updated-date-trigger" author="WilliamWelling">
+    <sql>
+      create trigger update_snapshots_set_updated_date
+          before insert or update
+          on ${database.defaultSchemaName}.snapshots_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.update_snapshots_set_updated_date();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-04-27--12-04-create-insert-snapshots-set-created-date-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.insert_snapshots_set_created_date() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          NEW.createddate := current_timestamp;
+          NEW.updateddate := NEW.createddate;
+          RETURN NEW;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-04-27--12-05-create-insert-snapshots-set-created-date-trigger" author="WilliamWelling">
+    <sql>
+      create trigger insert_snapshots_set_created_date
+          before insert or update
+          on ${database.defaultSchemaName}.snapshots_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.insert_snapshots_set_created_date();
+    </sql>
   </changeSet>
 
 </databaseChangeLog>

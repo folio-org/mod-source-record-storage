@@ -1,17 +1,21 @@
 package org.folio.dao.impl;
 
+import static java.util.Objects.nonNull;
 import static java.util.stream.StreamSupport.stream;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.SNAPSHOTS_TABLE_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.AbstractEntityDao;
 import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.query.SnapshotQuery;
@@ -34,6 +38,10 @@ import io.vertx.sqlclient.Tuple;
 //     <constraints nullable="false"/>
 //   </column>
 //   <column name="processing_started_date" type="timestamptz"></column>
+//   <column name="createdbyuserid" type="uuid"></column>
+//   <column name="createddate" type="timestamptz"></column>
+//   <column name="updatedbyuserid" type="uuid"></column>
+//   <column name="updateddate" type="timestamptz"></column>
 // </createTable>
 @Component
 public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotCollection, SnapshotQuery> implements LBSnapshotDao {
@@ -52,6 +60,10 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
       .of(ID_COLUMN_NAME)
       .append(STATUS_COLUMN_NAME)
       .append(PROCESSING_STARTED_DATE_COLUMN_NAME)
+      .append(CREATED_BY_USER_ID_COLUMN_NAME)
+      .append(CREATED_DATE_COLUMN_NAME)
+      .append(UPDATED_BY_USER_ID_COLUMN_NAME)
+      .append(UPDATED_DATE_COLUMN_NAME)
       .build();
   }
 
@@ -62,14 +74,22 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
 
   @Override
   protected Tuple toTuple(Snapshot snapshot, boolean generateIdIfNotExists) {
-    if (generateIdIfNotExists && StringUtils.isEmpty(snapshot.getJobExecutionId())) {
+    if (generateIdIfNotExists && isEmpty(snapshot.getJobExecutionId())) {
       snapshot.setJobExecutionId(UUID.randomUUID().toString());
     }
-    return TupleWrapper.of()
+    TupleWrapper tupleWrapper = TupleWrapper.of()
       .addUUID(snapshot.getJobExecutionId())
       .addEnum(snapshot.getStatus())
-      .addOffsetDateTime(snapshot.getProcessingStartedDate())
-      .get();
+      .addOffsetDateTime(snapshot.getProcessingStartedDate());
+    if (nonNull(snapshot.getMetadata())) {
+      tupleWrapper.addUUID(snapshot.getMetadata().getCreatedByUserId())
+        .addOffsetDateTime(snapshot.getMetadata().getCreatedDate())
+        .addUUID(snapshot.getMetadata().getUpdatedByUserId())
+        .addOffsetDateTime(snapshot.getMetadata().getUpdatedDate());
+    } else {
+      tupleWrapper.addNull().addNull().addNull().addNull();
+    }
+    return tupleWrapper.get();
   }
 
   @Override
@@ -92,10 +112,11 @@ public class LBSnapshotDaoImpl extends AbstractEntityDao<Snapshot, SnapshotColle
       .withJobExecutionId(row.getUUID(ID_COLUMN_NAME).toString())
       .withStatus(Snapshot.Status.fromValue(row.getString(STATUS_COLUMN_NAME)));
     OffsetDateTime processingStartedDate = row.getOffsetDateTime(PROCESSING_STARTED_DATE_COLUMN_NAME);
-    if (Objects.nonNull(processingStartedDate)) {
+    if (nonNull(processingStartedDate)) {
       snapshot.setProcessingStartedDate(Date.from(processingStartedDate.toInstant()));
     }
-    return snapshot;
+    return snapshot
+      .withMetadata(DaoUtil.metadataFromRow(row));
   }
 
 }

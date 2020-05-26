@@ -8,7 +8,6 @@ import org.folio.dao.query.ParsedRecordQuery;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordCollection;
 
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 
 public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecordCollection, ParsedRecordQuery> {
@@ -33,7 +32,7 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
 
   @Override
   public ParsedRecordQuery getArbitruarySortedQuery() {
-    return (ParsedRecordQuery) ParsedRecordQuery.query().builder()
+    return ParsedRecordQuery.query().builder()
       .orderBy("id", Direction.DESC)
       .query();
   }
@@ -122,14 +121,13 @@ public class ParsedRecordMocks implements EntityMocks<ParsedRecord, ParsedRecord
   @Override
   public void compareCollections(TestContext context, ParsedRecordCollection expected, ParsedRecordCollection actual) {
     context.assertEquals(expected.getTotalRecords(), actual.getTotalRecords());
-    compareEntities(context, expected.getParsedRecords(), actual.getParsedRecords());
+    compareEntities(context, expected.getParsedRecords(), actual.getParsedRecords(), true);
   }
 
   @Override
   public void compareEntities(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(new JsonObject((String) expected.getContent()),
-      new JsonObject((String) actual.getContent()));
+    context.assertEquals(expected.getContent(), actual.getContent());
     context.assertEquals(expected.getFormattedContent().trim(), actual.getFormattedContent().trim());
   }
 

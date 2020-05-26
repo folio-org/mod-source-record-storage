@@ -1,19 +1,21 @@
 package org.folio.dao.query;
 
-import java.util.Map;
+import static org.folio.dao.util.DaoUtil.CONTENT_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.RAW_RECORDS_TABLE_NAME;
 
-import com.google.common.collect.ImmutableMap;
-
-import org.folio.dao.util.DaoUtil;
+import org.folio.dao.query.Metamodel.Property;
 import org.folio.rest.jaxrs.model.RawRecord;
 
-public class RawRecordQuery extends AbstractEntityQuery {
-
-  private static final Map<String, String> ptc = DaoUtil.getImmutableContentPropertyToColumnMap();
-
-  private RawRecordQuery() {
-    super(ImmutableMap.copyOf(ptc), RawRecord.class);
+@Metamodel(
+  entity = RawRecord.class,
+  table = RAW_RECORDS_TABLE_NAME,
+  properties = {
+    @Property(path = "id", column = ID_COLUMN_NAME),
+    @Property(path = "content", column = CONTENT_COLUMN_NAME)
   }
+)
+public class RawRecordQuery extends AbstractEntityQuery<RawRecordQuery> {
 
   public static RawRecordQuery query() {
     return new RawRecordQuery();

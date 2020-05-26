@@ -8,20 +8,19 @@ import static org.folio.SourceRecordTestHelper.enhanceWithRawRecord;
 import static org.folio.SourceRecordTestHelper.getParsedRecords;
 import static org.folio.SourceRecordTestHelper.getRawRecords;
 import static org.folio.SourceRecordTestHelper.getRecords;
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.GENERATION_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.INSTANCE_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.MATCHED_PROFILE_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.ORDER_IN_FILE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.RECORD_TYPE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.SNAPSHOT_ID_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.STATE_COLUMN_NAME;
 import static org.folio.dao.impl.LBRecordDaoImpl.SUPPRESS_DISCOVERY_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_BY_USER_ID_COLUMN_NAME;
-import static org.folio.dao.impl.LBRecordDaoImpl.UPDATED_DATE_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.CREATED_DATE_COLUMN_NAME;
 import static org.folio.dao.util.DaoUtil.ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_BY_USER_ID_COLUMN_NAME;
+import static org.folio.dao.util.DaoUtil.UPDATED_DATE_COLUMN_NAME;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -93,7 +92,7 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
   private ParsedRecordDao mockParsedRecordDao;
 
   @Override
-  public void createService(TestContext context) throws IllegalAccessException {
+  public void createBeans(TestContext context) throws IllegalAccessException {
     mockSourceRecordDao = Mockito.mock(SourceRecordDao.class);
     mockRecordDao = Mockito.mock(LBRecordDao.class);
     mockRawRecordDao = Mockito.mock(RawRecordDao.class);
@@ -557,7 +556,6 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
             RowImpl row = new RowImpl(new RowDesc(Arrays.asList(
               ID_COLUMN_NAME,
               SNAPSHOT_ID_COLUMN_NAME,
-              MATCHED_PROFILE_ID_COLUMN_NAME,
               MATCHED_ID_COLUMN_NAME,
               GENERATION_COLUMN_NAME,
               RECORD_TYPE_COLUMN_NAME,
@@ -574,7 +572,6 @@ public class SourceRecordServiceTest extends AbstractServiceTest {
             row
               .addUUID(UUID.fromString(record.getId()))
               .addUUID(UUID.fromString(record.getSnapshotId()))
-              .addUUID(UUID.fromString(record.getMatchedProfileId()))
               .addUUID(UUID.fromString(record.getMatchedId()))
               .addInteger(record.getGeneration())
               .addString(record.getRecordType().toString());

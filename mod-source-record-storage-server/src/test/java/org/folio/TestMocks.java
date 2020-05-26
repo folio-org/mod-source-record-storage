@@ -1,9 +1,9 @@
 package org.folio;
 
+import static java.lang.String.format;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,17 +38,11 @@ public class TestMocks {
 
   static { 
     List<SourceRecord> sourceRecords = readSourceRecords();
-    Collections.sort(sourceRecords, (sr1, sr2) -> sr1.getRecordId().compareTo(sr2.getRecordId()));
     rawRecords = sourceRecords.stream().map(TestMocks::toRawRecord).collect(Collectors.toList());
-    Collections.sort(rawRecords, (rr1, rr2) -> rr1.getId().compareTo(rr2.getId()));
     parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).collect(Collectors.toList());
-    Collections.sort(parsedRecords, (pr1, pr2) -> pr1.getId().compareTo(pr2.getId()));
     errorRecords = readErrorRecords(sourceRecords);
-    Collections.sort(errorRecords, (er1, er2) -> er1.getId().compareTo(er2.getId()));
     records = readRecords(sourceRecords);
-    Collections.sort(records, (r1, r2) -> r1.getId().compareTo(r2.getId()));
     snapshots = readSnapshots(sourceRecords);
-    Collections.sort(snapshots, (s1, s2) -> s1.getJobExecutionId().compareTo(s2.getJobExecutionId()));
   }
 
   public static List<Snapshot> getSnapshots() {
@@ -155,7 +149,7 @@ public class TestMocks {
   }
 
   private static Optional<Snapshot> readSnapshot(SourceRecord sourceRecord) {
-    File file = new File(String.format(SNAPSHOT_PATH_TEMPLATE, sourceRecord.getSnapshotId()));
+    File file = new File(format(SNAPSHOT_PATH_TEMPLATE, sourceRecord.getSnapshotId()));
     if (file.exists()) {
       try {
         Snapshot snapshot = ObjectMapperTool.getDefaultMapper().readValue(file, Snapshot.class);
@@ -177,7 +171,7 @@ public class TestMocks {
   }
 
   private static Optional<Record> readRecord(SourceRecord sourceRecord) {
-    File file = new File(String.format(RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
+    File file = new File(format(RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
         Record record = ObjectMapperTool.getDefaultMapper().readValue(file, Record.class)
@@ -211,7 +205,7 @@ public class TestMocks {
   }
 
   private static Optional<ErrorRecord> readErrorRecord(SourceRecord sourceRecord) {
-    File file = new File(String.format(ERROR_RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
+    File file = new File(format(ERROR_RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
         ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);

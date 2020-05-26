@@ -1,5 +1,6 @@
 package org.folio.services.impl;
 
+import static java.lang.String.format;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -22,7 +23,7 @@ import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D extends EntityDao<E, C, Q>, S extends EntityService<E, C, Q>, M extends EntityMocks<E, C, Q>>
+public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery<Q>, D extends EntityDao<E, C, Q>, S extends EntityService<E, C, Q>, M extends EntityMocks<E, C, Q>>
     extends AbstractServiceTest {
 
   D mockDao;
@@ -128,9 +129,10 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
   @Test
   public void shouldErrorWhileTryingToSave(TestContext context) {
     Promise<E> savePromise = Promise.promise();
-    when(mockDao.save(mocks.getInvalidMockEntity(), TENANT_ID)).thenReturn(savePromise.future());
+    E mockEntity = mocks.getInvalidMockEntity();
+    when(mockDao.save(mockEntity, TENANT_ID)).thenReturn(savePromise.future());
     Async async = context.async();
-    service.save(mocks.getInvalidMockEntity(), TENANT_ID).onComplete(res -> {
+    service.save(mockEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       async.complete();
     });
@@ -146,7 +148,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       if (res.failed()) {
         context.fail(res.cause());
       }
-      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result());
+      mocks.compareEntities(context, mocks.getExpectedEntities(), res.result(), false);
       async.complete();
     });
     savePromise.complete(mocks.getExpectedEntities());
@@ -173,7 +175,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
     E mockUpdatedEntity = mocks.getUpdatedMockEntity();
     when(mockDao.update(mockUpdatedEntity, TENANT_ID)).thenReturn(updatePromise.future());
     Async async = context.async();
-    String expectedMessage = String.format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
+    String expectedMessage = format("%s row with id %s was not updated", mockDao.getTableName(), mocks.getId(mockUpdatedEntity));
     service.update(mockUpdatedEntity, TENANT_ID).onComplete(res -> {
       context.assertTrue(res.failed());
       context.assertEquals(expectedMessage, res.cause().getMessage());
@@ -250,7 +252,7 @@ public abstract class AbstractEntityServiceTest<E, C, Q extends EntityQuery, D e
       context.assertNotNull(entity);
       actual.add(entity);
     }, finished -> {
-      mocks.compareEntities(context, mocks.getExpectedEntities(), actual);
+      mocks.compareEntities(context, mocks.getExpectedEntities(), actual, false);
       async.complete();
     });
   }

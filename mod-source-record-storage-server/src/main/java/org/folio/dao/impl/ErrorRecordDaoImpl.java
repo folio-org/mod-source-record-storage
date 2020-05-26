@@ -45,7 +45,11 @@ public class ErrorRecordDaoImpl extends AbstractEntityDao<ErrorRecord, ErrorReco
 
   @Override
   public String getColumns() {
-    return ColumnBuilder.of(ID_COLUMN_NAME).append(CONTENT_COLUMN_NAME).append(DESCRIPTION_COLUMN_NAME).build();
+    return ColumnBuilder
+      .of(ID_COLUMN_NAME)
+      .append(CONTENT_COLUMN_NAME)
+      .append(DESCRIPTION_COLUMN_NAME)
+      .build();
   }
 
   @Override

@@ -8,7 +8,6 @@ DECLARE
 BEGIN
   SELECT json_build_object('id', recordsByExternalId.jsonb->>'id',
             'snapshotId', recordsByExternalId.jsonb->>'snapshotId',
-            'matchedProfileId', recordsByExternalId.jsonb->>'matchedProfileId',
             'matchedId', recordsByExternalId.jsonb->>'matchedId',
             'generation', recordsByExternalId.jsonb->>'generation',
             'recordType', recordsByExternalId.jsonb->>'recordType',

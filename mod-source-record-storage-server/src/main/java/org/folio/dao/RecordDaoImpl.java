@@ -469,7 +469,6 @@ public class RecordDaoImpl implements RecordDao {
     RecordModel recordModel = new RecordModel()
       .withId(record.getId())
       .withSnapshotId(record.getSnapshotId())
-      .withMatchedProfileId(record.getMatchedProfileId())
       .withMatchedId(record.getMatchedId())
       .withGeneration(record.getGeneration())
       .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))

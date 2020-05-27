@@ -9,7 +9,7 @@
       <column name="id" type="uuid">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="content" type="jsonb">
+      <column name="content" type="text">
         <constraints nullable="false"/>
       </column>
     </createTable>

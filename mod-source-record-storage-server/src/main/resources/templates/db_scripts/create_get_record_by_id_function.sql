@@ -6,7 +6,6 @@ DECLARE
 BEGIN
   SELECT json_build_object('id', records.jsonb->>'id',
           'snapshotId', records.jsonb->>'snapshotId',
-					'matchedProfileId', records.jsonb->>'matchedProfileId',
 					'matchedId', records.jsonb->>'matchedId',
 					'generation', (records.jsonb->>'generation')::integer,
 					'recordType', records.jsonb->>'recordType',

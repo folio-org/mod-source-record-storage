@@ -42,6 +42,12 @@ public class LBSnapshotDao {
         .map(LBSnapshotDao::toSnapshots);
   }
 
+  public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
+      .where(condition))
+        .map(LBSnapshotDao::toOptionalSnapshot);
+  }
+
   public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
@@ -88,6 +94,10 @@ public class LBSnapshotDao {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
       .map(res -> res == 1);
+  }
+
+  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
+    return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB));
   }
 
   public static Snapshot toSnapshot(Row row) {

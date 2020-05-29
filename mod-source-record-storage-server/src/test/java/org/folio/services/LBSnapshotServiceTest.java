@@ -18,7 +18,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
@@ -34,14 +33,11 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
   @After
   public void cleanUp(TestContext context) {
-    Async async = context.async();
-    postgresClientFactory.getQueryExecutor(TENANT_ID)
-      .execute(dsl -> dsl.deleteFrom(Tables.SNAPSHOTS_LB)).onComplete(delete -> {
-        if (delete.failed()) {
-          context.fail(delete.cause());
-        }
-        async.complete();
-      });
+    LBSnapshotDao.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+    });
   }
 
   @Test

@@ -37,6 +37,12 @@ public class LBParsedRecordDao {
         .map(LBParsedRecordDao::toParsedRecords);
   }
 
+  public static Future<Optional<ParsedRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
+      .where(condition))
+        .map(LBParsedRecordDao::toOptionalParsedRecord);
+  }
+
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
@@ -83,6 +89,10 @@ public class LBParsedRecordDao {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
       .map(res -> res == 1);
+  }
+
+  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
+    return queryExecutor.execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB));
   }
 
   public static ParsedRecord toParsedRecord(Row row) {

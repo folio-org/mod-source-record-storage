@@ -37,6 +37,12 @@ public class LBRawRecordDao {
         .map(LBRawRecordDao::toRawRecords);
   }
 
+  public static Future<Optional<RawRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
+      .where(condition))
+        .map(LBRawRecordDao::toOptionalRawRecord);
+  }
+
   public static Future<Optional<RawRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
@@ -83,6 +89,10 @@ public class LBRawRecordDao {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(RAW_RECORDS_LB)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
       .map(res -> res == 1);
+  }
+
+  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
+    return queryExecutor.execute(dsl -> dsl.deleteFrom(RAW_RECORDS_LB));
   }
 
   public static RawRecord toRawRecord(Row row) {

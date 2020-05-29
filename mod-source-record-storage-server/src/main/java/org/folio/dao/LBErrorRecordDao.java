@@ -37,6 +37,12 @@ public class LBErrorRecordDao {
         .map(LBErrorRecordDao::toErrorRecords);
   }
 
+  public static Future<Optional<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
+      .where(condition))
+        .map(LBErrorRecordDao::toOptionalErrorRecord);
+  }
+
   public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
@@ -83,6 +89,10 @@ public class LBErrorRecordDao {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(ERROR_RECORDS_LB)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
       .map(res -> res == 1);
+  }
+
+  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
+    return queryExecutor.execute(dsl -> dsl.deleteFrom(ERROR_RECORDS_LB));
   }
 
   public static ErrorRecord toErrorRecord(Row row) {

@@ -244,7 +244,17 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
-    return null;
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      return LBRecordDao.findByCondition(txQE, condition, orderFields, offset, limit)
+        .compose(records -> {
+          Promise<List<Record>> promise = Promise.promise();
+          CompositeFuture.all(records.stream().map(record -> lookupAssociatedRecords(txQE, record))
+            .collect(Collectors.toList())).onComplete(res -> promise.complete(records));
+          return promise.future();
+      });
+    }).map(records -> new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size()));
   }
 
   @Override
@@ -260,22 +270,27 @@ public class LBRecordServiceImpl implements LBRecordService {
   private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Future<Optional<Record>> future) {
     return future.compose(record -> {
       if (record.isPresent()) {
-        return CompositeFuture.all(LBRawRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-          if (ar.succeeded() && ar.result().isPresent()) {
-            record.get().withRawRecord(ar.result().get());
-          }
-        }), LBParsedRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-          if (ar.succeeded() && ar.result().isPresent()) {
-            record.get().withParsedRecord(ar.result().get());
-          }
-        }), LBErrorRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-          if (ar.succeeded() && ar.result().isPresent()) {
-            record.get().withErrorRecord(ar.result().get());
-          }
-        })).map(ar -> record);
+        return lookupAssociatedRecords(txQE, record.get())
+          .map(Optional::of);
       }
       return Future.succeededFuture(record);
     });
+  }
+
+  private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return CompositeFuture.all(LBRawRecordDao.findById(txQE, record.getId()).onComplete(ar -> {
+      if (ar.succeeded() && ar.result().isPresent()) {
+        record.withRawRecord(ar.result().get());
+      }
+    }), LBParsedRecordDao.findById(txQE, record.getId()).onComplete(ar -> {
+      if (ar.succeeded() && ar.result().isPresent()) {
+        record.withParsedRecord(ar.result().get());
+      }
+    }), LBErrorRecordDao.findById(txQE, record.getId()).onComplete(ar -> {
+      if (ar.succeeded() && ar.result().isPresent()) {
+        record.withErrorRecord(ar.result().get());
+      }
+    })).map(ar -> record);
   }
 
   private Future<Integer> getRecordGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {

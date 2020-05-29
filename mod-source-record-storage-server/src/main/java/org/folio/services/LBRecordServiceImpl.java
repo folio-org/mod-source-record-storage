@@ -41,6 +41,7 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
+import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -68,25 +69,7 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> {
-      return LBRecordDao.findByCondition(txQE, condition)
-          .compose(record -> {
-            if (record.isPresent()) {
-              return CompositeFuture.all(LBRawRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-                if (ar.succeeded() && ar.result().isPresent()) {
-                  record.get().withRawRecord(ar.result().get());
-                }
-              }), LBParsedRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-                if (ar.succeeded() && ar.result().isPresent()) {
-                  record.get().withParsedRecord(ar.result().get());
-                }
-              }), LBErrorRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
-                if (ar.succeeded() && ar.result().isPresent()) {
-                  record.get().withErrorRecord(ar.result().get());
-                }
-              })).map(ar -> record);
-            }
-            return Future.succeededFuture(record);
-          });
+      return lookupAssociatedRecords(txQE, LBRecordDao.findByCondition(txQE, condition));
     });
   }
 
@@ -102,7 +85,6 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.isNull(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
-    setRecordForeignKeys(record);
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
@@ -122,7 +104,8 @@ public class LBRecordServiceImpl implements LBRecordService {
             return getRecordGeneration(txQE, record);
           }
           return Future.succeededFuture(record.getGeneration());
-        }).compose(generation -> insertOrUpdateRecord(txQE, record.withGeneration(generation)));
+        }).compose(generation -> insertOrUpdateRecord(txQE, ensureRecordForeignKeys(record)
+          .withGeneration(generation)));
     });
   }
 
@@ -151,23 +134,31 @@ public class LBRecordServiceImpl implements LBRecordService {
   public Future<Record> updateRecord(Record record, String tenantId) {
     return getRecordById(record.getId(), tenantId)
       .compose(optionalRecord -> optionalRecord
-        .map(r -> {
-          if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
-            record.getRawRecord().setId(record.getId());
-          }
-          if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
-            record.getParsedRecord().setId(record.getId());
-          }
-          if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
-            record.getErrorRecord().setId(record.getId());
-          }
-          return saveRecord(record, tenantId);
-        }).orElse(Future.failedFuture(new NotFoundException(format("Record with id '%s' was not found", record.getId())))));
+        .map(r -> saveRecord(ensureRecordForeignKeys(record), tenantId))
+        .orElse(Future.failedFuture(new NotFoundException(format("Record with id '%s' was not found", record.getId())))));
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
+    return getQueryExecutor(tenantId)
+      .transaction(txQE -> lookupAssociatedRecords(txQE, txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
+        .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
+        .from(RECORDS_LB)
+        .where(condition))
+          .map(LBRecordDao::toRecord)
+          .map(Optional::of)))
+          .map(optionalRecord -> {
+            if (optionalRecord.isPresent()) {
+              return Optional.of(LBRecordDao.toSourceRecord(optionalRecord.get()));
+            }
+            return Optional.empty();
+          });
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    return null;
+    Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id));
+    return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
@@ -266,6 +257,27 @@ public class LBRecordServiceImpl implements LBRecordService {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
+  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Future<Optional<Record>> future) {
+    return future.compose(record -> {
+      if (record.isPresent()) {
+        return CompositeFuture.all(LBRawRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
+          if (ar.succeeded() && ar.result().isPresent()) {
+            record.get().withRawRecord(ar.result().get());
+          }
+        }), LBParsedRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
+          if (ar.succeeded() && ar.result().isPresent()) {
+            record.get().withParsedRecord(ar.result().get());
+          }
+        }), LBErrorRecordDao.findById(txQE, record.get().getId()).onComplete(ar -> {
+          if (ar.succeeded() && ar.result().isPresent()) {
+            record.get().withErrorRecord(ar.result().get());
+          }
+        })).map(ar -> record);
+      }
+      return Future.succeededFuture(record);
+    });
+  }
+
   private Future<Integer> getRecordGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return txQE.query(dsl -> dsl.select(coalesce(max(RECORDS_LB.GENERATION), 0).as(RECORDS_LB.GENERATION))
       .from(RECORDS_LB.join(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
@@ -308,7 +320,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     }
   }
 
-  private void setRecordForeignKeys(Record record) {
+  private Record ensureRecordForeignKeys(Record record) {
     if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
       record.getRawRecord().setId(record.getId());
     }
@@ -318,6 +330,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
       record.getErrorRecord().setId(record.getId());
     }
+    return record;
   }
 
   private void validateParsedRecordId(ParsedRecord record) {

@@ -49,11 +49,11 @@ public class LBSnapshotDao {
   }
 
   public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord record = toDatabaseRecord(snapshot);
+    SnapshotsLbRecord dbRecord = toDatabaseRecord(snapshot);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
-      .set(record)
+      .set(dbRecord)
       .onDuplicateKeyUpdate()
-      .set(record)
+      .set(dbRecord)
       .returning())
         .map(LBSnapshotDao::toSnapshot);
   }
@@ -70,9 +70,9 @@ public class LBSnapshotDao {
   }
 
   public static Future<Snapshot> update(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord record = toDatabaseRecord(setProcessingStartedDate(snapshot));
+    SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
     return queryExecutor.executeAny(dsl -> dsl.update(SNAPSHOTS_LB)
-      .set(record)
+      .set(dbRecord)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
       .returning())
         .map(LBSnapshotDao::toOptionalSnapshot)
@@ -115,31 +115,31 @@ public class LBSnapshotDao {
   }
 
   public static SnapshotsLbRecord toDatabaseRecord(Snapshot snapshot) {
-    SnapshotsLbRecord record = new SnapshotsLbRecord();
+    SnapshotsLbRecord dbRecord = new SnapshotsLbRecord();
     if (StringUtils.isNotEmpty(snapshot.getJobExecutionId())) {
-      record.setId(UUID.fromString(snapshot.getJobExecutionId()));
+      dbRecord.setId(UUID.fromString(snapshot.getJobExecutionId()));
     }
     if (Objects.nonNull(snapshot.getStatus())) {
-      record.setStatus(JobExecutionStatus.valueOf(snapshot.getStatus().toString()));
+      dbRecord.setStatus(JobExecutionStatus.valueOf(snapshot.getStatus().toString()));
     }
     if (Objects.nonNull(snapshot.getProcessingStartedDate())) {
-      record.setProcessingStartedDate(snapshot.getProcessingStartedDate().toInstant().atOffset(ZoneOffset.UTC));
+      dbRecord.setProcessingStartedDate(snapshot.getProcessingStartedDate().toInstant().atOffset(ZoneOffset.UTC));
     }
     if (Objects.nonNull(snapshot.getMetadata())) {
       if (Objects.nonNull(snapshot.getMetadata().getCreatedByUserId())) {
-        record.setCreatedByUserId(UUID.fromString(snapshot.getMetadata().getCreatedByUserId()));
+        dbRecord.setCreatedByUserId(UUID.fromString(snapshot.getMetadata().getCreatedByUserId()));
       }
       if (Objects.nonNull(snapshot.getMetadata().getCreatedDate())) {
-        record.setCreatedDate(snapshot.getMetadata().getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
+        dbRecord.setCreatedDate(snapshot.getMetadata().getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
       }
       if (Objects.nonNull(snapshot.getMetadata().getUpdatedByUserId())) {
-        record.setUpdatedByUserId(UUID.fromString(snapshot.getMetadata().getUpdatedByUserId()));
+        dbRecord.setUpdatedByUserId(UUID.fromString(snapshot.getMetadata().getUpdatedByUserId()));
       }
       if (Objects.nonNull(snapshot.getMetadata().getUpdatedDate())) {
-        record.setUpdatedDate(snapshot.getMetadata().getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
+        dbRecord.setUpdatedDate(snapshot.getMetadata().getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
       }
     }
-    return record;
+    return dbRecord;
   }
 
   private static Snapshot toSnapshot(RowSet<Row> rows) {

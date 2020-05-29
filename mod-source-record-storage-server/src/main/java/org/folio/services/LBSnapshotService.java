@@ -3,7 +3,6 @@ package org.folio.services;
 import java.util.Collection;
 
 import org.folio.rest.jaxrs.model.SnapshotCollection;
-import org.folio.rest.jooq.tables.daos.SnapshotsLbDao;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -21,7 +20,5 @@ public interface LBSnapshotService extends SnapshotService {
   }
 
   Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
-
-  public SnapshotsLbDao getSnapshotDao(String tenantId);
 
 }

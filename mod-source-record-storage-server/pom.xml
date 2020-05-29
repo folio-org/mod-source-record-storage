@@ -361,7 +361,6 @@
               </database>
               <generate>
                 <daos>true</daos>
-                <interfaces>true</interfaces>
                 <fluentSetters>true</fluentSetters>
                 <validationAnnotations>true</validationAnnotations>
               </generate>

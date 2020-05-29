@@ -1,21 +1,15 @@
 package org.folio.services;
 
-import static org.folio.dao.util.MappingUtil.fromDatabase;
-import static org.folio.dao.util.MappingUtil.snapshotsToDatabase;
-import static org.folio.dao.util.MappingUtil.toDatabase;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
+import org.folio.dao.LBSnapshotDao;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.jooq.Tables;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
-import org.folio.rest.jooq.tables.daos.SnapshotsLbDao;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -33,37 +27,29 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
   private LBSnapshotService snapshotService;
 
-  private SnapshotsLbDao snapshotDao;
-
   @Before
   public void setUp(TestContext context) {
     snapshotService = new LBSnapshotServiceImpl(postgresClientFactory);
-    snapshotDao = snapshotService.getSnapshotDao(TENANT_ID);
   }
 
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    snapshotDao.findAll().onComplete(all -> {
-      if (all.failed()) {
-        context.fail(all.cause());
-      }
-      List<UUID> ids = all.result().stream().map(s -> s.getId()).collect(Collectors.toList());
-      snapshotDao.deleteByIds(ids).onComplete(delete -> {
+    postgresClientFactory.getQueryExecutor(TENANT_ID)
+      .execute(dsl -> dsl.deleteFrom(Tables.SNAPSHOTS_LB)).onComplete(delete -> {
         if (delete.failed()) {
           context.fail(delete.cause());
         }
         async.complete();
       });
-    });
   }
 
   @Test
   public void shouldGetSnapshotById(TestContext context) {
     Snapshot expected = TestMocks.getSnapshot(0);
-    snapshotDao.insert(toDatabase(expected)).onComplete(insert -> {
-      if (insert.failed()) {
-        context.fail(insert.cause());
+    snapshotService.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
       }
       snapshotService.getSnapshotById(expected.getJobExecutionId(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
@@ -76,10 +62,13 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldFailToGetSnapshotById(TestContext context) {
+  public void shouldNotGetSnapshotById(TestContext context) {
     Snapshot expected = TestMocks.getSnapshot(0);
     snapshotService.getSnapshotById(expected.getJobExecutionId(), TENANT_ID).onComplete(get -> {
-      context.assertTrue(get.failed());
+      if (get.failed()) {
+        context.fail(get.cause());
+      }
+      context.assertFalse(get.result().isPresent());
     });
   }
 
@@ -90,11 +79,12 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      snapshotDao.findOneById(UUID.fromString(expected.getJobExecutionId())).onComplete(get -> {
+      snapshotService.getSnapshotById(expected.getJobExecutionId(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        compareSnapshots(context, expected, fromDatabase(get.result()));
+        context.assertTrue(get.result().isPresent());
+        compareSnapshots(context, expected, get.result().get());
       });
     });
   }
@@ -108,15 +98,17 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     snapshotService.saveSnapshot(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
+      String expected = "null value in column \"status\" violates not-null constraint";
+      context.assertEquals(expected, save.cause().getMessage());
     });
   }
 
   @Test
   public void shouldUpdateSnapshot(TestContext context) {
     Snapshot original = TestMocks.getSnapshot(0);
-    snapshotDao.insert(toDatabase(original)).onComplete(insert -> {
-      if (insert.failed()) {
-        context.fail(insert.cause());
+    snapshotService.saveSnapshot(original, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
       }
       Snapshot expected = new Snapshot()
         .withJobExecutionId(original.getJobExecutionId())
@@ -135,11 +127,11 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldFailToUpdateSnapshot(TestContext context) {
     Snapshot snapshot = TestMocks.getSnapshot(0);
-    snapshotDao.findOneById(UUID.fromString(snapshot.getJobExecutionId())).onComplete(get -> {
+    snapshotService.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
       if (get.failed()) {
         context.fail(get.cause());
       }
-      context.assertNull(get.result());
+      context.assertFalse(get.result().isPresent());
       snapshotService.updateSnapshot(snapshot, TENANT_ID).onComplete(update -> {
         context.assertTrue(update.failed());
         String expected = String.format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId());
@@ -151,7 +143,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldDeleteSnapshot(TestContext context) {
     Snapshot snapshot = TestMocks.getSnapshot(0);
-    snapshotDao.insert(toDatabase(snapshot)).onComplete(save -> {
+    snapshotService.saveSnapshot(snapshot, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -160,7 +152,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
           context.fail(delete.cause());
         }
         context.assertTrue(delete.result());
-        snapshotDao.findOneById(UUID.fromString(snapshot.getJobExecutionId())).onComplete(get -> {
+        snapshotService.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
           }
@@ -183,9 +175,9 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldGetSnapshots(TestContext context) {
-    snapshotDao.insert(snapshotsToDatabase(TestMocks.getSnapshots())).onComplete(insert -> {
-      if (insert.failed()) {
-        context.fail(insert.cause());
+    LBSnapshotDao.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
       }
       Condition condition = Tables.SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.PROCESSING_IN_PROGRESS);
       List<OrderField<?>> orderFields = new ArrayList<>();

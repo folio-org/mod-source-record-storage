@@ -1,56 +1,36 @@
 package org.folio.services;
 
-import org.folio.dao.query.RecordQuery;
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
-import org.folio.rest.jaxrs.model.Record;
+import java.util.Collection;
+
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.RecordsBatchResponse;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.jooq.Condition;
+import org.jooq.OrderField;
 
 import io.vertx.core.Future;
 
-/**
- * {@link Record} service
- */
-public interface LBRecordService extends EntityService<Record, RecordCollection, RecordQuery> {
+public interface LBRecordService extends RecordService {
 
   /**
-   * Saves collection of records
-   *
-   * @param recordCollection records to save
-   * @param tenantId         tenant id
-   * @return future with response containing list of successfully saved records and error messages for records that were not saved
+   * @deprecated
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
+  @Override
+  @Deprecated
+  default Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
+    throw new UnsupportedOperationException("Lookup records by CQL is no longer supported");
+  }
+
+  Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for Record either by SRS id or external relation id
-   *
-   * @param externalIdIdentifier specifies of external relation id type
-   * @param id                   either SRS id or external relation id
-   * @param tenantId             tenant id
-   * @return future with {@link Record}
+   * @deprecated
    */
-  Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
+  @Override
+  @Deprecated
+  default Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
+    throw new UnsupportedOperationException("Lookup source records by CQL is no longer supported");
+  }
 
-  /**
-   * Change suppress from discovery flag for record by external relation id
-   *
-   * @param suppressFromDiscoveryDto dto that contains new value and id
-   * @param tenantId                 tenant id
-   * @return - future with record if succeeded
-   */
-  Future<Record> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
-
-  /**
-   * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,
-   * no data is deleted as a result of the update
-   *
-   * @param parsedRecordDto parsed record DTO containing updates to parsed record
-   * @param snapshotId      snapshot id to which new Record should be linked
-   * @param tenantId        tenant id
-   * @return future with updated Record
-   */
-  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
 }

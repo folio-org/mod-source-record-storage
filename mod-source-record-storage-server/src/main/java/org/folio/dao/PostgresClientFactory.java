@@ -4,9 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.folio.rest.persist.PostgresClient;
+import org.jooq.Configuration;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DefaultConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -19,6 +23,8 @@ import io.vertx.sqlclient.PoolOptions;
 public class PostgresClientFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresClientFactory.class);
+
+  public static final Configuration configuration = new DefaultConfiguration().set(SQLDialect.POSTGRES);
 
   private static final String HOST = "host";
   private static final String PORT = "port";
@@ -42,17 +48,27 @@ public class PostgresClientFactory {
    * Creates instance of {@link PostgresClient}
    *
    * @param tenantId tenant id
-   * @return Postgres Client
+   * @return postgres client
    */
   public PostgresClient createInstance(String tenantId) {
     return PostgresClient.getInstance(vertx, tenantId);
   }
 
   /**
-   * Get database client
+   * Get {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param tenantId tenant id
+   * @return reactive query executor
+   */
+  public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+    return new ReactiveClassicGenericQueryExecutor(configuration, getClient(tenantId));
+  }
+
+  /**
+   * Get {@link PgPool}
    *
    * @param tenantId tenant id
-   * @return {@link PgPool} database client
+   * @return database client
    */
   public PgPool getClient(String tenantId) {
     return getPool(tenantId);

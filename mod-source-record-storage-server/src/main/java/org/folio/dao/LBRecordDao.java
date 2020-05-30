@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.StringUtils;
@@ -34,6 +35,17 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
 public class LBRecordDao {
+
+  public static Future<Stream<Record>> streamByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
+      Collection<OrderField<?>> orderFields, int offset, int limit) {
+    return queryExecutor.query(dsl ->  dsl.selectFrom(RECORDS_LB)
+      .where(condition)
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit))
+        .map(res -> res.stream()
+          .map(r -> LBRecordDao.toRecord(r.unwrap())));
+  }
 
   public static Future<List<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -64,7 +76,7 @@ public class LBRecordDao {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBRecordDao::toRecord);
+        .map(LBRecordDao::toSingleRecord);
   }
 
   public static Future<List<Record>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Record> snapshots) {
@@ -196,7 +208,7 @@ public class LBRecordDao {
     return dbRecord;
   }
 
-  private static Record toRecord(RowSet<Row> rows) {
+  private static Record toSingleRecord(RowSet<Row> rows) {
     return toRecord(rows.iterator().next());
   }
 

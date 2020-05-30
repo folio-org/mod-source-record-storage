@@ -68,9 +68,8 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      return lookupAssociatedRecords(txQE, LBRecordDao.findByCondition(txQE, condition));
-    });
+    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDao.findByCondition(txQE, condition)
+      .compose(record -> lookupAssociatedRecords(txQE, record)));
   }
 
   @Override
@@ -141,18 +140,14 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> lookupAssociatedRecords(txQE, txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
         .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
         .from(RECORDS_LB)
         .where(condition))
           .map(LBRecordDao::toRecord)
-          .map(Optional::of)))
-          .map(optionalRecord -> {
-            if (optionalRecord.isPresent()) {
-              return Optional.of(LBRecordDao.toSourceRecord(optionalRecord.get()));
-            }
-            return Optional.empty();
-          });
+      .compose(record -> lookupAssociatedRecords(txQE, record)))
+        .map(LBRecordDao::toSourceRecord)
+        .map(Optional::of);
   }
 
   @Override
@@ -245,11 +240,15 @@ public class LBRecordServiceImpl implements LBRecordService {
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> {
-      return LBRecordDao.findByCondition(txQE, condition, orderFields, offset, limit)
-        .compose(records -> {
+      return LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
+        .compose(stream -> {
+          List<Record> records = new ArrayList<>();
           Promise<List<Record>> promise = Promise.promise();
-          CompositeFuture.all(records.stream().map(record -> lookupAssociatedRecords(txQE, record))
-            .collect(Collectors.toList())).onComplete(res -> promise.complete(records));
+          CompositeFuture.all(stream
+            .map(pr -> lookupAssociatedRecords(txQE, pr)
+            .map(er -> records.add(er)))
+            .collect(Collectors.toList()))
+              .onComplete(res -> promise.complete(records));
           return promise.future();
       });
     }).map(records -> new RecordCollection()
@@ -260,21 +259,34 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return null;
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      return LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
+        .compose(stream -> {
+          List<SourceRecord> sourceRecords = new ArrayList<>();
+          Promise<List<SourceRecord>> promise = Promise.promise();
+          CompositeFuture.all(stream
+            .map(pr -> lookupAssociatedRecords(txQE, pr)
+            .map(LBRecordDao::toSourceRecord)
+            .map(sr -> sourceRecords.add(sr)))
+            .collect(Collectors.toList()))
+              .onComplete(res -> promise.complete(sourceRecords));
+          return promise.future();
+      });
+    }).map(records -> new SourceRecordCollection()
+      .withSourceRecords(records)
+      .withTotalRecords(records.size()));
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Future<Optional<Record>> future) {
-    return future.compose(record -> {
-      if (record.isPresent()) {
-        return lookupAssociatedRecords(txQE, record.get())
-          .map(Optional::of);
-      }
-      return Future.succeededFuture(record);
-    });
+  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record) {
+    if (record.isPresent()) {
+      return lookupAssociatedRecords(txQE, record.get())
+        .map(Optional::of);
+    }
+    return Future.succeededFuture(record);
   }
 
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record) {

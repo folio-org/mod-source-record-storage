@@ -23,6 +23,18 @@
       "description": "Updated Marc Bibliographic Record",
       "eventTTL": 1,
       "signed": false
+    },
+    {
+      "eventType": "DI_INVENTORY_INSTANCE_CREATED",
+      "description": "Created inventory instance",
+      "eventTTL": 1,
+      "signed": false
+    },
+    {
+      "eventType": "DI_COMPLETED",
+      "description": "Data import completed",
+      "eventTTL": 1,
+      "signed": false
     }
   ],
   "subscriptions": [

@@ -10,6 +10,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.NotFoundException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
@@ -26,6 +28,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
 public class LBParsedRecordDao {
+
+  private LBParsedRecordDao() { }
 
   public static Future<List<ParsedRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -81,7 +85,7 @@ public class LBParsedRecordDao {
           if (optionalParsedRecord.isPresent()) {
             return optionalParsedRecord.get();
           }
-          throw new RuntimeException(String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId()));
+          throw new NotFoundException(String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId()));
         });
   }
 

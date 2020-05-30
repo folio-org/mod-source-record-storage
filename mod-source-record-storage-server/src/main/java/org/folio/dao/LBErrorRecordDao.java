@@ -10,6 +10,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.NotFoundException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
@@ -26,6 +28,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
 public class LBErrorRecordDao {
+
+  private LBErrorRecordDao() { }
 
   public static Future<List<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -81,7 +85,7 @@ public class LBErrorRecordDao {
           if (optionalErrorRecord.isPresent()) {
             return optionalErrorRecord.get();
           }
-          throw new RuntimeException(String.format("ErrorRecord with id '%s' was not found", errorRecord.getId()));
+          throw new NotFoundException(String.format("ErrorRecord with id '%s' was not found", errorRecord.getId()));
         });
   }
 

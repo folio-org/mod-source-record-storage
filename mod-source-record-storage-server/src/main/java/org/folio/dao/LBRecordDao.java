@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.NotFoundException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -35,6 +37,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
 public class LBRecordDao {
+
+  private LBRecordDao() { }
 
   public static Future<Stream<Record>> streamByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -101,7 +105,7 @@ public class LBRecordDao {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();
           }
-          throw new RuntimeException(String.format("Record with id '%s' was not found", record.getId()));
+          throw new NotFoundException(String.format("Record with id '%s' was not found", record.getId()));
         });
   }
 
@@ -186,10 +190,8 @@ public class LBRecordDao {
     if (Objects.nonNull(record.getAdditionalInfo())) {
       dbRecord.setSuppressDiscovery(record.getAdditionalInfo().getSuppressDiscovery());
     }
-    if (Objects.nonNull(record.getExternalIdsHolder())) {
-      if (StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
+    if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
         dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
-      }
     }
     if (Objects.nonNull(record.getMetadata())) {
       if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {

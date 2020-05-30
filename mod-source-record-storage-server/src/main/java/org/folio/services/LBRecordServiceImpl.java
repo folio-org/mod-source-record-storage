@@ -23,8 +23,8 @@ import org.folio.dao.LBErrorRecordDao;
 import org.folio.dao.LBParsedRecordDao;
 import org.folio.dao.LBRawRecordDao;
 import org.folio.dao.LBRecordDao;
-import org.folio.dao.LBSnapshotDao;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -87,29 +87,28 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      return LBSnapshotDao.findById(txQE, record.getSnapshotId())
-        .map(optionalSnapshot -> optionalSnapshot
+    return getQueryExecutor(tenantId).transaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+      .map(optionalSnapshot -> optionalSnapshot
           .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
-        .compose(snapshot -> {
+      .compose(snapshot -> {
           if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-            String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-            String message = format(msgTemplate, snapshot.getStatus());
-            return Future.failedFuture(new BadRequestException(message));
+          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
+          String message = format(msgTemplate, snapshot.getStatus());
+          return Future.failedFuture(new BadRequestException(message));
           }
           return Future.succeededFuture();
-        }).compose(v -> {
+      }).compose(v -> {
           if (record.getGeneration() == null) {
-            return getRecordGeneration(txQE, record);
+          return getRecordGeneration(txQE, record);
           }
           return Future.succeededFuture(record.getGeneration());
-        }).compose(generation -> insertOrUpdateRecord(txQE, ensureRecordForeignKeys(record)
-          .withGeneration(generation)));
-    });
+      }).compose(generation -> insertOrUpdateRecord(txQE, ensureRecordForeignKeys(record)
+          .withGeneration(generation))));
   }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
       .map(record -> saveRecord(record, tenantId))
       .collect(Collectors.toList());
@@ -158,12 +157,10 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      return CompositeFuture.join(
-        updateExternalIdsForRecord(txQE, record),
-        LBParsedRecordDao.update(txQE, record.getParsedRecord())
-      ).map(res -> record.getParsedRecord());
-    });
+    return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.join(
+      updateExternalIdsForRecord(txQE, record),
+      LBParsedRecordDao.update(txQE, record.getParsedRecord())
+    ).map(res -> record.getParsedRecord()));
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
@@ -186,8 +183,9 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
-      .peek(record -> validateParsedRecordId(record.getParsedRecord()))
+      .map(record -> validateParsedRecordId(record))
       .map(record -> updateParsedRecord(record, tenantId))
       .collect(Collectors.toList());
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
@@ -228,7 +226,7 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
-    return LBSnapshotDao.delete(getQueryExecutor(tenantId), snapshotId);
+    return LBSnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
   @Override
@@ -239,19 +237,17 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      return LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
-        .compose(stream -> {
-          List<Record> records = new ArrayList<>();
-          Promise<List<Record>> promise = Promise.promise();
-          CompositeFuture.all(stream
-            .map(pr -> lookupAssociatedRecords(txQE, pr)
-            .map(er -> records.add(er)))
-            .collect(Collectors.toList()))
-              .onComplete(res -> promise.complete(records));
-          return promise.future();
-      });
-    }).map(records -> new RecordCollection()
+    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
+      .compose(stream -> {
+        List<Record> records = new ArrayList<>();
+        Promise<List<Record>> promise = Promise.promise();
+        CompositeFuture.all(stream
+          .map(pr -> lookupAssociatedRecords(txQE, pr)
+          .map(r -> addToList(records, r)))
+          .collect(Collectors.toList()))
+            .onComplete(res -> promise.complete(records));
+        return promise.future();
+    })).map(records -> new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size()));
   }
@@ -259,22 +255,30 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      return LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
-        .compose(stream -> {
-          List<SourceRecord> sourceRecords = new ArrayList<>();
-          Promise<List<SourceRecord>> promise = Promise.promise();
-          CompositeFuture.all(stream
-            .map(pr -> lookupAssociatedRecords(txQE, pr)
-            .map(LBRecordDao::toSourceRecord)
-            .map(sr -> sourceRecords.add(sr)))
-            .collect(Collectors.toList()))
-              .onComplete(res -> promise.complete(sourceRecords));
-          return promise.future();
-      });
-    }).map(records -> new SourceRecordCollection()
+    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDao.streamByCondition(txQE, condition, orderFields, offset, limit)
+      .compose(stream -> {
+        List<SourceRecord> sourceRecords = new ArrayList<>();
+        Promise<List<SourceRecord>> promise = Promise.promise();
+        CompositeFuture.all(stream
+          .map(pr -> lookupAssociatedRecords(txQE, pr)
+          .map(LBRecordDao::toSourceRecord)
+          .map(sr -> addToList(sourceRecords, sr)))
+          .collect(Collectors.toList()))
+            .onComplete(res -> promise.complete(sourceRecords));
+        return promise.future();
+    })).map(records -> new SourceRecordCollection()
       .withSourceRecords(records)
       .withTotalRecords(records.size()));
+  }
+
+  private Record addToList(List<Record> records, Record record) {
+    records.add(record);
+    return record;
+  }
+
+  private SourceRecord addToList(List<SourceRecord> sourceRecords, SourceRecord sourceRecord) {
+    sourceRecords.add(sourceRecord);
+    return sourceRecord;
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
@@ -360,10 +364,11 @@ public class LBRecordServiceImpl implements LBRecordService {
     return record;
   }
 
-  private void validateParsedRecordId(ParsedRecord record) {
-    if (Objects.isNull(record.getId())) {
+  private Record validateParsedRecordId(Record record) {
+    if (Objects.isNull(record.getParsedRecord()) && Objects.isNull(record.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
+    return record;
   }
 
   private Record formatMarcRecord(Record record) {

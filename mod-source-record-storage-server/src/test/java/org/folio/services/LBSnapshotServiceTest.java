@@ -5,6 +5,8 @@ import java.util.List;
 
 import org.folio.TestMocks;
 import org.folio.dao.LBSnapshotDao;
+import org.folio.dao.LBSnapshotDaoImpl;
+import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -26,14 +28,17 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
   private LBSnapshotService snapshotService;
 
+  private LBSnapshotDao snapshotDao;
+
   @Before
   public void setUp(TestContext context) {
-    snapshotService = new LBSnapshotServiceImpl(postgresClientFactory);
+    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
+    snapshotService = new LBSnapshotServiceImpl(snapshotDao);
   }
 
   @After
   public void cleanUp(TestContext context) {
-    LBSnapshotDao.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    LBSnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -43,7 +48,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetSnapshotById(TestContext context) {
     Snapshot expected = TestMocks.getSnapshot(0);
-    snapshotService.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
+    snapshotDao.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -71,7 +76,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveSnapshot(TestContext context) {
     Snapshot expected = TestMocks.getSnapshot(0);
-    snapshotService.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
+    snapshotDao.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -102,7 +107,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateSnapshot(TestContext context) {
     Snapshot original = TestMocks.getSnapshot(0);
-    snapshotService.saveSnapshot(original, TENANT_ID).onComplete(save -> {
+    snapshotDao.saveSnapshot(original, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -123,7 +128,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldFailToUpdateSnapshot(TestContext context) {
     Snapshot snapshot = TestMocks.getSnapshot(0);
-    snapshotService.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
+    snapshotDao.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
       if (get.failed()) {
         context.fail(get.cause());
       }
@@ -139,7 +144,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldDeleteSnapshot(TestContext context) {
     Snapshot snapshot = TestMocks.getSnapshot(0);
-    snapshotService.saveSnapshot(snapshot, TENANT_ID).onComplete(save -> {
+    snapshotDao.saveSnapshot(snapshot, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -148,7 +153,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
           context.fail(delete.cause());
         }
         context.assertTrue(delete.result());
-        snapshotService.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
+        snapshotDao.getSnapshotById(snapshot.getJobExecutionId(), TENANT_ID).onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
           }
@@ -171,7 +176,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldGetSnapshots(TestContext context) {
-    LBSnapshotDao.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
+    LBSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }

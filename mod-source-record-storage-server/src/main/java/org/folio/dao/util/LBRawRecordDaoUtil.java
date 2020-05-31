@@ -1,4 +1,4 @@
-package org.folio.dao;
+package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 
@@ -27,9 +27,9 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
-public class LBRawRecordDao {
+public class LBRawRecordDaoUtil {
 
-  private LBRawRecordDao() { }
+  private LBRawRecordDaoUtil() { }
 
   public static Future<List<RawRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -38,19 +38,19 @@ public class LBRawRecordDao {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit))
-        .map(LBRawRecordDao::toRawRecords);
+        .map(LBRawRecordDaoUtil::toRawRecords);
   }
 
   public static Future<Optional<RawRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
       .where(condition))
-        .map(LBRawRecordDao::toOptionalRawRecord);
+        .map(LBRawRecordDaoUtil::toOptionalRawRecord);
   }
 
   public static Future<Optional<RawRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBRawRecordDao::toOptionalRawRecord);
+        .map(LBRawRecordDaoUtil::toOptionalRawRecord);
   }
 
   public static Future<RawRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, RawRecord rawRecord) {
@@ -60,7 +60,7 @@ public class LBRawRecordDao {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBRawRecordDao::toRawRecord);
+        .map(LBRawRecordDaoUtil::toRawRecord);
   }
 
   public static Future<List<RawRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<RawRecord> snapshots) {
@@ -71,7 +71,7 @@ public class LBRawRecordDao {
           insertValuesStepN = insertSetStep.values(toDatabaseRawRecord(RawRecord).intoArray());
       }
       return insertValuesStepN;
-    }).map(LBRawRecordDao::toRawRecords);
+    }).map(LBRawRecordDaoUtil::toRawRecords);
   }
 
   public static Future<RawRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, RawRecord rawRecord) {
@@ -80,7 +80,7 @@ public class LBRawRecordDao {
       .set(dbRecord)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(rawRecord.getId())))
       .returning())
-        .map(LBRawRecordDao::toOptionalRawRecord)
+        .map(LBRawRecordDaoUtil::toOptionalRawRecord)
         .map(optionalRawRecord -> {
           if (optionalRawRecord.isPresent()) {
             return optionalRawRecord.get();
@@ -120,7 +120,9 @@ public class LBRawRecordDao {
   }
 
   private static List<RawRecord> toRawRecords(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false).map(LBRawRecordDao::toRawRecord).collect(Collectors.toList());
+    return StreamSupport.stream(rows.spliterator(), false)
+      .map(LBRawRecordDaoUtil::toRawRecord)
+      .collect(Collectors.toList());
   }
 
   private static Optional<RawRecord> toOptionalRawRecord(RowSet<Row> rows) {

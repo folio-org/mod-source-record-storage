@@ -16,7 +16,7 @@ import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGeneri
 import io.vertx.core.Future;
 
 @Component
-@ConditionalOnProperty(prefix = "liquibase", name = "dao.snapshot", havingValue = "true")
+@ConditionalOnProperty(prefix = "jooq", name = "dao.snapshot", havingValue = "true")
 public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   private final PostgresClientFactory postgresClientFactory;

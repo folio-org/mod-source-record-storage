@@ -26,9 +26,9 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class LBSnapshotServiceTest extends AbstractLBServiceTest {
 
-  private LBSnapshotService snapshotService;
-
   private LBSnapshotDao snapshotDao;
+
+  private LBSnapshotService snapshotService;
 
   @Before
   public void setUp(TestContext context) {

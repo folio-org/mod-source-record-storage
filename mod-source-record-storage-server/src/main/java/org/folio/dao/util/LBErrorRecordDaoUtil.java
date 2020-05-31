@@ -1,4 +1,4 @@
-package org.folio.dao;
+package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 
@@ -27,9 +27,9 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
-public class LBErrorRecordDao {
+public class LBErrorRecordDaoUtil {
 
-  private LBErrorRecordDao() { }
+  private LBErrorRecordDaoUtil() { }
 
   public static Future<List<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -38,19 +38,19 @@ public class LBErrorRecordDao {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit))
-        .map(LBErrorRecordDao::toErrorRecords);
+        .map(LBErrorRecordDaoUtil::toErrorRecords);
   }
 
   public static Future<Optional<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
       .where(condition))
-        .map(LBErrorRecordDao::toOptionalErrorRecord);
+        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord);
   }
 
   public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBErrorRecordDao::toOptionalErrorRecord);
+        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord);
   }
 
   public static Future<ErrorRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ErrorRecord errorRecord) {
@@ -60,7 +60,7 @@ public class LBErrorRecordDao {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBErrorRecordDao::toErrorRecord);
+        .map(LBErrorRecordDaoUtil::toErrorRecord);
   }
 
   public static Future<List<ErrorRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ErrorRecord> snapshots) {
@@ -71,7 +71,7 @@ public class LBErrorRecordDao {
           insertValuesStepN = insertSetStep.values(toDatabaseErrorRecord(ErrorRecord).intoArray());
       }
       return insertValuesStepN;
-    }).map(LBErrorRecordDao::toErrorRecords);
+    }).map(LBErrorRecordDaoUtil::toErrorRecords);
   }
 
   public static Future<ErrorRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ErrorRecord errorRecord) {
@@ -80,7 +80,7 @@ public class LBErrorRecordDao {
       .set(dbRecord)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(errorRecord.getId())))
       .returning())
-        .map(LBErrorRecordDao::toOptionalErrorRecord)
+        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord)
         .map(optionalErrorRecord -> {
           if (optionalErrorRecord.isPresent()) {
             return optionalErrorRecord.get();
@@ -124,7 +124,9 @@ public class LBErrorRecordDao {
   }
 
   private static List<ErrorRecord> toErrorRecords(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false).map(LBErrorRecordDao::toErrorRecord).collect(Collectors.toList());
+    return StreamSupport.stream(rows.spliterator(), false)
+      .map(LBErrorRecordDaoUtil::toErrorRecord)
+      .collect(Collectors.toList());
   }
 
   private static Optional<ErrorRecord> toOptionalErrorRecord(RowSet<Row> rows) {

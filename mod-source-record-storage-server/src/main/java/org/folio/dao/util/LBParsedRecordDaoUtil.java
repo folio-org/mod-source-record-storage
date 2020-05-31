@@ -1,4 +1,4 @@
-package org.folio.dao;
+package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 
@@ -27,9 +27,9 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
-public class LBParsedRecordDao {
+public class LBParsedRecordDaoUtil {
 
-  private LBParsedRecordDao() { }
+  private LBParsedRecordDaoUtil() { }
 
   public static Future<List<ParsedRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
@@ -38,19 +38,19 @@ public class LBParsedRecordDao {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit))
-        .map(LBParsedRecordDao::toParsedRecords);
+        .map(LBParsedRecordDaoUtil::toParsedRecords);
   }
 
   public static Future<Optional<ParsedRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(condition))
-        .map(LBParsedRecordDao::toOptionalParsedRecord);
+        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBParsedRecordDao::toOptionalParsedRecord);
+        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
   public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
@@ -60,7 +60,7 @@ public class LBParsedRecordDao {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBParsedRecordDao::toParsedRecord);
+        .map(LBParsedRecordDaoUtil::toParsedRecord);
   }
 
   public static Future<List<ParsedRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ParsedRecord> snapshots) {
@@ -71,7 +71,7 @@ public class LBParsedRecordDao {
           insertValuesStepN = insertSetStep.values(toDatabaseParsedRecord(ParsedRecord).intoArray());
       }
       return insertValuesStepN;
-    }).map(LBParsedRecordDao::toParsedRecords);
+    }).map(LBParsedRecordDaoUtil::toParsedRecords);
   }
 
   public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
@@ -80,7 +80,7 @@ public class LBParsedRecordDao {
       .set(dbRecord)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(parsedRecord.getId())))
       .returning())
-        .map(LBParsedRecordDao::toOptionalParsedRecord)
+        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord)
         .map(optionalParsedRecord -> {
           if (optionalParsedRecord.isPresent()) {
             return optionalParsedRecord.get();
@@ -122,7 +122,9 @@ public class LBParsedRecordDao {
   }
 
   private static List<ParsedRecord> toParsedRecords(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false).map(LBParsedRecordDao::toParsedRecord).collect(Collectors.toList());
+    return StreamSupport.stream(rows.spliterator(), false)
+      .map(LBParsedRecordDaoUtil::toParsedRecord)
+      .collect(Collectors.toList());
   }
 
   private static Optional<ParsedRecord> toOptionalParsedRecord(RowSet<Row> rows) {

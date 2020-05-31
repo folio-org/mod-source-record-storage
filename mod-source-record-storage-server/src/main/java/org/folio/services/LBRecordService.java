@@ -1,12 +1,8 @@
 package org.folio.services;
 
 import java.util.Collection;
-import java.util.Optional;
 
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -35,12 +31,6 @@ public interface LBRecordService extends RecordService {
     throw new UnsupportedOperationException("Lookup source records by CQL is no longer supported");
   }
 
-  Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId);
-
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
-
-  Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
-
-  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
 }

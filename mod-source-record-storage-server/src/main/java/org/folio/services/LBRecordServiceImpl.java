@@ -34,6 +34,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
@@ -72,11 +73,22 @@ public class LBRecordServiceImpl implements LBRecordService {
       .compose(record -> lookupAssociatedRecords(txQE, record)));
   }
 
+  public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
+    return LBRecordDao.findByCondition(txQE, condition)
+    .compose(record -> lookupAssociatedRecords(txQE, record));
+  }
+
   @Override
   public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getRecordByCondition(condition, tenantId);
+  }
+
+  public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    return getRecordByCondition(txQE, condition);
   }
 
   @Override
@@ -185,7 +197,7 @@ public class LBRecordServiceImpl implements LBRecordService {
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = recordCollection.getRecords().stream()
-      .map(record -> validateParsedRecordId(record))
+      .map(this::validateParsedRecordId)
       .map(record -> updateParsedRecord(record, tenantId))
       .collect(Collectors.toList());
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
@@ -231,7 +243,31 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
-    return null;
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, parsedRecordDto.getId())
+      .compose(optionalRecord -> optionalRecord
+        .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
+          .withJobExecutionId(snapshotId)
+          .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
+            .compose(s -> {
+              Record newRecord = new Record()
+                .withId(UUID.randomUUID().toString())
+                .withSnapshotId(s.getJobExecutionId())
+                .withMatchedId(parsedRecordDto.getId())
+                .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+                .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
+                .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+                .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+                .withMetadata(parsedRecordDto.getMetadata())
+                .withRawRecord(existingRecord.getRawRecord())
+                .withOrder(existingRecord.getOrder())
+                .withGeneration(existingRecord.getGeneration() + 1)
+                .withState(Record.State.ACTUAL);
+              return insertOrUpdateRecord(txQE, existingRecord.withState(Record.State.OLD))
+                .compose(r -> insertOrUpdateRecord(txQE, newRecord));
+            }))
+        .orElse(Future.failedFuture(new NotFoundException(
+          format("Record with id '%s' was not found", parsedRecordDto.getId()))))
+    ));
   }
 
   @Override

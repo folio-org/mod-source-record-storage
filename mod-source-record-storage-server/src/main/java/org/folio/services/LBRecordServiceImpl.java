@@ -216,6 +216,8 @@ public class LBRecordServiceImpl implements LBRecordService {
     return promise.future();
   }
 
+  // TODO: run transactional
+  // add dao to find by externalIdType
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
     Future<Optional<Record>> future;
@@ -233,7 +235,24 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
       String tenantId) {
-    return null;
+
+    String rollBackMessage = format("Record with %s id: %s was not found", suppressFromDiscoveryDto.getIncomingIdType().name(), suppressFromDiscoveryDto.getId());
+
+    Boolean suppressFromDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
+    // ExternalIdType externalIdType = ExternalIdType.valueOf(suppressFromDiscoveryDto.getIncomingIdType().value());
+
+    String id = suppressFromDiscoveryDto.getId();
+    // String externalIdIdentifier = externalIdType.getExternalIdField();
+
+    // TODO: add dao to find by externalIdType
+    Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+
+    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDao.findByCondition(txQE, condition)
+      .compose(optionalRecord -> optionalRecord
+        .map(record -> LBRecordDao.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
+      .orElse(Future.failedFuture(new NotFoundException(rollBackMessage))))
+    ).map(u -> true);
   }
 
   @Override

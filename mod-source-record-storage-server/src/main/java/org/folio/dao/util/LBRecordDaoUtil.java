@@ -41,7 +41,7 @@ public class LBRecordDaoUtil {
 
   private LBRecordDaoUtil() { }
 
-  public static Condition getCondition(String externalId, ExternalIdType externalIdType) {
+  public static Condition getExternalIdCondition(String externalId, ExternalIdType externalIdType) {
     // NOTE: would be nice to be able to do this without a switch statement
     Condition condition;
     switch (externalIdType) {

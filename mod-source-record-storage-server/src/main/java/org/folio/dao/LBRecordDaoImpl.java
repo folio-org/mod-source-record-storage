@@ -70,7 +70,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
         List<Record> records = new ArrayList<>();
         Promise<List<Record>> promise = Promise.promise();
         CompositeFuture.all(stream
-          .map(pr -> lookupAssociatedRecords(txQE, pr)
+          .map(pr -> lookupAssociatedRecords(txQE, pr, true)
           .map(r -> addToList(records, r)))
           .collect(Collectors.toList()))
             .onComplete(res -> promise.complete(records));
@@ -81,30 +81,26 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
-    // TODO: fix using effecient sql functions
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByCondition(txQE, condition));
-  }
-
-  @Override
-  public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
-    // TODO: fix using effecient sql functions
-    return LBRecordDaoUtil.findByCondition(txQE, condition)
-      .compose(record -> lookupAssociatedRecords(txQE, record));
-  }
-
-  @Override
   public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
-    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, matchedId));
   }
 
   @Override
   public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId) {
-    // TODO: fix using effecient sql functions
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getRecordByCondition(txQE, condition);
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByCondition(txQE, condition));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
+    return LBRecordDaoUtil.findByCondition(txQE, condition)
+      .compose(record -> lookupAssociatedRecords(txQE, record, true));
   }
 
   @Override
@@ -144,7 +140,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
         List<SourceRecord> sourceRecords = new ArrayList<>();
         Promise<List<SourceRecord>> promise = Promise.promise();
         CompositeFuture.all(stream
-          .map(pr -> lookupAssociatedRecords(txQE, pr)
+          .map(pr -> lookupAssociatedRecords(txQE, pr, false)
           .map(LBRecordDaoUtil::toSourceRecord)
           .map(sr -> addToList(sourceRecords, sr)))
           .collect(Collectors.toList()))
@@ -157,29 +153,32 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
-    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
-        .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
-        .from(RECORDS_LB)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
         .where(condition))
           .map(LBRecordDaoUtil::toRecord)
-      .compose(record -> lookupAssociatedRecords(txQE, record)))
+      .compose(record -> lookupAssociatedRecords(txQE, record, false)))
         .map(LBRecordDaoUtil::toSourceRecord)
-        .map(Optional::of);
+        .map(record -> {
+          if (Objects.nonNull(record.getParsedRecord())) {
+            return Optional.of(record);
+          }
+          return Optional.empty();
+        });
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
-    Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id));
-    // TODO: fix using effecient sql functions
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    // TODO: fix using effecient sql functions
-    return getSourceRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
+    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
@@ -190,7 +189,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return txQE.query(dsl -> dsl.select(coalesce(max(RECORDS_LB.GENERATION), 0).as(RECORDS_LB.GENERATION))
-      .from(RECORDS_LB.join(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
+      .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
       .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
         .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
         .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
@@ -208,6 +207,20 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
+      String tenantId) {
+    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    return getQueryExecutor(tenantId)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
+        .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
+        .from(RECORDS_LB)
+        .where(condition))
+          .map(LBRecordDaoUtil::toRecord)
+      .compose(record -> lookupAssociatedRecords(txQE, record, true)))
+        .map(Optional::of);
+  }
+
+  @Override
   public Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> saveUpdatedRecord(txQE, newRecord, oldRecord));
   }
@@ -218,20 +231,13 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
-      String tenantId) {
-    // TODO: fix using effecient sql functions
-    return getRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
-  }
-
-  @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
       String tenantId) {
     Boolean suppressFromDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
     String externalId = suppressFromDiscoveryDto.getId();
     String incomingIdType = suppressFromDiscoveryDto.getIncomingIdType().value();
     ExternalIdType externalIdType = ExternalIdType.valueOf(incomingIdType);
-    Condition condition = LBRecordDaoUtil.getCondition(externalId, externalIdType);
+    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
         .map(record -> LBRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
@@ -287,27 +293,34 @@ public class LBRecordDaoImpl implements LBRecordDao {
     return sourceRecord;
   }
 
-  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record) {
+  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {
     if (record.isPresent()) {
-      return lookupAssociatedRecords(txQE, record.get()).map(Optional::of);
+      return lookupAssociatedRecords(txQE, record.get(), includeErrorRecord).map(Optional::of);
     }
     return Future.succeededFuture(record);
   }
 
-  private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    return CompositeFuture.all(LBRawRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
+  private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
+    @SuppressWarnings("squid:S3740")
+    List<Future> futures = new ArrayList<>();
+    futures.add(LBRawRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
       if (ar.succeeded() && ar.result().isPresent()) {
         record.withRawRecord(ar.result().get());
       }
-    }), LBParsedRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
+    }));
+    futures.add(LBParsedRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
       if (ar.succeeded() && ar.result().isPresent()) {
         record.withParsedRecord(ar.result().get());
       }
-    }), LBErrorRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
-      if (ar.succeeded() && ar.result().isPresent()) {
-        record.withErrorRecord(ar.result().get());
-      }
-    })).map(ar -> record);
+    }));
+    if (includeErrorRecord) {
+      futures.add(LBErrorRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
+        if (ar.succeeded() && ar.result().isPresent()) {
+          record.withErrorRecord(ar.result().get());
+        }
+      }));
+    }
+    return CompositeFuture.all(futures).map(ar -> record);
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {

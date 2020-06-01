@@ -50,6 +50,12 @@ public class LBRecordServiceImpl implements LBRecordService {
   }
 
   @Override
+  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
+      int limit, String tenantId) {
+    return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
   public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
     return recordDao.getRecordById(matchedId, tenantId);
   }
@@ -84,6 +90,13 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
     return recordDao.updateRecord(record, tenantId);
+  }
+
+  @Override
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId) {
+    // NOTE: new schema did not have deleted property
+    return recordDao.getSourceRecords(condition, orderFields, offset, limit, false, tenantId);
   }
 
   @Override
@@ -126,8 +139,7 @@ public class LBRecordServiceImpl implements LBRecordService {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
-      String tenantId) {
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
     return recordDao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
   }
 
@@ -139,19 +151,6 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     return recordDao.updateSourceRecord(parsedRecordDto, snapshotId, tenantId);
-  }
-
-  @Override
-  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
-      int limit, String tenantId) {
-    return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
-  }
-
-  @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
-      int offset, int limit, String tenantId) {
-    // NOTE: new schema did not have deleted property
-    return recordDao.getSourceRecords(condition, orderFields, offset, limit, false, tenantId);
   }
 
   private Record validateParsedRecordId(Record record) {

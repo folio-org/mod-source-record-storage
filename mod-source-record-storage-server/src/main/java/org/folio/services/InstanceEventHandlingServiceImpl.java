@@ -32,40 +32,20 @@ import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 public class InstanceEventHandlingServiceImpl implements EventHandlingService {
 
   private static final Logger LOG = LoggerFactory.getLogger(InstanceEventHandlingServiceImpl.class);
-  private static final String CREATE_EVENT = "DI_INVENTORY_INSTANCE_CREATED";
-  private static final String UPDATE_EVENT = "DI_INVENTORY_INSTANCE_UPDATED";
-  private static final String FAIL_MSG = "Failed to handle %S event {}";
+  private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String PREVIOUS_RECORDS = "snapshotId<>%s AND state==ACTUAL AND externalIdsHolder.instanceId==%s AND deleted==false";
-  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle %s event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
+  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
 
   @Autowired
   private RecordDao recordDao;
 
   @Override
-  public Future<Boolean> handleCreate(String eventContent, String tenantId) {
+  public Future<Boolean> handleEvent(String eventContent, String tenantId) {
     try {
       Pair<String, String> instanceRecordPair = extractPayload(eventContent);
       if (StringUtils.isEmpty(instanceRecordPair.getLeft()) || StringUtils.isEmpty(instanceRecordPair.getRight())) {
-        LOG.error(format(EVENT_HAS_NO_DATA_MSG, CREATE_EVENT));
-        return Future.failedFuture(format(EVENT_HAS_NO_DATA_MSG, CREATE_EVENT));
-      }
-      return setInstanceIdToRecord(
-        ObjectMapperTool.getMapper().readValue(instanceRecordPair.getRight(), Record.class),
-        new JsonObject(instanceRecordPair.getLeft()), tenantId)
-        .map(true);
-    } catch (IOException e) {
-      LOG.error(format(FAIL_MSG, CREATE_EVENT), e, eventContent);
-      return Future.failedFuture(e);
-    }
-  }
-
-  @Override
-  public Future<Boolean> handleUpdate(String eventContent, String tenantId) {
-    try {
-      Pair<String, String> instanceRecordPair = extractPayload(eventContent);
-      if (StringUtils.isEmpty(instanceRecordPair.getLeft()) || StringUtils.isEmpty(instanceRecordPair.getRight())) {
-        LOG.error(format(EVENT_HAS_NO_DATA_MSG, UPDATE_EVENT));
-        return Future.failedFuture(format(EVENT_HAS_NO_DATA_MSG, UPDATE_EVENT));
+        LOG.error(EVENT_HAS_NO_DATA_MSG);
+        return Future.failedFuture(EVENT_HAS_NO_DATA_MSG);
       }
       return setInstanceIdToRecord(
         ObjectMapperTool.getMapper().readValue(instanceRecordPair.getRight(), Record.class),
@@ -73,7 +53,7 @@ public class InstanceEventHandlingServiceImpl implements EventHandlingService {
         .compose(record -> updatePreviousRecords(record.getExternalIdsHolder().getInstanceId(), record.getSnapshotId(), tenantId))
         .map(true);
     } catch (IOException e) {
-      LOG.error(format(FAIL_MSG, UPDATE_EVENT), e, eventContent);
+      LOG.error(FAIL_MSG, e, eventContent);
       return Future.failedFuture(e);
     }
   }
@@ -97,7 +77,7 @@ public class InstanceEventHandlingServiceImpl implements EventHandlingService {
             result.complete();
           } else {
             result.fail(ar.cause());
-            LOG.error(ar.cause(), format("ERROR during update old records state in %s event", UPDATE_EVENT));
+            LOG.error(ar.cause(), "ERROR during update old records state for instance chane event");
           }
         });
         return result.future();

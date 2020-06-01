@@ -358,19 +358,7 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/source-storage/handlers/created-inventory-instance",
-          "permissionsRequired": [
-            "source-storage.events.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
-          ]
-        },
-        {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/handlers/updated-inventory-instance",
+          "pathPattern": "/source-storage/handlers/inventory-instance",
           "permissionsRequired": [
             "source-storage.events.post"
           ],

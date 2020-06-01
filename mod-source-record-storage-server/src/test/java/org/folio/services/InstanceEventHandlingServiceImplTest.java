@@ -38,7 +38,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 @RunWith(VertxUnitRunner.class)
-public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVerticleTest {
+public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTest {
 
   private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
@@ -57,7 +57,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
   private RecordDaoImpl recordDao;
   @Spy
   @InjectMocks
-  private EventHandlingService eventHandlingService = new CreatedInstanceEventHandlingServiceImpl();
+  private EventHandlingService eventHandlingService = new InstanceEventHandlingServiceImpl();
 
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
@@ -101,20 +101,41 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
     Async async = context.async();
     record.withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-    .withMatchedId(record.getId());
+      .withMatchedId(record.getId())
+      .withSnapshotId(UUID.randomUUID().toString())
+      .withDeleted(false)
+      .withState(Record.State.ACTUAL);
+
+    Record recordForUpdate = JsonObject.mapFrom(record
+      ).mapTo(Record.class)
+      .withSnapshotId(UUID.randomUUID().toString())
+      .withId(UUID.randomUUID().toString());
 
     String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = new JsonObject()
+      .put("id", expectedInstanceId)
+      .put(expectedHrId, expectedHrId);
+
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).encode());
+    payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+
+    HashMap<String, String> payloadContextForUpdate = new HashMap<>();
+    payloadContextForUpdate.put(INSTANCE.value(), instance.encode());
+    payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext);
 
+    DataImportEventPayload dataImportEventPayloadForUpdate = new DataImportEventPayload()
+      .withContext(payloadContextForUpdate);
+
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
       .compose(rec -> {
         try {
-          return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+          return eventHandlingService.handleCreate(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
           return Future.failedFuture(e);
@@ -151,7 +172,31 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
           }
         }
         context.assertEquals(expectedInstanceId, actualInstanceId);
-        async.complete();
+
+        Future<Boolean> future2 = recordDao.saveRecord(recordForUpdate, TENANT_ID)
+          .compose(v -> {
+            try {
+              return eventHandlingService.handleUpdate(ZIPArchiver.zip(Json.encode(dataImportEventPayloadForUpdate)), TENANT_ID);
+            } catch (IOException e) {
+              e.printStackTrace();
+              return Future.failedFuture(e);
+            }
+          });
+
+        future2.setHandler(result -> {
+          context.assertTrue(result.succeeded());
+          recordDao.getRecordById(record.getId(), TENANT_ID)
+            .setHandler(recordAr -> {
+              context.assertTrue(recordAr.succeeded());
+              context.assertTrue(recordAr.result().isPresent());
+              Record rec = recordAr.result().get();
+              context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
+              context.assertNotNull(rec.getExternalIdsHolder());
+              context.assertTrue(expectedInstanceId.equals(rec.getExternalIdsHolder().getInstanceId()));
+              context.assertNotEquals(rec.getId(), record.getId());
+              async.complete();
+            });
+        });
       });
     });
   }
@@ -163,7 +208,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
       .withParsedRecord(new ParsedRecord()
         .withId(UUID.randomUUID().toString())
         .withContent(PARSED_CONTENT_WITH_999_FIELD))
-    .withMatchedId(record.getId());
+      .withMatchedId(record.getId());
 
     String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -176,7 +221,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
       .compose(rec -> {
         try {
-          return eventHandlingService.handle(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+          return eventHandlingService.handleCreate(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
           return Future.failedFuture(e);
@@ -225,7 +270,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext);
 
-    Future<Boolean> future = eventHandlingService.handle(Json.encode(dataImportEventPayload), TENANT_ID);
+    Future<Boolean> future = eventHandlingService.handleCreate(Json.encode(dataImportEventPayload), TENANT_ID);
 
     future.setHandler(ar -> {
       context.assertTrue(ar.failed());
@@ -250,7 +295,7 @@ public class CreatedInstanceEventHandlingServiceImplTest extends AbstractRestVer
       .withContext(payloadContext);
 
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> eventHandlingService.handle(Json.encode(dataImportEventPayload), TENANT_ID));
+      .compose(rec -> eventHandlingService.handleCreate(Json.encode(dataImportEventPayload), TENANT_ID));
 
     future.setHandler(ar -> {
       context.assertTrue(ar.failed());

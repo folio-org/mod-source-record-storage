@@ -31,6 +31,12 @@
       "signed": false
     },
     {
+      "eventType": "DI_INVENTORY_INSTANCE_UPDATED",
+      "description": "Created inventory instance",
+      "eventTTL": 1,
+      "signed": false
+    },
+    {
       "eventType": "DI_COMPLETED",
       "description": "Data import completed",
       "eventTTL": 1,
@@ -41,6 +47,10 @@
     {
       "eventType": "DI_INVENTORY_INSTANCE_CREATED",
       "callbackAddress": "/source-storage/handlers/created-inventory-instance"
+    },
+    {
+      "eventType": "DI_INVENTORY_INSTANCE_UPDATED",
+      "callbackAddress": "/source-storage/handlers/updated-inventory-instance"
     },
     {
       "eventType": "DI_COMPLETED",

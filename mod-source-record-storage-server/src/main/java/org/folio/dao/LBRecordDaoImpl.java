@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.LBErrorRecordDaoUtil;
 import org.folio.dao.util.LBParsedRecordDaoUtil;
@@ -25,7 +24,6 @@ import org.folio.dao.util.LBRawRecordDaoUtil;
 import org.folio.dao.util.LBRecordDaoUtil;
 import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -66,6 +64,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
       .compose(stream -> {
         List<Record> records = new ArrayList<>();
@@ -83,22 +82,26 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByCondition(txQE, condition));
   }
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
+    // TODO: fix using effecient sql functions
     return LBRecordDaoUtil.findByCondition(txQE, condition)
       .compose(record -> lookupAssociatedRecords(txQE, record));
   }
 
   @Override
   public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, matchedId));
   }
 
   @Override
   public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId) {
+    // TODO: fix using effecient sql functions
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getRecordByCondition(txQE, condition);
@@ -106,12 +109,6 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    if (Objects.isNull(record.getId())) {
-      record.setId(UUID.randomUUID().toString());
-    }
-    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
-      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
-    }
     return getQueryExecutor(tenantId).transaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
         .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
@@ -127,21 +124,21 @@ public class LBRecordDaoImpl implements LBRecordDao {
           return calculateGeneration(txQE, record);
         }
         return Future.succeededFuture(record.getGeneration());
-      }).compose(generation -> insertOrUpdateRecord(txQE, ensureRecordForeignKeys(record)
-        .withGeneration(generation))));
+      }).compose(generation -> insertOrUpdateRecord(txQE, record.withGeneration(generation))));
   }
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
     return getRecordById(record.getId(), tenantId)
       .compose(optionalRecord -> optionalRecord
-        .map(r -> saveRecord(ensureRecordForeignKeys(record), tenantId))
+        .map(r -> saveRecord(record, tenantId))
         .orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", record.getId())))));
   }
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit,
       boolean deletedRecords, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
       .compose(stream -> {
         List<SourceRecord> sourceRecords = new ArrayList<>();
@@ -160,6 +157,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getQueryExecutor(tenantId)
       .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
         .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
@@ -174,11 +172,13 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
     Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id));
+    // TODO: fix using effecient sql functions
     return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    // TODO: fix using effecient sql functions
     return getSourceRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
   }
 
@@ -220,6 +220,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
+    // TODO: fix using effecient sql functions
     return getRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
   }
 
@@ -357,19 +358,6 @@ public class LBRecordDaoImpl implements LBRecordDao {
         .withContent(record.getParsedRecord().getContent()));
       record.setParsedRecord(null);
     }
-  }
-
-  private Record ensureRecordForeignKeys(Record record) {
-    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
-      record.getRawRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
-      record.getParsedRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
-      record.getErrorRecord().setId(record.getId());
-    }
-    return record;
   }
 
 }

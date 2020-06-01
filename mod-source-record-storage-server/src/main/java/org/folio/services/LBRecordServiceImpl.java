@@ -7,14 +7,17 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.MarcUtil;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -62,7 +65,14 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    return recordDao.saveRecord(record, tenantId);
+    if (Objects.isNull(record.getId())) {
+      record.setId(UUID.randomUUID().toString());
+    }
+    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
+    }
+    // NOTE: snapshot lookup/validation and generation calculation moved to DAO in order to perform transactionally
+    return recordDao.saveRecord(ensureRecordForeignKeys(record), tenantId);
   }
 
   @Override
@@ -89,7 +99,8 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
-    return recordDao.updateRecord(record, tenantId);
+    // NOTE: no need to lookup record as update record will return appropriate not found exception
+    return recordDao.updateRecord(ensureRecordForeignKeys(record), tenantId);
   }
 
   @Override
@@ -151,6 +162,19 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     return recordDao.updateSourceRecord(parsedRecordDto, snapshotId, tenantId);
+  }
+
+  private Record ensureRecordForeignKeys(Record record) {
+    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
+      record.getRawRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+      record.getParsedRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+      record.getErrorRecord().setId(record.getId());
+    }
+    return record;
   }
 
   private Record validateParsedRecordId(Record record) {

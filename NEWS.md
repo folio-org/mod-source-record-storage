@@ -11,6 +11,7 @@
 * [MODSOURCE-137](https://issues.folio.org/browse/MODSOURCE-137) Port existing service logic to standard table DAO services
 * [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-145](https://issues.folio.org/browse/MODSOURCE-145) Remove matchedProfileId property from Record
+* [MODINV-243](https://issues.folio.org/browse/MODINV-243) Enable Action profile action for incoming MARC Bibs: Replace Inventory Instance
 
 ## 2020-04-23 v3.1.4
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table

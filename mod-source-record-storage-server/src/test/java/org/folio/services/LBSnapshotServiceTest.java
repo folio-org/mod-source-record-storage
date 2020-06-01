@@ -220,10 +220,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getJobExecutionId(), actual.getJobExecutionId());
     context.assertEquals(expected.getStatus(), actual.getStatus());
     context.assertEquals(expected.getProcessingStartedDate(), actual.getProcessingStartedDate());
-    context.assertEquals(expected.getMetadata().getCreatedByUserId(), actual.getMetadata().getCreatedByUserId());
-    context.assertNotNull(actual.getMetadata().getCreatedDate());
-    context.assertEquals(expected.getMetadata().getUpdatedByUserId(), actual.getMetadata().getUpdatedByUserId());
-    context.assertNotNull(actual.getMetadata().getUpdatedDate());
+    compareMetadata(context, expected.getMetadata(), actual.getMetadata());
   }
 
 }

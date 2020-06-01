@@ -300,15 +300,6 @@ public class LBRecordDaoImpl implements LBRecordDao {
     return recordCollection.withTotalRecords(totalRecords);
   }
 
-  private SourceRecord addToList(List<SourceRecord> sourceRecords, SourceRecord sourceRecord) {
-    sourceRecords.add(sourceRecord);
-    return sourceRecord;
-  }
-
-  private SourceRecordCollection addTotalRecords(SourceRecordCollection sourceRecordCollection, Integer totalRecords) {
-    return sourceRecordCollection.withTotalRecords(totalRecords);
-  }
-
   private Row asRow(Row row) {
     return row;
   }
@@ -383,9 +374,8 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   private void validateParsedRecordContent(Record record) {
     try {
-      String parsedRecordContent = (String) record.getParsedRecord().getContent();
       record.getParsedRecord()
-        .setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
+        .setFormattedContent(MarcUtil.marcJsonToTxtMarc((String) record.getParsedRecord().getContent()));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);
       record.setErrorRecord(new ErrorRecord()

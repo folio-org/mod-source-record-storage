@@ -3,6 +3,7 @@ package org.folio.dao.util;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import org.jooq.OrderField;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
@@ -112,7 +114,11 @@ public class LBParsedRecordDaoUtil {
       dbRecord.setId(UUID.fromString(parsedRecord.getId()));
     }
     if (Objects.nonNull(parsedRecord.getContent())) {
-      dbRecord.setContent((String) parsedRecord.getContent());
+      if (parsedRecord.getContent() instanceof LinkedHashMap) {
+        dbRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
+      } else {
+        dbRecord.setContent((String) parsedRecord.getContent());
+      }
     }
     return dbRecord;
   }

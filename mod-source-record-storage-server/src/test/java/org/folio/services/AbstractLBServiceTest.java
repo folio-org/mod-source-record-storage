@@ -3,6 +3,7 @@ package org.folio.services;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -57,6 +58,13 @@ public abstract class AbstractLBServiceTest {
       PostgresClient.stopEmbeddedPostgres();
       async.complete();
     }));
+  }
+
+  void compareMetadata(TestContext context, Metadata expected, Metadata actual) {
+    context.assertEquals(expected.getCreatedByUserId(), actual.getCreatedByUserId());
+    context.assertNotNull(actual.getCreatedDate());
+    context.assertEquals(expected.getUpdatedByUserId(), actual.getUpdatedByUserId());
+    context.assertNotNull(actual.getUpdatedDate());
   }
   
 }

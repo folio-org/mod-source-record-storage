@@ -23,7 +23,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageHandlersImpl.class);
 
   @Autowired
-  private EventHandlingService instanceCreatedEventHandleService;
+  private EventHandlingService instanceEventHandleService;
   @Autowired
   private UpdateRecordEventHandler updateRecordEventHandler;
 
@@ -42,7 +42,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
 
       // response status doesn't depend on event handling result
-      instanceCreatedEventHandleService.handleCreate(entity, tenantId);
+      instanceEventHandleService.handleCreate(entity, tenantId);
     });
   }
 
@@ -53,7 +53,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
 
       // response status doesn't depend on event handling result
-      instanceCreatedEventHandleService.handleUpdate(entity, tenantId);
+      instanceEventHandleService.handleUpdate(entity, tenantId);
     });
   }
 

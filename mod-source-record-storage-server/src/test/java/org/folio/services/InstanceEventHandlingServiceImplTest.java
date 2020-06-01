@@ -106,7 +106,8 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
       .withDeleted(false)
       .withState(Record.State.ACTUAL);
 
-    Record recordForUpdate = record
+    Record recordForUpdate = JsonObject.mapFrom(record
+      ).mapTo(Record.class)
       .withSnapshotId(UUID.randomUUID().toString())
       .withId(UUID.randomUUID().toString());
 
@@ -172,7 +173,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
         }
         context.assertEquals(expectedInstanceId, actualInstanceId);
 
-        Future<Boolean> future2 = Future.succeededFuture()
+        Future<Boolean> future2 = recordDao.saveRecord(recordForUpdate, TENANT_ID)
           .compose(v -> {
             try {
               return eventHandlingService.handleUpdate(ZIPArchiver.zip(Json.encode(dataImportEventPayloadForUpdate)), TENANT_ID);
@@ -184,21 +185,16 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
 
         future2.setHandler(result -> {
           context.assertTrue(result.succeeded());
-          recordDao.getRecordById(recordForUpdate.getId(), TENANT_ID)
+          recordDao.getRecordById(record.getId(), TENANT_ID)
             .setHandler(recordAr -> {
               context.assertTrue(recordAr.succeeded());
               context.assertTrue(recordAr.result().isPresent());
               Record rec = recordAr.result().get();
+              context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
               context.assertNotNull(rec.getExternalIdsHolder());
               context.assertTrue(expectedInstanceId.equals(rec.getExternalIdsHolder().getInstanceId()));
-              recordDao.getRecordById(record.getId(), TENANT_ID)
-                .setHandler(prevRecordAr -> {
-                  context.assertTrue(recordAr.succeeded());
-                  context.assertTrue(recordAr.result().isPresent());
-                  Record prevRec = recordAr.result().get();
-                  context.assertTrue(prevRec.getState().equals(Record.State.OLD));
-                  async.complete();
-                });
+              context.assertNotEquals(rec.getId(), record.getId());
+              async.complete();
             });
         });
       });

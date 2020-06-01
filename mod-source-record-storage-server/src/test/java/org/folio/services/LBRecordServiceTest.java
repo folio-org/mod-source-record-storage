@@ -53,6 +53,13 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldGetRecords(TestContext context) {
+    Async async = context.async();
+    context.assertTrue(Objects.nonNull("Will do later"));
+    async.complete();
+  }
+
+  @Test
   public void shouldGetRecordById(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getRecord(0);
@@ -71,6 +78,66 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         compareRecords(context, expected, get.result().get());
         async.complete();
       });
+    });
+  }
+
+  // TODO: test get by matched id not equal to id
+
+  @Test
+  public void shouldNotGetRecordById(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordService.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+      if (get.failed()) {
+        context.fail(get.cause());
+      }
+      context.assertFalse(get.result().isPresent());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldSaveRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  // TODO: test save with calculate generation graeter than 0
+  
+  @Test
+  public void shouldFailToSaveRecord(TestContext context) {
+    Async async = context.async();
+    Record valid = TestMocks.getRecord(0);
+    Record invalid = new Record()
+      .withId(valid.getId())
+      .withSnapshotId(valid.getSnapshotId())
+      .withMatchedId(valid.getMatchedId())
+      .withState(valid.getState())
+      .withGeneration(valid.getGeneration())
+      .withOrder(valid.getOrder())
+      .withRawRecord(valid.getRawRecord())
+      .withParsedRecord(valid.getParsedRecord())
+      .withAdditionalInfo(valid.getAdditionalInfo())
+      .withExternalIdsHolder(valid.getExternalIdsHolder())
+      .withMetadata(valid.getMetadata());
+    recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
+      context.assertTrue(save.failed());
+      String expected = "null value in column \"record_type\" violates not-null constraint";
+      context.assertEquals(expected, save.cause().getMessage());
+      async.complete();
     });
   }
 

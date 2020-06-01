@@ -49,6 +49,29 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldGetSnapshots(TestContext context) {
+    Async async = context.async();
+    LBSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = Tables.SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.PROCESSING_IN_PROGRESS);
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(Tables.SNAPSHOTS_LB.PROCESSING_STARTED_DATE.sort(SortOrder.DESC));
+      snapshotService.getSnapshots(condition, orderFields, 0, 2, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        SnapshotCollection snapshotCollection = get.result();
+        context.assertEquals(3, snapshotCollection.getTotalRecords());
+        compareSnapshots(context, TestMocks.getSnapshot("d787a937-cc4b-49b3-85ef-35bcd643c689").get(), snapshotCollection.getSnapshots().get(0));
+        compareSnapshots(context, TestMocks.getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), snapshotCollection.getSnapshots().get(1));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldGetSnapshotById(TestContext context) {
     Async async = context.async();
     Snapshot expected = TestMocks.getSnapshot(0);
@@ -84,11 +107,11 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   public void shouldSaveSnapshot(TestContext context) {
     Async async = context.async();
     Snapshot expected = TestMocks.getSnapshot(0);
-    snapshotDao.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
+    snapshotService.saveSnapshot(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      snapshotService.getSnapshotById(expected.getJobExecutionId(), TENANT_ID).onComplete(get -> {
+      snapshotDao.getSnapshotById(expected.getJobExecutionId(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -190,29 +213,6 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
       }
       context.assertFalse(delete.result());
       async.complete();
-    });
-  }
-
-  @Test
-  public void shouldGetSnapshots(TestContext context) {
-    Async async = context.async();
-    LBSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      Condition condition = Tables.SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.PROCESSING_IN_PROGRESS);
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(Tables.SNAPSHOTS_LB.PROCESSING_STARTED_DATE.sort(SortOrder.DESC));
-      snapshotService.getSnapshots(condition, orderFields, 0, 2, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        SnapshotCollection snapshotCollection = get.result();
-        context.assertEquals(3, snapshotCollection.getTotalRecords());
-        compareSnapshots(context, TestMocks.getSnapshot("d787a937-cc4b-49b3-85ef-35bcd643c689").get(), snapshotCollection.getSnapshots().get(0));
-        compareSnapshots(context, TestMocks.getSnapshot("6681ef31-03fe-4abc-9596-23de06d575c5").get(), snapshotCollection.getSnapshots().get(1));
-        async.complete();
-      });
     });
   }
 

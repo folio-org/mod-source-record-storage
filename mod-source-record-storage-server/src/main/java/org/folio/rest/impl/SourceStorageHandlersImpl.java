@@ -23,7 +23,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageHandlersImpl.class);
 
   @Autowired
-  private EventHandlingService instanceCreatedEventHandleService;
+  private EventHandlingService instanceEventHandleService;
   @Autowired
   private UpdateRecordEventHandler updateRecordEventHandler;
 
@@ -42,7 +42,18 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
 
       // response status doesn't depend on event handling result
-      instanceCreatedEventHandleService.handle(entity, tenantId);
+      instanceEventHandleService.handleCreate(entity, tenantId);
+    });
+  }
+
+  @Override
+  public void postSourceStorageHandlersUpdatedInventoryInstance(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      LOG.debug("Event DI_INVENTORY_INSTANCE_UPDATED was received: {}", entity);
+      asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
+
+      // response status doesn't depend on event handling result
+      instanceEventHandleService.handleUpdate(entity, tenantId);
     });
   }
 

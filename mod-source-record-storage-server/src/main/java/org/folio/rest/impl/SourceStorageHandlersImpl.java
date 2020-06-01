@@ -35,25 +35,13 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   }
 
   @Override
-  public void postSourceStorageHandlersCreatedInventoryInstance(String entity, Map<String, String> okapiHeaders,
-                                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageHandlersInventoryInstance(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      LOG.debug("Event DI_INVENTORY_INSTANCE_CREATED was received: {}", entity);
-      asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
+      LOG.debug("Event DI_INVENTORY_INSTANCE_CREATED or  DI_INVENTORY_INSTANCE_UPDATED was received: {}", entity);
+      asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersInventoryInstanceResponse.respond200()));
 
       // response status doesn't depend on event handling result
-      instanceEventHandleService.handleCreate(entity, tenantId);
-    });
-  }
-
-  @Override
-  public void postSourceStorageHandlersUpdatedInventoryInstance(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      LOG.debug("Event DI_INVENTORY_INSTANCE_UPDATED was received: {}", entity);
-      asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersCreatedInventoryInstanceResponse.respond200()));
-
-      // response status doesn't depend on event handling result
-      instanceEventHandleService.handleUpdate(entity, tenantId);
+      instanceEventHandleService.handleEvent(entity, tenantId);
     });
   }
 

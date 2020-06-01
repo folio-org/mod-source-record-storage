@@ -1,6 +1,9 @@
 package org.folio.services;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
@@ -13,6 +16,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,6 +109,10 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      context.assertNull(save.result().getErrorRecord());
+      compareRecords(context, expected, save.result());
       recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
@@ -119,8 +127,32 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // TODO: test save with calculate generation graeter than 0
-  
+  // TODO: test save with calculate generation greater than 0
+
+  @Test
+  public void shouldSaveRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
+      List<Record> expected = records.stream()
+        .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
+        .collect(Collectors.toList());
+      context.assertEquals(errorRecords.size(), batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      compareRecords(context, expected, batch.result().getRecords());
+      async.complete();
+    });
+  }
+
   @Test
   public void shouldFailToSaveRecord(TestContext context) {
     Async async = context.async();
@@ -174,10 +206,19 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.assertNotNull(update.result().getParsedRecord());
         context.assertNull(update.result().getErrorRecord());
         compareRecords(context, expected, update.result());
-        async.complete();
+        recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          // NOTE: getRecordById has implicit condition of state == OLD
+          context.assertFalse(get.result().isPresent());
+          async.complete();
+        });
       });
     });
   }
+
+  // TODO: test update with calculate generation greater than 0
 
   @Test
   public void shouldFailToUpdateSnapshot(TestContext context) {
@@ -195,6 +236,13 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         async.complete();
       });
     });
+  }
+
+  private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
+    context.assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      compareRecords(context, expected.get(i), expected.get(i));
+    }
   }
 
   private void compareRecords(TestContext context, Record expected, Record actual) {

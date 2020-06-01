@@ -303,21 +303,24 @@ public class LBRecordDaoImpl implements LBRecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    futures.add(LBRawRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
-      if (ar.succeeded() && ar.result().isPresent()) {
-        record.withRawRecord(ar.result().get());
+    futures.add(LBRawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+      if (rr.isPresent()) {
+        record.withRawRecord(rr.get());
       }
+      return record;
     }));
-    futures.add(LBParsedRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
-      if (ar.succeeded() && ar.result().isPresent()) {
-        record.withParsedRecord(ar.result().get());
+    futures.add(LBParsedRecordDaoUtil.findById(txQE, record.getId()).map(pr -> {
+      if (pr.isPresent()) {
+        record.withParsedRecord(pr.get());
       }
+      return record;
     }));
     if (includeErrorRecord) {
-      futures.add(LBErrorRecordDaoUtil.findById(txQE, record.getId()).onComplete(ar -> {
-        if (ar.succeeded() && ar.result().isPresent()) {
-          record.withErrorRecord(ar.result().get());
+      futures.add(LBErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
+        if (er.isPresent()) {
+          record.withErrorRecord(er.get());
         }
+        return record;
       }));
     }
     return CompositeFuture.all(futures).map(ar -> record);

@@ -18,7 +18,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
-import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.SnapshotsLb;
@@ -45,6 +44,13 @@ public class LBSnapshotDaoUtil {
       .offset(offset)
       .limit(limit))
         .map(LBSnapshotDaoUtil::toSnapshots);
+  }
+
+  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
+      .from(SNAPSHOTS_LB)
+      .where(condition))
+        .map(row -> row.getInteger(0));
   }
 
   public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
@@ -155,12 +161,6 @@ public class LBSnapshotDaoUtil {
       }
     }
     return dbRecord;
-  }
-
-  public static SnapshotCollection toSnapshotCollection(List<Snapshot> snapshots) {
-    return new SnapshotCollection()
-      .withSnapshots(snapshots)
-      .withTotalRecords(snapshots.size());
   }
 
   private static Snapshot toSingleSnapshot(RowSet<Row> rows) {

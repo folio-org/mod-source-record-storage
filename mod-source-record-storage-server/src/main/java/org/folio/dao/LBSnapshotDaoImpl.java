@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 
 @Component
@@ -29,8 +30,15 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
   @Override
   public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return LBSnapshotDaoUtil.findByCondition(getQueryExecutor(tenantId), condition, orderFields, offset, limit)
-      .map(LBSnapshotDaoUtil::toSnapshotCollection);
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      SnapshotCollection snapshotCollection = new SnapshotCollection();
+      return CompositeFuture.all(
+        LBSnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
+          .map(snapshots -> snapshotCollection.withSnapshots(snapshots)),
+        LBSnapshotDaoUtil.countByCondition(txQE, condition)
+          .map(totalRecords -> snapshotCollection.withTotalRecords(totalRecords))
+      ).map(res -> snapshotCollection);
+    });
   }
 
   @Override

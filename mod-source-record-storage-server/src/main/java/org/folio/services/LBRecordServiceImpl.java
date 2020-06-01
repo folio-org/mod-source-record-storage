@@ -1,20 +1,17 @@
 package org.folio.services;
 
 import static java.lang.String.format;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.MarcUtil;
@@ -27,7 +24,6 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
-import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -120,20 +116,13 @@ public class LBRecordServiceImpl implements LBRecordService {
     return promise.future();
   }
 
-  // TODO: run transactional
-  // add dao to find by externalIdType
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
-    Future<Optional<Record>> future;
-    if (StringUtils.isNotEmpty(externalIdIdentifier)) {
-      Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id))
-        .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-      future = recordDao.getRecordByCondition(condition, tenantId);
-    } else {
-      future = getRecordById(id, tenantId);
-    }
-    return future.map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() -> new NotFoundException(
-      format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
+    // NOTE: will fail if idType is anything but INSTANCE or RECORD
+    ExternalIdType externalIdType = ExternalIdType.valueOf(externalIdIdentifier);
+    return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
+      .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
+        new NotFoundException(format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
   }
 
   @Override
@@ -164,7 +153,6 @@ public class LBRecordServiceImpl implements LBRecordService {
     // NOTE: new schema did not have deleted property
     return recordDao.getSourceRecords(condition, orderFields, offset, limit, false, tenantId);
   }
-
 
   private Record validateParsedRecordId(Record record) {
     if (Objects.isNull(record.getParsedRecord()) && Objects.isNull(record.getParsedRecord().getId())) {

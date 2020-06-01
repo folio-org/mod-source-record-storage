@@ -37,7 +37,6 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
-import org.folio.services.LBRecordServiceImpl;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.impl.DSL;
@@ -56,7 +55,7 @@ import io.vertx.core.logging.LoggerFactory;
 @ConditionalOnProperty(prefix = "jooq", name = "dao.record", havingValue = "true")
 public class LBRecordDaoImpl implements LBRecordDao {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LBRecordServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LBRecordDaoImpl.class);
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -187,10 +186,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
-    // NOTE: condition should be determined by external id type
-    Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-    return getRecordByCondition(condition, tenantId);
+    return getRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
   }
 
   @Override
@@ -215,42 +211,21 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
-    // NOTE: would be nice to be able to do this without a switch statement
-    Condition condition;
-    switch (externalIdType) {
-      case INSTANCE:
-        condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId))
-          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-        break;
-      case RECORD:
-        condition = RECORDS_LB.ID.eq(UUID.fromString(externalId))
-          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-        break;
-      default:
-        throw new BadRequestException(String.format("Unknown external id type %s", externalIdType));
-    }
-    return getSourceRecordByCondition(condition, tenantId);
+    return getSourceRecordByCondition(LBRecordDaoUtil.getCondition(externalId, externalIdType), tenantId);
   }
 
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
       String tenantId) {
-    String rollBackMessage = String.format("Record with %s id: %s was not found", suppressFromDiscoveryDto.getIncomingIdType().name(), suppressFromDiscoveryDto.getId());
-
     Boolean suppressFromDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
-    // ExternalIdType externalIdType = ExternalIdType.valueOf(suppressFromDiscoveryDto.getIncomingIdType().value());
-
-    String id = suppressFromDiscoveryDto.getId();
-    // String externalIdIdentifier = externalIdType.getExternalIdField();
-
-    // TODO: add dao util to find by externalIdType
-    Condition condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-
+    String externalId = suppressFromDiscoveryDto.getId();
+    String incomingIdType = suppressFromDiscoveryDto.getIncomingIdType().value();
+    ExternalIdType externalIdType = ExternalIdType.valueOf(incomingIdType);
+    Condition condition = LBRecordDaoUtil.getCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
         .map(record -> LBRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
-      .orElse(Future.failedFuture(new NotFoundException(rollBackMessage))))
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", incomingIdType, externalId)))))
     ).map(u -> true);
   }
 

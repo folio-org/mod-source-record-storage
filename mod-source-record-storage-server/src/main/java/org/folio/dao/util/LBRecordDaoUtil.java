@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +40,24 @@ import io.vertx.sqlclient.RowSet;
 public class LBRecordDaoUtil {
 
   private LBRecordDaoUtil() { }
+
+  public static Condition getCondition(String externalId, ExternalIdType externalIdType) {
+    // NOTE: would be nice to be able to do this without a switch statement
+    Condition condition;
+    switch (externalIdType) {
+      case INSTANCE:
+        condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId))
+          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+        break;
+      case RECORD:
+        condition = RECORDS_LB.ID.eq(UUID.fromString(externalId))
+          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+        break;
+      default:
+        throw new BadRequestException(String.format("Unknown external id type %s", externalIdType));
+    }
+    return condition;
+  }
 
   public static Future<Stream<Record>> streamByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {

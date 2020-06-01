@@ -72,6 +72,57 @@
       ]
     },
     {
+      "id": "source-storage-lb-snapshots",
+      "version": "3.0",
+      "handlers": [
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/snapshots",
+          "permissionsRequired": [
+            "source-storage-lb.snapshots.get"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage-lb/snapshots",
+          "permissionsRequired": [
+            "source-storage-lb.snapshots.post"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/snapshots/{jobExecutionId}",
+          "permissionsRequired": [
+            "source-storage-lb.snapshots.get"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage-lb/snapshots/{jobExecutionId}",
+          "permissionsRequired": [
+            "source-storage-lb.snapshots.put"
+          ]
+        },
+        {
+          "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/source-storage-lb/snapshots/{jobExecutionId}",
+          "permissionsRequired": [
+            "source-storage-lb.snapshots.delete"
+          ]
+        }
+      ]
+    },
+    {
       "id": "source-storage-records",
       "version": "1.0",
       "handlers": [
@@ -154,6 +205,93 @@
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
           "permissionsRequired": [
             "source-storage.snapshots.records.delete"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "source-storage-lb-records",
+      "version": "3.0",
+      "handlers": [
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/records",
+          "permissionsRequired": [
+            "source-storage-lb.records.get"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage-lb/records",
+          "permissionsRequired": [
+            "source-storage-lb.records.post"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/records/{id}",
+          "permissionsRequired": [
+            "source-storage-lb.records.get"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage-lb/records/{id}",
+          "permissionsRequired": [
+            "source-storage-lb.records.put"
+          ]
+        },
+        {
+          "methods": [
+            "DELETE"
+          ],
+          "pathPattern": "/source-storage-lb/records/{id}",
+          "permissionsRequired": [
+            "source-storage-lb.records.delete"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/records/{id}/formatted",
+          "permissionsRequired": [
+            "source-storage-lb.records.get"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage/records/{id}/suppressFromDiscovery",
+          "permissionsRequired": [
+            "source-storage-lb.records.update"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/sourceRecords",
+          "permissionsRequired": [
+            "source-storage-lb.sourceRecords.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage-lb/sourceRecords/{id}",
+          "permissionsRequired": [
+            "source-storage-lb.sourceRecords.get"
           ]
         }
       ]
@@ -336,6 +474,56 @@
       "description": "Populate storage with test records"
     },
     {
+      "permissionName": "source-storage-lb.snapshots.get",
+      "displayName": "Source Storage - get snapshot(s)",
+      "description": "Get Snapshot(s)"
+    },
+    {
+      "permissionName": "source-storage-lb.snapshots.post",
+      "displayName": "Source Storage - create new snapshot",
+      "description": "Post Snapshot"
+    },
+    {
+      "permissionName": "source-storage-lb.snapshots.put",
+      "displayName": "Source Storage - update snapshot",
+      "description": "Put Snapshot"
+    },
+    {
+      "permissionName": "source-storage-lb.snapshots.delete",
+      "displayName": "Source Storage - delete snapshot and records",
+      "description": "Delete Snapshot and all related Records"
+    },
+    {
+      "permissionName": "source-storage-lb.records.get",
+      "displayName": "Source Storage - get record(s)",
+      "description": "Get Record(s)"
+    },
+    {
+      "permissionName": "source-storage-lb.records.post",
+      "displayName": "Source Storage - create new record",
+      "description": "Post Record"
+    },
+    {
+      "permissionName": "source-storage-lb.records.put",
+      "displayName": "Source Storage - update record",
+      "description": "Put Record"
+    },
+    {
+      "permissionName": "source-storage-lb.record.update",
+      "displayName": "Source Storage - update record",
+      "description": "Update Record's fields"
+    },
+    {
+      "permissionName": "source-storage-lb.records.delete",
+      "displayName": "Source Storage - delete record",
+      "description": "Delete Record"
+    },
+    {
+      "permissionName": "source-storage-lb.sourceRecords.get",
+      "displayName": "Source Storage - get results",
+      "description": "Get Results"
+    },
+    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -351,7 +539,17 @@
         "source-storage.records.delete",
         "source-storage.sourceRecords.get",
         "source-storage.populate.records",
-        "source-storage.record.update"
+        "source-storage.record.update",
+        "source-storage-lb.snapshots.get",
+        "source-storage-lb.snapshots.post",
+        "source-storage-lb.snapshots.put",
+        "source-storage-lb.snapshots.delete",
+        "source-storage-lb.records.get",
+        "source-storage-lb.records.post",
+        "source-storage-lb.records.put",
+        "source-storage-lb.records.delete",
+        "source-storage-lb.record.update",
+        "source-storage-lb.sourceRecords.get"
       ],
       "visible": false
     }

@@ -9,6 +9,7 @@
 * [MODSOURCE-101](https://issues.folio.org/browse/MODSOURCE-101) Add Services for standard table DAOs
 * [MODDICORE-50](https://issues.folio.org/browse/MODDICORE-50) Fixed placement of newly-created 035 field
 * [MODSOURCE-137](https://issues.folio.org/browse/MODSOURCE-137) Port existing service logic to standard table DAO services
+* [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-145](https://issues.folio.org/browse/MODSOURCE-145) Remove matchedProfileId property from Record
 * [MODINV-243](https://issues.folio.org/browse/MODINV-243) Enable Action profile action for incoming MARC Bibs: Replace Inventory Instance
 

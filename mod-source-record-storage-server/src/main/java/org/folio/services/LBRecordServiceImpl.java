@@ -99,7 +99,6 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
-    // NOTE: no need to lookup record as update record will return appropriate not found exception
     return recordDao.updateRecord(ensureRecordForeignKeys(record), tenantId);
   }
 

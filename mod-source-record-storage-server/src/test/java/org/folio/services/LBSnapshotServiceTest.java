@@ -2,6 +2,7 @@ package org.folio.services;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.folio.TestMocks;
 import org.folio.dao.LBSnapshotDao;
@@ -220,7 +221,11 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getJobExecutionId(), actual.getJobExecutionId());
     context.assertEquals(expected.getStatus(), actual.getStatus());
     context.assertEquals(expected.getProcessingStartedDate(), actual.getProcessingStartedDate());
-    compareMetadata(context, expected.getMetadata(), actual.getMetadata());
+    if (Objects.nonNull(expected.getMetadata())) {
+      compareMetadata(context, expected.getMetadata(), actual.getMetadata());
+    } else {
+      context.assertNull(actual.getMetadata());
+    }
   }
 
 }

@@ -340,18 +340,29 @@ public class LBRecordDaoImpl implements LBRecordDao {
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    validateParsedRecordContent(record);
     if (Objects.nonNull(record.getRawRecord())) {
       futures.add(LBRawRecordDaoUtil.save(txQE, record.getRawRecord()));
     }
     if (Objects.nonNull(record.getParsedRecord())) {
+      validateParsedRecordContent(record);
       futures.add(LBParsedRecordDaoUtil.save(txQE, record.getParsedRecord()));
     }
     if (Objects.nonNull(record.getErrorRecord())) {
       futures.add(LBErrorRecordDaoUtil.save(txQE, record.getErrorRecord()));
     }
     return CompositeFuture.all(futures)
-      .compose(res -> LBRecordDaoUtil.save(txQE, record));
+      .compose(res -> LBRecordDaoUtil.save(txQE, record)).map(r -> {
+        if (Objects.nonNull(record.getRawRecord())) {
+          r.withRawRecord(record.getRawRecord());
+        }
+        if (Objects.nonNull(record.getParsedRecord())) {
+          r.withParsedRecord(record.getParsedRecord());
+        }
+        if (Objects.nonNull(record.getErrorRecord())) {
+          r.withErrorRecord(record.getErrorRecord());
+        }
+        return r;
+      });
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {

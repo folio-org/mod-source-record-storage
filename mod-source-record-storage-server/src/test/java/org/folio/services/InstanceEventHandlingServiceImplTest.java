@@ -107,7 +107,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
       .withState(Record.State.ACTUAL);
 
     Record recordForUpdate = JsonObject.mapFrom(record
-      ).mapTo(Record.class)
+    ).mapTo(Record.class)
       .withSnapshotId(UUID.randomUUID().toString())
       .withId(UUID.randomUUID().toString());
 
@@ -135,7 +135,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
       .compose(rec -> {
         try {
-          return eventHandlingService.handleCreate(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+          return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
           return Future.failedFuture(e);
@@ -176,7 +176,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
         Future<Boolean> future2 = recordDao.saveRecord(recordForUpdate, TENANT_ID)
           .compose(v -> {
             try {
-              return eventHandlingService.handleUpdate(ZIPArchiver.zip(Json.encode(dataImportEventPayloadForUpdate)), TENANT_ID);
+              return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayloadForUpdate)), TENANT_ID);
             } catch (IOException e) {
               e.printStackTrace();
               return Future.failedFuture(e);
@@ -221,7 +221,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
       .compose(rec -> {
         try {
-          return eventHandlingService.handleCreate(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
+          return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), TENANT_ID);
         } catch (IOException e) {
           e.printStackTrace();
           return Future.failedFuture(e);
@@ -270,7 +270,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext);
 
-    Future<Boolean> future = eventHandlingService.handleCreate(Json.encode(dataImportEventPayload), TENANT_ID);
+    Future<Boolean> future = eventHandlingService.handleEvent(Json.encode(dataImportEventPayload), TENANT_ID);
 
     future.setHandler(ar -> {
       context.assertTrue(ar.failed());
@@ -295,7 +295,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
       .withContext(payloadContext);
 
     Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> eventHandlingService.handleCreate(Json.encode(dataImportEventPayload), TENANT_ID));
+      .compose(rec -> eventHandlingService.handleEvent(Json.encode(dataImportEventPayload), TENANT_ID));
 
     future.setHandler(ar -> {
       context.assertTrue(ar.failed());

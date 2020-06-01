@@ -32,7 +32,7 @@
     },
     {
       "eventType": "DI_INVENTORY_INSTANCE_UPDATED",
-      "description": "Created inventory instance",
+      "description": "Updated inventory instance",
       "eventTTL": 1,
       "signed": false
     },
@@ -46,15 +46,15 @@
   "subscriptions": [
     {
       "eventType": "DI_INVENTORY_INSTANCE_CREATED",
-      "callbackAddress": "/source-storage/handlers/created-inventory-instance"
+      "callbackAddress": "/source-storage/handlers/inventory-instance"
     },
     {
       "eventType": "DI_INVENTORY_INSTANCE_UPDATED",
-      "callbackAddress": "/source-storage/handlers/updated-inventory-instance"
+      "callbackAddress": "/source-storage/handlers/inventory-instance"
     },
     {
       "eventType": "DI_COMPLETED",
-      "callbackAddress": "/source-storage/handlers/created-inventory-instance"
+      "callbackAddress": "/source-storage/handlers/inventory-instance"
     },
     {
       "eventType": "QM_RECORD_UPDATED",

@@ -80,6 +80,13 @@ public class LBRecordDaoUtil {
         .map(LBRecordDaoUtil::toRecords);
   }
 
+  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
+      .from(RECORDS_LB)
+      .where(condition))
+        .map(row -> row.getInteger(0));
+  }
+
   public static Future<Optional<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(condition))

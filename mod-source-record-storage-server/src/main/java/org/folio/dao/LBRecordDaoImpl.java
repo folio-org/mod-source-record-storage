@@ -45,7 +45,6 @@ import org.springframework.stereotype.Component;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -64,20 +63,19 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    // TODO: fix using effecient sql functions
-    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
-      .compose(stream -> {
-        List<Record> records = new ArrayList<>();
-        Promise<List<Record>> promise = Promise.promise();
-        CompositeFuture.all(stream
-          .map(pr -> lookupAssociatedRecords(txQE, pr, true)
-          .map(r -> addToList(records, r)))
-          .collect(Collectors.toList()))
-            .onComplete(res -> promise.complete(records));
-        return promise.future();
-    })).map(records -> new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size()));
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      RecordCollection recordCollection = new RecordCollection();
+      recordCollection.withRecords(new ArrayList<>());
+      return CompositeFuture.all(
+        LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
+          .compose(stream -> CompositeFuture.all(stream
+            .map(pr -> lookupAssociatedRecords(txQE, pr, true)
+            .map(r -> addToList(recordCollection.getRecords(), r)))
+            .collect(Collectors.toList()))),
+        LBRecordDaoUtil.countByCondition(txQE, condition)
+          .map(totalRecords -> recordCollection.withTotalRecords(totalRecords))
+      ).map(res -> recordCollection);
+    });
   }
 
   @Override
@@ -134,21 +132,21 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit,
       boolean deletedRecords, String tenantId) {
-    // TODO: fix using effecient sql functions
-    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
-      .compose(stream -> {
-        List<SourceRecord> sourceRecords = new ArrayList<>();
-        Promise<List<SourceRecord>> promise = Promise.promise();
-        CompositeFuture.all(stream
-          .map(pr -> lookupAssociatedRecords(txQE, pr, false)
-          .map(LBRecordDaoUtil::toSourceRecord)
-          .map(sr -> addToList(sourceRecords, sr)))
-          .collect(Collectors.toList()))
-            .onComplete(res -> promise.complete(sourceRecords));
-        return promise.future();
-    })).map(records -> new SourceRecordCollection()
-      .withSourceRecords(records)
-      .withTotalRecords(records.size()));
+    // TODO: requires join to ensure having parsed record
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
+      sourceRecordCollection.withSourceRecords(new ArrayList<>());
+        return CompositeFuture.all(
+          LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
+            .compose(stream -> CompositeFuture.all(stream
+              .map(pr -> lookupAssociatedRecords(txQE, pr, true)
+              .map(LBRecordDaoUtil::toSourceRecord)
+              .map(r -> addToList(sourceRecordCollection.getSourceRecords(), r)))
+              .collect(Collectors.toList()))),
+          LBRecordDaoUtil.countByCondition(txQE, condition)
+            .map(totalRecords -> sourceRecordCollection.withTotalRecords(totalRecords))
+        ).map(res -> sourceRecordCollection);
+      });
   }
 
   @Override

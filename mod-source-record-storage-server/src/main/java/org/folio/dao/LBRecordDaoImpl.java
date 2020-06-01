@@ -1,9 +1,13 @@
 package org.folio.dao;
 
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,6 +51,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.sqlclient.Row;
 
 @Component
 @ConditionalOnProperty(prefix = "jooq", name = "dao.record", havingValue = "true")
@@ -73,7 +78,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
             .map(r -> addToList(recordCollection.getRecords(), r)))
             .collect(Collectors.toList()))),
         LBRecordDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> recordCollection.withTotalRecords(totalRecords))
+          .map(totalRecords -> addTotalRecords(recordCollection, totalRecords))
       ).map(res -> recordCollection);
     });
   }
@@ -132,21 +137,26 @@ public class LBRecordDaoImpl implements LBRecordDao {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit,
       boolean deletedRecords, String tenantId) {
-    // TODO: requires join to ensure having parsed record
-    return getQueryExecutor(tenantId).transaction(txQE -> {
+    final String cteTableName = "cte";
+    final String totalCountColumnName = "total_count";
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(cteTableName).as(dsl.select()
+      .from(RECORDS_LB)
+      .innerJoin(MARC_RECORDS_LB).on(RECORDS_LB.ID.eq(MARC_RECORDS_LB.ID))
+      .where(RECORDS_LB.STATE.eq(RecordState.ACTUAL).and(condition))).select()
+        .from(dsl.select().from(table(name(cteTableName))).offset(offset).limit(limit))
+        .rightJoin(dsl.selectCount().from(table(name(cteTableName)).as(totalCountColumnName))).on(trueCondition())
+    )).map(res -> {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
-      sourceRecordCollection.withSourceRecords(new ArrayList<>());
-        return CompositeFuture.all(
-          LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
-            .compose(stream -> CompositeFuture.all(stream
-              .map(pr -> lookupAssociatedRecords(txQE, pr, true)
-              .map(LBRecordDaoUtil::toSourceRecord)
-              .map(r -> addToList(sourceRecordCollection.getSourceRecords(), r)))
-              .collect(Collectors.toList()))),
-          LBRecordDaoUtil.countByCondition(txQE, condition)
-            .map(totalRecords -> sourceRecordCollection.withTotalRecords(totalRecords))
-        ).map(res -> sourceRecordCollection);
-      });
+      List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
+        sourceRecordCollection.setTotalRecords(row.getInteger(totalCountColumnName));
+        return LBRecordDaoUtil.toSourceRecord(LBRecordDaoUtil.toRecord(row))
+          .withParsedRecord(LBParsedRecordDaoUtil.toParsedRecord(row));
+      }).collect(Collectors.toList());
+      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+        sourceRecordCollection.withSourceRecords(sourceRecords);
+      }
+      return sourceRecordCollection;
+    });
   }
 
   @Override
@@ -286,9 +296,21 @@ public class LBRecordDaoImpl implements LBRecordDao {
     return record;
   }
 
+  private RecordCollection addTotalRecords(RecordCollection recordCollection, Integer totalRecords) {
+    return recordCollection.withTotalRecords(totalRecords);
+  }
+
   private SourceRecord addToList(List<SourceRecord> sourceRecords, SourceRecord sourceRecord) {
     sourceRecords.add(sourceRecord);
     return sourceRecord;
+  }
+
+  private SourceRecordCollection addTotalRecords(SourceRecordCollection sourceRecordCollection, Integer totalRecords) {
+    return sourceRecordCollection.withTotalRecords(totalRecords);
+  }
+
+  private Row asRow(Row row) {
+    return row;
   }
 
   private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {

@@ -1,6 +1,7 @@
 package org.folio.dao;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.folio.dao.util.LBSnapshotDaoUtil;
@@ -34,9 +35,9 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
       SnapshotCollection snapshotCollection = new SnapshotCollection();
       return CompositeFuture.all(
         LBSnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
-          .map(snapshots -> snapshotCollection.withSnapshots(snapshots)),
+          .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
         LBSnapshotDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> snapshotCollection.withTotalRecords(totalRecords))
+          .map(totalRecords -> addTotalRecords(snapshotCollection,totalRecords))
       ).map(res -> snapshotCollection);
     });
   }
@@ -63,6 +64,14 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
+  }
+
+  private SnapshotCollection addSnapshots(SnapshotCollection snapshotCollection, List<Snapshot> snapshots) {
+    return snapshotCollection.withSnapshots(snapshots);
+  }
+
+  private SnapshotCollection addTotalRecords(SnapshotCollection snapshotCollection, Integer totalRecords) {
+    return snapshotCollection.withTotalRecords(totalRecords);
   }
 
 }

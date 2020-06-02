@@ -62,7 +62,7 @@ public class LBParsedRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBParsedRecordDaoUtil::toParsedRecord);
+        .map(LBParsedRecordDaoUtil::toSingleParsedRecord);
   }
 
   public static Future<List<ParsedRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ParsedRecord> parsedRecords) {
@@ -82,7 +82,7 @@ public class LBParsedRecordDaoUtil {
       .set(dbRecord)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(parsedRecord.getId())))
       .returning())
-        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord)
+        .map(LBParsedRecordDaoUtil::toSingleOptionalParsedRecord)
         .map(optionalParsedRecord -> {
           if (optionalParsedRecord.isPresent()) {
             return optionalParsedRecord.get();
@@ -108,6 +108,10 @@ public class LBParsedRecordDaoUtil {
       .withContent(pojo.getContent());
   }
 
+  public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
+    return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
+  }
+
   public static MarcRecordsLbRecord toDatabaseParsedRecord(ParsedRecord parsedRecord) {
     MarcRecordsLbRecord dbRecord = new MarcRecordsLbRecord();
     if (StringUtils.isNotEmpty(parsedRecord.getId())) {
@@ -123,22 +127,18 @@ public class LBParsedRecordDaoUtil {
     return dbRecord;
   }
 
-  private static ParsedRecord toParsedRecord(RowSet<Row> rows) {
+  private static ParsedRecord toSingleParsedRecord(RowSet<Row> rows) {
     return toParsedRecord(rows.iterator().next());
+  }
+
+  private static Optional<ParsedRecord> toSingleOptionalParsedRecord(RowSet<Row> rows) {
+    return rows.rowCount() == 1 ? Optional.of(toParsedRecord(rows.iterator().next())) : Optional.empty();
   }
 
   private static List<ParsedRecord> toParsedRecords(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
       .map(LBParsedRecordDaoUtil::toParsedRecord)
       .collect(Collectors.toList());
-  }
-
-  private static Optional<ParsedRecord> toOptionalParsedRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toParsedRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
   }
 
 }

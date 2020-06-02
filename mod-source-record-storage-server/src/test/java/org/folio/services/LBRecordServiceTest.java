@@ -187,19 +187,15 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveRecords(TestContext context) {
     Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
+    List<Record> expected = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
     recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
-      List<Record> expected = records.stream()
-        .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
-        .collect(Collectors.toList());
-      context.assertEquals(errorRecords.size(), batch.result().getErrorMessages().size());
+      context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
       Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
       Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
@@ -208,7 +204,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         if (count.failed()) {
           context.fail(count.cause());
         }
-        context.assertEquals(expected.size(), (int) count.result());
+        context.assertEquals(new Integer(expected.size()), count.result());
         async.complete();
       });
     });
@@ -292,9 +288,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
         List<SourceRecord> expected = records.stream()
-          .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
           .map(LBRecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -303,6 +297,44 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
       });
+    });
+  }
+
+  // TODO: test get source records between two dates
+
+  @Test
+  public void shouldGetSourceRecordById(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), "INSTANCE", TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        compareSourceRecords(context, LBRecordDaoUtil.toSourceRecord(expected), get.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  // TODO: test get by matched id not equal to id
+
+  @Test
+  public void shouldNotGetSourceRecordById(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), "INSTANCE", TENANT_ID).onComplete(get -> {
+      if (get.failed()) {
+        context.fail(get.cause());
+      }
+      context.assertFalse(get.result().isPresent());
+      async.complete();
     });
   }
 

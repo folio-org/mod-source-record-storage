@@ -92,7 +92,7 @@ public class LBSnapshotDaoUtil {
       .set(dbRecord)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
       .returning())
-        .map(LBSnapshotDaoUtil::toOptionalSnapshot)
+        .map(LBSnapshotDaoUtil::toSingleOptionalSnapshot)
         .map(optionalSnapshot -> {
           if (optionalSnapshot.isPresent()) {
             return optionalSnapshot.get();
@@ -135,6 +135,10 @@ public class LBSnapshotDaoUtil {
     return snapshot.withMetadata(metadata);
   }
 
+  public static Optional<Snapshot> toOptionalSnapshot(Row row) {
+    return Objects.nonNull(row) ? Optional.of(toSnapshot(row)) : Optional.empty();
+  }
+
   public static SnapshotsLbRecord toDatabaseRecord(Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = new SnapshotsLbRecord();
     if (StringUtils.isNotEmpty(snapshot.getJobExecutionId())) {
@@ -167,18 +171,14 @@ public class LBSnapshotDaoUtil {
     return toSnapshot(rows.iterator().next());
   }
 
+  private static Optional<Snapshot> toSingleOptionalSnapshot(RowSet<Row> rows) {
+    return rows.rowCount() == 1 ? Optional.of(toSnapshot(rows.iterator().next())) : Optional.empty();
+  }
+
   private static List<Snapshot> toSnapshots(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
       .map(LBSnapshotDaoUtil::toSnapshot)
       .collect(Collectors.toList());
-  }
-
-  private static Optional<Snapshot> toOptionalSnapshot(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toSnapshot(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static Optional<Snapshot> toOptionalSnapshot(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toSnapshot(row)) : Optional.empty();
   }
 
   private static Snapshot setProcessingStartedDate(Snapshot snapshot) {

@@ -60,7 +60,7 @@ public class LBRawRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBRawRecordDaoUtil::toRawRecord);
+        .map(LBRawRecordDaoUtil::toSingleRawRecord);
   }
 
   public static Future<List<RawRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<RawRecord> rawRecords) {
@@ -80,7 +80,7 @@ public class LBRawRecordDaoUtil {
       .set(dbRecord)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(rawRecord.getId())))
       .returning())
-        .map(LBRawRecordDaoUtil::toOptionalRawRecord)
+        .map(LBRawRecordDaoUtil::toSingleOptionalRawRecord)
         .map(optionalRawRecord -> {
           if (optionalRawRecord.isPresent()) {
             return optionalRawRecord.get();
@@ -106,6 +106,10 @@ public class LBRawRecordDaoUtil {
       .withContent(pojo.getContent());
   }
 
+  public static Optional<RawRecord> toOptionalRawRecord(Row row) {
+    return Objects.nonNull(row) ? Optional.of(toRawRecord(row)) : Optional.empty();
+  }
+
   public static RawRecordsLbRecord toDatabaseRawRecord(RawRecord rawRecord) {
     RawRecordsLbRecord dbRecord = new RawRecordsLbRecord();
     if (StringUtils.isNotEmpty(rawRecord.getId())) {
@@ -115,22 +119,18 @@ public class LBRawRecordDaoUtil {
     return dbRecord;
   }
 
-  private static RawRecord toRawRecord(RowSet<Row> rows) {
+  private static RawRecord toSingleRawRecord(RowSet<Row> rows) {
     return toRawRecord(rows.iterator().next());
+  }
+
+  private static Optional<RawRecord> toSingleOptionalRawRecord(RowSet<Row> rows) {
+    return rows.rowCount() == 1 ? Optional.of(toRawRecord(rows.iterator().next())) : Optional.empty();
   }
 
   private static List<RawRecord> toRawRecords(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
       .map(LBRawRecordDaoUtil::toRawRecord)
       .collect(Collectors.toList());
-  }
-
-  private static Optional<RawRecord> toOptionalRawRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toRawRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static Optional<RawRecord> toOptionalRawRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toRawRecord(row)) : Optional.empty();
   }
 
 }

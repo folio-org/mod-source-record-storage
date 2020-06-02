@@ -3,6 +3,7 @@ package org.folio.dao.util;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import org.jooq.OrderField;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
@@ -60,7 +62,7 @@ public class LBErrorRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBErrorRecordDaoUtil::toErrorRecord);
+        .map(LBErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
   public static Future<List<ErrorRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ErrorRecord> errorRecords) {
@@ -80,7 +82,7 @@ public class LBErrorRecordDaoUtil {
       .set(dbRecord)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(errorRecord.getId())))
       .returning())
-        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord)
+        .map(LBErrorRecordDaoUtil::toSingleOptionalErrorRecord)
         .map(optionalErrorRecord -> {
           if (optionalErrorRecord.isPresent()) {
             return optionalErrorRecord.get();
@@ -107,34 +109,38 @@ public class LBErrorRecordDaoUtil {
       .withDescription(pojo.getDescription());
   }
 
+  public static Optional<ErrorRecord> toOptionalErrorRecord(Row row) {
+    return Objects.nonNull(row) ? Optional.of(toErrorRecord(row)) : Optional.empty();
+  }
+
   public static ErrorRecordsLbRecord toDatabaseErrorRecord(ErrorRecord errorRecord) {
     ErrorRecordsLbRecord dbRecord = new ErrorRecordsLbRecord();
     if (StringUtils.isNotEmpty(errorRecord.getId())) {
       dbRecord.setId(UUID.fromString(errorRecord.getId()));
     }
     if (Objects.nonNull(errorRecord.getContent())) {
-      dbRecord.setContent((String) errorRecord.getContent());
+      if (errorRecord.getContent() instanceof LinkedHashMap) {
+        dbRecord.setContent(JsonObject.mapFrom(errorRecord.getContent()).encode());
+      } else {
+        dbRecord.setContent((String) errorRecord.getContent());
+      }
     }
     dbRecord.setDescription(errorRecord.getDescription());
     return dbRecord;
   }
 
-  private static ErrorRecord toErrorRecord(RowSet<Row> rows) {
+  private static ErrorRecord toSingleErrorRecord(RowSet<Row> rows) {
     return toErrorRecord(rows.iterator().next());
+  }
+
+  private static Optional<ErrorRecord> toSingleOptionalErrorRecord(RowSet<Row> rows) {
+    return rows.rowCount() == 1 ? Optional.of(toErrorRecord(rows.iterator().next())) : Optional.empty();
   }
 
   private static List<ErrorRecord> toErrorRecords(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
       .map(LBErrorRecordDaoUtil::toErrorRecord)
       .collect(Collectors.toList());
-  }
-
-  private static Optional<ErrorRecord> toOptionalErrorRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toErrorRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static Optional<ErrorRecord> toOptionalErrorRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toErrorRecord(row)) : Optional.empty();
   }
 
 }

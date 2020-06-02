@@ -160,22 +160,6 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
-    return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-        .where(condition))
-          .map(LBRecordDaoUtil::toRecord)
-      .compose(record -> lookupAssociatedRecords(txQE, record, false)))
-        .map(LBRecordDaoUtil::toSourceRecord)
-        .map(record -> {
-          if (Objects.nonNull(record.getParsedRecord())) {
-            return Optional.of(record);
-          }
-          return Optional.empty();
-        });
-  }
-
-  @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
@@ -187,6 +171,27 @@ public class LBRecordDaoImpl implements LBRecordDao {
     Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getSourceRecordByCondition(condition, tenantId);
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
+    return getQueryExecutor(tenantId)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+        .where(condition))
+          .map(LBRecordDaoUtil::toOptionalRecord)
+      .compose(optionalRecord -> {
+        if (optionalRecord.isPresent()) {
+          return lookupAssociatedRecords(txQE, optionalRecord.get(), false)
+            .map(LBRecordDaoUtil::toSourceRecord)
+            .map(sourceRecord -> {
+              if (Objects.nonNull(sourceRecord.getParsedRecord())) {
+                return Optional.of(sourceRecord);
+              }
+              return Optional.empty();
+            });
+        }
+        return Future.succeededFuture(Optional.empty());
+      }));
   }
 
   @Override
@@ -208,7 +213,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.join(
+    return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
       updateExternalIdsForRecord(txQE, record),
       LBParsedRecordDaoUtil.update(txQE, record.getParsedRecord())
     ).map(res -> record.getParsedRecord()));

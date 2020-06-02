@@ -46,12 +46,10 @@ public class LBRecordDaoUtil {
     Condition condition;
     switch (externalIdType) {
       case INSTANCE:
-        condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId))
-          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+        condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId));
         break;
       case RECORD:
-        condition = RECORDS_LB.ID.eq(UUID.fromString(externalId))
-          .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+        condition = RECORDS_LB.ID.eq(UUID.fromString(externalId));
         break;
       default:
         throw new BadRequestException(String.format("Unknown external id type %s", externalIdType));
@@ -126,7 +124,7 @@ public class LBRecordDaoUtil {
       .set(dbRecord)
       .where(RECORDS_LB.ID.eq(UUID.fromString(record.getId())))
       .returning())
-        .map(LBRecordDaoUtil::toOptionalRecord)
+        .map(LBRecordDaoUtil::toSingleOptionalRecord)
         .map(optionalRecord -> {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();
@@ -152,6 +150,8 @@ public class LBRecordDaoUtil {
       .withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()))
       .withOrder(record.getOrder());
     return sourceRecord
+      .withRawRecord(record.getRawRecord())
+      .withParsedRecord(record.getParsedRecord())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withExternalIdsHolder(record.getExternalIdsHolder())
       .withMetadata(record.getMetadata());
@@ -192,6 +192,10 @@ public class LBRecordDaoUtil {
       .withAdditionalInfo(additionalInfo)
       .withExternalIdsHolder(externalIdsHolder)
       .withMetadata(metadata);
+  }
+
+  public static Optional<Record> toOptionalRecord(Row row) {
+    return Objects.nonNull(row) ? Optional.of(toRecord(row)) : Optional.empty();
   }
 
   public static RecordsLbRecord toDatabaseRecord(Record record) {
@@ -240,18 +244,14 @@ public class LBRecordDaoUtil {
     return toRecord(rows.iterator().next());
   }
 
+  private static Optional<Record> toSingleOptionalRecord(RowSet<Row> rows) {
+    return rows.rowCount() == 1 ? Optional.of(toRecord(rows.iterator().next())) : Optional.empty();
+  }
+
   private static List<Record> toRecords(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
       .map(LBRecordDaoUtil::toRecord)
       .collect(Collectors.toList());
-  }
-
-  private static Optional<Record> toOptionalRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static Optional<Record> toOptionalRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toRecord(row)) : Optional.empty();
   }
 
 }

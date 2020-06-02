@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.folio.dao.util.LBParsedRecordDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -130,7 +129,8 @@ public class TestMocks {
 
   private static Optional<SourceRecord> readSourceRecord(File file) {
     try {
-      return Optional.of(ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class));
+      SourceRecord sourceRecord = ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class);
+      return Optional.of(sourceRecord.withParsedRecord(normalizeContent(sourceRecord.getParsedRecord())));
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -174,7 +174,7 @@ public class TestMocks {
       try {
         Record record = ObjectMapperTool.getDefaultMapper().readValue(file, Record.class)
           .withRawRecord(sourceRecord.getRawRecord())
-          .withParsedRecord(normalizeContent(sourceRecord.getParsedRecord()))
+          .withParsedRecord(sourceRecord.getParsedRecord())
           .withExternalIdsHolder(sourceRecord.getExternalIdsHolder())
           .withAdditionalInfo(sourceRecord.getAdditionalInfo());
         if (Objects.nonNull(sourceRecord.getMetadata())) {
@@ -207,7 +207,7 @@ public class TestMocks {
     if (file.exists()) {
       try {
         ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);
-        errorRecord.withContent(normalizeContent(sourceRecord.getParsedRecord()).getContent());
+        errorRecord.withContent(sourceRecord.getParsedRecord().getContent());
         return Optional.of(errorRecord);
       } catch (IOException e) {
         e.printStackTrace();

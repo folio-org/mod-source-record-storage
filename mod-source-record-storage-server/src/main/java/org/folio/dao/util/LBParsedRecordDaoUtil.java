@@ -2,7 +2,6 @@ package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,10 +72,10 @@ public class LBParsedRecordDaoUtil {
       dbRecord.setId(UUID.fromString(parsedRecord.getId()));
     }
     if (Objects.nonNull(parsedRecord.getContent())) {
-      if (parsedRecord.getContent() instanceof LinkedHashMap) {
-        dbRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
-      } else {
+      if (parsedRecord.getContent() instanceof String) {
         dbRecord.setContent((String) parsedRecord.getContent());
+      } else {
+        dbRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
       }
     }
     return dbRecord;

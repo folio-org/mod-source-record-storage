@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -185,9 +186,13 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = (String) record.getParsedRecord().getContent();
-      record.getParsedRecord()
-        .setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
+      String parsedRecordContent;
+      if (record.getParsedRecord().getContent() instanceof String) {
+        parsedRecordContent = (String) record.getParsedRecord().getContent();
+      } else {
+        parsedRecordContent = JsonObject.mapFrom(record.getParsedRecord().getContent()).encode();
+      }
+      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);
     }

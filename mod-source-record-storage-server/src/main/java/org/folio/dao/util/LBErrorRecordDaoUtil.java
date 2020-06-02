@@ -2,7 +2,6 @@ package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,10 +56,10 @@ public class LBErrorRecordDaoUtil {
       dbRecord.setId(UUID.fromString(errorRecord.getId()));
     }
     if (Objects.nonNull(errorRecord.getContent())) {
-      if (errorRecord.getContent() instanceof LinkedHashMap) {
-        dbRecord.setContent(JsonObject.mapFrom(errorRecord.getContent()).encode());
-      } else {
+      if (errorRecord.getContent() instanceof String) {
         dbRecord.setContent((String) errorRecord.getContent());
+      } else {
+        dbRecord.setContent(JsonObject.mapFrom(errorRecord.getContent()).encode());
       }
     }
     dbRecord.setDescription(errorRecord.getDescription());

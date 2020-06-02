@@ -63,12 +63,12 @@ public class LBErrorRecordDaoUtil {
         .map(LBErrorRecordDaoUtil::toErrorRecord);
   }
 
-  public static Future<List<ErrorRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ErrorRecord> snapshots) {
+  public static Future<List<ErrorRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ErrorRecord> errorRecords) {
     return queryExecutor.executeAny(dsl -> {
       InsertSetStep<ErrorRecordsLbRecord> insertSetStep = dsl.insertInto(ERROR_RECORDS_LB);
       InsertValuesStepN<ErrorRecordsLbRecord> insertValuesStepN = null;
-      for (ErrorRecord ErrorRecord : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseErrorRecord(ErrorRecord).intoArray());
+      for (ErrorRecord errorRecord : errorRecords) {
+          insertValuesStepN = insertSetStep.values(toDatabaseErrorRecord(errorRecord).intoArray());
       }
       return insertValuesStepN;
     }).map(LBErrorRecordDaoUtil::toErrorRecords);

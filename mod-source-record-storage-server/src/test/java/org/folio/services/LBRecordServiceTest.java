@@ -1,13 +1,16 @@
 package org.folio.services;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBRecordDaoImpl;
+import org.folio.dao.util.LBRecordDaoUtil;
 import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -17,6 +20,11 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jooq.Tables;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,9 +68,31 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetRecords(TestContext context) {
     Async async = context.async();
-    context.assertTrue(Objects.nonNull("Will do later"));
+    List<Record> records = TestMocks.getRecords();
+    LBRecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), records).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
+      Condition condition = Tables.RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(Tables.RECORDS_LB.ORDER_IN_FILE.sort(SortOrder.ASC));
+      recordService.getRecords(condition, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getSnapshotId().equals(snapshotId))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareRecords(context, TestMocks.getRecord("be1b25ae-4a9d-4077-93e6-7f8e59efd609").get(), get.result().getRecords().get(0));
+        compareRecords(context, TestMocks.getRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), get.result().getRecords().get(0));
+      });
+    });
     async.complete();
   }
+
+  // TODO: test get records between two dates
 
   @Test
   public void shouldGetRecordById(TestContext context) {
@@ -130,30 +160,6 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   // TODO: test save with calculate generation greater than 0
 
   @Test
-  public void shouldSaveRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
-      List<Record> expected = records.stream()
-        .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
-        .collect(Collectors.toList());
-      context.assertEquals(errorRecords.size(), batch.result().getErrorMessages().size());
-      context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      compareRecords(context, expected, batch.result().getRecords());
-      async.complete();
-    });
-  }
-
-  @Test
   public void shouldFailToSaveRecord(TestContext context) {
     Async async = context.async();
     Record valid = TestMocks.getRecord(0);
@@ -174,6 +180,36 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
       String expected = "null value in column \"record_type\" violates not-null constraint";
       context.assertEquals(expected, save.cause().getMessage());
       async.complete();
+    });
+  }
+
+  @Test
+  public void shouldSaveRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
+      List<Record> expected = records.stream()
+        .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
+        .collect(Collectors.toList());
+      context.assertEquals(errorRecords.size(), batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      compareRecords(context, expected, batch.result().getRecords());
+      LBRecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
+        if (count.failed()) {
+          context.fail(count.cause());
+        }
+        context.assertEquals(expected.size(), (int) count.result());
+        async.complete();
+      });
     });
   }
 

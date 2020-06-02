@@ -109,12 +109,12 @@ public class LBRecordDaoUtil {
         .map(LBRecordDaoUtil::toSingleRecord);
   }
 
-  public static Future<List<Record>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Record> snapshots) {
+  public static Future<List<Record>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Record> records) {
     return queryExecutor.executeAny(dsl -> {
       InsertSetStep<RecordsLbRecord> insertSetStep = dsl.insertInto(RECORDS_LB);
       InsertValuesStepN<RecordsLbRecord> insertValuesStepN = null;
-      for (Record Record : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseRecord(Record).intoArray());
+      for (Record record : records) {
+          insertValuesStepN = insertSetStep.values(toDatabaseRecord(record).intoArray());
       }
       return insertValuesStepN;
     }).map(LBRecordDaoUtil::toRecords);

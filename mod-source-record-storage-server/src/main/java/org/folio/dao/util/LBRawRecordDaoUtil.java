@@ -63,12 +63,12 @@ public class LBRawRecordDaoUtil {
         .map(LBRawRecordDaoUtil::toRawRecord);
   }
 
-  public static Future<List<RawRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<RawRecord> snapshots) {
+  public static Future<List<RawRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<RawRecord> rawRecords) {
     return queryExecutor.executeAny(dsl -> {
       InsertSetStep<RawRecordsLbRecord> insertSetStep = dsl.insertInto(RAW_RECORDS_LB);
       InsertValuesStepN<RawRecordsLbRecord> insertValuesStepN = null;
-      for (RawRecord RawRecord : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseRawRecord(RawRecord).intoArray());
+      for (RawRecord rawRecord : rawRecords) {
+          insertValuesStepN = insertSetStep.values(toDatabaseRawRecord(rawRecord).intoArray());
       }
       return insertValuesStepN;
     }).map(LBRawRecordDaoUtil::toRawRecords);

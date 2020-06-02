@@ -65,12 +65,12 @@ public class LBParsedRecordDaoUtil {
         .map(LBParsedRecordDaoUtil::toParsedRecord);
   }
 
-  public static Future<List<ParsedRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ParsedRecord> snapshots) {
+  public static Future<List<ParsedRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ParsedRecord> parsedRecords) {
     return queryExecutor.executeAny(dsl -> {
       InsertSetStep<MarcRecordsLbRecord> insertSetStep = dsl.insertInto(MARC_RECORDS_LB);
       InsertValuesStepN<MarcRecordsLbRecord> insertValuesStepN = null;
-      for (ParsedRecord ParsedRecord : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseParsedRecord(ParsedRecord).intoArray());
+      for (ParsedRecord parsedRecord : parsedRecords) {
+          insertValuesStepN = insertSetStep.values(toDatabaseParsedRecord(parsedRecord).intoArray());
       }
       return insertValuesStepN;
     }).map(LBParsedRecordDaoUtil::toParsedRecords);

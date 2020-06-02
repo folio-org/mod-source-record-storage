@@ -151,10 +151,10 @@ public class LBRecordDaoUtil {
       .withSnapshotId(record.getSnapshotId())
       .withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()))
       .withOrder(record.getOrder());
-      return sourceRecord
-        .withAdditionalInfo(record.getAdditionalInfo())
-        .withExternalIdsHolder(record.getExternalIdsHolder())
-        .withMetadata(record.getMetadata());
+    return sourceRecord
+      .withAdditionalInfo(record.getAdditionalInfo())
+      .withExternalIdsHolder(record.getExternalIdsHolder())
+      .withMetadata(record.getMetadata());
   }
 
   public static Record toRecord(Row row) {

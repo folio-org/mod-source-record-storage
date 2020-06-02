@@ -20,6 +20,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.Tables;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -274,6 +275,37 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldGetSourceRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordService.getSourceRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<ErrorRecord> errorRecords = TestMocks.getErrorRecords();
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> !errorRecords.stream().anyMatch(er -> er.getId().equals(r.getId())))
+          .map(LBRecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (int i = 0; i < expected.size(); i++) {
@@ -303,6 +335,45 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
       compareErrorRecord(context, expected.getErrorRecord(), actual.getErrorRecord());
     } else {
       context.assertNull(actual.getErrorRecord());
+    }
+    if (Objects.nonNull(expected.getAdditionalInfo())) {
+      compareAdditionalInfo(context, expected.getAdditionalInfo(), actual.getAdditionalInfo());
+    } else {
+      context.assertNull(actual.getAdditionalInfo());
+    }
+    if (Objects.nonNull(expected.getExternalIdsHolder())) {
+      compareExternalIdsHolder(context, expected.getExternalIdsHolder(), actual.getExternalIdsHolder());
+    } else {
+      context.assertNull(actual.getExternalIdsHolder());
+    }
+    if (Objects.nonNull(expected.getMetadata())) {
+      compareMetadata(context, expected.getMetadata(), actual.getMetadata());
+    } else {
+      context.assertNull(actual.getMetadata());
+    }
+  }
+
+  private void compareSourceRecords(TestContext context, List<SourceRecord> expected, List<SourceRecord> actual) {
+    context.assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      compareSourceRecords(context, expected.get(i), expected.get(i));
+    }
+  }
+
+  private void compareSourceRecords(TestContext context, SourceRecord expected, SourceRecord actual) {
+    context.assertEquals(expected.getRecordId(), actual.getRecordId());
+    context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
+    context.assertEquals(expected.getRecordType(), actual.getRecordType());
+    context.assertEquals(expected.getOrder(), actual.getOrder());
+    if (Objects.nonNull(expected.getRawRecord())) {
+      compareRawRecord(context, expected.getRawRecord(), actual.getRawRecord());
+    } else {
+      context.assertNull(actual.getRawRecord());
+    }
+    if (Objects.nonNull(expected.getParsedRecord())) {
+      compareParsedRecord(context, expected.getParsedRecord(), actual.getParsedRecord());
+    } else {
+      context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getAdditionalInfo())) {
       compareAdditionalInfo(context, expected.getAdditionalInfo(), actual.getAdditionalInfo());

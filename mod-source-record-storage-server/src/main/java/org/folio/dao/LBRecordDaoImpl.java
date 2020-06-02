@@ -138,17 +138,17 @@ public class LBRecordDaoImpl implements LBRecordDao {
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit,
       boolean deletedRecords, String tenantId) {
     final String cteTableName = "cte";
-    final String totalCountColumnName = "total_count";
+    final String countColumn = "count";
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(cteTableName).as(dsl.select()
       .from(RECORDS_LB)
       .innerJoin(MARC_RECORDS_LB).on(RECORDS_LB.ID.eq(MARC_RECORDS_LB.ID))
       .where(RECORDS_LB.STATE.eq(RecordState.ACTUAL).and(condition))).select()
         .from(dsl.select().from(table(name(cteTableName))).offset(offset).limit(limit))
-        .rightJoin(dsl.selectCount().from(table(name(cteTableName)).as(totalCountColumnName))).on(trueCondition())
+        .rightJoin(dsl.selectCount().from(table(name(cteTableName)))).on(trueCondition())
     )).map(res -> {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(totalCountColumnName));
+        sourceRecordCollection.setTotalRecords(row.getInteger(countColumn));
         return LBRecordDaoUtil.toSourceRecord(LBRecordDaoUtil.toRecord(row))
           .withParsedRecord(LBParsedRecordDaoUtil.toParsedRecord(row));
       }).collect(Collectors.toList());

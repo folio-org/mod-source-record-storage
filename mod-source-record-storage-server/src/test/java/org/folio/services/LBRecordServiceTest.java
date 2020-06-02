@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.folio.TestMocks;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.LBRecordDaoImpl;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.LBRecordDaoUtil;
 import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -31,6 +32,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -158,7 +160,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // TODO: test save with calculate generation greater than 0
+  // TODO: test save record with calculate generation greater than 0
 
   @Test
   public void shouldFailToSaveRecord(TestContext context) {
@@ -210,6 +212,8 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  // TODO: test save records with expected errors
+
   @Test
   public void shouldUpdateRecord(TestContext context) {
     Async async = context.async();
@@ -251,10 +255,10 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // TODO: test update with calculate generation greater than 0
+  // TODO: test update record with calculate generation greater than 0
 
   @Test
-  public void shouldFailToUpdateSnapshot(TestContext context) {
+  public void shouldFailToUpdateRecord(TestContext context) {
     Async async = context.async();
     Record record = TestMocks.getRecord(0);
     recordDao.getRecordById(record.getMatchedId(), TENANT_ID).onComplete(get -> {
@@ -338,6 +342,49 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldUpdateParsedRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> original = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(original)
+      .withTotalRecords(original.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<Record> updated = original.stream()
+        .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
+        .collect(Collectors.toList());
+      recordCollection
+        .withRecords(updated)
+        .withTotalRecords(updated.size());
+      List<ParsedRecord> expected = updated.stream()
+        .map(record -> record.getParsedRecord()).collect(Collectors.toList());
+      recordService.updateParsedRecords(recordCollection, TENANT_ID).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        context.assertEquals(0, update.result().getErrorMessages().size());
+        context.assertEquals(expected.size(), update.result().getTotalRecords());
+        Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+        Collections.sort(update.result().getParsedRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+        compareParsedRecords(context, expected, update.result().getParsedRecords());
+        CompositeFuture.all(updated.stream().map(record -> recordDao.getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isPresent());
+        })).collect(Collectors.toList())).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          async.complete();
+        });
+      });
+    });
+  }
+
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (int i = 0; i < expected.size(); i++) {
@@ -354,17 +401,17 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getOrder(), actual.getOrder());
     context.assertEquals(expected.getGeneration(), actual.getGeneration());
     if (Objects.nonNull(expected.getRawRecord())) {
-      compareRawRecord(context, expected.getRawRecord(), actual.getRawRecord());
+      compareRawRecords(context, expected.getRawRecord(), actual.getRawRecord());
     } else {
       context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getParsedRecord())) {
-      compareParsedRecord(context, expected.getParsedRecord(), actual.getParsedRecord());
+      compareParsedRecords(context, expected.getParsedRecord(), actual.getParsedRecord());
     } else {
       context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getErrorRecord())) {
-      compareErrorRecord(context, expected.getErrorRecord(), actual.getErrorRecord());
+      compareErrorRecords(context, expected.getErrorRecord(), actual.getErrorRecord());
     } else {
       context.assertNull(actual.getErrorRecord());
     }
@@ -398,12 +445,12 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getRecordType(), actual.getRecordType());
     context.assertEquals(expected.getOrder(), actual.getOrder());
     if (Objects.nonNull(expected.getRawRecord())) {
-      compareRawRecord(context, expected.getRawRecord(), actual.getRawRecord());
+      compareRawRecords(context, expected.getRawRecord(), actual.getRawRecord());
     } else {
       context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getParsedRecord())) {
-      compareParsedRecord(context, expected.getParsedRecord(), actual.getParsedRecord());
+      compareParsedRecords(context, expected.getParsedRecord(), actual.getParsedRecord());
     } else {
       context.assertNull(actual.getRawRecord());
     }
@@ -424,6 +471,13 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     }
   }
 
+  private void compareParsedRecords(TestContext context, List<ParsedRecord> expected, List<ParsedRecord> actual) {
+    context.assertEquals(expected.size(), actual.size());
+    for (int i = 0; i < expected.size(); i++) {
+      compareParsedRecords(context, expected.get(i), expected.get(i));
+    }
+  }
+
   private void compareAdditionalInfo(TestContext context, AdditionalInfo expected, AdditionalInfo actual) {
     context.assertEquals(expected.getSuppressDiscovery(), actual.getSuppressDiscovery());
   }
@@ -432,17 +486,17 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getInstanceId(), actual.getInstanceId());
   }
 
-  private void compareRawRecord(TestContext context, RawRecord expected, RawRecord actual) {
+  private void compareRawRecords(TestContext context, RawRecord expected, RawRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContent(), actual.getContent());
   }
 
-  private void compareParsedRecord(TestContext context, ParsedRecord expected, ParsedRecord actual) {
+  private void compareParsedRecords(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContent(), actual.getContent());
   }
 
-  private void compareErrorRecord(TestContext context, ErrorRecord expected, ErrorRecord actual) {
+  private void compareErrorRecords(TestContext context, ErrorRecord expected, ErrorRecord actual) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContent(), actual.getContent());
     context.assertEquals(expected.getDescription(), actual.getDescription());

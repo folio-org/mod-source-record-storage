@@ -207,7 +207,7 @@ public class TestMocks {
     if (file.exists()) {
       try {
         ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);
-        errorRecord.withContent(sourceRecord.getParsedRecord().getContent());
+        errorRecord.withContent(normalizeContent(sourceRecord.getParsedRecord()).getContent());
         return Optional.of(errorRecord);
       } catch (IOException e) {
         e.printStackTrace();

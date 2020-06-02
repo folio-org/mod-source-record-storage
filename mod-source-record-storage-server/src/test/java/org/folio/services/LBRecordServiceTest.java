@@ -1,5 +1,7 @@
 package org.folio.services;
 
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +19,8 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
+import org.folio.rest.jaxrs.model.ParsedRecordDto.RecordType;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -24,7 +28,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
-import org.folio.rest.jooq.Tables;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -79,9 +82,9 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.fail(batch.cause());
       }
       String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
-      Condition condition = Tables.RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(Tables.RECORDS_LB.ORDER_IN_FILE.sort(SortOrder.ASC));
+      orderFields.add(RECORDS_LB.ORDER_IN_FILE.sort(SortOrder.ASC));
       recordService.getRecords(condition, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
@@ -427,7 +430,6 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
           context.assertTrue(get.result().isPresent());
           context.assertNotNull(get.result().get().getRawRecord());
           context.assertNotNull(get.result().get().getParsedRecord());
-          context.assertNull(get.result().get().getErrorRecord());
           expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
           compareRecords(context, expected, get.result().get());
           async.complete();
@@ -448,7 +450,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.fail(batch.cause());
       }
       String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
-      Condition condition = Tables.RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordDao.getRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
         if (getBefore.failed()) {
@@ -475,6 +477,51 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
               context.assertFalse(getSnapshot.result().isPresent());
               async.complete();
             });
+          });
+        });
+      });
+    });
+  }
+
+  @Test
+  public void shouldUpdateSourceRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String snapshotId = UUID.randomUUID().toString();
+      ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+        .withId(expected.getId())
+        .withRecordType(RecordType.fromValue(expected.getRecordType().toString()))
+        .withParsedRecord(expected.getParsedRecord())
+        .withAdditionalInfo(expected.getAdditionalInfo())
+        .withExternalIdsHolder(expected.getExternalIdsHolder())
+        .withMetadata(expected.getMetadata());
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+          if (getSnapshot.failed()) {
+            context.fail(getSnapshot.cause());
+          }
+          context.assertTrue(getSnapshot.result().isPresent());
+          recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID).onComplete(getNewRecord -> {
+            if (getNewRecord.failed()) {
+              context.fail(getNewRecord.cause());
+            }
+            context.assertTrue(getNewRecord.result().isPresent());
+            context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
+            recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID).onComplete(getOldRecord -> {
+              if (getOldRecord.failed()) {
+                context.fail(getOldRecord.cause());
+              }
+              context.assertTrue(getOldRecord.result().isPresent());
+              context.assertEquals(State.OLD, getOldRecord.result().get().getState());
+            });
+            async.complete();
           });
         });
       });

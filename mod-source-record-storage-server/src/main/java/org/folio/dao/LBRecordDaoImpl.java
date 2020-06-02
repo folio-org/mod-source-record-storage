@@ -265,28 +265,25 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+    String newRecordId = UUID.randomUUID().toString();
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
-            .compose(s -> {
-              Record newRecord = new Record()
-                .withId(UUID.randomUUID().toString())
-                .withSnapshotId(s.getJobExecutionId())
-                .withMatchedId(parsedRecordDto.getId())
-                .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-                .withParsedRecord(parsedRecordDto.getParsedRecord().withId(UUID.randomUUID().toString()))
-                .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-                .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-                .withMetadata(parsedRecordDto.getMetadata())
-                .withRawRecord(existingRecord.getRawRecord())
-                .withOrder(existingRecord.getOrder())
-                .withGeneration(existingRecord.getGeneration() + 1)
-                .withState(Record.State.ACTUAL);
-              return insertOrUpdateRecord(txQE, existingRecord.withState(Record.State.OLD))
-                .compose(r -> insertOrUpdateRecord(txQE, newRecord));
-            }))
+            .compose(s -> saveUpdatedRecord(txQE, new Record()
+              .withId(newRecordId)
+              .withSnapshotId(s.getJobExecutionId())
+              .withMatchedId(parsedRecordDto.getId())
+              .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+              .withState(Record.State.ACTUAL)
+              .withOrder(existingRecord.getOrder())
+              .withGeneration(existingRecord.getGeneration() + 1)
+              .withRawRecord(existingRecord.getRawRecord().withId(newRecordId))
+              .withParsedRecord(parsedRecordDto.getParsedRecord().withId(newRecordId))
+              .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+              .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+              .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))
     ));

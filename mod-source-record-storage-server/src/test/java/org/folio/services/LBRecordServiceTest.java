@@ -20,10 +20,10 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
 import org.folio.rest.jooq.Tables;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -114,7 +114,6 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
-        // context.assertNull(get.result().get().getErrorRecord());
         compareRecords(context, expected, get.result().get());
         async.complete();
       });
@@ -146,7 +145,6 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
       }
       context.assertNotNull(save.result().getRawRecord());
       context.assertNotNull(save.result().getParsedRecord());
-      // context.assertNull(save.result().getErrorRecord());
       compareRecords(context, expected, save.result());
       recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
@@ -155,7 +153,6 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
-        // context.assertNull(get.result().get().getErrorRecord());
         compareRecords(context, expected, get.result().get());
         async.complete();
       });
@@ -434,6 +431,51 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
           expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
           compareRecords(context, expected, get.result().get());
           async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
+  public void shouldDeleteRecordsBySnapshotId(TestContext context) {
+    Async async = context.async();
+    List<Record> original = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(original)
+      .withTotalRecords(original.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
+      Condition condition = Tables.RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordDao.getRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
+        if (getBefore.failed()) {
+          context.fail(getBefore.cause());
+        }
+        Integer expected = (int) original.stream()
+          .filter(record -> record.getSnapshotId().equals(snapshotId)).count();
+        context.assertTrue(expected > 0);
+        context.assertEquals(expected, getBefore.result().getTotalRecords());
+        recordService.deleteRecordsBySnapshotId(snapshotId, TENANT_ID).onComplete(delete -> {
+          if (delete.failed()) {
+            context.fail(delete.cause());
+          }
+          context.assertTrue(delete.result());
+          recordDao.getRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
+            if (getAfter.failed()) {
+              context.fail(getAfter.cause());
+            }
+            context.assertEquals(0, getAfter.result().getTotalRecords());
+            LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+              if (getSnapshot.failed()) {
+                context.fail(getSnapshot.cause());
+              }
+              context.assertFalse(getSnapshot.result().isPresent());
+              async.complete();
+            });
+          });
         });
       });
     });

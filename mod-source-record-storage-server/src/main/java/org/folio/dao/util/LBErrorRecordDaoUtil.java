@@ -2,26 +2,16 @@ package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 
-import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.ErrorRecordsLb;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
-import org.jooq.Condition;
-import org.jooq.InsertSetStep;
-import org.jooq.InsertValuesStepN;
-import org.jooq.OrderField;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
@@ -32,22 +22,6 @@ import io.vertx.sqlclient.RowSet;
 public class LBErrorRecordDaoUtil {
 
   private LBErrorRecordDaoUtil() { }
-
-  public static Future<List<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.executeAny(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
-      .where(condition)
-      .orderBy(orderFields)
-      .offset(offset)
-      .limit(limit))
-        .map(LBErrorRecordDaoUtil::toErrorRecords);
-  }
-
-  public static Future<Optional<ErrorRecord>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
-      .where(condition))
-        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord);
-  }
 
   public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
@@ -63,42 +37,6 @@ public class LBErrorRecordDaoUtil {
       .set(dbRecord)
       .returning())
         .map(LBErrorRecordDaoUtil::toSingleErrorRecord);
-  }
-
-  public static Future<List<ErrorRecord>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<ErrorRecord> errorRecords) {
-    return queryExecutor.executeAny(dsl -> {
-      InsertSetStep<ErrorRecordsLbRecord> insertSetStep = dsl.insertInto(ERROR_RECORDS_LB);
-      InsertValuesStepN<ErrorRecordsLbRecord> insertValuesStepN = null;
-      for (ErrorRecord errorRecord : errorRecords) {
-          insertValuesStepN = insertSetStep.values(toDatabaseErrorRecord(errorRecord).intoArray());
-      }
-      return insertValuesStepN;
-    }).map(LBErrorRecordDaoUtil::toErrorRecords);
-  }
-
-  public static Future<ErrorRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ErrorRecord errorRecord) {
-    ErrorRecordsLbRecord dbRecord = toDatabaseErrorRecord(errorRecord);
-    return queryExecutor.executeAny(dsl -> dsl.update(ERROR_RECORDS_LB)
-      .set(dbRecord)
-      .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(errorRecord.getId())))
-      .returning())
-        .map(LBErrorRecordDaoUtil::toSingleOptionalErrorRecord)
-        .map(optionalErrorRecord -> {
-          if (optionalErrorRecord.isPresent()) {
-            return optionalErrorRecord.get();
-          }
-          throw new NotFoundException(String.format("ErrorRecord with id '%s' was not found", errorRecord.getId()));
-        });
-  }
-
-  public static Future<Boolean> delete(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(ERROR_RECORDS_LB)
-      .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
-      .map(res -> res == 1);
-  }
-
-  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(ERROR_RECORDS_LB));
   }
 
   public static ErrorRecord toErrorRecord(Row row) {
@@ -131,16 +69,6 @@ public class LBErrorRecordDaoUtil {
 
   private static ErrorRecord toSingleErrorRecord(RowSet<Row> rows) {
     return toErrorRecord(rows.iterator().next());
-  }
-
-  private static Optional<ErrorRecord> toSingleOptionalErrorRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toErrorRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  private static List<ErrorRecord> toErrorRecords(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false)
-      .map(LBErrorRecordDaoUtil::toErrorRecord)
-      .collect(Collectors.toList());
   }
 
 }

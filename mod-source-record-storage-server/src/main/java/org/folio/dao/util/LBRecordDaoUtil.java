@@ -68,16 +68,6 @@ public class LBRecordDaoUtil {
           .map(r -> LBRecordDaoUtil.toRecord(r.unwrap())));
   }
 
-  public static Future<List<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.executeAny(dsl -> dsl.selectFrom(RECORDS_LB)
-      .where(condition)
-      .orderBy(orderFields)
-      .offset(offset)
-      .limit(limit))
-        .map(LBRecordDaoUtil::toRecords);
-  }
-
   public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectCount()
       .from(RECORDS_LB)
@@ -131,16 +121,6 @@ public class LBRecordDaoUtil {
           }
           throw new NotFoundException(String.format("Record with id '%s' was not found", record.getId()));
         });
-  }
-
-  public static Future<Boolean> delete(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(RECORDS_LB)
-      .where(RECORDS_LB.ID.eq(UUID.fromString(id))))
-      .map(res -> res == 1);
-  }
-
-  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(RECORDS_LB));
   }
 
   public static SourceRecord toSourceRecord(Record record) {

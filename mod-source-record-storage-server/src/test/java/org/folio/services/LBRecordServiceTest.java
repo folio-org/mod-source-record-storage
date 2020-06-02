@@ -385,6 +385,25 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldGetFormattedRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getFormattedRecord("INSTANCE", expected.getExternalIdsHolder().getInstanceId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertNotNull(get.result().getParsedRecord());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
+        async.complete();
+      });
+    });
+  }
+
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (int i = 0; i < expected.size(); i++) {

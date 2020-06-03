@@ -17,16 +17,33 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
+/**
+ * Utility class for managing {@link RawRecord}
+ */
 public class LBRawRecordDaoUtil {
 
   private LBRawRecordDaoUtil() { }
 
+  /**
+   * Searches for {@link RawRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param id            id
+   * @return future with optional RawRecord
+   */
   public static Future<Optional<RawRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
         .map(LBRawRecordDaoUtil::toOptionalRawRecord);
   }
 
+  /**
+   * Saves {@link RawRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param rawRecord     raw record
+   * @return future with updated RawRecord
+   */
   public static Future<RawRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, RawRecord rawRecord) {
     RawRecordsLbRecord dbRecord = toDatabaseRawRecord(rawRecord);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(RAW_RECORDS_LB)
@@ -37,6 +54,12 @@ public class LBRawRecordDaoUtil {
         .map(LBRawRecordDaoUtil::toSingleRawRecord);
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link RawRecord}
+   * 
+   * @param row query result row
+   * @return RawRecord
+   */
   public static RawRecord toRawRecord(Row row) {
     RawRecordsLb pojo = RowMappers.getRawRecordsLbMapper().apply(row);
     return new RawRecord()
@@ -44,10 +67,22 @@ public class LBRawRecordDaoUtil {
       .withContent(pojo.getContent());
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link Optional} {@link RawRecord}
+   * 
+   * @param row query result row
+   * @return optional RawRecord
+   */
   public static Optional<RawRecord> toOptionalRawRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toRawRecord(row)) : Optional.empty();
   }
 
+  /**
+   * Convert {@link RawRecord} to database record {@link RawRecordsLbRecord}
+   * 
+   * @param rawRecord raw record
+   * @return RawRecordsLbRecord
+   */
   public static RawRecordsLbRecord toDatabaseRawRecord(RawRecord rawRecord) {
     RawRecordsLbRecord dbRecord = new RawRecordsLbRecord();
     if (StringUtils.isNotEmpty(rawRecord.getId())) {

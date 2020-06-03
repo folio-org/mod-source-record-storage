@@ -18,16 +18,33 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
+/**
+ * Utility class for managing {@link ErrorRecord}
+ */
 public class LBErrorRecordDaoUtil {
 
   private LBErrorRecordDaoUtil() { }
 
+  /**
+   * Searches for {@link ErrorRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param id            id
+   * @return future with optional ErrorRecord
+   */
   public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
         .map(LBErrorRecordDaoUtil::toOptionalErrorRecord);
   }
 
+  /**
+   * Saves {@link ErrorRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param errorRecord   error record
+   * @return future with updated ErrorRecord
+   */
   public static Future<ErrorRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ErrorRecord errorRecord) {
     ErrorRecordsLbRecord dbRecord = toDatabaseErrorRecord(errorRecord);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(ERROR_RECORDS_LB)
@@ -38,6 +55,12 @@ public class LBErrorRecordDaoUtil {
         .map(LBErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link ErrorRecord}
+   * 
+   * @param row query result row
+   * @return ErrorRecord
+   */
   public static ErrorRecord toErrorRecord(Row row) {
     ErrorRecordsLb pojo = RowMappers.getErrorRecordsLbMapper().apply(row);
     return new ErrorRecord()
@@ -46,10 +69,22 @@ public class LBErrorRecordDaoUtil {
       .withDescription(pojo.getDescription());
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
+   * 
+   * @param row query result row
+   * @return optional ErrorRecord
+   */
   public static Optional<ErrorRecord> toOptionalErrorRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toErrorRecord(row)) : Optional.empty();
   }
 
+  /**
+   * Convert {@link ErrorRecord} to database record {@link ErrorRecordsLbRecord}
+   * 
+   * @param errorRecord error record
+   * @return ErrorRecordsLbRecord
+   */
   public static ErrorRecordsLbRecord toDatabaseErrorRecord(ErrorRecord errorRecord) {
     ErrorRecordsLbRecord dbRecord = new ErrorRecordsLbRecord();
     if (StringUtils.isNotEmpty(errorRecord.getId())) {

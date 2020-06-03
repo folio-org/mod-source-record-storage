@@ -32,10 +32,24 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
+/**
+ * Utility class for managing {@link Snapshot}
+ */
 public class LBSnapshotDaoUtil {
 
   private LBSnapshotDaoUtil() { }
 
+  /**
+   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   * using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param condition     condition
+   * @param orderFields   fields to order by
+   * @param offset        offset
+   * @param limit         limit
+   * @return future with {@link List} of {@link Snapshot}
+   */
   public static Future<List<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
       Collection<OrderField<?>> orderFields, int offset, int limit) {
     return queryExecutor.executeAny(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
@@ -46,6 +60,13 @@ public class LBSnapshotDaoUtil {
         .map(LBSnapshotDaoUtil::toSnapshots);
   }
 
+  /**
+   * Count query by {@link Condition}
+   * 
+   * @param queryExecutor query executor
+   * @param condition     condition
+   * @return future with count
+   */
   public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectCount()
       .from(SNAPSHOTS_LB)
@@ -53,18 +74,39 @@ public class LBSnapshotDaoUtil {
         .map(row -> row.getInteger(0));
   }
 
+  /**
+   * Searches for {@link Snapshot} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
+   *
+   * @param queryExecutor query executor
+   * @param condition     condition
+   * @return future with optional Snapshot
+   */
   public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(condition))
         .map(LBSnapshotDaoUtil::toOptionalSnapshot);
   }
 
+  /**
+   * Searches for {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param id            id
+   * @return future with optional Snapshot
+   */
   public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
         .map(LBSnapshotDaoUtil::toOptionalSnapshot);
   }
 
+  /**
+   * Saves {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param snapshot      snapshot
+   * @return future with updated Snapshot
+   */
   public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = toDatabaseRecord(snapshot);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
@@ -75,6 +117,13 @@ public class LBSnapshotDaoUtil {
         .map(LBSnapshotDaoUtil::toSingleSnapshot);
   }
 
+  /**
+   * Saves {@link List} of {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param snapshots     list of snapshots
+   * @return future with updated List of Snapshot
+   */
   public static Future<List<Snapshot>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Snapshot> snapshots) {
     return queryExecutor.executeAny(dsl -> {
       InsertSetStep<SnapshotsLbRecord> insertSetStep = dsl.insertInto(SNAPSHOTS_LB);
@@ -86,6 +135,13 @@ public class LBSnapshotDaoUtil {
     }).map(LBSnapshotDaoUtil::toSnapshots);
   }
 
+  /**
+   * Updates {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param snapshot      snapshot to update
+   * @return future of updated Snapshot
+   */
   public static Future<Snapshot> update(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
     return queryExecutor.executeAny(dsl -> dsl.update(SNAPSHOTS_LB)
@@ -101,16 +157,35 @@ public class LBSnapshotDaoUtil {
         });
   }
 
+  /**
+   * Deletes {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param id            id
+   * @return future with boolean whether Snapshot deleted
+   */
   public static Future<Boolean> delete(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
       .map(res -> res == 1);
   }
 
+  /**
+   * Deletes all {@link Snapshot} using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @return future of number of Snapshot deleted
+   */
   public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
     return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB));
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link Snapshot}
+   * 
+   * @param row query result row
+   * @return Snapshot
+   */
   public static Snapshot toSnapshot(Row row) {
     SnapshotsLb pojo = RowMappers.getSnapshotsLbMapper().apply(row);
     Snapshot snapshot = new Snapshot()
@@ -135,10 +210,22 @@ public class LBSnapshotDaoUtil {
     return snapshot.withMetadata(metadata);
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link Optional} {@link Snapshot}
+   * 
+   * @param row query result row
+   * @return optional Snapshot
+   */
   public static Optional<Snapshot> toOptionalSnapshot(Row row) {
     return Objects.nonNull(row) ? Optional.of(toSnapshot(row)) : Optional.empty();
   }
 
+  /**
+   * Convert {@link Snapshot} to database record {@link SnapshotsLbRecord}
+   * 
+   * @param snapshot snapshot
+   * @return SnapshotsLbRecord
+   */
   public static SnapshotsLbRecord toDatabaseRecord(Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = new SnapshotsLbRecord();
     if (StringUtils.isNotEmpty(snapshot.getJobExecutionId())) {

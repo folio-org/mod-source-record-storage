@@ -20,16 +20,33 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 
+/**
+ * Utility class for managing {@link ParsedRecord}
+ */
 public class LBParsedRecordDaoUtil {
 
   private LBParsedRecordDaoUtil() { }
 
+  /**
+   * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param id            id
+   * @return future with optional ParsedRecord
+   */
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
         .map(LBParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
+  /**
+   * Saves {@link ParsedRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param parsedRecord  parsed record
+   * @return future with updated ParsedRecord
+   */
   public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
     MarcRecordsLbRecord dbRecord = toDatabaseParsedRecord(parsedRecord);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(MARC_RECORDS_LB)
@@ -40,6 +57,13 @@ public class LBParsedRecordDaoUtil {
         .map(LBParsedRecordDaoUtil::toSingleParsedRecord);
   }
 
+  /**
+   * Updates {@link ParsedRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param queryExecutor query executor
+   * @param parsedRecord  parsed record to update
+   * @return future of updated ParsedRecord
+   */
   public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
     MarcRecordsLbRecord dbRecord = toDatabaseParsedRecord(parsedRecord);
     return queryExecutor.executeAny(dsl -> dsl.update(MARC_RECORDS_LB)
@@ -55,6 +79,12 @@ public class LBParsedRecordDaoUtil {
         });
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link ParsedRecord}
+   * 
+   * @param row query result row
+   * @return ParsedRecord
+   */
   public static ParsedRecord toParsedRecord(Row row) {
     MarcRecordsLb pojo = RowMappers.getMarcRecordsLbMapper().apply(row);
     return new ParsedRecord()
@@ -62,10 +92,22 @@ public class LBParsedRecordDaoUtil {
       .withContent(pojo.getContent());
   }
 
+  /**
+   * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
+   * 
+   * @param row query result row
+   * @return optional ErrorRecord
+   */
   public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
   }
 
+  /**
+   * Convert {@link ParsedRecord} to database record {@link MarcRecordsLbRecord}
+   * 
+   * @param parsedRecord parsed record
+   * @return MarcRecordsLbRecord
+   */
   public static MarcRecordsLbRecord toDatabaseParsedRecord(ParsedRecord parsedRecord) {
     MarcRecordsLbRecord dbRecord = new MarcRecordsLbRecord();
     if (StringUtils.isNotEmpty(parsedRecord.getId())) {
@@ -77,6 +119,11 @@ public class LBParsedRecordDaoUtil {
     return dbRecord;
   }
 
+  /**
+   * 
+   * @param parsedRecord
+   * @return
+   */
   public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
     String content;
       if (parsedRecord.getContent() instanceof String) {

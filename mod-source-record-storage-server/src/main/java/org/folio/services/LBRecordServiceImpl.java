@@ -22,9 +22,11 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
@@ -178,7 +180,27 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
-    return recordDao.updateSourceRecord(parsedRecordDto, snapshotId, tenantId);
+    String newRecordId = UUID.randomUUID().toString();
+    return recordDao.executeInTransaction(txQE -> recordDao.getRecordById(txQE, parsedRecordDto.getId())
+      .compose(optionalRecord -> optionalRecord
+        .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
+          .withJobExecutionId(snapshotId)
+          .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
+            .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
+              .withId(newRecordId)
+              .withSnapshotId(snapshot.getJobExecutionId())
+              .withMatchedId(parsedRecordDto.getId())
+              .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+              .withState(Record.State.ACTUAL)
+              .withOrder(existingRecord.getOrder())
+              .withGeneration(existingRecord.getGeneration() + 1)
+              .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(existingRecord.getParsedRecord().getContent()))
+              .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+              .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+              .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
+        .orElse(Future.failedFuture(new NotFoundException(
+          String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
   }
 
   private Record ensureRecordForeignKeys(Record record) {

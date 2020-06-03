@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Function;
 
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -52,8 +51,6 @@ public interface LBRecordDao extends RecordDao {
   Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
-
-  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
   <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
 

@@ -31,6 +31,7 @@ import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -271,15 +272,15 @@ public class LBRecordDaoImpl implements LBRecordDao {
         .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
-            .compose(s -> saveUpdatedRecord(txQE, new Record()
+            .compose(snapshot -> saveUpdatedRecord(txQE, new Record()
               .withId(newRecordId)
-              .withSnapshotId(s.getJobExecutionId())
+              .withSnapshotId(snapshot.getJobExecutionId())
               .withMatchedId(parsedRecordDto.getId())
               .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
               .withState(Record.State.ACTUAL)
               .withOrder(existingRecord.getOrder())
               .withGeneration(existingRecord.getGeneration() + 1)
-              .withRawRecord(existingRecord.getRawRecord().withId(newRecordId))
+              .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
               .withParsedRecord(parsedRecordDto.getParsedRecord().withId(newRecordId))
               .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
@@ -336,7 +337,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
         return record;
       }));
     }
-    return CompositeFuture.all(futures).map(ar -> record);
+    return CompositeFuture.all(futures).map(res -> record);
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {

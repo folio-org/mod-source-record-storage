@@ -77,7 +77,10 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetRecords(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
-    LBRecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), records).onComplete(batch -> {
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -92,12 +95,13 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         List<Record> expected = records.stream()
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, TestMocks.getRecord("be1b25ae-4a9d-4077-93e6-7f8e59efd609").get(), get.result().getRecords().get(0));
-        compareRecords(context, TestMocks.getRecord("d3cd3e1e-a18c-4f7c-b053-9aa50343394e").get(), get.result().getRecords().get(0));
+        compareRecords(context, expected.get(1), get.result().getRecords().get(0));
+        compareRecords(context, expected.get(2), get.result().getRecords().get(1));
+        async.complete();
       });
     });
-    async.complete();
   }
 
   // TODO: test get records between two dates
@@ -208,7 +212,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         if (count.failed()) {
           context.fail(count.cause());
         }
-        context.assertEquals(new Integer(expected.size()), count.result());
+        context.assertEquals(expected.size(), count.result());
         async.complete();
       });
     });
@@ -249,7 +253,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
           if (get.failed()) {
             context.fail(get.cause());
           }
-          // NOTE: getRecordById has implicit condition of state == OLD
+          // NOTE: getRecordById has implicit condition of state == ACTUAL
           context.assertFalse(get.result().isPresent());
           async.complete();
         });
@@ -493,7 +497,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   //     }
   //     String snapshotId = UUID.randomUUID().toString();
   //     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
-  //       .withId(expected.getId())
+  //       .withId(expected.getMatchedId())
   //       .withRecordType(RecordType.fromValue(expected.getRecordType().toString()))
   //       .withParsedRecord(expected.getParsedRecord())
   //       .withAdditionalInfo(expected.getAdditionalInfo())
@@ -514,6 +518,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   //           }
   //           context.assertTrue(getNewRecord.result().isPresent());
   //           context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
+  //           context.assertEquals(expected.getGeneration() + 1, getNewRecord.result().get().getGeneration());
   //           recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID).onComplete(getOldRecord -> {
   //             if (getOldRecord.failed()) {
   //               context.fail(getOldRecord.cause());
@@ -536,6 +541,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void compareRecords(TestContext context, Record expected, Record actual) {
+    context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
     context.assertEquals(expected.getMatchedId(), actual.getMatchedId());
@@ -583,6 +589,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void compareSourceRecords(TestContext context, SourceRecord expected, SourceRecord actual) {
+    context.assertNotNull(actual);
     context.assertEquals(expected.getRecordId(), actual.getRecordId());
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
     context.assertEquals(expected.getRecordType(), actual.getRecordType());
@@ -621,28 +628,31 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     }
   }
 
+  private void compareRawRecords(TestContext context, RawRecord expected, RawRecord actual) {
+    context.assertNotNull(actual);
+    context.assertEquals(expected.getId(), actual.getId());
+    context.assertEquals(expected.getContent(), actual.getContent());
+  }
+
+  private void compareParsedRecords(TestContext context, ParsedRecord expected, ParsedRecord actual) {
+    context.assertNotNull(actual);
+    context.assertEquals(expected.getId(), actual.getId());
+    context.assertEquals(expected.getContent(), actual.getContent());
+  }
+
+  private void compareErrorRecords(TestContext context, ErrorRecord expected, ErrorRecord actual) {
+    context.assertNotNull(actual);
+    context.assertEquals(expected.getId(), actual.getId());
+    context.assertEquals(expected.getContent(), actual.getContent());
+    context.assertEquals(expected.getDescription(), actual.getDescription());
+  }
+
   private void compareAdditionalInfo(TestContext context, AdditionalInfo expected, AdditionalInfo actual) {
     context.assertEquals(expected.getSuppressDiscovery(), actual.getSuppressDiscovery());
   }
 
   private void compareExternalIdsHolder(TestContext context, ExternalIdsHolder expected, ExternalIdsHolder actual) {
     context.assertEquals(expected.getInstanceId(), actual.getInstanceId());
-  }
-
-  private void compareRawRecords(TestContext context, RawRecord expected, RawRecord actual) {
-    context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
-  }
-
-  private void compareParsedRecords(TestContext context, ParsedRecord expected, ParsedRecord actual) {
-    context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
-  }
-
-  private void compareErrorRecords(TestContext context, ErrorRecord expected, ErrorRecord actual) {
-    context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
-    context.assertEquals(expected.getDescription(), actual.getDescription());
   }
 
 }

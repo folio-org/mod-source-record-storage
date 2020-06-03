@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.util.ExternalIdType;
@@ -68,6 +68,11 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
+  public <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(action);
+  }
+
+  @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> {
       RecordCollection recordCollection = new RecordCollection();
@@ -109,24 +114,12 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
-      .map(optionalSnapshot -> optionalSnapshot
-        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
-      .compose(snapshot -> {
-        if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-          String message = String.format(msgTemplate, snapshot.getStatus());
-          return Future.failedFuture(new BadRequestException(message));
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> {
-        if (Objects.isNull(record.getGeneration())) {
-          return calculateGeneration(txQE, record);
-        }
-        return Future.succeededFuture(record.getGeneration());
-      })
-      .compose(generation -> insertOrUpdateRecord(txQE, record.withGeneration(generation))));
+    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
+  }
+
+  @Override
+  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return insertOrUpdateRecord(txQE, record);
   }
 
   @Override

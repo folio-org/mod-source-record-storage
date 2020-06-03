@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Function;
 
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
@@ -33,23 +34,27 @@ public interface LBRecordDao extends RecordDao {
   default Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
     throw new UnsupportedOperationException("Lookup source records by CQL is no longer supported");
   }
-  
+
+  Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
+
+  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+
   Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId);
 
   Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition);
 
-  Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
-
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
-  Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
-
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, boolean deletedRecords, String tenantId);
+
+  Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
 
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
+
+  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
 
 }

@@ -16,6 +16,7 @@ import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -72,8 +73,24 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    // NOTE: snapshot lookup/validation and generation calculation moved to DAO in order to perform transactionally
-    return recordDao.saveRecord(ensureRecordForeignKeys(record), tenantId);
+    return recordDao.executeInTransaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+      .map(optionalSnapshot -> optionalSnapshot
+        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+      .compose(snapshot -> {
+        if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
+          String message = String.format(msgTemplate, snapshot.getStatus());
+          return Future.failedFuture(new BadRequestException(message));
+        }
+        return Future.succeededFuture();
+      })
+      .compose(v -> {
+        if (Objects.isNull(record.getGeneration())) {
+          return recordDao.calculateGeneration(txQE, record);
+        }
+        return Future.succeededFuture(record.getGeneration());
+      })
+      .compose(generation -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))), tenantId);
   }
 
   @Override

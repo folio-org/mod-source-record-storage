@@ -128,8 +128,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit,
-      boolean deletedRecords, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     final String cteTableName = "cte";
     final String countColumn = "count";
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(cteTableName).as(dsl.select()

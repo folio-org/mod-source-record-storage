@@ -125,8 +125,7 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    // NOTE: new schema did not have deleted property
-    return recordDao.getSourceRecords(condition, orderFields, offset, limit, false, tenantId);
+    return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override

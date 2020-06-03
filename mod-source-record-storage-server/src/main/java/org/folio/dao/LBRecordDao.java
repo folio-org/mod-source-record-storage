@@ -44,7 +44,7 @@ public interface LBRecordDao extends RecordDao {
 
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
-  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, boolean deletedRecords, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 

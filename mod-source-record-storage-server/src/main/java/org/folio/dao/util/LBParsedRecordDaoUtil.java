@@ -72,13 +72,19 @@ public class LBParsedRecordDaoUtil {
       dbRecord.setId(UUID.fromString(parsedRecord.getId()));
     }
     if (Objects.nonNull(parsedRecord.getContent())) {
-      if (parsedRecord.getContent() instanceof String) {
-        dbRecord.setContent((String) parsedRecord.getContent());
-      } else {
-        dbRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
-      }
+      dbRecord.setContent((String) normalizeContent(parsedRecord).getContent());
     }
     return dbRecord;
+  }
+
+  public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
+    String content;
+      if (parsedRecord.getContent() instanceof String) {
+        content = (String) parsedRecord.getContent();
+      } else {
+        content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
+      }
+    return parsedRecord.withContent(content);
   }
 
   private static ParsedRecord toSingleParsedRecord(RowSet<Row> rows) {

@@ -16,6 +16,7 @@ import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.LBRecordDao;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.LBParsedRecordDaoUtil;
 import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -39,7 +40,6 @@ import org.springframework.stereotype.Service;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -225,12 +225,7 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent;
-      if (record.getParsedRecord().getContent() instanceof String) {
-        parsedRecordContent = (String) record.getParsedRecord().getContent();
-      } else {
-        parsedRecordContent = JsonObject.mapFrom(record.getParsedRecord().getContent()).encode();
-      }
+      String parsedRecordContent = (String) LBParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);

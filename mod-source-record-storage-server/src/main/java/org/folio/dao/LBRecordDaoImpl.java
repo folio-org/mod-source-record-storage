@@ -354,8 +354,8 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   private void validateParsedRecordContent(Record record) {
     try {
-      record.getParsedRecord()
-        .setFormattedContent(MarcUtil.marcJsonToTxtMarc((String) record.getParsedRecord().getContent()));
+      String content = (String) LBParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);
       record.setErrorRecord(new ErrorRecord()

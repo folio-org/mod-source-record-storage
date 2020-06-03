@@ -34,7 +34,7 @@ import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.BadRequestException;
@@ -59,9 +59,9 @@ import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 import static org.folio.rest.persist.PostgresClient.pojo2json;
 
+@Primary
 @Component
 @SuppressWarnings("squid:CallToDeprecatedMethod")
-@ConditionalOnProperty(prefix = "jooq", name = "dao.record", matchIfMissing = true)
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);

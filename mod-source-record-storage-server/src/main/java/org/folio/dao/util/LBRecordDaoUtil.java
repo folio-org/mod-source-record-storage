@@ -1,5 +1,7 @@
 package org.folio.dao.util;
 
+import static com.google.common.base.CaseFormat.LOWER_CAMEL;
+import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
@@ -11,7 +13,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -28,9 +29,9 @@ import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.RecordsLb;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.jooq.Condition;
-import org.jooq.InsertSetStep;
-import org.jooq.InsertValuesStepN;
 import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
@@ -41,6 +42,8 @@ import io.vertx.sqlclient.RowSet;
  * Utility class for managing {@link Record}
  */
 public class LBRecordDaoUtil {
+
+  private final static String COMMA = ",";
 
   private LBRecordDaoUtil() { }
 
@@ -289,12 +292,79 @@ public class LBRecordDaoUtil {
     return dbRecord;
   }
 
+  /**
+   * Get {@link Condition} to filter by snapshot id
+   * 
+   * @param snapshotId snapshot id to equal
+   * @return condition
+   */
+  public static Condition conditionFilterBy(String snapshotId) {
+    final Condition condition = DSL.trueCondition();
+    if (StringUtils.isNoneEmpty(snapshotId)) {
+      condition.and(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)));
+    }
+    return condition;
+  }
+
+  /**
+   * Get {@link Condition} to filter by combination of properties using only 'and'
+   * 
+   * @param instanceId            instance id to equal
+   * @param recordType            record type to equal
+   * @param suppressFromDiscovery suppress from discovery to equal
+   * @param updatedAfter          updated after to be greater than or equal
+   * @param updatedBefore         updated before to be less than or equal
+   * @return condition
+   */
+  public static Condition conditionFilterBy(String instanceId, String recordType, boolean suppressFromDiscovery,
+    Date updatedAfter, Date updatedBefore) {
+    Condition condition = DSL.trueCondition();
+    if (StringUtils.isNoneEmpty(instanceId)) {
+      condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
+    }
+    if (StringUtils.isNoneEmpty(recordType)) {
+      condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
+    }
+    if (StringUtils.isNoneEmpty(instanceId)) {
+      condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
+    }
+    if (Objects.nonNull(updatedAfter)) {
+      condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+    }
+    if (Objects.nonNull(updatedBefore)) {
+      condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
+    }
+    return condition;
+  }
+
+  /**
+   * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
+   * 
+   * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
+   * @return list of order fields
+   */
+  public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
+    return orderBy.stream()
+      .map(order -> order.split(COMMA))
+      .map(order -> RECORDS_LB.field(toColumnName(order[0])).sort(order.length > 1
+        ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT))
+      .collect(Collectors.toList());
+  }
+
   private static Record toSingleRecord(RowSet<Row> rows) {
     return toRecord(rows.iterator().next());
   }
 
   private static Optional<Record> toSingleOptionalRecord(RowSet<Row> rows) {
     return rows.rowCount() == 1 ? Optional.of(toRecord(rows.iterator().next())) : Optional.empty();
+  }
+
+  /**
+   * Relies on strong convention between dto property name and database column name.
+   * Property name being lower camel case and column name being lower snake case of the property name.
+   */
+  private static String toColumnName(String propertyName) {
+    return LOWER_CAMEL.to(LOWER_UNDERSCORE, propertyName);
   }
 
 }

@@ -9,13 +9,11 @@ import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import io.vertx.core.Future;
 
 @Service
-@ConditionalOnProperty(prefix = "jooq", name = "services.snapshot", havingValue = "true")
 public class LBSnapshotServiceImpl implements LBSnapshotService {
 
   private final LBSnapshotDao snapshotDao;

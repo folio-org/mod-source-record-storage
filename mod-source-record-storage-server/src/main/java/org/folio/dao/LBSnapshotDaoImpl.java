@@ -10,7 +10,6 @@ import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -18,7 +17,6 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 
 @Component
-@ConditionalOnProperty(prefix = "jooq", name = "dao.snapshot", havingValue = "true")
 public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   private final PostgresClientFactory postgresClientFactory;

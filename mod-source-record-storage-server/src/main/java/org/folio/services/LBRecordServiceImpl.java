@@ -34,7 +34,6 @@ import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import io.vertx.core.CompositeFuture;
@@ -44,7 +43,6 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 @Service
-@ConditionalOnProperty(prefix = "jooq", name = "services.record", havingValue = "true")
 public class LBRecordServiceImpl implements LBRecordService {
 
   private static final Logger LOG = LoggerFactory.getLogger(LBRecordServiceImpl.class);
@@ -65,6 +63,12 @@ public class LBRecordServiceImpl implements LBRecordService {
   @Override
   public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
     return recordDao.getRecordById(matchedId, tenantId);
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
+    ExternalIdType externalIdType = ExternalIdType.valueOf(idType);
+    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
   }
 
   @Override

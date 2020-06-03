@@ -1,7 +1,9 @@
 package org.folio.services;
 
 import java.util.Collection;
+import java.util.Optional;
 
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.jooq.Condition;
@@ -32,5 +34,15 @@ public interface LBRecordService extends RecordService {
   }
 
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Searches for {@link Record} by id of external entity which was created from desired record
+   *
+   * @param externalId external relation id
+   * @param idType     id type
+   * @param tenantId   tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId);
 
 }

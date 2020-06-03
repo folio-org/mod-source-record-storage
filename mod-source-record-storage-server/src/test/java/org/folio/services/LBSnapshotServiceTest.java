@@ -1,5 +1,7 @@
 package org.folio.services;
 
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -11,7 +13,6 @@ import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
-import org.folio.rest.jooq.Tables;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -56,9 +57,9 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      Condition condition = Tables.SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.PROCESSING_IN_PROGRESS);
+      Condition condition = SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.PROCESSING_IN_PROGRESS);
       List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(Tables.SNAPSHOTS_LB.PROCESSING_STARTED_DATE.sort(SortOrder.DESC));
+      orderFields.add(SNAPSHOTS_LB.PROCESSING_STARTED_DATE.sort(SortOrder.DESC));
       snapshotService.getSnapshots(condition, orderFields, 0, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());

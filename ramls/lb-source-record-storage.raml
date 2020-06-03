@@ -94,8 +94,8 @@ resourceTypes:
           required: false
         orderBy:
           description: Sort Records
-          type: string
-          example: "order,DESC"
+          type: string[]
+          example: ["order,ASC"]
           required: false
     /{id}:
       displayName: Record
@@ -190,16 +190,16 @@ resourceTypes:
           required: false
         updatedAfter:
           description: Start date to filter after
-          type: string
+          type: datetime
           required: false
         updatedBefore:
           description: End date to filter before, inclusive
-          type: string
+          type: datetime
           required: false
         orderBy:
           description: Sort records
-          type: string
-          example: "order,DESC"
+          type: string[]
+          example: ["order,ASC"]
           required: false
       responses:
         200:

@@ -41,7 +41,6 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -52,7 +51,6 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.sqlclient.Row;
 
 @Component
-@ConditionalOnProperty(prefix = "jooq", name = "dao.record", havingValue = "true")
 public class LBRecordDaoImpl implements LBRecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(LBRecordDaoImpl.class);

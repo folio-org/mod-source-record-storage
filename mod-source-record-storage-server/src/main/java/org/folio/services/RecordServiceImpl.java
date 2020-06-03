@@ -34,13 +34,13 @@ import org.folio.services.externalid.ExternalIdProcessorFactory;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import static java.lang.String.format;
 
+@Primary
 @Component
-@ConditionalOnProperty(prefix = "jooq", name = "services.record", matchIfMissing = true)
 public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);

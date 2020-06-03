@@ -87,13 +87,13 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, matchedId));
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, id));
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String matchedId) {
-    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId))
+  public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getRecordByCondition(txQE, condition);
   }

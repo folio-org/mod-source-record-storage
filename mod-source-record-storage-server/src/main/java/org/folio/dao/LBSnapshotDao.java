@@ -8,9 +8,13 @@ import org.jooq.OrderField;
 
 import io.vertx.core.Future;
 
+/**
+ * Data access object for {@link Snapshot}
+ */
 public interface LBSnapshotDao extends SnapshotDao {
 
   /**
+   * {@inheritDoc}
    * @deprecated
    */
   @Override
@@ -19,6 +23,16 @@ public interface LBSnapshotDao extends SnapshotDao {
     throw new UnsupportedOperationException("Lookup snapshots by CQL is no longer supported");
   }
 
+  /**
+   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   * 
+   * @param condition   condition
+   * @param orderFields fields to order by
+   * @param offset      offset
+   * @param limit       limit
+   * @param tenantId    tenant id
+   * @return future with {@link SnapshotCollection}
+   */
   Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId);
 

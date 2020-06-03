@@ -42,13 +42,14 @@ public class PostgresClientFactory {
 
   private Vertx vertx;
 
-  public PostgresClientFactory(@Autowired Vertx vertx) {
+  @Autowired
+  public PostgresClientFactory(Vertx vertx) {
     this.vertx = vertx;
   }
 
   @PreDestroy
   public void closeAll() {
-    pool.values().forEach(p -> p.close());
+    pool.values().forEach(this::close);
     pool.clear();
   }
 
@@ -115,6 +116,10 @@ public class PostgresClientFactory {
       .setPassword(postgreSQLClientConfig.getString(PASSWORD))
       // using RMB convention driven tenant to schema name
       .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
+  }
+
+  private void close(PgPool client) {
+    client.close();
   }
 
 }

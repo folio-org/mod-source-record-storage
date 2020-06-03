@@ -3,6 +3,8 @@ package org.folio.dao;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.annotation.PreDestroy;
+
 import org.folio.rest.persist.PostgresClient;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
@@ -44,6 +46,12 @@ public class PostgresClientFactory {
     this.vertx = vertx;
   }
 
+  @PreDestroy
+  public void closeAll() {
+    pool.values().forEach(p -> p.close());
+    pool.clear();
+  }
+
   /**
    * Creates instance of {@link PostgresClient}
    *
@@ -83,7 +91,7 @@ public class PostgresClientFactory {
     LOG.info("Creating new database connection pool for tenant {}", tenantId);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
-    PgPool client = PgPool.pool(connectOptions, poolOptions);
+    PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     pool.put(tenantId, client);
     return client;
   }

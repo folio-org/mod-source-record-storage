@@ -487,51 +487,51 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // @Test
-  // public void shouldUpdateSourceRecord(TestContext context) {
-  //   Async async = context.async();
-  //   Record expected = TestMocks.getRecord(0);
-  //   recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-  //     if (save.failed()) {
-  //       context.fail(save.cause());
-  //     }
-  //     String snapshotId = UUID.randomUUID().toString();
-  //     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
-  //       .withId(expected.getMatchedId())
-  //       .withRecordType(RecordType.fromValue(expected.getRecordType().toString()))
-  //       .withParsedRecord(expected.getParsedRecord())
-  //       .withAdditionalInfo(expected.getAdditionalInfo())
-  //       .withExternalIdsHolder(expected.getExternalIdsHolder())
-  //       .withMetadata(expected.getMetadata());
-  //     recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID).onComplete(update -> {
-  //       if (update.failed()) {
-  //         context.fail(update.cause());
-  //       }
-  //       LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
-  //         if (getSnapshot.failed()) {
-  //           context.fail(getSnapshot.cause());
-  //         }
-  //         context.assertTrue(getSnapshot.result().isPresent());
-  //         recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID).onComplete(getNewRecord -> {
-  //           if (getNewRecord.failed()) {
-  //             context.fail(getNewRecord.cause());
-  //           }
-  //           context.assertTrue(getNewRecord.result().isPresent());
-  //           context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
-  //           context.assertEquals(expected.getGeneration() + 1, getNewRecord.result().get().getGeneration());
-  //           recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID).onComplete(getOldRecord -> {
-  //             if (getOldRecord.failed()) {
-  //               context.fail(getOldRecord.cause());
-  //             }
-  //             context.assertTrue(getOldRecord.result().isPresent());
-  //             context.assertEquals(State.OLD, getOldRecord.result().get().getState());
-  //             async.complete();
-  //           });
-  //         });
-  //       });
-  //     });
-  //   });
-  // }
+  @Test
+  public void shouldUpdateSourceRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(0);
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String snapshotId = UUID.randomUUID().toString();
+      ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+        .withId(expected.getId())
+        .withRecordType(RecordType.fromValue(expected.getRecordType().toString()))
+        .withParsedRecord(expected.getParsedRecord())
+        .withAdditionalInfo(expected.getAdditionalInfo())
+        .withExternalIdsHolder(expected.getExternalIdsHolder())
+        .withMetadata(expected.getMetadata());
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+          if (getSnapshot.failed()) {
+            context.fail(getSnapshot.cause());
+          }
+          context.assertTrue(getSnapshot.result().isPresent());
+          recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID).onComplete(getNewRecord -> {
+            if (getNewRecord.failed()) {
+              context.fail(getNewRecord.cause());
+            }
+            context.assertTrue(getNewRecord.result().isPresent());
+            context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
+            context.assertEquals(expected.getGeneration() + 1, getNewRecord.result().get().getGeneration());
+            recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID).onComplete(getOldRecord -> {
+              if (getOldRecord.failed()) {
+                context.fail(getOldRecord.cause());
+              }
+              context.assertTrue(getOldRecord.result().isPresent());
+              context.assertEquals(State.OLD, getOldRecord.result().get().getState());
+              async.complete();
+            });
+          });
+        });
+      });
+    });
+  }
 
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());

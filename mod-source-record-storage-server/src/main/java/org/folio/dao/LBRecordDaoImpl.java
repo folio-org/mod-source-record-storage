@@ -119,12 +119,14 @@ public class LBRecordDaoImpl implements LBRecordDao {
           return Future.failedFuture(new BadRequestException(message));
         }
         return Future.succeededFuture();
-      }).compose(v -> {
+      })
+      .compose(v -> {
         if (Objects.isNull(record.getGeneration())) {
           return calculateGeneration(txQE, record);
         }
         return Future.succeededFuture(record.getGeneration());
-      }).compose(generation -> insertOrUpdateRecord(txQE, record.withGeneration(generation))));
+      })
+      .compose(generation -> insertOrUpdateRecord(txQE, record.withGeneration(generation))));
   }
 
   @Override
@@ -281,7 +283,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
               .withOrder(existingRecord.getOrder())
               .withGeneration(existingRecord.getGeneration() + 1)
               .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-              .withParsedRecord(parsedRecordDto.getParsedRecord().withId(newRecordId))
+              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(existingRecord.getParsedRecord().getContent()))
               .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))

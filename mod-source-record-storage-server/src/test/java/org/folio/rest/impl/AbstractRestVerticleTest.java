@@ -13,6 +13,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import java.util.Collections;
 import java.util.UUID;
+
+import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -109,6 +111,7 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
+    PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopEmbeddedPostgres();

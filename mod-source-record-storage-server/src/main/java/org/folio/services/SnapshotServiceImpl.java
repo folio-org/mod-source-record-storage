@@ -5,6 +5,7 @@ import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import static java.lang.String.format;
 
 @Component
+@ConditionalOnProperty(prefix = "jooq", name = "services.snapshot", matchIfMissing = true)
 public class SnapshotServiceImpl implements SnapshotService {
 
   @Autowired

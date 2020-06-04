@@ -1,14 +1,13 @@
-package org.folio.dao.impl;
+package org.folio.services;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 
 import io.vertx.core.DeploymentOptions;
@@ -17,18 +16,16 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
-public abstract class AbstractDaoTest {
+public abstract class AbstractLBServiceTest {
 
-  public static final String TENANT_ID = "diku";
+  static final String TENANT_ID = "diku";
 
-  public static final String DELETE_SQL_TEMPLATE = "DELETE FROM %s;";
+  static PostgresClientFactory postgresClientFactory;
 
-  public static PostgresClientFactory postgresClientFactory;
-
-  public static Vertx vertx;
+  static Vertx vertx;
 
   @BeforeClass
-  public static void setUpClass(final TestContext context) throws Exception {
+  public static void setUpClass(TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
 
@@ -55,21 +52,20 @@ public abstract class AbstractDaoTest {
   }
 
   @AfterClass
-  public static void tearDownClass(final TestContext context) {
+  public static void tearDownClass(TestContext context) {
     Async async = context.async();
+    postgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopEmbeddedPostgres();
       async.complete();
     }));
   }
 
-  @Before
-  public abstract void createBeans(TestContext context) throws IllegalAccessException;
-
-  @Before
-  public abstract void createDependentEntities(TestContext context) throws IllegalAccessException;
-
-  @After
-  public abstract void clearTables(TestContext context);
-
+  void compareMetadata(TestContext context, Metadata expected, Metadata actual) {
+    context.assertEquals(expected.getCreatedByUserId(), actual.getCreatedByUserId());
+    context.assertNotNull(actual.getCreatedDate());
+    context.assertEquals(expected.getUpdatedByUserId(), actual.getUpdatedByUserId());
+    context.assertNotNull(actual.getUpdatedDate());
+  }
+  
 }

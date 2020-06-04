@@ -11,6 +11,7 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
@@ -21,6 +22,7 @@ import static org.folio.dataimport.util.DaoUtil.constructCriteria;
 import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
 
 @Component
+@ConditionalOnProperty(prefix = "jooq", name = "dao.snapshot", matchIfMissing = true)
 public class SnapshotDaoImpl implements SnapshotDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(SnapshotDaoImpl.class);

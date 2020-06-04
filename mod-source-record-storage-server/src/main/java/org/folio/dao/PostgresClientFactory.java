@@ -3,10 +3,16 @@ package org.folio.dao;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.annotation.PreDestroy;
+
 import org.folio.rest.persist.PostgresClient;
+import org.jooq.Configuration;
+import org.jooq.SQLDialect;
+import org.jooq.impl.DefaultConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -19,6 +25,8 @@ import io.vertx.sqlclient.PoolOptions;
 public class PostgresClientFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresClientFactory.class);
+
+  public static final Configuration configuration = new DefaultConfiguration().set(SQLDialect.POSTGRES);
 
   private static final String HOST = "host";
   private static final String PORT = "port";
@@ -34,25 +42,42 @@ public class PostgresClientFactory {
 
   private Vertx vertx;
 
-  public PostgresClientFactory(@Autowired Vertx vertx) {
+  @Autowired
+  public PostgresClientFactory(Vertx vertx) {
     this.vertx = vertx;
+  }
+
+  @PreDestroy
+  public void closeAll() {
+    pool.values().forEach(this::close);
+    pool.clear();
   }
 
   /**
    * Creates instance of {@link PostgresClient}
    *
    * @param tenantId tenant id
-   * @return Postgres Client
+   * @return postgres client
    */
   public PostgresClient createInstance(String tenantId) {
     return PostgresClient.getInstance(vertx, tenantId);
   }
 
   /**
-   * Get database client
+   * Get {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param tenantId tenant id
+   * @return reactive query executor
+   */
+  public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+    return new ReactiveClassicGenericQueryExecutor(configuration, getClient(tenantId));
+  }
+
+  /**
+   * Get {@link PgPool}
    *
    * @param tenantId tenant id
-   * @return {@link PgPool} database client
+   * @return database client
    */
   public PgPool getClient(String tenantId) {
     return getPool(tenantId);
@@ -67,7 +92,7 @@ public class PostgresClientFactory {
     LOG.info("Creating new database connection pool for tenant {}", tenantId);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
-    PgPool client = PgPool.pool(connectOptions, poolOptions);
+    PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     pool.put(tenantId, client);
     return client;
   }
@@ -91,6 +116,10 @@ public class PostgresClientFactory {
       .setPassword(postgreSQLClientConfig.getString(PASSWORD))
       // using RMB convention driven tenant to schema name
       .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
+  }
+
+  private void close(PgPool client) {
+    client.close();
   }
 
 }

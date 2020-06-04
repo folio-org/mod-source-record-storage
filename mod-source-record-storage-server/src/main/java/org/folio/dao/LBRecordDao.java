@@ -1,122 +1,143 @@
 package org.folio.dao;
 
+import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Function;
 
-import org.folio.dao.query.RecordQuery;
-import org.folio.dao.util.ExternalIdType;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.jooq.Condition;
+import org.jooq.OrderField;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
-import io.vertx.sqlclient.SqlConnection;
 
 /**
  * Data access object for {@link Record}
  */
-public interface LBRecordDao extends EntityDao<Record, RecordCollection, RecordQuery> {
+public interface LBRecordDao extends RecordDao {
 
   /**
-   * Searches for {@link Record} by id
+   * {@inheritDoc}
+   * @deprecated
+   */
+  @Override
+  @Deprecated
+  default Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
+    throw new UnsupportedOperationException("Lookup records by CQL is no longer supported");
+  }
+
+  /**
+   * {@inheritDoc}
+   * @deprecated
+   */
+  @Override
+  @Deprecated
+  default Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
+    throw new UnsupportedOperationException("Lookup source records by CQL is no longer supported");
+  }
+
+  /**
+   * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
    * 
-   * @param matchedId record matched id
+   * @param txQE query execution
+   * @param id   Record id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id);
+
+  /**
+   * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param txQE   query executor
+   * @param record {@link Record} to save
+   * @return future with saved Record
+   */
+  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+
+  /**
+   * Searches for {@link Record} by condition
+   * 
+   * @param condition condition
    * @param tenantId  tenant id
-   * @return future with optional record
+   * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getByMatchedId(String matchedId, String tenantId);
+  Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId);
 
   /**
-   * Searches for {@link Record} by id
+   * Searches for {@link Record} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
    * 
-   * @param connection connection
-   * @param matchedId  record matched id
-   * @param tenantId   tenant id
-   * @return future with optional record
+   * @param txQE      query executor
+   * @param condition condition
+   * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getByMatchedId(SqlConnection connection, String matchedId, String tenantId);
+  Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition);
 
   /**
-   * Searches for {@link Record} by id
+   * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * 
-   * @param instanceId external ids holder instance id of record
-   * @param tenantId   tenant id
-   * @return future with optional record
+   * @param condition   condition
+   * @param orderFields fields to order by
+   * @param offset      offset
+   * @param limit       limit
+   * @param tenantId    tenant id
+   * @return future with {@link RecordCollection}
    */
-  Future<Optional<Record>> getByInstanceId(String instanceId, String tenantId);
+  Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for {@link Record} by id
+   * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    * 
-   * @param connection connection
-   * @param instanceId external ids holder instance id of record
-   * @param tenantId   tenant id
-   * @return future with optional record
+   * @param condition   condition
+   * @param orderFields fields to order by
+   * @param offset      offset
+   * @param limit       limit
+   * @param tenantId    tenant id
+   * @return future with {@link SourceRecordCollection}
    */
-  Future<Optional<Record>> getByInstanceId(SqlConnection connection, String instanceId, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} by {@link Condition}
+   * 
+   * @param condition condition
+   * @param tenantId  tenant id
+   * @return - return future with optional {@link SourceRecord}
+   */
+  Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   /**
    * Increments generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing
-   * of the current one started
+   * and the snapshot it is linked to is COMMITTED before the processing of the current one started
    *
-   * @param record   record
-   * @param tenantId tenant id
+   * @param txQE   query execution
+   * @param record Record
    * @return future with generation
    */
-  Future<Integer> calculateGeneration(Record record, String tenantId);
+  Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
   /**
-   * Increments generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing
-   * of the current one started
-   *
-   * @param connection connection
-   * @param record     record
-   * @param tenantId   tenant id
-   * @return future with generation
+   * Creates new Record and updates status of the "old" one,
+   * no data is overwritten as a result of update. Creates
+   * new snapshot.
+   * 
+   * @param txQE      query execution
+   * @param newRecord new Record to create
+   * @param oldRecord old Record that has to be marked as "old"
+   * @return future with new "updated" Record
    */
-  Future<Integer> calculateGeneration(SqlConnection connection, Record record, String tenantId);
+  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
 
   /**
-   * Searches for source record by id via specific {@link IncomingIdType}
-   *
-   * @param id       for searching
-   * @param idType   search type
+   * Execute action within transaction.
+   * 
+   * @param <T>      future generic type
+   * @param action   action
    * @param tenantId tenant id
-   * @return future with optional record
+   * @return future with generic type
    */
-  Future<Optional<Record>> getRecordById(String id, IncomingIdType idType, String tenantId);
-
-  /**
-   * Searches for source record by id via specific {@link IncomingIdType}
-   *
-   * @param connection connection
-   * @param id         for searching
-   * @param idType     search type
-   * @param tenantId   tenant id
-   * @return future with optional record
-   */
-  Future<Optional<Record>> getRecordById(SqlConnection connection, String id, IncomingIdType idType, String tenantId);
-
-  /**
-   * Searches for {@link Record} by id of external entity which was created from desired record
-   *
-   * @param externalId     external relation id
-   * @param externalIdType external id type
-   * @param tenantId       tenant id
-   * @return future with optional {@link Record}
-   */
-  Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
-
-  /**
-   * Searches for {@link Record} by id of external entity which was created from desired record
-   *
-   * @param connection     connection
-   * @param externalId     external relation id
-   * @param externalIdType external id type
-   * @param tenantId       tenant id
-   * @return future with optional {@link Record}
-   */
-  Future<Optional<Record>> getRecordByExternalId(SqlConnection connection, String externalId, ExternalIdType externalIdType, String tenantId);
+  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
 
 }

@@ -315,7 +315,7 @@ public class LbRecordDaoUtil {
    * @param updatedBefore         updated before to be less than or equal
    * @return condition
    */
-  public static Condition conditionFilterBy(String instanceId, String recordType, boolean suppressFromDiscovery,
+  public static Condition conditionFilterBy(String instanceId, String recordType, Boolean suppressFromDiscovery,
     Date updatedAfter, Date updatedBefore) {
     Condition condition = DSL.trueCondition();
     if (StringUtils.isNotEmpty(instanceId)) {
@@ -324,7 +324,7 @@ public class LbRecordDaoUtil {
     if (StringUtils.isNotEmpty(recordType)) {
       condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
     }
-    if (StringUtils.isNotEmpty(instanceId)) {
+    if (Objects.nonNull(suppressFromDiscovery)) {
       condition = condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
     }
     if (Objects.nonNull(updatedAfter)) {

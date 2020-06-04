@@ -9,6 +9,7 @@ import java.util.UUID;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.MarcRecordsLb;
@@ -96,7 +97,7 @@ public class LbParsedRecordDaoUtil {
    * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
    * 
    * @param row query result row
-   * @return optional ErrorRecord
+   * @return optional ParsedRecord
    */
   public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
@@ -126,11 +127,11 @@ public class LbParsedRecordDaoUtil {
    */
   public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
     String content;
-      if (parsedRecord.getContent() instanceof String) {
-        content = (String) parsedRecord.getContent();
-      } else {
-        content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
-      }
+    if (parsedRecord.getContent() instanceof String) {
+      content = (String) parsedRecord.getContent();
+    } else {
+      content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
+    }
     return parsedRecord.withContent(content);
   }
 

@@ -1,0 +1,110 @@
+#%RAML 1.0
+
+title: Source Record Storage Source Record API
+version: v3.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Source Record API
+    content: API for fetching source records
+
+types:
+  sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
+  sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  language: !include raml-storage/raml-util/traits/language.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+
+resourceTypes:
+  collection: !include raml-storage/raml-util/rtypes/collection.raml
+  collection-item: !include raml-storage/raml-util/rtypes/item-collection.raml
+
+/lb-source-storage/sourceRecords:
+  displayName: Source Records
+  description: API for getting Source Records
+  get:
+    description: Get a list of Source Records
+    is: [
+      pageable,
+      validate
+    ]
+    queryParameters:
+      instanceId:
+        description: Filter by Instance Id
+        type: string
+        example: "8b07da70-8ea7-4acd-83a0-44d83979c73b"
+        required: false
+      recordType:
+        description: Filter by Record Type
+        type: string
+        example: "MARC"
+        required: false
+      suppressFromDiscovery:
+        description: Filter by suppress from discovery
+        type: boolean
+        example: true
+        required: false
+      updatedAfter:
+        description: Start date to filter after
+        type: datetime
+        required: false
+      updatedBefore:
+        description: End date to filter before, inclusive
+        type: datetime
+        required: false
+      orderBy:
+        description: Sort records
+        type: string[]
+        example: ["order,ASC"]
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: sourceRecordCollection
+      400:
+        description: Bad request
+        body:
+          text/plain:
+            example: "Bad request"
+      500:
+        description: Internal server error
+        body:
+          text/plain:
+            example: "Internal server error"
+  /{id}:
+    displayName: Source Record
+    description: API for getting Source Records via different idTypes
+    get:
+      description: selection condition of sourceRecords by which id will be searched record
+      queryParameters:
+        idType:
+          description: Type of id for record lookup
+          type: string
+          example: INSTANCE
+          required: false
+          default: RECORD
+      responses:
+        200:
+          body:
+            application/json:
+              type: sourceRecord
+        400:
+          description: Bad request
+          body:
+            text/plain:
+              example: "Bad request"
+        404:
+          description: Not found
+          body:
+            text/plain:
+              example: "Not found"
+        500:
+          description: Internal server error
+          body:
+            text/plain:
+              example: "Internal server error"

@@ -8,7 +8,7 @@ import org.jooq.OrderField;
 
 import io.vertx.core.Future;
 
-public interface LBSnapshotService extends SnapshotService {
+public interface LbSnapshotService extends SnapshotService {
 
   /**
    * @deprecated

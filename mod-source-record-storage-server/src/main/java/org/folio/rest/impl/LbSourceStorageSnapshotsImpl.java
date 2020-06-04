@@ -6,13 +6,13 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.resource.LbSourceStorageSnapshots;
 import org.folio.rest.jaxrs.resource.SourceStorage.GetSourceStorageSnapshotsResponse;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.LBSnapshotService;
+import org.folio.services.LbSnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -32,7 +32,7 @@ public class LbSourceStorageSnapshotsImpl implements LbSourceStorageSnapshots {
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 
   @Autowired
-  private LBSnapshotService snapshotService;
+  private LbSnapshotService snapshotService;
 
   private final String tenantId;
 
@@ -63,8 +63,8 @@ public class LbSourceStorageSnapshotsImpl implements LbSourceStorageSnapshots {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LBSnapshotDaoUtil.conditionFilterBy(status);
-        List<OrderField<?>> orderFields = LBSnapshotDaoUtil.toOrderFields(orderBy);
+        Condition condition = LbSnapshotDaoUtil.conditionFilterBy(status);
+        List<OrderField<?>> orderFields = LbSnapshotDaoUtil.toOrderFields(orderBy);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

@@ -3,7 +3,7 @@ package org.folio.services;
 import java.util.Collection;
 import java.util.Optional;
 
-import org.folio.dao.LBSnapshotDao;
+import org.folio.dao.LbSnapshotDao;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.jooq.Condition;
@@ -14,12 +14,12 @@ import org.springframework.stereotype.Service;
 import io.vertx.core.Future;
 
 @Service
-public class LBSnapshotServiceImpl implements LBSnapshotService {
+public class LbSnapshotServiceImpl implements LbSnapshotService {
 
-  private final LBSnapshotDao snapshotDao;
+  private final LbSnapshotDao snapshotDao;
 
   @Autowired
-  public LBSnapshotServiceImpl(final LBSnapshotDao snapshotDao) {
+  public LbSnapshotServiceImpl(final LbSnapshotDao snapshotDao) {
     this.snapshotDao = snapshotDao;
   }
 

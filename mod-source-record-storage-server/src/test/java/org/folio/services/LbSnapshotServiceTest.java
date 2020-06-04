@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Objects;
 
 import org.folio.TestMocks;
-import org.folio.dao.LBSnapshotDao;
-import org.folio.dao.LBSnapshotDaoImpl;
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.LbSnapshotDao;
+import org.folio.dao.LbSnapshotDaoImpl;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -27,22 +27,22 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBSnapshotServiceTest extends AbstractLBServiceTest {
+public class LbSnapshotServiceTest extends AbstractLBServiceTest {
 
-  private LBSnapshotDao snapshotDao;
+  private LbSnapshotDao snapshotDao;
 
-  private LBSnapshotService snapshotService;
+  private LbSnapshotService snapshotService;
 
   @Before
   public void setUp(TestContext context) {
-    snapshotDao = new LBSnapshotDaoImpl(postgresClientFactory);
-    snapshotService = new LBSnapshotServiceImpl(snapshotDao);
+    snapshotDao = new LbSnapshotDaoImpl(postgresClientFactory);
+    snapshotService = new LbSnapshotServiceImpl(snapshotDao);
   }
 
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    LBSnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    LbSnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -53,7 +53,7 @@ public class LBSnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetSnapshots(TestContext context) {
     Async async = context.async();
-    LBSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
+    LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }

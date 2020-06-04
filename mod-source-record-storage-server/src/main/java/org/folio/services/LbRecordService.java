@@ -11,7 +11,7 @@ import org.jooq.OrderField;
 
 import io.vertx.core.Future;
 
-public interface LBRecordService extends RecordService {
+public interface LbRecordService extends RecordService {
 
   /**
    * @deprecated

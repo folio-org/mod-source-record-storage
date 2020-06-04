@@ -23,9 +23,9 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link ParsedRecord}
  */
-public class LBParsedRecordDaoUtil {
+public class LbParsedRecordDaoUtil {
 
-  private LBParsedRecordDaoUtil() { }
+  private LbParsedRecordDaoUtil() { }
 
   /**
    * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -37,7 +37,7 @@ public class LBParsedRecordDaoUtil {
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord);
+        .map(LbParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
   /**
@@ -54,7 +54,7 @@ public class LBParsedRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBParsedRecordDaoUtil::toSingleParsedRecord);
+        .map(LbParsedRecordDaoUtil::toSingleParsedRecord);
   }
 
   /**
@@ -70,7 +70,7 @@ public class LBParsedRecordDaoUtil {
       .set(dbRecord)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(parsedRecord.getId())))
       .returning())
-        .map(LBParsedRecordDaoUtil::toSingleOptionalParsedRecord)
+        .map(LbParsedRecordDaoUtil::toSingleOptionalParsedRecord)
         .map(optionalParsedRecord -> {
           if (optionalParsedRecord.isPresent()) {
             return optionalParsedRecord.get();

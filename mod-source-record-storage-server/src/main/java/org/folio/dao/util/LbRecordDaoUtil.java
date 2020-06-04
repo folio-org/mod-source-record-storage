@@ -41,11 +41,11 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link Record}
  */
-public class LBRecordDaoUtil {
+public class LbRecordDaoUtil {
 
   private final static String COMMA = ",";
 
-  private LBRecordDaoUtil() { }
+  private LbRecordDaoUtil() { }
 
   /**
    * Get {@link Condition} for provided external id and {@link ExternalIdType}
@@ -89,7 +89,7 @@ public class LBRecordDaoUtil {
       .offset(offset)
       .limit(limit))
         .map(res -> res.stream()
-          .map(r -> LBRecordDaoUtil.toRecord(r.unwrap())));
+          .map(r -> LbRecordDaoUtil.toRecord(r.unwrap())));
   }
 
   /**
@@ -116,7 +116,7 @@ public class LBRecordDaoUtil {
   public static Future<Optional<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(condition))
-        .map(LBRecordDaoUtil::toOptionalRecord);
+        .map(LbRecordDaoUtil::toOptionalRecord);
   }
 
  /**
@@ -129,7 +129,7 @@ public class LBRecordDaoUtil {
   public static Future<Optional<Record>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBRecordDaoUtil::toOptionalRecord);
+        .map(LbRecordDaoUtil::toOptionalRecord);
   }
 
   /**
@@ -146,7 +146,7 @@ public class LBRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBRecordDaoUtil::toSingleRecord);
+        .map(LbRecordDaoUtil::toSingleRecord);
   }
 
   /**
@@ -162,7 +162,7 @@ public class LBRecordDaoUtil {
       .set(dbRecord)
       .where(RECORDS_LB.ID.eq(UUID.fromString(record.getId())))
       .returning())
-        .map(LBRecordDaoUtil::toSingleOptionalRecord)
+        .map(LbRecordDaoUtil::toSingleOptionalRecord)
         .map(optionalRecord -> {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();

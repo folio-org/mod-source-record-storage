@@ -21,9 +21,9 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link ErrorRecord}
  */
-public class LBErrorRecordDaoUtil {
+public class LbErrorRecordDaoUtil {
 
-  private LBErrorRecordDaoUtil() { }
+  private LbErrorRecordDaoUtil() { }
 
   /**
    * Searches for {@link ErrorRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -35,7 +35,7 @@ public class LBErrorRecordDaoUtil {
   public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
       .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBErrorRecordDaoUtil::toOptionalErrorRecord);
+        .map(LbErrorRecordDaoUtil::toOptionalErrorRecord);
   }
 
   /**
@@ -52,7 +52,7 @@ public class LBErrorRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBErrorRecordDaoUtil::toSingleErrorRecord);
+        .map(LbErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
   /**

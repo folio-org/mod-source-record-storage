@@ -6,13 +6,13 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import org.folio.dao.util.LBRecordDaoUtil;
+import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.resource.LbSourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.LBRecordService;
+import org.folio.services.LbRecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -26,17 +26,17 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-public class LBSourceStorageRecordsImpl implements LbSourceStorageRecords {
+public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LBSourceStorageRecordsImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbSourceStorageRecordsImpl.class);
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 
   @Autowired
-  private LBRecordService recordService;
+  private LbRecordService recordService;
 
   private final String tenantId;
 
-  public LBSourceStorageRecordsImpl(Vertx vertx, String tenantId) { //NOSONAR
+  public LbSourceStorageRecordsImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     this.tenantId = TenantTool.calculateTenantId(tenantId);
   }
@@ -63,8 +63,8 @@ public class LBSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LBRecordDaoUtil.conditionFilterBy(snapshotId);
-        List<OrderField<?>> orderFields = LBRecordDaoUtil.toOrderFields(orderBy);
+        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId);
+        List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

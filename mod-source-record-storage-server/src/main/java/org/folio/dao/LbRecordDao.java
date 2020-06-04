@@ -17,7 +17,7 @@ import io.vertx.core.Future;
 /**
  * Data access object for {@link Record}
  */
-public interface LBRecordDao extends RecordDao {
+public interface LbRecordDao extends RecordDao {
 
   /**
    * {@inheritDoc}

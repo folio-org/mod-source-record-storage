@@ -11,7 +11,7 @@ import io.vertx.core.Future;
 /**
  * Data access object for {@link Snapshot}
  */
-public interface LBSnapshotDao extends SnapshotDao {
+public interface LbSnapshotDao extends SnapshotDao {
 
   /**
    * {@inheritDoc}

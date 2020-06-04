@@ -14,10 +14,10 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dao.LBRecordDao;
+import org.folio.dao.LbRecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.LBParsedRecordDaoUtil;
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbParsedRecordDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -43,14 +43,14 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 @Service
-public class LBRecordServiceImpl implements LBRecordService {
+public class LbRecordServiceImpl implements LbRecordService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LBRecordServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbRecordServiceImpl.class);
 
-  private final LBRecordDao recordDao;
+  private final LbRecordDao recordDao;
 
   @Autowired
-  public LBRecordServiceImpl(final LBRecordDao recordDao) {
+  public LbRecordServiceImpl(final LbRecordDao recordDao) {
     this.recordDao = recordDao;
   }
 
@@ -79,7 +79,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    return recordDao.executeInTransaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+    return recordDao.executeInTransaction(txQE -> LbSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
         .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
       .compose(snapshot -> {
@@ -186,7 +186,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordById(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
+        .map(existingRecord -> LbSnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
             .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
@@ -228,7 +228,7 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = (String) LBParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      String parsedRecordContent = (String) LbParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);

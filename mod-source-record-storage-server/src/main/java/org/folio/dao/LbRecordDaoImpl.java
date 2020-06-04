@@ -22,11 +22,11 @@ import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.LBErrorRecordDaoUtil;
-import org.folio.dao.util.LBParsedRecordDaoUtil;
-import org.folio.dao.util.LBRawRecordDaoUtil;
-import org.folio.dao.util.LBRecordDaoUtil;
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbErrorRecordDaoUtil;
+import org.folio.dao.util.LbParsedRecordDaoUtil;
+import org.folio.dao.util.LbRawRecordDaoUtil;
+import org.folio.dao.util.LbRecordDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -51,14 +51,14 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.sqlclient.Row;
 
 @Component
-public class LBRecordDaoImpl implements LBRecordDao {
+public class LbRecordDaoImpl implements LbRecordDao {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LBRecordDaoImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbRecordDaoImpl.class);
 
   private final PostgresClientFactory postgresClientFactory;
 
   @Autowired
-  public LBRecordDaoImpl(final PostgresClientFactory postgresClientFactory) {
+  public LbRecordDaoImpl(final PostgresClientFactory postgresClientFactory) {
     this.postgresClientFactory = postgresClientFactory;
   }
 
@@ -73,12 +73,12 @@ public class LBRecordDaoImpl implements LBRecordDao {
       RecordCollection recordCollection = new RecordCollection();
       recordCollection.withRecords(new ArrayList<>());
       return CompositeFuture.all(
-        LBRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
+        LbRecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
           .compose(stream -> CompositeFuture.all(stream
             .map(pr -> lookupAssociatedRecords(txQE, pr, true)
             .map(r -> addToList(recordCollection.getRecords(), r)))
             .collect(Collectors.toList()))),
-        LBRecordDaoUtil.countByCondition(txQE, condition)
+        LbRecordDaoUtil.countByCondition(txQE, condition)
           .map(totalRecords -> addTotalRecords(recordCollection, totalRecords))
       ).map(res -> recordCollection);
     });
@@ -103,7 +103,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
-    return LBRecordDaoUtil.findByCondition(txQE, condition)
+    return LbRecordDaoUtil.findByCondition(txQE, condition)
       .compose(record -> lookupAssociatedRecords(txQE, record, true));
   }
 
@@ -139,8 +139,8 @@ public class LBRecordDaoImpl implements LBRecordDao {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
         sourceRecordCollection.setTotalRecords(row.getInteger(countColumn));
-        return LBRecordDaoUtil.toSourceRecord(LBRecordDaoUtil.toRecord(row))
-          .withParsedRecord(LBParsedRecordDaoUtil.toParsedRecord(row));
+        return LbRecordDaoUtil.toSourceRecord(LbRecordDaoUtil.toRecord(row))
+          .withParsedRecord(LbParsedRecordDaoUtil.toParsedRecord(row));
       }).collect(Collectors.toList());
       if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
         sourceRecordCollection.withSourceRecords(sourceRecords);
@@ -158,7 +158,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+    Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getSourceRecordByCondition(condition, tenantId);
   }
@@ -168,11 +168,11 @@ public class LBRecordDaoImpl implements LBRecordDao {
     return getQueryExecutor(tenantId)
       .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
         .where(condition))
-          .map(LBRecordDaoUtil::toOptionalRecord)
+          .map(LbRecordDaoUtil::toOptionalRecord)
       .compose(optionalRecord -> {
         if (optionalRecord.isPresent()) {
           return lookupAssociatedRecords(txQE, optionalRecord.get(), false)
-            .map(LBRecordDaoUtil::toSourceRecord)
+            .map(LbRecordDaoUtil::toSourceRecord)
             .map(sourceRecord -> {
               if (Objects.nonNull(sourceRecord.getParsedRecord())) {
                 return Optional.of(sourceRecord);
@@ -205,20 +205,20 @@ public class LBRecordDaoImpl implements LBRecordDao {
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
       updateExternalIdsForRecord(txQE, record),
-      LBParsedRecordDaoUtil.update(txQE, record.getParsedRecord())
+      LbParsedRecordDaoUtil.update(txQE, record.getParsedRecord())
     ).map(res -> record.getParsedRecord()));
   }
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
-    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId)
       .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
         .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
         .from(RECORDS_LB)
         .where(condition))
-          .map(LBRecordDaoUtil::toRecord)
+          .map(LbRecordDaoUtil::toRecord)
       .compose(record -> lookupAssociatedRecords(txQE, record, true)))
         .map(Optional::of);
   }
@@ -240,17 +240,17 @@ public class LBRecordDaoImpl implements LBRecordDao {
     String externalId = suppressFromDiscoveryDto.getId();
     String incomingIdType = suppressFromDiscoveryDto.getIncomingIdType().value();
     ExternalIdType externalIdType = ExternalIdType.valueOf(incomingIdType);
-    Condition condition = LBRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
-    return getQueryExecutor(tenantId).transaction(txQE -> LBRecordDaoUtil.findByCondition(txQE, condition)
+    Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    return getQueryExecutor(tenantId).transaction(txQE -> LbRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
-        .map(record -> LBRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
+        .map(record -> LbRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
       .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", incomingIdType, externalId)))))
     ).map(u -> true);
   }
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
-    return LBSnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
+    return LbSnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
@@ -280,20 +280,20 @@ public class LBRecordDaoImpl implements LBRecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    futures.add(LBRawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+    futures.add(LbRawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
       if (rr.isPresent()) {
         record.withRawRecord(rr.get());
       }
       return record;
     }));
-    futures.add(LBParsedRecordDaoUtil.findById(txQE, record.getId()).map(pr -> {
+    futures.add(LbParsedRecordDaoUtil.findById(txQE, record.getId()).map(pr -> {
       if (pr.isPresent()) {
         record.withParsedRecord(pr.get());
       }
       return record;
     }));
     if (includeErrorRecord) {
-      futures.add(LBErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
+      futures.add(LbErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
         if (er.isPresent()) {
           record.withErrorRecord(er.get());
         }
@@ -307,17 +307,17 @@ public class LBRecordDaoImpl implements LBRecordDao {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
     if (Objects.nonNull(record.getRawRecord())) {
-      futures.add(LBRawRecordDaoUtil.save(txQE, record.getRawRecord()));
+      futures.add(LbRawRecordDaoUtil.save(txQE, record.getRawRecord()));
     }
     if (Objects.nonNull(record.getParsedRecord())) {
       validateParsedRecordContent(record);
-      futures.add(LBParsedRecordDaoUtil.save(txQE, record.getParsedRecord()));
+      futures.add(LbParsedRecordDaoUtil.save(txQE, record.getParsedRecord()));
     }
     if (Objects.nonNull(record.getErrorRecord())) {
-      futures.add(LBErrorRecordDaoUtil.save(txQE, record.getErrorRecord()));
+      futures.add(LbErrorRecordDaoUtil.save(txQE, record.getErrorRecord()));
     }
     return CompositeFuture.all(futures)
-      .compose(res -> LBRecordDaoUtil.save(txQE, record)).map(r -> {
+      .compose(res -> LbRecordDaoUtil.save(txQE, record)).map(r -> {
         if (Objects.nonNull(record.getRawRecord())) {
           r.withRawRecord(record.getRawRecord());
         }
@@ -332,7 +332,7 @@ public class LBRecordDaoImpl implements LBRecordDao {
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    return LBRecordDaoUtil.findById(txQE, record.getId())
+    return LbRecordDaoUtil.findById(txQE, record.getId())
       .map(optionalRecord -> {
         if (optionalRecord.isPresent()) {
           return optionalRecord;
@@ -344,14 +344,14 @@ public class LBRecordDaoImpl implements LBRecordDao {
       .compose(persistedRecord -> {
         persistedRecord.withExternalIdsHolder(record.getExternalIdsHolder())
           .withMetadata(record.getMetadata());
-        return LBRecordDaoUtil.update(txQE, persistedRecord)
+        return LbRecordDaoUtil.update(txQE, persistedRecord)
           .map(update -> true);
       });
   }
 
   private void validateParsedRecordContent(Record record) {
     try {
-      String content = (String) LBParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      String content = (String) LbParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);

@@ -39,11 +39,11 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link Snapshot}
  */
-public class LBSnapshotDaoUtil {
+public class LbSnapshotDaoUtil {
 
   private final static String COMMA = ",";
 
-  private LBSnapshotDaoUtil() { }
+  private LbSnapshotDaoUtil() { }
 
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
@@ -63,7 +63,7 @@ public class LBSnapshotDaoUtil {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit))
-        .map(LBSnapshotDaoUtil::toSnapshots);
+        .map(LbSnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -90,7 +90,7 @@ public class LBSnapshotDaoUtil {
   public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(condition))
-        .map(LBSnapshotDaoUtil::toOptionalSnapshot);
+        .map(LbSnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -103,7 +103,7 @@ public class LBSnapshotDaoUtil {
   public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBSnapshotDaoUtil::toOptionalSnapshot);
+        .map(LbSnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -120,7 +120,7 @@ public class LBSnapshotDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBSnapshotDaoUtil::toSingleSnapshot);
+        .map(LbSnapshotDaoUtil::toSingleSnapshot);
   }
 
   /**
@@ -139,7 +139,7 @@ public class LBSnapshotDaoUtil {
           insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
       }
       return insertValuesStepN;
-    }).map(LBSnapshotDaoUtil::toSnapshots);
+    }).map(LbSnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -155,7 +155,7 @@ public class LBSnapshotDaoUtil {
       .set(dbRecord)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
       .returning())
-        .map(LBSnapshotDaoUtil::toSingleOptionalSnapshot)
+        .map(LbSnapshotDaoUtil::toSingleOptionalSnapshot)
         .map(optionalSnapshot -> {
           if (optionalSnapshot.isPresent()) {
             return optionalSnapshot.get();
@@ -301,7 +301,7 @@ public class LBSnapshotDaoUtil {
 
   private static List<Snapshot> toSnapshots(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
-      .map(LBSnapshotDaoUtil::toSnapshot)
+      .map(LbSnapshotDaoUtil::toSnapshot)
       .collect(Collectors.toList());
   }
 

@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
 import org.jooq.Condition;
@@ -17,12 +17,12 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 
 @Component
-public class LBSnapshotDaoImpl implements LBSnapshotDao {
+public class LbSnapshotDaoImpl implements LbSnapshotDao {
 
   private final PostgresClientFactory postgresClientFactory;
 
   @Autowired
-  public LBSnapshotDaoImpl(final PostgresClientFactory postgresClientFactory) {
+  public LbSnapshotDaoImpl(final PostgresClientFactory postgresClientFactory) {
     this.postgresClientFactory = postgresClientFactory;
   }
 
@@ -32,9 +32,9 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
     return getQueryExecutor(tenantId).transaction(txQE -> {
       SnapshotCollection snapshotCollection = new SnapshotCollection();
       return CompositeFuture.all(
-        LBSnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
+        LbSnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
           .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
-        LBSnapshotDaoUtil.countByCondition(txQE, condition)
+        LbSnapshotDaoUtil.countByCondition(txQE, condition)
           .map(totalRecords -> addTotalRecords(snapshotCollection,totalRecords))
       ).map(res -> snapshotCollection);
     });
@@ -42,22 +42,22 @@ public class LBSnapshotDaoImpl implements LBSnapshotDao {
 
   @Override
   public Future<Optional<Snapshot>> getSnapshotById(String id, String tenantId) {
-    return LBSnapshotDaoUtil.findById(getQueryExecutor(tenantId), id);
+    return LbSnapshotDaoUtil.findById(getQueryExecutor(tenantId), id);
   }
 
   @Override
   public Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId) {
-    return LBSnapshotDaoUtil.save(getQueryExecutor(tenantId), snapshot);
+    return LbSnapshotDaoUtil.save(getQueryExecutor(tenantId), snapshot);
   }
 
   @Override
   public Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId) {
-    return LBSnapshotDaoUtil.update(getQueryExecutor(tenantId), snapshot);
+    return LbSnapshotDaoUtil.update(getQueryExecutor(tenantId), snapshot);
   }
 
   @Override
   public Future<Boolean> deleteSnapshot(String id, String tenantId) {
-    return LBSnapshotDaoUtil.delete(getQueryExecutor(tenantId), id);
+    return LbSnapshotDaoUtil.delete(getQueryExecutor(tenantId), id);
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {

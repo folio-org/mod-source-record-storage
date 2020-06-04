@@ -10,11 +10,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
-import org.folio.dao.LBRecordDao;
-import org.folio.dao.LBRecordDaoImpl;
+import org.folio.dao.LbRecordDao;
+import org.folio.dao.LbRecordDaoImpl;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.LBRecordDaoUtil;
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbRecordDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -43,18 +43,18 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class LBRecordServiceTest extends AbstractLBServiceTest {
+public class LbRecordServiceTest extends AbstractLBServiceTest {
 
-  private LBRecordDao recordDao;
+  private LbRecordDao recordDao;
 
-  private LBRecordService recordService;
+  private LbRecordService recordService;
 
   @Before
   public void setUp(TestContext context) {
-    recordDao = new LBRecordDaoImpl(postgresClientFactory);
-    recordService = new LBRecordServiceImpl(recordDao);
+    recordDao = new LbRecordDaoImpl(postgresClientFactory);
+    recordService = new LbRecordServiceImpl(recordDao);
     Async async = context.async();
-    LBSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+    LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -65,7 +65,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    LBSnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    LbSnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -208,7 +208,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
       Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
       Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
       compareRecords(context, expected, batch.result().getRecords());
-      LBRecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
+      LbRecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
         if (count.failed()) {
           context.fail(count.cause());
         }
@@ -299,7 +299,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
           context.fail(get.cause());
         }
         List<SourceRecord> expected = records.stream()
-          .map(LBRecordDaoUtil::toSourceRecord)
+          .map(LbRecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
         Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -327,7 +327,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
-        compareSourceRecords(context, LBRecordDaoUtil.toSourceRecord(expected), get.result().get());
+        compareSourceRecords(context, LbRecordDaoUtil.toSourceRecord(expected), get.result().get());
         async.complete();
       });
     });
@@ -474,7 +474,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
               context.fail(getAfter.cause());
             }
             context.assertEquals(0, getAfter.result().getTotalRecords());
-            LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+            LbSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
               if (getSnapshot.failed()) {
                 context.fail(getSnapshot.cause());
               }
@@ -507,7 +507,7 @@ public class LBRecordServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
-        LBSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+        LbSnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
           if (getSnapshot.failed()) {
             context.fail(getSnapshot.cause());
           }

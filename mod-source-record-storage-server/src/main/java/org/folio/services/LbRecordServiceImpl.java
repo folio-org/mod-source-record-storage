@@ -14,6 +14,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.LbRecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.LbParsedRecordDaoUtil;
@@ -220,7 +221,7 @@ public class LbRecordServiceImpl implements LbRecordService {
   }
 
   private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) && Objects.isNull(record.getParsedRecord().getId())) {
+    if (Objects.isNull(record.getParsedRecord()) || Strings.isEmpty(record.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
     return record;

@@ -41,7 +41,7 @@ import io.vertx.sqlclient.RowSet;
  */
 public class LbSnapshotDaoUtil {
 
-  private final static String COMMA = ",";
+  private static final String COMMA = ",";
 
   private LbSnapshotDaoUtil() { }
 

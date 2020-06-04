@@ -101,7 +101,7 @@ public class LbSourceStorageSnapshotsImpl implements LbSourceStorageSnapshots {
     vertxContext.runOnContext(v -> {
       try {
         snapshotService.deleteSnapshot(jobExecutionId, tenantId)
-          .map(deleted -> deleted ?
+          .map(deleted -> Boolean.TRUE.equals(deleted) ?
             DeleteLbSourceStorageSnapshotsByJobExecutionIdResponse.respond204() :
             DeleteLbSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
               String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))

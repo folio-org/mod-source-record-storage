@@ -29,6 +29,7 @@ import io.vertx.core.logging.LoggerFactory;
 public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
 
   private static final Logger LOG = LoggerFactory.getLogger(LbSourceStorageRecordsImpl.class);
+
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 
   @Autowired
@@ -103,7 +104,7 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
         recordService.getRecordById(id, tenantId)
           .map(recordOptional -> recordOptional.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-          .compose(record -> record.getDeleted()
+          .compose(record -> record.getState().equals(State.DELETED)
             ? Future.succeededFuture(true)
             : recordService.updateRecord(record.withState(State.DELETED), tenantId).map(r -> true))
           .map(updated -> DeleteLbSourceStorageRecordsByIdResponse.respond204())
@@ -161,7 +162,7 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
         recordService.getRecordByExternalId(id, idType, tenantId)
           .map(recordOptional -> recordOptional.orElseThrow(() ->
             new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-          .compose(record -> record.getDeleted()
+          .compose(record -> record.getState().equals(State.DELETED)
             ? Future.succeededFuture(true)
             : recordService.updateRecord(record.withAdditionalInfo(record.getAdditionalInfo()
                 .withSuppressDiscovery(suppress)), tenantId).map(r -> true))

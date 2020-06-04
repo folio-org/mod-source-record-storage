@@ -1,0 +1,38 @@
+#%RAML 1.0
+
+title: Source Record Storage Event Handlers API
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Event Handlers API
+    content: API for event handling
+
+types:
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+  dataImportEventPayload: !include raml-storage/schemas/common/dataImportEventPayload.json
+  entityType: !include raml-storage/schemas/mod-data-import-converter-storage/entityType.json
+  dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
+  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+
+/lb-source-storage/handlers:
+  /inventory-instance:
+    description: "Handler for DI_INVENTORY_INSTANCE events."
+    post:
+      body:
+        application/json:
+          type: string
+      responses:
+        200:
+  /updated-record:
+    description: "Handler for QM_RECORD_UPDATED event"
+    post:
+      body:
+        application/json:
+          type: string
+      responses:
+        204:

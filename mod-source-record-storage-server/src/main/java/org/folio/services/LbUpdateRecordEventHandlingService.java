@@ -22,7 +22,7 @@ import io.vertx.core.logging.LoggerFactory;
 @Component
 public class LbUpdateRecordEventHandlingService implements LbEventHandlingService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(UpdateRecordEventHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbUpdateRecordEventHandlingService.class);
 
   private static final String QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE = "QM_SRS_MARC_BIB_RECORD_UPDATED";
 

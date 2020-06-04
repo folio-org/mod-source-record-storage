@@ -35,7 +35,7 @@ import io.vertx.core.logging.LoggerFactory;
 @Component
 public class LbInstanceEventHandlingService implements LbEventHandlingService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(InstanceEventHandlingServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbInstanceEventHandlingService.class);
 
   private static final String FAIL_MSG = "Failed to handle instance event {}";
 

@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +8,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
 import org.folio.dao.util.LBRecordDaoUtil;
+import org.folio.dao.util.LBSnapshotDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -22,7 +22,6 @@ import org.folio.services.LBSnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -69,11 +68,13 @@ public class LBSourceStorageImpl implements LbSourceStorage {
   }
 
   @Override
-  public void getLbSourceStorageSnapshots(int offset, int limit, String lang, Map<String, String> okapiHeaders,
+  public void getLbSourceStorageSnapshots(String status, List<String> orderBy, int offset, int limit, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.getSnapshots(DSL.trueCondition(), new ArrayList<>(), offset, limit, tenantId)
+        Condition condition = LBSnapshotDaoUtil.conditionFilterBy(status);
+        List<OrderField<?>> orderFields = LBSnapshotDaoUtil.toOrderFields(orderBy);
+        snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

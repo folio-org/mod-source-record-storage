@@ -299,11 +299,10 @@ public class LBRecordDaoUtil {
    * @return condition
    */
   public static Condition conditionFilterBy(String snapshotId) {
-    final Condition condition = DSL.trueCondition();
-    if (StringUtils.isNoneEmpty(snapshotId)) {
-      condition.and(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)));
+    if (StringUtils.isNotEmpty(snapshotId)) {
+      return RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
     }
-    return condition;
+    return DSL.trueCondition();
   }
 
   /**
@@ -319,20 +318,20 @@ public class LBRecordDaoUtil {
   public static Condition conditionFilterBy(String instanceId, String recordType, boolean suppressFromDiscovery,
     Date updatedAfter, Date updatedBefore) {
     Condition condition = DSL.trueCondition();
-    if (StringUtils.isNoneEmpty(instanceId)) {
-      condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
+    if (StringUtils.isNotEmpty(instanceId)) {
+      condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
     }
-    if (StringUtils.isNoneEmpty(recordType)) {
-      condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
+    if (StringUtils.isNotEmpty(recordType)) {
+      condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
     }
-    if (StringUtils.isNoneEmpty(instanceId)) {
-      condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
+    if (StringUtils.isNotEmpty(instanceId)) {
+      condition = condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
     }
     if (Objects.nonNull(updatedAfter)) {
-      condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+      condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
     }
     if (Objects.nonNull(updatedBefore)) {
-      condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
+      condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
     }
     return condition;
   }
@@ -340,13 +339,16 @@ public class LBRecordDaoUtil {
   /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
    * 
+   * Relies on strong convention between dto property name and database column name.
+   * Property name being lower camel case and column name being lower snake case of the property name.
+   * 
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
    * @return list of order fields
    */
   public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
-      .map(order -> RECORDS_LB.field(toColumnName(order[0])).sort(order.length > 1
+      .map(order -> RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
         ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT))
       .collect(Collectors.toList());
   }
@@ -357,14 +359,6 @@ public class LBRecordDaoUtil {
 
   private static Optional<Record> toSingleOptionalRecord(RowSet<Row> rows) {
     return rows.rowCount() == 1 ? Optional.of(toRecord(rows.iterator().next())) : Optional.empty();
-  }
-
-  /**
-   * Relies on strong convention between dto property name and database column name.
-   * Property name being lower camel case and column name being lower snake case of the property name.
-   */
-  private static String toColumnName(String propertyName) {
-    return LOWER_CAMEL.to(LOWER_UNDERSCORE, propertyName);
   }
 
 }

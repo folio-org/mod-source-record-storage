@@ -1,5 +1,7 @@
 package org.folio.dao.util;
 
+import static com.google.common.base.CaseFormat.LOWER_CAMEL;
+import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 
 import java.time.ZoneOffset;
@@ -26,6 +28,8 @@ import org.jooq.Condition;
 import org.jooq.InsertSetStep;
 import org.jooq.InsertValuesStepN;
 import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
@@ -36,6 +40,8 @@ import io.vertx.sqlclient.RowSet;
  * Utility class for managing {@link Snapshot}
  */
 public class LBSnapshotDaoUtil {
+
+  private final static String COMMA = ",";
 
   private LBSnapshotDaoUtil() { }
 
@@ -108,7 +114,7 @@ public class LBSnapshotDaoUtil {
    * @return future with updated Snapshot
    */
   public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord dbRecord = toDatabaseRecord(snapshot);
+    SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
     return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
       .set(dbRecord)
       .onDuplicateKeyUpdate()
@@ -129,7 +135,8 @@ public class LBSnapshotDaoUtil {
       InsertSetStep<SnapshotsLbRecord> insertSetStep = dsl.insertInto(SNAPSHOTS_LB);
       InsertValuesStepN<SnapshotsLbRecord> insertValuesStepN = null;
       for (Snapshot snapshot : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseRecord(snapshot).intoArray());
+          SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
+          insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
       }
       return insertValuesStepN;
     }).map(LBSnapshotDaoUtil::toSnapshots);
@@ -252,6 +259,36 @@ public class LBSnapshotDaoUtil {
       }
     }
     return dbRecord;
+  }
+
+  /**
+   * Get {@link Condition} to filter by snapshot id
+   * 
+   * @param status snapshot status
+   * @return condition
+   */
+  public static Condition conditionFilterBy(String status) {
+    if (StringUtils.isNotEmpty(status)) {
+      return SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.valueOf(status));
+    }
+    return DSL.trueCondition();
+  }
+
+  /**
+   * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
+   * 
+   * Relies on strong convention between dto property name and database column name.
+   * Property name being lower camel case and column name being lower snake case of the property name.
+   * 
+   * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
+   * @return list of order fields
+   */
+  public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
+    return orderBy.stream()
+      .map(order -> order.split(COMMA))
+      .map(order -> SNAPSHOTS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
+        ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT))
+      .collect(Collectors.toList());
   }
 
   private static Snapshot toSingleSnapshot(RowSet<Row> rows) {

@@ -51,6 +51,17 @@ resourceTypes:
         pageable,
         validate
       ]
+      queryParameters:
+        status:
+          description: Snapshot status to filter by
+          type: string
+          example: NEW
+          required: false
+        orderBy:
+          description: Sort Snapshots
+          type: string[]
+          example: ["status,ASC", "processingStartedDate,DESC"]
+          required: false
     /{jobExecutionId}:
       displayName: Snapshot
       description: Get, Delete or Update a specific Snapshot

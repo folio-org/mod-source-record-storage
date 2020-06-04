@@ -43,7 +43,7 @@ import io.vertx.sqlclient.RowSet;
  */
 public class LbRecordDaoUtil {
 
-  private final static String COMMA = ",";
+  private static final String COMMA = ",";
 
   private LbRecordDaoUtil() { }
 

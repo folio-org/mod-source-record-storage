@@ -38,7 +38,7 @@ public class PostgresClientFactory {
 
   private static final int POOL_SIZE = 5;
 
-  private static final Map<String, PgPool> pool = new HashMap<>();
+  private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
   private Vertx vertx;
 
@@ -48,9 +48,8 @@ public class PostgresClientFactory {
   }
 
   @PreDestroy
-  public void closeAll() {
-    pool.values().forEach(this::close);
-    pool.clear();
+  public void preDestory() {
+    closeAll();
   }
 
   /**
@@ -60,7 +59,7 @@ public class PostgresClientFactory {
    * @return postgres client
    */
   public PostgresClient createInstance(String tenantId) {
-    return PostgresClient.getInstance(vertx, tenantId);
+    return PostgresClient.getInstance(this.vertx, tenantId);
   }
 
   /**
@@ -70,38 +69,44 @@ public class PostgresClientFactory {
    * @return reactive query executor
    */
   public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
-    return new ReactiveClassicGenericQueryExecutor(configuration, getClient(tenantId));
+    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(this.vertx, tenantId));
   }
 
   /**
-   * Get {@link PgPool}
-   *
+   * Get {@link ReactiveClassicGenericQueryExecutor}
+   * 
+   * @param vertx    current Vertx
    * @param tenantId tenant id
-   * @return database client
+   * @return reactive query executor
    */
-  public PgPool getClient(String tenantId) {
-    return getPool(tenantId);
+  public static ReactiveClassicGenericQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
+    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId));
   }
 
-  private PgPool getPool(String tenantId) {
+  public static void closeAll() {
+    POOL_CACHE.values().forEach(PostgresClientFactory::close);
+    POOL_CACHE.clear();
+  }
+
+  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
-    if (pool.containsKey(tenantId)) {
+    if (POOL_CACHE.containsKey(tenantId)) {
       LOG.debug("Using existing database connection pool for tenant {}", tenantId);
-      return pool.get(tenantId);
+      return POOL_CACHE.get(tenantId);
     }
     LOG.info("Creating new database connection pool for tenant {}", tenantId);
-    PgConnectOptions connectOptions = getConnectOptions(tenantId);
+    PgConnectOptions connectOptions = getConnectOptions(vertx, tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
-    pool.put(tenantId, client);
+    POOL_CACHE.put(tenantId, client);
     return client;
   }
 
   // NOTE: This should be able to get database configuration without PostgresClient.
   // Additionally, with knowledge of tenant at this time, we are not confined to 
   // schema isolation and can provide database isolation.
-  private PgConnectOptions getConnectOptions(String tenantId) {
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx);
+  private static PgConnectOptions getConnectOptions(Vertx vertx, String tenantId) {
+    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenantId);
     JsonObject postgreSQLClientConfig = postgresClient.getConnectionConfig();
     postgresClient.closeClient(closed -> {
       if (closed.failed()) {
@@ -118,7 +123,7 @@ public class PostgresClientFactory {
       .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
   }
 
-  private void close(PgPool client) {
+  private static void close(PgPool client) {
     client.close();
   }
 

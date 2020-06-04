@@ -54,7 +54,7 @@ public abstract class AbstractLBServiceTest {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     Async async = context.async();
-    postgresClientFactory.closeAll();
+    PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopEmbeddedPostgres();
       async.complete();

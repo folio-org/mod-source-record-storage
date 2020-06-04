@@ -351,7 +351,7 @@ public class LbRecordDaoUtil {
     if (StringUtils.isNotEmpty(instanceId)) {
       condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
     }
-    return DSL.trueCondition();
+    return condition;
   }
 
   /**

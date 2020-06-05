@@ -322,7 +322,11 @@ public class LbRecordDaoUtil {
       condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
     }
     if (StringUtils.isNotEmpty(recordType)) {
-      condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
+      try {
+        condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(RecordType.valueOf(recordType)));
+      } catch(Exception e) {
+        throw new BadRequestException(String.format("Unknown record type %s", recordType));
+      }
     }
     if (Objects.nonNull(suppressFromDiscovery)) {
       condition = condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
@@ -348,8 +352,14 @@ public class LbRecordDaoUtil {
   public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
-      .map(order -> RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
-        ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT))
+      .map(order -> {
+        try {
+          return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
+          ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
+        } catch (Exception e) {
+          throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
+        }
+      })
       .collect(Collectors.toList());
   }
 

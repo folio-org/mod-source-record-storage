@@ -56,19 +56,7 @@ public class LbRecordDaoUtil {
    * @return condition
    */
   public static Condition getExternalIdCondition(String externalId, ExternalIdType externalIdType) {
-    // NOTE: would be nice to be able to do this without a switch statement
-    Condition condition;
-    switch (externalIdType) {
-      case INSTANCE:
-        condition = RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(externalId));
-        break;
-      case RECORD:
-        condition = RECORDS_LB.ID.eq(UUID.fromString(externalId));
-        break;
-      default:
-        throw new BadRequestException(String.format("Unknown external id type %s", externalIdType));
-    }
-    return condition;
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).eq(toUUID(externalId));
   }
 
   /**
@@ -220,6 +208,7 @@ public class LbRecordDaoUtil {
     }
     if (Objects.nonNull(pojo.getState())) {
       record.withState(org.folio.rest.jaxrs.model.Record.State.valueOf(pojo.getState().toString()));
+      record.withDeleted(record.getState().equals(State.DELETED));
     }
     record
       .withOrder(pojo.getOrder())

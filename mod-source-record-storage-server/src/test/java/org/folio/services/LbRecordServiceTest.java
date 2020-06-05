@@ -87,7 +87,7 @@ public class LbRecordServiceTest extends AbstractLBServiceTest {
       String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(RECORDS_LB.ORDER_IN_FILE.sort(SortOrder.ASC));
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
       recordService.getRecords(condition, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());

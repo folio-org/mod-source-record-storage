@@ -9,7 +9,6 @@ import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -132,7 +131,8 @@ public class LbRecordDaoImpl implements LbRecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(cteTableName).as(dsl.select()
       .from(RECORDS_LB)
       .innerJoin(MARC_RECORDS_LB).on(RECORDS_LB.ID.eq(MARC_RECORDS_LB.ID))
-      .where(RECORDS_LB.STATE.eq(RecordState.ACTUAL).and(condition))).select()
+      .where(condition)
+      .orderBy(orderFields)).select()
         .from(dsl.select().from(table(name(cteTableName))).offset(offset).limit(limit))
         .rightJoin(dsl.selectCount().from(table(name(cteTableName)))).on(trueCondition())
     )).map(res -> {
@@ -239,7 +239,7 @@ public class LbRecordDaoImpl implements LbRecordDao {
     Boolean suppressFromDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
     String externalId = suppressFromDiscoveryDto.getId();
     String incomingIdType = suppressFromDiscoveryDto.getIncomingIdType().value();
-    ExternalIdType externalIdType = ExternalIdType.valueOf(incomingIdType);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(incomingIdType);
     Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId).transaction(txQE -> LbRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
@@ -304,20 +304,20 @@ public class LbRecordDaoImpl implements LbRecordDao {
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = new ArrayList<>();
-    if (Objects.nonNull(record.getRawRecord())) {
-      futures.add(LbRawRecordDaoUtil.save(txQE, record.getRawRecord()));
-    }
-    if (Objects.nonNull(record.getParsedRecord())) {
-      validateParsedRecordContent(record);
-      futures.add(LbParsedRecordDaoUtil.save(txQE, record.getParsedRecord()));
-    }
-    if (Objects.nonNull(record.getErrorRecord())) {
-      futures.add(LbErrorRecordDaoUtil.save(txQE, record.getErrorRecord()));
-    }
-    return CompositeFuture.all(futures)
-      .compose(res -> LbRecordDaoUtil.save(txQE, record)).map(r -> {
+    return LbRawRecordDaoUtil.save(txQE, record.getRawRecord())
+      .compose(rr -> {
+        if (Objects.nonNull(record.getParsedRecord())) {
+          return insertOrUpdateParsedRecord(txQE, record);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(s -> {
+        if (Objects.nonNull(record.getErrorRecord())) {
+          return LbErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
+        }
+        return Future.succeededFuture();
+      })
+      .compose(er -> LbRecordDaoUtil.save(txQE, record)).map(r -> {
         if (Objects.nonNull(record.getRawRecord())) {
           r.withRawRecord(record.getRawRecord());
         }
@@ -329,6 +329,22 @@ public class LbRecordDaoImpl implements LbRecordDao {
         }
         return r;
       });
+  }
+
+  private Future<Boolean> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    try {
+      String content = (String) LbParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+      return LbParsedRecordDaoUtil.save(txQE, record.getParsedRecord()).map(pr -> true);
+    } catch (Exception e) {
+      LOG.error("Couldn't format MARC record", e);
+      record.setErrorRecord(new ErrorRecord()
+        .withId(record.getId())
+        .withDescription(e.getMessage())
+        .withContent(record.getParsedRecord().getContent()));
+      record.setParsedRecord(null);
+      return Future.succeededFuture(false);
+    }
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
@@ -347,20 +363,6 @@ public class LbRecordDaoImpl implements LbRecordDao {
         return LbRecordDaoUtil.update(txQE, persistedRecord)
           .map(update -> true);
       });
-  }
-
-  private void validateParsedRecordContent(Record record) {
-    try {
-      String content = (String) LbParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
-      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-    } catch (IOException e) {
-      LOG.error("Couldn't format MARC record", e);
-      record.setErrorRecord(new ErrorRecord()
-        .withId(record.getId())
-        .withDescription(e.getMessage())
-        .withContent(record.getParsedRecord().getContent()));
-      record.setParsedRecord(null);
-    }
   }
 
 }

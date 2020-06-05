@@ -486,6 +486,7 @@ public class RecordDaoImpl implements RecordDao {
       .compose(v -> insertOrUpdate(tx, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
       .compose(v -> {
         if (record.getParsedRecord() != null) {
+          // NOTE: this is a bug, the record will save with parsed record id even if parsed record contant fails to validate as JSON
           recordModel.setParsedRecordId(record.getParsedRecord().getId());
           return insertOrUpdateParsedRecord(tx, record, tenantId);
         }

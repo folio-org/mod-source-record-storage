@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.folio.services.LbRecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
+import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -42,13 +44,13 @@ public class LbSourceStorageSourceRecordsImpl implements LbSourceStorageSourceRe
   }
 
   @Override
-  public void getLbSourceStorageSourceRecords(String instanceId, String recordType, boolean suppressFromDiscovery,
-      Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
+  public void getLbSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
+      boolean suppressFromDiscovery, boolean deleted, Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBy(instanceId, recordType, suppressFromDiscovery,
-          updatedAfter, updatedBefore);
+        Condition condition = LbRecordDaoUtil.conditionFilterBy(recordId, snapshotId, instanceId, recordType, suppressFromDiscovery,
+          deleted, updatedAfter, updatedBefore);
         List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
         recordService.getSourceRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
@@ -80,5 +82,5 @@ public class LbSourceStorageSourceRecordsImpl implements LbSourceStorageSourceRe
       }
     });
   }
-  
+
 }

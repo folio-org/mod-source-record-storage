@@ -18,6 +18,7 @@ import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.LbRecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.LbParsedRecordDaoUtil;
+import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -68,7 +69,7 @@ public class LbRecordServiceImpl implements LbRecordService {
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
-    ExternalIdType externalIdType = ExternalIdType.valueOf(idType);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(idType);
     return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
   }
 
@@ -135,8 +136,7 @@ public class LbRecordServiceImpl implements LbRecordService {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    // NOTE: will fail if idType is anything but INSTANCE or RECORD
-    ExternalIdType externalIdType = ExternalIdType.valueOf(idType);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(idType);
     return recordDao.getSourceRecordByExternalId(id, externalIdType, tenantId);
   }
 
@@ -165,8 +165,7 @@ public class LbRecordServiceImpl implements LbRecordService {
 
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
-    // NOTE: will fail if idType is anything but INSTANCE or RECORD
-    ExternalIdType externalIdType = ExternalIdType.valueOf(externalIdIdentifier);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(externalIdIdentifier);
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
         new NotFoundException(format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));

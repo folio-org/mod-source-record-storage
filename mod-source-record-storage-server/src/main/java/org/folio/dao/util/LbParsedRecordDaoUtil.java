@@ -88,8 +88,11 @@ public class LbParsedRecordDaoUtil {
    */
   public static ParsedRecord toParsedRecord(Row row) {
     MarcRecordsLb pojo = RowMappers.getMarcRecordsLbMapper().apply(row);
-    return new ParsedRecord()
-      .withId(pojo.getId().toString())
+    ParsedRecord parsedRecord = new ParsedRecord();
+    if (Objects.nonNull(pojo.getId())) {
+      parsedRecord.withId(pojo.getId().toString());
+    }
+    return parsedRecord
       .withContent(pojo.getContent());
   }
 

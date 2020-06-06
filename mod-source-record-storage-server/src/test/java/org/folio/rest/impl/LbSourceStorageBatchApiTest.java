@@ -55,8 +55,6 @@ public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
-  private static final String FIFTH_UUID = UUID.randomUUID().toString();
-
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -78,9 +76,6 @@ public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Snapshot snapshot_2 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-
-  private static ParsedRecord invalidParsedRecord = new ParsedRecord()
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
 
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
@@ -119,16 +114,6 @@ public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(marcRecord)
     .withMatchedId(FOURTH_UUID)
     .withOrder(1)
-    .withState(Record.State.ACTUAL);
-  
-  private static Record record_5 = new Record()
-    .withId(FIFTH_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC)
-    .withRawRecord(rawRecord)
-    .withMatchedId(FIFTH_UUID)
-    .withParsedRecord(invalidParsedRecord)
-    .withOrder(101)
     .withState(Record.State.ACTUAL);
 
   @Override

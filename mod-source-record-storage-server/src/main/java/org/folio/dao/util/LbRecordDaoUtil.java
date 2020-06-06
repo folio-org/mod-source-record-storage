@@ -31,7 +31,6 @@ import org.folio.rest.jooq.tables.pojos.RecordsLb;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-import org.jooq.SortField;
 import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 
@@ -396,7 +395,7 @@ public class LbRecordDaoUtil {
    * @return list of sort fields
    */
   @SuppressWarnings("squid:S3740")
-  public static List<SortField> toRecordOrderFields(List<String> orderBy) {
+  public static List<OrderField> toRecordOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

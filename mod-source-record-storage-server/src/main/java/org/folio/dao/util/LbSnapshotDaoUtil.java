@@ -29,7 +29,6 @@ import org.jooq.Condition;
 import org.jooq.InsertSetStep;
 import org.jooq.InsertValuesStepN;
 import org.jooq.OrderField;
-import org.jooq.SortField;
 import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 
@@ -287,10 +286,10 @@ public class LbSnapshotDaoUtil {
    * Property name being lower camel case and column name being lower snake case of the property name.
    * 
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
-   * @return list of sort fields
+   * @return list of order fields
    */
   @SuppressWarnings("squid:S3740")
-  public static List<SortField> toSnapshotOrderFields(List<String> orderBy) {
+  public static List<OrderField> toSnapshotOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

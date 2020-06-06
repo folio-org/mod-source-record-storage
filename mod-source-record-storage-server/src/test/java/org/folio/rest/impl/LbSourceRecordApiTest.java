@@ -39,11 +39,9 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class LbSourceRecordApiTest extends AbstractRestVerticleTest {
 
-  private static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/lb-source-storage/sourceRecords";
-
-  private static final String SOURCE_STORAGE_RECORDS_PATH = "/lb-source-storage/records";
-  
+  private static final String SOURCE_STORAGE_RECORDS_PATH = "/lb-source-storage/records";  
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/lb-source-storage/snapshots";
+  private static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/lb-source-storage/sourceRecords";
 
   private static final String FIRST_UUID = UUID.randomUUID().toString();
   private static final String SECOND_UUID = UUID.randomUUID().toString();

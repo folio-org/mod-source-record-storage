@@ -3,11 +3,8 @@ package org.folio.dao;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.jooq.impl.DSL.asterisk;
-import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.partitionBy;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
@@ -39,6 +36,7 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
+import org.jooq.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -216,13 +214,14 @@ public class LbRecordDaoImpl implements LbRecordDao {
       String tenantId) {
     Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(asterisk(), max(RECORDS_LB.GENERATION)
-        .over(partitionBy(RECORDS_LB.MATCHED_ID)))
-        .from(RECORDS_LB)
-        .where(condition))
-          .map(LbRecordDaoUtil::toRecord)
-      .compose(record -> lookupAssociatedRecords(txQE, record, true)))
-        .map(Optional::of);
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+        .where(condition)
+        .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.ASC))
+        .limit(1))
+          .map(LbRecordDaoUtil::toOptionalRecord)
+          .compose(optionalRecord -> optionalRecord
+            .map(record -> lookupAssociatedRecords(txQE, record, true).map(Optional::of))
+          .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId))))));
   }
 
   @Override
@@ -242,8 +241,8 @@ public class LbRecordDaoImpl implements LbRecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> LbRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
         .map(record -> LbRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id)))))
-    ).map(u -> true);
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id))))))
+        .map(u -> true);
   }
 
   @Override

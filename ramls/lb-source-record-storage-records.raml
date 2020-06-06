@@ -94,11 +94,21 @@ resourceTypes:
             body:
               application/json:
                 type: record
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
           404:
-            description: Not found
+            description: "Not found"
             body:
               text/plain:
                 example: "Not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
     /suppressFromDiscovery:
       displayName: Suppress From Discovery
       put:

@@ -363,7 +363,6 @@
               <generate>
                 <daos>true</daos>
                 <fluentSetters>true</fluentSetters>
-                <validationAnnotations>true</validationAnnotations>
               </generate>
               <target>
                 <packageName>org.folio.rest.jooq</packageName>

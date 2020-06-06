@@ -1,12 +1,14 @@
 package org.folio.rest.impl;
 
+import static org.folio.dao.util.LbSnapshotDaoUtil.filterSnapshotByStatus;
+import static org.folio.dao.util.LbSnapshotDaoUtil.toSnapshotOrderFields;
+
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.resource.LbSourceStorageSnapshots;
@@ -63,8 +65,8 @@ public class LbSourceStorageSnapshotsImpl implements LbSourceStorageSnapshots {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbSnapshotDaoUtil.conditionFilterBy(status);
-        List<OrderField<?>> orderFields = LbSnapshotDaoUtil.toOrderFields(orderBy);
+        Condition condition = filterSnapshotByStatus(status);
+        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

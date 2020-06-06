@@ -2,6 +2,8 @@ package org.folio.services;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
@@ -13,7 +15,6 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.LbRecordDao;
-import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -77,8 +78,8 @@ public class LbInstanceEventHandlingService implements LbEventHandlingService {
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {
-    Condition condition = LbRecordDaoUtil.conditionFilterByNotSnapshotId(snapshotId)
-      .and(LbRecordDaoUtil.conditionFilterByInstanceId(instanceId));
+    Condition condition = filterRecordByNotSnapshotId(snapshotId)
+      .and(filterRecordByInstanceId(instanceId));
     return recordDao.getRecords(condition, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();

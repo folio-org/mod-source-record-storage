@@ -31,6 +31,7 @@ import org.folio.rest.jooq.tables.pojos.RecordsLb;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.jooq.Condition;
 import org.jooq.OrderField;
+import org.jooq.SortField;
 import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 
@@ -302,26 +303,18 @@ public class LbRecordDaoUtil {
    * Get {@link Condition} to filter by combination of properties using only 'and'
    * 
    * @param recordId              record id to equal
-   * @param snapshotId            snapshot id to equal
-   * @param instanceId            instance id to equal
    * @param recordType            record type to equal
-   * @param state                 record state to equal
    * @param suppressFromDiscovery suppress from discovery to equal
+   * @param deleted               deleted to equal
    * @param updatedAfter          updated after to be greater than or equal
    * @param updatedBefore         updated before to be less than or equal
    * @return condition
    */
-  public static Condition conditionFilterBy(String recordId, String snapshotId, String instanceId, String recordType,
-      Boolean suppressFromDiscovery, Boolean deleted, Date updatedAfter, Date updatedBefore) {
+  public static Condition filterRecordBy(String recordId, String recordType, Boolean suppressFromDiscovery, Boolean deleted,
+      Date updatedAfter, Date updatedBefore) {
     Condition condition = DSL.trueCondition();
     if (StringUtils.isNotEmpty(recordId)) {
       condition = condition.and(RECORDS_LB.ID.eq(toUUID(recordId)));
-    }
-    if (StringUtils.isNotEmpty(snapshotId)) {
-      condition = condition.and(RECORDS_LB.SNAPSHOT_ID.eq(toUUID(snapshotId)));
-    }
-    if (StringUtils.isNotEmpty(instanceId)) {
-      condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(toUUID(instanceId)));
     }
     if (StringUtils.isNotEmpty(recordType)) {
       condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(toRecordType(recordType)));
@@ -347,7 +340,7 @@ public class LbRecordDaoUtil {
    * @param state state to equal
    * @return condition
    */
-  public static Condition conditionFilterByState(String state) {
+  public static Condition filterRecordByState(String state) {
     if (StringUtils.isNotEmpty(state)) {
       return RECORDS_LB.STATE.eq(toRecordState(state));
     }
@@ -360,7 +353,7 @@ public class LbRecordDaoUtil {
    * @param instanceId instance id to equal
    * @return condition
    */
-  public static Condition conditionFilterByInstanceId(String instanceId) {
+  public static Condition filterRecordByInstanceId(String instanceId) {
     if (StringUtils.isNotEmpty(instanceId)) {
       return RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId));
     }
@@ -373,7 +366,7 @@ public class LbRecordDaoUtil {
    * @param snapshotId snapshot id to equal
    * @return condition
    */
-  public static Condition conditionFilterBySnapshotId(String snapshotId) {
+  public static Condition filterRecordBySnapshotId(String snapshotId) {
     if (StringUtils.isNotEmpty(snapshotId)) {
       return RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
     }
@@ -386,7 +379,7 @@ public class LbRecordDaoUtil {
    * @param notSnapshotId snapshot id to not equal
    * @return condition
    */
-  public static Condition conditionFilterByNotSnapshotId(String snapshotId) {
+  public static Condition filterRecordByNotSnapshotId(String snapshotId) {
     if (StringUtils.isNotEmpty(snapshotId)) {
       return RECORDS_LB.SNAPSHOT_ID.notEqual(UUID.fromString(snapshotId));
     }
@@ -400,9 +393,10 @@ public class LbRecordDaoUtil {
    * Property name being lower camel case and column name being lower snake case of the property name.
    * 
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
-   * @return list of order fields
+   * @return list of sort fields
    */
-  public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
+  @SuppressWarnings("squid:S3740")
+  public static List<SortField> toRecordOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

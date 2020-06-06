@@ -1,5 +1,10 @@
 package org.folio.rest.impl;
 
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordBy;
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.LbRecordDaoUtil.toRecordOrderFields;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +12,6 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.resource.LbSourceStorageSourceRecords;
@@ -48,9 +52,10 @@ public class LbSourceStorageSourceRecordsImpl implements LbSourceStorageSourceRe
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBy(recordId, snapshotId, instanceId, recordType, suppressFromDiscovery,
-          deleted, updatedAfter, updatedBefore);
-        List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
+        Condition condition = filterRecordBy(recordId, recordType, suppressFromDiscovery, deleted, updatedAfter, updatedBefore)
+          .and(filterRecordBySnapshotId(snapshotId))
+          .and(filterRecordByInstanceId(instanceId));
+        List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
         recordService.getSourceRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

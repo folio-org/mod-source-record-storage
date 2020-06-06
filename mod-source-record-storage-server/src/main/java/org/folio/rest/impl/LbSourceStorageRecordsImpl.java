@@ -1,12 +1,15 @@
 package org.folio.rest.impl;
 
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.LbRecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.LbRecordDaoUtil.toRecordOrderFields;
+
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
-import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -64,9 +67,9 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBySnapshotId(snapshotId)
-          .and(LbRecordDaoUtil.conditionFilterByState(state));
-        List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
+        Condition condition = filterRecordBySnapshotId(snapshotId)
+          .and(filterRecordByState(state));
+        List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

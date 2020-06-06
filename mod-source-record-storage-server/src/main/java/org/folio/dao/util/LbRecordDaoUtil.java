@@ -302,13 +302,18 @@ public class LbRecordDaoUtil {
    * Get {@link Condition} to filter by snapshot id
    * 
    * @param snapshotId snapshot id to equal
+   * @param state      state to equal
    * @return condition
    */
-  public static Condition conditionFilterBy(String snapshotId) {
+  public static Condition conditionFilterBy(String snapshotId, String state) {
+    Condition condition = DSL.trueCondition();
     if (StringUtils.isNotEmpty(snapshotId)) {
-      return RECORDS_LB.SNAPSHOT_ID.eq(toUUID(snapshotId));
+      condition = condition.and(RECORDS_LB.SNAPSHOT_ID.eq(toUUID(snapshotId)));
     }
-    return DSL.trueCondition();
+    if (StringUtils.isNotEmpty(state)) {
+      condition = condition.and(RECORDS_LB.STATE.eq(toRecordState(state)));
+    }
+    return condition;
   }
 
   /**
@@ -402,7 +407,7 @@ public class LbRecordDaoUtil {
   private static UUID toUUID(String uuid) {
     try {
       return UUID.fromString(uuid);
-    } catch(Exception e) {
+    } catch (Exception e) {
       throw new BadRequestException(String.format("Invalid UUID %s", uuid));
     }
   }
@@ -410,8 +415,16 @@ public class LbRecordDaoUtil {
   private static RecordType toRecordType(String recordType) {
     try {
       return RecordType.valueOf(recordType);
-    } catch(Exception e) {
+    } catch (Exception e) {
       throw new BadRequestException(String.format("Unknown record type %s", recordType));
+    }
+  }
+
+  private static RecordState toRecordState(String state) {
+    try {
+      return RecordState.valueOf(state);
+    } catch (Exception e) {
+      throw new BadRequestException(String.format("Unknown record state %s", state));
     }
   }
 

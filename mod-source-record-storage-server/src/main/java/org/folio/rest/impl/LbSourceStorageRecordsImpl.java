@@ -60,11 +60,11 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
   }
 
   @Override
-  public void getLbSourceStorageRecords(String snapshotId, List<String> orderBy, int offset, int limit, String lang,
+  public void getLbSourceStorageRecords(String snapshotId, String state, List<String> orderBy, int offset, int limit, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId);
+        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId, state);
         List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageRecordsResponse::respond200WithApplicationJson)

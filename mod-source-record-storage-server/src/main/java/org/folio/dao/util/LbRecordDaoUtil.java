@@ -337,6 +337,24 @@ public class LbRecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} to filter by state ACTUAL and not snapshot id and instance id
+   * 
+   * @param notSnapshotId snapshot id to not equal
+   * @param instanceId    instance id to equal
+   * @return condition
+   */
+  public static Condition conditionFilterBy(String notSnapshotId, String instanceId) {
+    Condition condition = RECORDS_LB.STATE.eq(RecordState.ACTUAL);
+    if (StringUtils.isNotEmpty(notSnapshotId)) {
+      condition = condition.and(RECORDS_LB.SNAPSHOT_ID.notEqual(UUID.fromString(notSnapshotId)));
+    }
+    if (StringUtils.isNotEmpty(instanceId)) {
+      condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
+    }
+    return condition;
+  }
+
+  /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
    * 
    * Relies on strong convention between dto property name and database column name.

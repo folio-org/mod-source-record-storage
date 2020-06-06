@@ -9,6 +9,7 @@ import static org.hamcrest.Matchers.nullValue;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
@@ -29,16 +30,16 @@ public class LbSnapshotApiTest extends AbstractRestVerticleTest {
   private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/lb-source-storage/snapshots";
 
   private static Snapshot snapshot_1 = new Snapshot()
-    .withJobExecutionId("67dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
   private static Snapshot snapshot_2 = new Snapshot()
-    .withJobExecutionId("17dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
   private static Snapshot snapshot_3 = new Snapshot()
-    .withJobExecutionId("27dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_4 = new Snapshot()
-    .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_FINISHED);
 
   @Override

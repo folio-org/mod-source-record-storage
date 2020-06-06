@@ -3,9 +3,11 @@ package org.folio.dao;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.jooq.impl.DSL.asterisk;
 import static org.jooq.impl.DSL.coalesce;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.partitionBy;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
@@ -37,7 +39,6 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -189,14 +190,17 @@ public class LbRecordDaoImpl implements LbRecordDao {
 
   @Override
   public Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    return txQE.query(dsl -> dsl.select(coalesce(max(RECORDS_LB.GENERATION), 0).as(RECORDS_LB.GENERATION))
+    return txQE.query(dsl -> dsl.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
       .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
       .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
         .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
         .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
           .from(SNAPSHOTS_LB)
           .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(record.getSnapshotId())))))))
-            .map(res -> res.get(RECORDS_LB.GENERATION));
+            .map(res -> {
+              Integer generation = res.get(RECORDS_LB.GENERATION);
+              return Objects.nonNull(generation) ? ++generation : 0;
+            });
   }
 
   @Override
@@ -212,8 +216,8 @@ public class LbRecordDaoImpl implements LbRecordDao {
       String tenantId) {
     Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(DSL.asterisk(), DSL.max(RECORDS_LB.GENERATION)
-        .over(DSL.partitionBy(RECORDS_LB.MATCHED_ID)))
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.select(asterisk(), max(RECORDS_LB.GENERATION)
+        .over(partitionBy(RECORDS_LB.MATCHED_ID)))
         .from(RECORDS_LB)
         .where(condition))
           .map(LbRecordDaoUtil::toRecord)

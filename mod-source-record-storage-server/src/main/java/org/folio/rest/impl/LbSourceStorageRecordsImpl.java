@@ -60,11 +60,11 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
   }
 
   @Override
-  public void getLbSourceStorageRecords(String snapshotId, List<String> orderBy, int offset, int limit, String lang,
+  public void getLbSourceStorageRecords(String snapshotId, String state, List<String> orderBy, int offset, int limit, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId);
+        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId, state);
         List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageRecordsResponse::respond200WithApplicationJson)
@@ -159,22 +159,16 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getRecordByExternalId(id, idType, tenantId)
-          .map(recordOptional -> recordOptional.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-          .compose(record -> record.getState().equals(State.DELETED)
-            ? Future.succeededFuture(true)
-            : recordService.updateRecord(record.withAdditionalInfo(record.getAdditionalInfo()
-                .withSuppressDiscovery(suppress)), tenantId).map(r -> true))
-          .map(updated -> DeleteLbSourceStorageRecordsByIdResponse.respond204())
+        recordService.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId)
+          .map(PutLbSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to delete record {}", e, id);
+        LOG.error("Failed to update record's SuppressFromDiscovery flag", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
   }
-  
+
 }

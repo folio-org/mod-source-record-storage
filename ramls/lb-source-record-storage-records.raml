@@ -51,6 +51,11 @@ resourceTypes:
         type: string
         example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
         required: false
+      state:
+        description: Filter by State
+        type: string
+        example: "ACTUAL"
+        required: false
       orderBy:
         description: Sort Records
         type: string[]
@@ -89,11 +94,21 @@ resourceTypes:
             body:
               application/json:
                 type: record
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
           404:
-            description: Not found
+            description: "Not found"
             body:
               text/plain:
                 example: "Not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
     /suppressFromDiscovery:
       displayName: Suppress From Discovery
       put:
@@ -109,15 +124,24 @@ resourceTypes:
             description: Whether to suppress or unsuppress from discovery
             example: false
             type: boolean
-            default: true
             required: false
+            default: true
         responses:
           200:
             body:
-              application/json:
-                type: record
-          404:
-            description: Not found
+              text/plain: !!null
+          400:
+            description: "Bad request"
             body:
               text/plain:
-                example: "Not found"
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"

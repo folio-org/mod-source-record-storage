@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -269,7 +270,11 @@ public class LbSnapshotDaoUtil {
    */
   public static Condition conditionFilterBy(String status) {
     if (StringUtils.isNotEmpty(status)) {
-      return SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.valueOf(status));
+      try {
+        return SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.valueOf(status));
+      } catch(Exception e) {
+        throw new BadRequestException(String.format("Unknown job execution status %s", status));
+      }
     }
     return DSL.trueCondition();
   }
@@ -286,8 +291,14 @@ public class LbSnapshotDaoUtil {
   public static List<OrderField<?>> toOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
-      .map(order -> SNAPSHOTS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
-        ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT))
+      .map(order -> {
+        try {
+          return SNAPSHOTS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
+            ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
+        } catch (Exception e) {
+          throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
+        }
+      })
       .collect(Collectors.toList());
   }
 

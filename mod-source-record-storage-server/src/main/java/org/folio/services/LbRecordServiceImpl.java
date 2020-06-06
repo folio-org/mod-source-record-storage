@@ -172,8 +172,8 @@ public class LbRecordServiceImpl implements LbRecordService {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
   }
 
   @Override

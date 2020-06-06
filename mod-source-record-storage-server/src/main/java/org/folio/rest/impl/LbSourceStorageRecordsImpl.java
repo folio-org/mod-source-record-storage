@@ -10,8 +10,6 @@ import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.resource.LbSourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.LbRecordService;
@@ -161,12 +159,7 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        // TODO: update interface signature and remote dto
-        SuppressFromDiscoveryDto entity = new SuppressFromDiscoveryDto()
-          .withId(id)
-          .withIncomingIdType(IncomingIdType.fromValue(idType))
-          .withSuppressFromDiscovery(suppress);
-        recordService.updateSuppressFromDiscoveryForRecord(entity, tenantId)
+        recordService.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId)
           .map(PutLbSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -177,5 +170,5 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       }
     });
   }
-  
+
 }

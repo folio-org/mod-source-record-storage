@@ -26,8 +26,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
+import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -249,12 +248,13 @@ public class LbRecordServiceTest extends AbstractLBServiceTest {
         context.assertNotNull(update.result().getParsedRecord());
         context.assertNull(update.result().getErrorRecord());
         compareRecords(context, expected, update.result());
-        recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(expected.getMatchedId()))
+          .and(RECORDS_LB.STATE.eq(RecordState.OLD));
+        recordDao.getRecordByCondition(condition, TENANT_ID).onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
           }
-          // NOTE: getRecordById has implicit condition of state == ACTUAL
-          context.assertFalse(get.result().isPresent());
+          context.assertTrue(get.result().isPresent());
           async.complete();
         });
       });
@@ -418,11 +418,10 @@ public class LbRecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      SuppressFromDiscoveryDto suppressFromDiscoveryDto = new SuppressFromDiscoveryDto()
-        .withId(expected.getExternalIdsHolder().getInstanceId())
-        .withIncomingIdType(IncomingIdType.INSTANCE)
-        .withSuppressFromDiscovery(true);
-      recordService.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, TENANT_ID).onComplete(update -> {
+      String instanceId = expected.getExternalIdsHolder().getInstanceId();
+      String idType = ExternalIdType.INSTANCE.toString();
+      Boolean suppress = true;
+      recordService.updateSuppressFromDiscoveryForRecord(instanceId, idType, suppress, TENANT_ID).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }

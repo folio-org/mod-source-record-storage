@@ -33,7 +33,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
@@ -233,17 +232,13 @@ public class LbRecordDaoImpl implements LbRecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto,
-      String tenantId) {
-    Boolean suppressFromDiscovery = suppressFromDiscoveryDto.getSuppressFromDiscovery();
-    String externalId = suppressFromDiscoveryDto.getId();
-    String incomingIdType = suppressFromDiscoveryDto.getIncomingIdType().value();
-    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(incomingIdType);
-    Condition condition = LbRecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(idType);
+    Condition condition = LbRecordDaoUtil.getExternalIdCondition(id, externalIdType);
     return getQueryExecutor(tenantId).transaction(txQE -> LbRecordDaoUtil.findByCondition(txQE, condition)
       .compose(optionalRecord -> optionalRecord
-        .map(record -> LbRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppressFromDiscovery))))
-      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", incomingIdType, externalId)))))
+        .map(record -> LbRecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id)))))
     ).map(u -> true);
   }
 

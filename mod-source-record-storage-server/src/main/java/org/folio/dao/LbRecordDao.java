@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -139,5 +140,26 @@ public interface LbRecordDao extends RecordDao {
    * @return future with generic type
    */
   <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
+
+  /**
+   * {@inheritDoc}
+   * @deprecated
+   */
+  @Override
+  @Deprecated
+  default Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+    throw new UnsupportedOperationException("Update supress from discovery by dto is no longer suported");
+  }
+
+  /**
+   * Change suppress from discovery flag for record by external relation id
+   *
+   * @param id       id
+   * @param idType   external id type
+   * @param suppress suppress from discovery
+   * @param tenantId tenant id
+   * @return - future with true if succeeded
+   */
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId);
 
 }

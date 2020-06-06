@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -14,6 +15,7 @@ import io.vertx.core.Future;
 public interface LbRecordService extends RecordService {
 
   /**
+   * {@inheritDoc}
    * @deprecated
    */
   @Override
@@ -25,6 +27,7 @@ public interface LbRecordService extends RecordService {
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * {@inheritDoc}
    * @deprecated
    */
   @Override
@@ -44,5 +47,26 @@ public interface LbRecordService extends RecordService {
    * @return future with optional {@link Record}
    */
   Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId);
+
+  /**
+   * {@inheritDoc}
+   * @deprecated
+   */
+  @Override
+  @Deprecated
+  default Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
+    throw new UnsupportedOperationException("Update supress from discovery by dto is no longer suported");
+  }
+
+  /**
+   * Change suppress from discovery flag for record by external relation id
+   *
+   * @param id       id
+   * @param idType   external id type
+   * @param suppress suppress from discovery
+   * @param tenantId tenant id
+   * @return - future with true if succeeded
+   */
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId);
 
 }

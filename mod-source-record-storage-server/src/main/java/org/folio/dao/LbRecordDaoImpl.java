@@ -90,8 +90,7 @@ public class LbRecordDaoImpl implements LbRecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id) {
-    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id));
     return getRecordByCondition(txQE, condition);
   }
 

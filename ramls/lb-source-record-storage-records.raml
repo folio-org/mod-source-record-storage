@@ -51,6 +51,11 @@ resourceTypes:
         type: string
         example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
         required: false
+      state:
+        description: Filter by State
+        type: string
+        example: "ACTUAL"
+        required: false
       orderBy:
         description: Sort Records
         type: string[]
@@ -109,8 +114,8 @@ resourceTypes:
             description: Whether to suppress or unsuppress from discovery
             example: false
             type: boolean
-            default: true
             required: false
+            default: true
         responses:
           200:
             body:

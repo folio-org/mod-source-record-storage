@@ -26,7 +26,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.junit.After;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.restassured.RestAssured;

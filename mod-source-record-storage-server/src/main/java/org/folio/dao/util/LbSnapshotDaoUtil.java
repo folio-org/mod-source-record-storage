@@ -288,8 +288,8 @@ public class LbSnapshotDaoUtil {
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
    * @return list of order fields
    */
-  @SuppressWarnings("squid:S3740")
-  public static List<OrderField> toSnapshotOrderFields(List<String> orderBy) {
+  @SuppressWarnings("squid:S1452")
+  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

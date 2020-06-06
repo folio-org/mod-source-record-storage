@@ -394,8 +394,8 @@ public class LbRecordDaoUtil {
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
    * @return list of sort fields
    */
-  @SuppressWarnings("squid:S3740")
-  public static List<OrderField> toRecordOrderFields(List<String> orderBy) {
+  @SuppressWarnings("squid:S1452")
+  public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy) {
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

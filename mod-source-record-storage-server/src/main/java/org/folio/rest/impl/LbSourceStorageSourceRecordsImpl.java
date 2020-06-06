@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ import org.folio.services.LbRecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
@@ -31,6 +29,7 @@ import io.vertx.core.logging.LoggerFactory;
 public class LbSourceStorageSourceRecordsImpl implements LbSourceStorageSourceRecords {
 
   private static final Logger LOG = LoggerFactory.getLogger(LbSourceStorageSourceRecordsImpl.class);
+
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 
   @Autowired

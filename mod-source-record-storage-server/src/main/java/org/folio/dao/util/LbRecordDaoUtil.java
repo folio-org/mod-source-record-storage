@@ -299,24 +299,6 @@ public class LbRecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by snapshot id
-   * 
-   * @param snapshotId snapshot id to equal
-   * @param state      state to equal
-   * @return condition
-   */
-  public static Condition conditionFilterBy(String snapshotId, String state) {
-    Condition condition = DSL.trueCondition();
-    if (StringUtils.isNotEmpty(snapshotId)) {
-      condition = condition.and(RECORDS_LB.SNAPSHOT_ID.eq(toUUID(snapshotId)));
-    }
-    if (StringUtils.isNotEmpty(state)) {
-      condition = condition.and(RECORDS_LB.STATE.eq(toRecordState(state)));
-    }
-    return condition;
-  }
-
-  /**
    * Get {@link Condition} to filter by combination of properties using only 'and'
    * 
    * @param recordId              record id to equal
@@ -360,21 +342,55 @@ public class LbRecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by state ACTUAL and not snapshot id and instance id
+   * Get {@link Condition} to filter by state
    * 
-   * @param notSnapshotId snapshot id to not equal
-   * @param instanceId    instance id to equal
+   * @param state state to equal
    * @return condition
    */
-  public static Condition conditionFilterBy(String notSnapshotId, String instanceId) {
-    Condition condition = RECORDS_LB.STATE.eq(RecordState.ACTUAL);
-    if (StringUtils.isNotEmpty(notSnapshotId)) {
-      condition = condition.and(RECORDS_LB.SNAPSHOT_ID.notEqual(UUID.fromString(notSnapshotId)));
+  public static Condition conditionFilterByState(String state) {
+    if (StringUtils.isNotEmpty(state)) {
+      return RECORDS_LB.STATE.eq(toRecordState(state));
     }
+    return DSL.trueCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by instance id
+   * 
+   * @param instanceId instance id to equal
+   * @return condition
+   */
+  public static Condition conditionFilterByInstanceId(String instanceId) {
     if (StringUtils.isNotEmpty(instanceId)) {
-      condition = condition.and(RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId)));
+      return RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId));
     }
-    return condition;
+    return DSL.trueCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by snapshotId id
+   * 
+   * @param snapshotId snapshot id to equal
+   * @return condition
+   */
+  public static Condition conditionFilterBySnapshotId(String snapshotId) {
+    if (StringUtils.isNotEmpty(snapshotId)) {
+      return RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+    }
+    return DSL.trueCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by not snapshot id
+   * 
+   * @param notSnapshotId snapshot id to not equal
+   * @return condition
+   */
+  public static Condition conditionFilterByNotSnapshotId(String snapshotId) {
+    if (StringUtils.isNotEmpty(snapshotId)) {
+      return RECORDS_LB.SNAPSHOT_ID.notEqual(UUID.fromString(snapshotId));
+    }
+    return DSL.trueCondition();
   }
 
   /**

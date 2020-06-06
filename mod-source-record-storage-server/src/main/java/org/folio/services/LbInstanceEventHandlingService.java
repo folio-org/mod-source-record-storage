@@ -77,7 +77,8 @@ public class LbInstanceEventHandlingService implements LbEventHandlingService {
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {
-    Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId, instanceId);
+    Condition condition = LbRecordDaoUtil.conditionFilterByNotSnapshotId(snapshotId)
+      .and(LbRecordDaoUtil.conditionFilterByInstanceId(instanceId));
     return recordDao.getRecords(condition, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();

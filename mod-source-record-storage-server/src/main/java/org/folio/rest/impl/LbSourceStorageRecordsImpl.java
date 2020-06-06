@@ -64,7 +64,8 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = LbRecordDaoUtil.conditionFilterBy(snapshotId, state);
+        Condition condition = LbRecordDaoUtil.conditionFilterBySnapshotId(snapshotId)
+          .and(LbRecordDaoUtil.conditionFilterByState(state));
         List<OrderField<?>> orderFields = LbRecordDaoUtil.toOrderFields(orderBy);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetLbSourceStorageRecordsResponse::respond200WithApplicationJson)

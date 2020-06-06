@@ -119,10 +119,19 @@ resourceTypes:
         responses:
           200:
             body:
-              application/json:
-                type: record
-          404:
-            description: Not found
+              text/plain: !!null
+          400:
+            description: "Bad request"
             body:
               text/plain:
-                example: "Not found"
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"

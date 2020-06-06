@@ -10,6 +10,8 @@ import org.folio.dao.util.LbRecordDaoUtil;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto.IncomingIdType;
+import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.jaxrs.resource.LbSourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.LbRecordService;
@@ -159,19 +161,18 @@ public class LbSourceStorageRecordsImpl implements LbSourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getRecordByExternalId(id, idType, tenantId)
-          .map(recordOptional -> recordOptional.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-          .compose(record -> record.getState().equals(State.DELETED)
-            ? Future.succeededFuture(true)
-            : recordService.updateRecord(record.withAdditionalInfo(record.getAdditionalInfo()
-                .withSuppressDiscovery(suppress)), tenantId).map(r -> true))
-          .map(updated -> DeleteLbSourceStorageRecordsByIdResponse.respond204())
+        // TODO: update interface signature and remote dto
+        SuppressFromDiscoveryDto entity = new SuppressFromDiscoveryDto()
+          .withId(id)
+          .withIncomingIdType(IncomingIdType.fromValue(idType))
+          .withSuppressFromDiscovery(suppress);
+        recordService.updateSuppressFromDiscoveryForRecord(entity, tenantId)
+          .map(PutLbSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to delete record {}", e, id);
+        LOG.error("Failed to update record's SuppressFromDiscovery flag", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

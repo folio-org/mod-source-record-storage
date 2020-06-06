@@ -135,22 +135,6 @@ public class LbSourceRecordApiTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
-    // do nothing
-  }
-
-  @Before
-  public void createSnapshots(TestContext context) {
-    Async async = context.async();
-    LbSnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  public void deleteSnapshots(TestContext context) {
     Async async = context.async();
     LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {

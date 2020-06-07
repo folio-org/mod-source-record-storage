@@ -26,8 +26,12 @@ public class LbUpdateRecordEventHandlingService implements LbEventHandlingServic
 
   private static final String QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE = "QM_SRS_MARC_BIB_RECORD_UPDATED";
 
+  private final LbRecordService recordService;
+
   @Autowired
-  private RecordService recordService;
+  public LbUpdateRecordEventHandlingService(final LbRecordService recordService) {
+    this.recordService = recordService;
+  }
 
   /**
    * Handles QM_RECORD_UPDATED event and sends QM_SRS_MARC_BIB_RECORD_UPDATED as a result of the update

@@ -42,8 +42,12 @@ public class LbInstanceEventHandlingService implements LbEventHandlingService {
 
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
 
+  private final LbRecordDao recordDao;
+
   @Autowired
-  private LbRecordDao recordDao;
+  public LbInstanceEventHandlingService(final LbRecordDao recordDao) {
+    this.recordDao = recordDao;
+  }
 
   /**
    * Handles DI_INVENTORY_INSTANCE_CREATED or DI_INVENTORY_INSTANCE_UPDATED event

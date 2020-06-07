@@ -104,7 +104,9 @@ public class LbRecordDaoUtil {
    */
   public static Future<Optional<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-      .where(condition))
+      .where(condition)
+      .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
+      .limit(1))
         .map(LbRecordDaoUtil::toOptionalRecord);
   }
 

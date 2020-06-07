@@ -117,10 +117,10 @@ public class LbRecordDaoImpl implements LbRecordDao {
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
-    return getRecordById(record.getId(), tenantId)
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(r -> saveRecord(record, tenantId))
-        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", record.getId())))));
+        .map(r -> saveRecord(txQE, record))
+        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", record.getId()))))));
   }
 
   @Override

@@ -281,7 +281,7 @@ public class LbRecordDaoUtil {
       dbRecord.setSuppressDiscovery(record.getAdditionalInfo().getSuppressDiscovery());
     }
     if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
-        dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
+      dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
     }
     if (Objects.nonNull(record.getMetadata())) {
       if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {

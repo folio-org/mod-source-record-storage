@@ -197,7 +197,7 @@ public class LbRecordServiceImpl implements LbRecordService {
               .withOrder(existingRecord.getOrder())
               .withGeneration(existingRecord.getGeneration() + 1)
               .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(existingRecord.getParsedRecord().getContent()))
+              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
               .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))

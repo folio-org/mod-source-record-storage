@@ -8,6 +8,7 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.UUID;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
@@ -24,6 +25,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jooq.Tables;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
 import org.junit.Before;
@@ -34,6 +36,7 @@ import org.mockito.MockitoAnnotations;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -103,7 +106,8 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
     ParsedRecord parsedRecord = record.getParsedRecord();
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
       .withId(record.getId())
-      .withParsedRecord(parsedRecord.withContent(UPDATED_PARSED_RECORD_CONTENT))
+      .withParsedRecord(new ParsedRecord()
+        .withContent(UPDATED_PARSED_RECORD_CONTENT))
       .withRecordType(ParsedRecordDto.RecordType.MARC);
 
     WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
@@ -126,19 +130,32 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
-        if (getAr.failed()) {
-          context.fail(getAr.cause());
+      recordService.getRecordById(record.getId(), TENANT_ID).onComplete(getNew -> {
+        if (getNew.failed()) {
+          context.fail(getNew.cause());
         }
-        context.assertTrue(getAr.result().isPresent());
-        Record updatedRecord = getAr.result().get();
+        context.assertTrue(getNew.result().isPresent());
+        Record updatedRecord = getNew.result().get();
 
         context.assertEquals(State.ACTUAL, updatedRecord.getState());
         context.assertEquals(1, updatedRecord.getGeneration());
-        context.assertNotEquals(parsedRecord.getContent(), UPDATED_PARSED_RECORD_CONTENT);
         context.assertNotEquals(parsedRecord.getId(), updatedRecord.getParsedRecord().getId());
         context.assertNotEquals(record.getSnapshotId(), updatedRecord.getSnapshotId());
-        async.complete();
+
+        recordDao.getRecordByCondition(Tables.RECORDS_LB.ID.eq(UUID.fromString(record.getId())), TENANT_ID).onComplete(getOld -> {
+          if (getOld.failed()) {
+            context.fail(getOld.cause());
+          }
+          context.assertTrue(getOld.result().isPresent());
+          Record existingRecord = getOld.result().get();
+
+          context.assertEquals(State.OLD, existingRecord.getState());
+          context.assertEquals(0, existingRecord.getGeneration());
+          context.assertEquals(parsedRecord.getId(), existingRecord.getParsedRecord().getId());
+          context.assertEquals((String) parsedRecord.getContent(), (String) existingRecord.getParsedRecord().getContent());
+          context.assertEquals(record.getSnapshotId(), existingRecord.getSnapshotId());
+          async.complete();
+        });
       });
     });
   }

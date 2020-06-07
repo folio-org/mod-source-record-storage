@@ -83,6 +83,7 @@ public class LbInstanceEventHandlingService implements LbEventHandlingService {
     return recordDao.getRecords(condition, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
+        @SuppressWarnings("squid:S3740")
         List<Future> futures = new ArrayList<>();
         recordCollection.getRecords()
           .forEach(record -> futures.add(recordDao.updateRecord(record.withState(Record.State.OLD), tenantId)));
@@ -123,4 +124,5 @@ public class LbInstanceEventHandlingService implements LbEventHandlingService {
     }
     return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
   }
+
 }

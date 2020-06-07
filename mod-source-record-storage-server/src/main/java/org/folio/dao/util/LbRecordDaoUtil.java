@@ -322,7 +322,9 @@ public class LbRecordDaoUtil {
       condition = condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
     }
     if (Objects.nonNull(deleted)) {
-      condition = condition.and(deleted ? RECORDS_LB.STATE.eq(RecordState.DELETED) : RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      condition = condition.and(Boolean.TRUE.equals(deleted)
+        ? RECORDS_LB.STATE.eq(RecordState.DELETED)
+        : RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     }
     if (Objects.nonNull(updatedAfter)) {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));

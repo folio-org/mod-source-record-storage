@@ -9,6 +9,9 @@ documentation:
   - title: Source Record Storage Source Record API
     content: API for fetching source records
 
+uses:
+  ramltojaxrs: library/ramltojaxrs.raml
+
 types:
   sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
   sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
@@ -56,12 +59,17 @@ resourceTypes:
       suppressFromDiscovery:
         description: Filter by suppress from discovery
         type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
         example: true
         required: false
-        default: false
       deleted:
         description: Filter by deleted records
         type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
         example: true
         required: false
         default: false

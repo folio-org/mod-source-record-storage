@@ -48,7 +48,7 @@ public class LbSourceStorageSourceRecordsImpl implements LbSourceStorageSourceRe
 
   @Override
   public void getLbSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
-      boolean suppressFromDiscovery, boolean deleted, Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
+      Boolean suppressFromDiscovery, Boolean deleted, Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

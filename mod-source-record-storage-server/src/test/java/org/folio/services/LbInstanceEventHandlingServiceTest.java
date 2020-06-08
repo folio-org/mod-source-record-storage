@@ -8,8 +8,10 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +19,6 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
-import org.folio.TestMocks;
 import org.folio.dao.LbRecordDao;
 import org.folio.dao.LbRecordDaoImpl;
 import org.folio.dao.util.LbSnapshotDaoUtil;
@@ -69,6 +70,9 @@ public class LbInstanceEventHandlingServiceTest extends AbstractLBServiceTest {
 
   private Record record;
 
+  private String snapshotId1 = UUID.randomUUID().toString();
+  private String snapshotId2 = UUID.randomUUID().toString();
+
   private static String recordId = UUID.randomUUID().toString();
 
   @BeforeClass
@@ -90,19 +94,29 @@ public class LbInstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     recordDao = new LbRecordDaoImpl(postgresClientFactory);
     eventHandlingService = new LbInstanceEventHandlingService(recordDao);
     Async async = context.async();
-    this.record = TestMocks.getRecord(0)
+    
+    Snapshot snapshot1 = new Snapshot()
+      .withJobExecutionId(snapshotId1)
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+    Snapshot snapshot2 = new Snapshot()
+      .withJobExecutionId(snapshotId2)
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    List<Snapshot> snapshots = new ArrayList<>();
+    snapshots.add(snapshot1);
+    snapshots.add(snapshot2);
+
+    this.record = new Record()
       .withId(recordId)
       .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
+      .withGeneration(0)
       .withExternalIdsHolder(null);
-    TestMocks.getSnapshot(0)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-    TestMocks.getSnapshot(1)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-    LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+    LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -189,7 +203,7 @@ public class LbInstanceEventHandlingServiceTest extends AbstractLBServiceTest {
         String recordForUdateId = UUID.randomUUID().toString();
         Record recordForUpdate = JsonObject.mapFrom(record).mapTo(Record.class)
           .withId(recordForUdateId)
-          .withSnapshotId(TestMocks.getSnapshot(1).getJobExecutionId())
+          .withSnapshotId(snapshotId2)
           .withRawRecord(record.getRawRecord().withId(recordForUdateId))
           .withParsedRecord(record.getParsedRecord().withId(recordForUdateId))
           .withGeneration(1);

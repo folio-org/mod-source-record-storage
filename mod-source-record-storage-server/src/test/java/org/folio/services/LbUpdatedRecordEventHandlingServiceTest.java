@@ -2,6 +2,7 @@ package org.folio.services;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 
@@ -10,6 +11,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -20,8 +22,10 @@ import org.folio.dao.LbRecordDao;
 import org.folio.dao.LbRecordDaoImpl;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -29,6 +33,7 @@ import org.folio.rest.jooq.Tables;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,6 +49,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest {
 
+  private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
+  private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static final String UPDATED_PARSED_RECORD_CONTENT = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
 
   private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
@@ -62,7 +69,20 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
 
   private OkapiConnectionParams params;
 
+  private static RawRecord rawRecord;
+  private static ParsedRecord parsedRecord;
+
   private Record record;
+
+  @BeforeClass
+  public static void setUpClass() throws IOException {
+    rawRecord = new RawRecord()
+      .withId(UUID.randomUUID().toString())
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    parsedRecord = new ParsedRecord()
+      .withId(UUID.randomUUID().toString())
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+  }
 
   @Before
   public void setUp(TestContext context) {
@@ -76,10 +96,18 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
     recordService = new LbRecordServiceImpl(recordDao);
     updateRecordEventHandler = new LbUpdateRecordEventHandlingService(recordService);
     Async async = context.async();
-    record = TestMocks.getRecord(0);
-    Snapshot snapshot = TestMocks.getSnapshot(record.getSnapshotId()).get()
+    String id = UUID.randomUUID().toString();
+    Snapshot snapshot = TestMocks.getSnapshot(0)
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
+    record = new Record()
+      .withId(id)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(id)
+      .withRecordType(MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
     LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());

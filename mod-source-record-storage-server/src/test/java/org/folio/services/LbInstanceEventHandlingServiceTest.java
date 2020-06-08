@@ -3,6 +3,7 @@ package org.folio.services;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
@@ -68,12 +69,12 @@ public class LbInstanceEventHandlingServiceTest extends AbstractLBServiceTest {
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
-  private Record record;
+  private static String recordId = UUID.randomUUID().toString();
 
   private String snapshotId1 = UUID.randomUUID().toString();
   private String snapshotId2 = UUID.randomUUID().toString();
 
-  private static String recordId = UUID.randomUUID().toString();
+  private Record record;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -112,9 +113,11 @@ public class LbInstanceEventHandlingServiceTest extends AbstractLBServiceTest {
       .withId(recordId)
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
+      .withGeneration(0)
+      .withRecordType(MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withGeneration(0)
+      
       .withExternalIdsHolder(null);
     LbSnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {

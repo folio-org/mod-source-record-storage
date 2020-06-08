@@ -17,7 +17,6 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
-import org.folio.TestMocks;
 import org.folio.dao.LbRecordDao;
 import org.folio.dao.LbRecordDaoImpl;
 import org.folio.dao.util.LbSnapshotDaoUtil;
@@ -72,15 +71,15 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
+  private static String recordId = UUID.randomUUID().toString();
+
   private Record record;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord()
-      .withId(UUID.randomUUID().toString())
+    rawRecord = new RawRecord().withId(recordId)
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord()
-      .withId(UUID.randomUUID().toString())
+    parsedRecord = new ParsedRecord().withId(recordId)
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
   }
 
@@ -96,15 +95,15 @@ public class LbUpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTe
     recordService = new LbRecordServiceImpl(recordDao);
     updateRecordEventHandler = new LbUpdateRecordEventHandlingService(recordService);
     Async async = context.async();
-    String id = UUID.randomUUID().toString();
-    Snapshot snapshot = TestMocks.getSnapshot(0)
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
     record = new Record()
-      .withId(id)
+      .withId(recordId)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
-      .withMatchedId(id)
+      .withMatchedId(recordId)
       .withRecordType(MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);

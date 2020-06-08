@@ -148,7 +148,7 @@ public interface LbRecordDao extends RecordDao {
   @Override
   @Deprecated
   default Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
-    throw new UnsupportedOperationException("Update supress from discovery by dto is no longer suported");
+    throw new UnsupportedOperationException("Update suppress from discovery by dto is no longer supported");
   }
 
   /**

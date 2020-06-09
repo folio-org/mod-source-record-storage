@@ -1,16 +1,21 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.UUID;
+
 import org.apache.http.HttpStatus;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.util.UUID;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class LbEventHandlersApiTest extends AbstractRestVerticleTest {
@@ -28,7 +33,19 @@ public class LbEventHandlersApiTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
-    // do nothing
+    Async async = context.async();
+    ReactiveClassicGenericQueryExecutor qe = PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID);
+    LbSnapshotDaoUtil.deleteAll(qe).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      LbSnapshotDaoUtil.save(qe, ModTenantAPI.STUB_SNAPSHOT).onComplete(save -> {
+        if (delete.failed()) {
+          context.fail(delete.cause());
+        }
+        async.complete();
+      });
+    });
   }
 
   @Test

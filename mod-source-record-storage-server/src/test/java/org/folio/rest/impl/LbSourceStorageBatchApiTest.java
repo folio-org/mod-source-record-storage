@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -29,11 +30,10 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
@@ -44,9 +44,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
-
-  private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/lb-source-storage/snapshots";
-  private static final String SOURCE_STORAGE_RECORDS_PATH = "/lb-source-storage/records";
 
   private static final String SOURCE_STORAGE_BATCH_RECORDS_PATH = "/lb-source-storage/batch/records";
   private static final String SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH = "/lb-source-storage/batch/parsed-records";
@@ -118,28 +115,18 @@ public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
-    // do nothing
-  }
-
-  @Before
-  public void createSnapshots(TestContext context) {
     Async async = context.async();
-    LbSnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  public void deleteSnapshots(TestContext context) {
-    Async async = context.async();
-    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    ReactiveClassicGenericQueryExecutor qe = PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID);
+    LbSnapshotDaoUtil.deleteAll(qe).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      async.complete();
+      LbSnapshotDaoUtil.save(qe, TestMocks.getSnapshots()).onComplete(save -> {
+        if (save.failed()) {
+          context.fail(save.cause());
+        }
+        async.complete();
+      });
     });
   }
 

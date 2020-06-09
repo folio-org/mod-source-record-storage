@@ -7,7 +7,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.persist.Criteria.Criterion;

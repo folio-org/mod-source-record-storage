@@ -17,11 +17,11 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
+import org.folio.TestUtil;
 import org.folio.dao.LbRecordDao;
 import org.folio.dao.LbRecordDaoImpl;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.RawRecord;

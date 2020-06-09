@@ -1,5 +1,38 @@
 package org.folio.rest.impl;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.liquibase.LiquibaseUtil;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.Snapshot.Status;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.tools.utils.TenantTool;
+import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.LbRecordService;
+import org.folio.services.LbSnapshotService;
+import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
+import org.folio.spring.SpringContextUtil;
+import org.folio.util.pubsub.PubSubClientUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
@@ -11,47 +44,33 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.liquibase.LiquibaseUtil;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.util.OkapiConnectionParams;
-import org.folio.services.RecordService;
-import org.folio.spring.SpringContextUtil;
-import org.folio.util.pubsub.PubSubClientUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 @SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);
-  static final String LOAD_SAMPLE_PARAMETER = "loadSample";
+
   private static final String TEST_MODE_PARAMETER = "testMode";
-  private static final String CREATE_STUB_SNAPSHOT_SQL = "templates/db_scripts/create_stub_snapshot.sql";
-  private static final String TENANT_PLACEHOLDER = "${myuniversity}";
-  private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SAMPLE_DATA = "sampledata/sampleMarcRecords.json";
 
+  static final String LOAD_SAMPLE_PARAMETER = "loadSample";
+
+  static final Snapshot STUB_SNAPSHOT = new Snapshot()
+    .withJobExecutionId("00000000-0000-0000-0000-000000000000")
+    .withStatus(Status.COMMITTED)
+    .withProcessingStartedDate(new Date(1546351314000L));
+
   @Autowired
-  private RecordService recordService;
+  private LbRecordService recordService;
+
+  @Autowired
+  private LbSnapshotService snapshotService;
+
+  @Autowired
+  private RecordService legacyRecordService;
+
+  @Autowired
+  private SnapshotService legacySnapshotService;
 
   private String tenantId;
 
@@ -78,7 +97,7 @@ public class ModTenantAPI extends TenantAPI {
             .compose(v -> createStubSnapshot(context, entity))
             .compose(v -> createStubData(entity))
             .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
-            .setHandler(event -> handlers.handle(ar))
+            .onComplete(event -> handlers.handle(ar))
         );
       }
     }, context);
@@ -90,43 +109,33 @@ public class ModTenantAPI extends TenantAPI {
     return Future.succeededFuture();
   }
 
-  private Future<List<String>> createStubSnapshot(Context context, TenantAttributes attributes) {
-    try {
-      String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
-      if (!Boolean.parseBoolean(loadSampleParam)) {
-        LOGGER.info("Module is being deployed in production mode");
-        return Future.succeededFuture();
-      }
-
-      InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(CREATE_STUB_SNAPSHOT_SQL);
-
-      if (inputStream == null) {
-        LOGGER.info("Module is being deployed in test mode, but stub snapshot was not created: no resources found: {}", CREATE_STUB_SNAPSHOT_SQL);
-        return Future.succeededFuture();
-      }
-
-      String sqlScript = IOUtils.toString(inputStream, StandardCharsets.UTF_8.name());
-      if (StringUtils.isBlank(sqlScript)) {
-        return Future.succeededFuture();
-      }
-
-      String moduleName = PostgresClient.getModuleName();
-
-      sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
-
-      Future<List<String>> future = Future.future();
-      PostgresClient.getInstance(context.owner()).runSQLFile(sqlScript, false, future);
-
-      LOGGER.info("Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
-
-      return future;
-    } catch (IOException e) {
-      return Future.failedFuture(e);
+  private Future<Void> createStubSnapshot(Context context, TenantAttributes attributes) {
+    String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
+    if (!Boolean.parseBoolean(loadSampleParam)) {
+      LOGGER.info("Module is being deployed in production mode");
+      return Future.succeededFuture();
     }
+
+    Promise<Void> promise = Promise.promise();
+    snapshotService.saveSnapshot(STUB_SNAPSHOT, tenantId).onComplete(save -> {
+      if (save.failed()) {
+        promise.fail(save.cause());
+      }
+      // temporary to keep legacy tests passing
+      legacySnapshotService.saveSnapshot(STUB_SNAPSHOT, tenantId).onComplete(legacy -> {
+        if (legacy.failed()) {
+          promise.fail(legacy.cause());
+        }
+        promise.complete();
+      });
+    });
+    LOGGER.info("Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
+
+    return promise.future();
   }
 
   private Future<Void> createStubData(TenantAttributes attributes) {
-    Future<Void> future = Future.future();
+    Promise<Void> promise = Promise.promise();
     if (Boolean.parseBoolean(getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER))) {
       try {
         InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(SAMPLE_DATA);
@@ -139,42 +148,56 @@ public class ModTenantAPI extends TenantAPI {
           return Future.succeededFuture();
         }
         JsonArray marcRecords = new JsonArray(sampleData);
+        @SuppressWarnings("squid:S3740")
         List<Future> futures = new ArrayList<>(marcRecords.size());
         marcRecords.forEach(jsonRecord -> {
           Record record = new Record();
           JsonObject marcRecordJson = JsonObject.mapFrom(jsonRecord);
           String recordUUID = marcRecordJson.getString("id");
           String instanceUUID = marcRecordJson.getString("instanceId");
-          record.setId(recordUUID);
           JsonObject content = marcRecordJson.getJsonObject("content");
-          record.setParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content));
-          record.setRawRecord(new RawRecord().withId(recordUUID).withContent(content.toString()));
-          record.setRecordType(Record.RecordType.MARC);
-          record.setSnapshotId("00000000-0000-0000-0000-000000000000");
-          record.setGeneration(0);
-          record.setMatchedId(recordUUID);
-          record.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
-          record.setState(Record.State.ACTUAL);
-          Future<Void> helperFuture = Future.future();
-          recordService.saveRecord(record, tenantId).setHandler(h -> {
+          record
+            .withId(recordUUID)
+            .withMatchedId(recordUUID)
+            .withSnapshotId("00000000-0000-0000-0000-000000000000")
+            .withRecordType(Record.RecordType.MARC)
+            .withState(Record.State.ACTUAL)
+            .withGeneration(0)
+            .withParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content))
+            .withRawRecord(new RawRecord().withId(recordUUID).withContent(content.toString()))
+            .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
+          Promise<Void> helperPromise = Promise.promise();
+
+          recordService.saveRecord(record, tenantId).onComplete(h -> {
             if (h.succeeded()) {
               LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
             } else {
               LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
             }
-            helperFuture.complete();
+            helperPromise.complete();
           });
-          futures.add(helperFuture);
+
+          // temporary to keep legacy tests passing
+          legacyRecordService.saveRecord(record, tenantId).onComplete(h -> {
+            if (h.succeeded()) {
+              LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
+            } else {
+              LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
+            }
+            helperPromise.complete();
+          });
+
+          futures.add(helperPromise.future());
         });
-        CompositeFuture.all(futures).setHandler(r -> future.complete());
+        CompositeFuture.all(futures).onComplete(r -> promise.complete());
       } catch (Exception e) {
         LOGGER.error("Error during loading sample source records", e);
-        future.fail(e);
+        promise.fail(e);
       }
     } else {
-      future.complete();
+      promise.complete();
     }
-    return future;
+    return promise.future();
   }
 
   private String getTenantAttributesParameter(TenantAttributes attributes, String parameterName) {

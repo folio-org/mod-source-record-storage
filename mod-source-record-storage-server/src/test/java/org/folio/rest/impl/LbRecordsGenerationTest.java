@@ -12,6 +12,7 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -32,9 +33,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class LbRecordsGenerationTest extends AbstractRestVerticleTest {
-
-  private static final String SOURCE_STORAGE_RECORDS_PATH = "/lb-source-storage/records";
-  private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/lb-source-storage/snapshots";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;

@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.folio;
 
 import org.apache.commons.io.FileUtils;
 

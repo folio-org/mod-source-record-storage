@@ -28,6 +28,7 @@ public class EventHandlersApiTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
+    // do nothing
   }
 
   @Test

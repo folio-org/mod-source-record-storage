@@ -111,7 +111,7 @@ public class UpdatedRecordEventHandlingServiceImplTest extends AbstractRestVerti
       .withParsedRecord(parsedRecord);
   }
 
-  @Override
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

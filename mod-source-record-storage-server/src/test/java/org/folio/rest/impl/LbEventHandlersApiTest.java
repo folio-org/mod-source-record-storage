@@ -7,10 +7,10 @@ import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -31,20 +31,14 @@ public class LbEventHandlersApiTest extends AbstractRestVerticleTest {
       .put("publishedBy", "mod-inventory"))
     .put("context", new JsonObject());
 
-  @Override
-  public void clearTables(TestContext context) {
+  @After
+  public void cleanUp(TestContext context) {
     Async async = context.async();
-    ReactiveClassicGenericQueryExecutor qe = PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID);
-    LbSnapshotDaoUtil.deleteAll(qe).onComplete(delete -> {
+    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      LbSnapshotDaoUtil.save(qe, ModTenantAPI.STUB_SNAPSHOT).onComplete(save -> {
-        if (delete.failed()) {
-          context.fail(delete.cause());
-        }
-        async.complete();
-      });
+      async.complete();
     });
   }
 

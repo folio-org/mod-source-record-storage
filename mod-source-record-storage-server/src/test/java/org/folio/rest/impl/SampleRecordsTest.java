@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import io.restassured.RestAssured;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.junit.Test;
@@ -14,11 +13,6 @@ import static org.hamcrest.Matchers.notNullValue;
 public class SampleRecordsTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
-
-  @Override
-  public void clearTables(TestContext context) {
-    // do nothing
-  }
 
   @Test
   public void shouldReturnListWithSampleData() {

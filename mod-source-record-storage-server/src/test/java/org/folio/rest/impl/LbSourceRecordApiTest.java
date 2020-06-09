@@ -27,6 +27,8 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -125,8 +127,19 @@ public class LbSourceRecordApiTest extends AbstractRestVerticleTest {
     .withOrder(101)
     .withState(Record.State.ACTUAL);
 
-  @Override
-  public void clearTables(TestContext context) {
+  @Before
+  public void setUp(TestContext context) {
+    Async async = context.async();
+    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      async.complete();
+    });
+  }
+
+  @After
+  public void cleanUp(TestContext context) {
     Async async = context.async();
     LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {

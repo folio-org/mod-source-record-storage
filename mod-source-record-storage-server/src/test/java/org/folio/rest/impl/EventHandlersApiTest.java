@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.processing.events.utils.ZIPArchiver;
@@ -25,11 +24,6 @@ public class EventHandlersApiTest extends AbstractRestVerticleTest {
       .put("eventTTL", 1)
       .put("publishedBy", "mod-inventory"))
     .put("context", new JsonObject());
-
-  @Override
-  public void clearTables(TestContext context) {
-    // do nothing
-  }
 
   @Test
   public void shouldReturnOkWhenReceivedInstanceCreatedEvent() {

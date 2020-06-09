@@ -8,10 +8,10 @@ import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -22,20 +22,14 @@ public class LbTestMarcRecordsApiTest extends AbstractRestVerticleTest {
 
   private static final String POPULATE_TEST_MARK_RECORDS_PATH = "/lb-source-storage/populate-test-marc-records";
 
-  @Override
-  public void clearTables(TestContext context) {
+  @AfterClass
+  public static void cleanUp(TestContext context) {
     Async async = context.async();
-    ReactiveClassicGenericQueryExecutor qe = PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID);
-    LbSnapshotDaoUtil.deleteAll(qe).onComplete(delete -> {
+    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      LbSnapshotDaoUtil.save(qe, ModTenantAPI.STUB_SNAPSHOT).onComplete(save -> {
-        if (delete.failed()) {
-          context.fail(delete.cause());
-        }
-        async.complete();
-      });
+      async.complete();
     });
   }
 

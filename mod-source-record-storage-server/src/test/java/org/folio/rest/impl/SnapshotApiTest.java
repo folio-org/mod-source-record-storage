@@ -9,6 +9,7 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -41,7 +42,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
     .withStatus(Snapshot.Status.PARSING_FINISHED);
 
-  @Override
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient.getInstance(vertx, TENANT_ID).delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event -> {

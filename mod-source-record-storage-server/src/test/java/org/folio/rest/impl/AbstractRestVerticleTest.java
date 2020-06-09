@@ -17,7 +17,6 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 
@@ -129,8 +128,5 @@ public abstract class AbstractRestVerticleTest {
       async.complete();
     }));
   }
-
-  @Before
-  public abstract void clearTables(TestContext context);
 
 }

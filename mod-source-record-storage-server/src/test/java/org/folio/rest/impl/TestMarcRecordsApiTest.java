@@ -12,6 +12,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -45,7 +46,7 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   private static TestMarcRecordsCollection recordCollection = new TestMarcRecordsCollection()
     .withRawRecords(Arrays.asList(rawRecord_1, rawRecord_2));
 
-  @Override
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

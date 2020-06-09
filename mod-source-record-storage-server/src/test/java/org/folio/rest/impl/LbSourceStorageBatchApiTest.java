@@ -30,7 +30,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -117,22 +116,16 @@ public class LbSourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    LbSnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
     LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      async.complete();
+      LbSnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+        if (save.failed()) {
+          context.fail(save.cause());
+        }
+        async.complete();
+      });
     });
   }
 

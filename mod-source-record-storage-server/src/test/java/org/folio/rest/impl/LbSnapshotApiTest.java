@@ -15,7 +15,6 @@ import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,17 +43,6 @@ public class LbSnapshotApiTest extends AbstractRestVerticleTest {
 
   @Before
   public void setUp(TestContext context) {
-    Async async = context.async();
-    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  public void cleanUp(TestContext context) {
     Async async = context.async();
     LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {

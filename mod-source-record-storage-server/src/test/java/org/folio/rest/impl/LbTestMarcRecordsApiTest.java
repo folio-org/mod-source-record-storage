@@ -4,34 +4,18 @@ import java.util.Collections;
 
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
-import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
-import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.restassured.RestAssured;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class LbTestMarcRecordsApiTest extends AbstractRestVerticleTest {
 
   private static final String POPULATE_TEST_MARK_RECORDS_PATH = "/lb-source-storage/populate-test-marc-records";
-
-  @AfterClass
-  public static void cleanUp(TestContext context) {
-    Async async = context.async();
-    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
-  }
 
   @Test
   public void shouldReturnNoContentOnPostRecordCollectionPassedInBody() {

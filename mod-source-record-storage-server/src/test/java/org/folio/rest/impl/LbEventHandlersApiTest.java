@@ -31,17 +31,6 @@ public class LbEventHandlersApiTest extends AbstractRestVerticleTest {
       .put("publishedBy", "mod-inventory"))
     .put("context", new JsonObject());
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    LbSnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
-  }
-
   @Test
   public void shouldReturnOkWhenReceivedInstanceCreatedEvent() {
     RestAssured.given()

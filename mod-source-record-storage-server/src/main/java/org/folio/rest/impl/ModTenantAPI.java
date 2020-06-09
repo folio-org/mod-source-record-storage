@@ -94,7 +94,7 @@ public class ModTenantAPI extends TenantAPI {
           },
           // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
           result -> setLoadSampleParameter(entity, context)
-            .compose(v -> createStubSnapshot(context, entity))
+            .compose(v -> createStubSnapshot(entity))
             .compose(v -> createStubData(entity))
             .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
             .onComplete(event -> handlers.handle(ar))
@@ -109,7 +109,7 @@ public class ModTenantAPI extends TenantAPI {
     return Future.succeededFuture();
   }
 
-  private Future<Void> createStubSnapshot(Context context, TenantAttributes attributes) {
+  private Future<Void> createStubSnapshot(TenantAttributes attributes) {
     String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
     if (!Boolean.parseBoolean(loadSampleParam)) {
       LOGGER.info("Module is being deployed in production mode");

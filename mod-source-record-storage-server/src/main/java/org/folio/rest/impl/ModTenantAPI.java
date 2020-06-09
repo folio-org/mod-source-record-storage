@@ -168,18 +168,18 @@ public class ModTenantAPI extends TenantAPI {
             .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
           Promise<Void> helperPromise = Promise.promise();
 
-          recordService.saveRecord(record, tenantId).onComplete(h -> {
-            if (h.succeeded()) {
+          recordService.saveRecord(record, tenantId).onComplete(h1 -> {
+            if (h1.succeeded()) {
               LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
             } else {
-              LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
+              LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h1.cause());
             }
             // temporary to keep legacy tests passing
-            legacyRecordService.saveRecord(record, tenantId).onComplete(h -> {
-              if (h.succeeded()) {
+            legacyRecordService.saveRecord(record, tenantId).onComplete(h2 -> {
+              if (h2.succeeded()) {
                 LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
               } else {
-                LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
+                LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h2.cause());
               }
               helperPromise.complete();
             });

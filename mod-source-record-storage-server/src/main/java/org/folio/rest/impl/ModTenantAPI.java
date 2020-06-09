@@ -174,17 +174,15 @@ public class ModTenantAPI extends TenantAPI {
             } else {
               LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
             }
-            helperPromise.complete();
-          });
-
-          // temporary to keep legacy tests passing
-          legacyRecordService.saveRecord(record, tenantId).onComplete(h -> {
-            if (h.succeeded()) {
-              LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
-            } else {
-              LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
-            }
-            helperPromise.complete();
+            // temporary to keep legacy tests passing
+            legacyRecordService.saveRecord(record, tenantId).onComplete(h -> {
+              if (h.succeeded()) {
+                LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
+              } else {
+                LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h.cause());
+              }
+              helperPromise.complete();
+            });
           });
 
           futures.add(helperPromise.future());

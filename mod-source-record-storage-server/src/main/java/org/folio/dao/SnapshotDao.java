@@ -18,10 +18,10 @@ public interface SnapshotDao {
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * 
-   * @param condition   condition
+   * @param condition   query where condition
    * @param orderFields fields to order by
-   * @param offset      offset
-   * @param limit       limit
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
    * @param tenantId    tenant id
    * @return future with {@link SnapshotCollection}
    */

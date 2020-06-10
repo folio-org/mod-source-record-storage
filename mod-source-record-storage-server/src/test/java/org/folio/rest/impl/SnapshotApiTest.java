@@ -65,7 +65,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified() {
+  public void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
     for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
@@ -76,7 +77,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
+    async.complete();
 
+    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -84,6 +87,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(snapshotsToPost.size()));
+    async.complete();
   }
 
   @Test

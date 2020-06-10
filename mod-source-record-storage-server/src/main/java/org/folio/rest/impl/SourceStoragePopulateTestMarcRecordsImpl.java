@@ -72,7 +72,6 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204()));
           } else {
-            result.cause().printStackTrace();
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse
               .respond500WithTextPlain(result.cause().getMessage())));
           }

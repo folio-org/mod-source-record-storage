@@ -12,7 +12,6 @@ import javax.ws.rs.core.Response;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.resource.LbSourceStorageSnapshots;
-import org.folio.rest.jaxrs.resource.SourceStorage.GetSourceStorageSnapshotsResponse;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.LbSnapshotService;
 import org.folio.spring.SpringContextUtil;
@@ -68,7 +67,7 @@ public class LbSourceStorageSnapshotsImpl implements LbSourceStorageSnapshots {
         Condition condition = filterSnapshotByStatus(status);
         List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
-          .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
+          .map(GetLbSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

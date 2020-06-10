@@ -1,3 +1,8 @@
+## 2020-06-10 v3.3.0-SNAPSHOT
+* [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
+* [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ
+* [MODSOURCE-136](https://issues.folio.org/browse/MODSOURCE-136) New API
+
 ## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
@@ -9,11 +14,8 @@
 * [MODSOURCE-101](https://issues.folio.org/browse/MODSOURCE-101) Add Services for standard table DAOs
 * [MODDICORE-50](https://issues.folio.org/browse/MODDICORE-50) Fixed placement of newly-created 035 field
 * [MODSOURCE-137](https://issues.folio.org/browse/MODSOURCE-137) Port existing service logic to standard table DAO services
-* [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-145](https://issues.folio.org/browse/MODSOURCE-145) Remove matchedProfileId property from Record
 * [MODINV-243](https://issues.folio.org/browse/MODINV-243) Enable Action profile action for incoming MARC Bibs: Replace Inventory Instance
-* [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ
-* [MODSOURCE-136](https://issues.folio.org/browse/MODSOURCE-136) New API
 
 ## 2020-04-23 v3.1.4
 * [MODSOURCE-114](https://issues.folio.org/browse/MODSOURCE-114) Added State "field" to records table

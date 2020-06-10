@@ -15,4 +15,3 @@ public enum  ExternalIdType {
     return externalIdField;
   }
 }
-

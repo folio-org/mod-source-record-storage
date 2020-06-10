@@ -53,16 +53,6 @@ public class PostgresClientFactory {
   }
 
   /**
-   * Creates instance of {@link PostgresClient}
-   *
-   * @param tenantId tenant id
-   * @return postgres client
-   */
-  public PostgresClient createInstance(String tenantId) {
-    return PostgresClient.getInstance(this.vertx, tenantId);
-  }
-
-  /**
    * Get {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param tenantId tenant id

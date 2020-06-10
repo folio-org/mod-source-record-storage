@@ -25,8 +25,6 @@ import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.util.OkapiConnectionParams;
-import org.folio.services.LbRecordService;
-import org.folio.services.LbSnapshotService;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.spring.SpringContextUtil;
@@ -61,16 +59,10 @@ public class ModTenantAPI extends TenantAPI {
     .withProcessingStartedDate(new Date(1546351314000L));
 
   @Autowired
-  private LbRecordService recordService;
+  private RecordService recordService;
 
   @Autowired
-  private LbSnapshotService snapshotService;
-
-  @Autowired
-  private RecordService legacyRecordService;
-
-  @Autowired
-  private SnapshotService legacySnapshotService;
+  private SnapshotService snapshotService;
 
   private String tenantId;
 
@@ -121,13 +113,7 @@ public class ModTenantAPI extends TenantAPI {
       if (save.failed()) {
         promise.fail(save.cause());
       }
-      // temporary to keep legacy tests passing
-      legacySnapshotService.saveSnapshot(STUB_SNAPSHOT, tenantId).onComplete(legacy -> {
-        if (legacy.failed()) {
-          promise.fail(legacy.cause());
-        }
-        promise.complete();
-      });
+      promise.complete();
     });
     LOGGER.info("Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
 
@@ -159,7 +145,7 @@ public class ModTenantAPI extends TenantAPI {
           record
             .withId(recordUUID)
             .withMatchedId(recordUUID)
-            .withSnapshotId("00000000-0000-0000-0000-000000000000")
+            .withSnapshotId(STUB_SNAPSHOT.getJobExecutionId())
             .withRecordType(Record.RecordType.MARC)
             .withState(Record.State.ACTUAL)
             .withGeneration(0)
@@ -174,15 +160,7 @@ public class ModTenantAPI extends TenantAPI {
             } else {
               LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h1.cause());
             }
-            // temporary to keep legacy tests passing
-            legacyRecordService.saveRecord(record, tenantId).onComplete(h2 -> {
-              if (h2.succeeded()) {
-                LOGGER.info("Sample Source Record was successfully saved. Record ID: {}", record.getId());
-              } else {
-                LOGGER.error("Error during saving Sample Source Record with ID: " + record.getId(), h2.cause());
-              }
-              helperPromise.complete();
-            });
+            helperPromise.complete();
           });
 
           futures.add(helperPromise.future());

@@ -33,9 +33,9 @@ public abstract class AbstractRestVerticleTest {
 
   static final String TENANT_ID = "diku";
 
-  static final String SOURCE_STORAGE_RECORDS_PATH = "/lb-source-storage/records";
-  static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/lb-source-storage/snapshots";
-  static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/lb-source-storage/sourceRecords";
+  static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
+  static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
+  static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/source-records";
 
   static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";

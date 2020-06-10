@@ -1,13 +1,14 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
+
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Record;
@@ -19,15 +20,17 @@ import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.core.Response;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class SourceStorageBatchImpl implements SourceStorageBatch {
+
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageBatchImpl.class);
 
   @Autowired
@@ -42,7 +45,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
 
   @Override
   public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders,
-                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         populateRecordsMetaData(entity.getRecords(), okapiHeaders);
@@ -57,7 +60,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           })
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to create records from collection", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -67,7 +70,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
 
   @Override
   public void putSourceStorageBatchParsedRecords(RecordCollection entity, Map<String, String> okapiHeaders,
-                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         populateRecordsMetaData(entity.getRecords(), okapiHeaders);
@@ -82,7 +85,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           })
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .setHandler(asyncResultHandler);
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.error("Failed to update parsed records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));

@@ -1,0 +1,42 @@
+#%RAML 1.0
+
+title: Source Record Storage Test Record API
+version: v3.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Test Record API
+    content: API for managing test records
+
+types:
+  testMarcRecordsCollection: !include raml-storage/schemas/mod-source-record-storage/testMarcRecordsCollection.json
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+
+/source-storage/populate-test-marc-records:
+  post:
+    description: A non-production endpoint to populate MARC records for testing purposes. Available only in case deployment tenant parameter "loadSample" is set to true
+    is: [validate]
+    body:
+      application/json:
+        type: testMarcRecordsCollection
+    responses:
+      204:
+      400:
+        description: "Bad request"
+        body:
+          text/plain:
+            example: "Bad request"
+      422:
+        description: "Unprocessable Entity"
+        body:
+          application/json:
+            type: errors
+      500:
+        description: "Internal server error"
+        body:
+          text/plain:
+            example: "Internal server error"

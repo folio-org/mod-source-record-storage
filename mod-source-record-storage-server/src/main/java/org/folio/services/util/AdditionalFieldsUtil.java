@@ -40,8 +40,7 @@ public final class AdditionalFieldsUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';
 
-  private AdditionalFieldsUtil() {
-  }
+  private AdditionalFieldsUtil() { }
 
   /**
    * Adds field if it does not exist and a subfield with a value to that field

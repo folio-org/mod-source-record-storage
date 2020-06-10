@@ -1,5 +1,7 @@
 package org.folio.services;
 
+import org.folio.rest.util.OkapiConnectionParams;
+
 import io.vertx.core.Future;
 
 /**
@@ -8,12 +10,12 @@ import io.vertx.core.Future;
 public interface EventHandlingService {
 
   /**
-   * Handles specified event content for instance event
+   * Handles specified event content for event
    *
    * @param eventContent event content to handle
-   * @param tenantId     tenant id
+   * @param params       Okapi connection params including Okapi URI, tenant id, and token
    * @return future with true if the event was processed successfully
    */
-  Future<Boolean> handleEvent(String eventContent, String tenantId);
+  Future<Boolean> handleEvent(String eventContent, OkapiConnectionParams params);
 
 }

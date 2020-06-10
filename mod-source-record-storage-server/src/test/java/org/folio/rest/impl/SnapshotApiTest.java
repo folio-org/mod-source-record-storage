@@ -1,53 +1,52 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.http.HttpStatus;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 @RunWith(VertxUnitRunner.class)
 public class SnapshotApiTest extends AbstractRestVerticleTest {
 
-  private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
-  private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
-
   private static Snapshot snapshot_1 = new Snapshot()
-    .withJobExecutionId("67dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
   private static Snapshot snapshot_2 = new Snapshot()
-    .withJobExecutionId("17dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
   private static Snapshot snapshot_3 = new Snapshot()
-    .withJobExecutionId("27dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_4 = new Snapshot()
-    .withJobExecutionId("37dfac11-1caf-4470-9ad1-d533f6360bdd")
+    .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_FINISHED);
 
   @Before
-  public void clearTables(TestContext context) {
+  public void setUp(TestContext context) {
     Async async = context.async();
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event -> {
-      if (event.failed()) {
-        context.fail(event.cause());
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
       }
       async.complete();
     });
@@ -106,7 +105,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=status=" + Snapshot.Status.NEW.name())
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?status=" + Snapshot.Status.NEW.name())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
@@ -119,21 +118,21 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=error!")
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?status=error!")
       .then()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?query=select * from table")
-      .then()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
 
     RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?limit=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SNAPSHOTS_PATH + "?orderBy=select * from table")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
   }

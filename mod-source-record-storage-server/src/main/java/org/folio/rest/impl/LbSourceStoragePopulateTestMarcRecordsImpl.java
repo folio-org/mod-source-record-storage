@@ -72,7 +72,6 @@ public class LbSourceStoragePopulateTestMarcRecordsImpl implements LbSourceStora
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostLbSourceStoragePopulateTestMarcRecordsResponse.respond204()));
           } else {
-            result.cause().printStackTrace();
             asyncResultHandler.handle(Future.succeededFuture(PostLbSourceStoragePopulateTestMarcRecordsResponse.respond500WithTextPlain(result.cause().getMessage())));
           }
         });

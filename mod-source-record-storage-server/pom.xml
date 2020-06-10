@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -119,7 +119,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-pubsub-client</artifactId>
-      <version>1.1.4</version>
+      <version>1.2.0</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
@@ -132,6 +132,11 @@
           <artifactId>jopt-simple</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>data-import-processing-core</artifactId>
+      <version>2.1.1</version>
     </dependency>
   </dependencies>
 

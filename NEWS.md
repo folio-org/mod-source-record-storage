@@ -1,4 +1,4 @@
-## 2020-04-10 v3.2.0-SNAPSHOT
+## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
 * [MODSOURCE-129](https://issues.folio.org/browse/MODSOURCE-129) Add Liquibase schema management using [folio-liquibase-util](https://github.com/folio-org/folio-liquibase-util)

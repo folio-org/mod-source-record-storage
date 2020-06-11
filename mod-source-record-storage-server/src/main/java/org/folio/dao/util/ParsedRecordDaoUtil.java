@@ -124,9 +124,10 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
+   * Ensure normalize content of {@link ParsedRecord} is type {@link String}
    * 
-   * @param parsedRecord
-   * @return
+   * @param parsedRecord parsed record
+   * @return parsed record with normalized content
    */
   public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
     String content;

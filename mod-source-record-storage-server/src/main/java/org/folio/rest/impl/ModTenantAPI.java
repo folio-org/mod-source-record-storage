@@ -149,7 +149,7 @@ public class ModTenantAPI extends TenantAPI {
             .withRecordType(Record.RecordType.MARC)
             .withState(Record.State.ACTUAL)
             .withGeneration(0)
-            .withParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content))
+            .withParsedRecord(new ParsedRecord().withId(recordUUID).withContent(content.encode()))
             .withRawRecord(new RawRecord().withId(recordUUID).withContent(content.toString()))
             .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceUUID));
           Promise<Void> helperPromise = Promise.promise();

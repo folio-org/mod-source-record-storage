@@ -44,7 +44,7 @@
       <column name="state" type="${database.defaultSchemaName}.record_state">
         <constraints nullable="false"/>
       </column>
-      <column name="order_in_file" type="integer"></column>
+      <column name="order" type="integer"></column>
       <column name="suppress_discovery" type="boolean"></column>
       <column name="created_by_user_id" type="uuid"></column>
       <column name="created_date" type="timestamptz"></column>

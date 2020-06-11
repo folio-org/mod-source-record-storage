@@ -14,10 +14,12 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.dao.LBRecordDao;
+import org.apache.logging.log4j.util.Strings;
+import org.folio.dao.LbRecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.LBParsedRecordDaoUtil;
-import org.folio.dao.util.LBSnapshotDaoUtil;
+import org.folio.dao.util.LbParsedRecordDaoUtil;
+import org.folio.dao.util.LbRecordDaoUtil;
+import org.folio.dao.util.LbSnapshotDaoUtil;
 import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -30,11 +32,9 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import io.vertx.core.CompositeFuture;
@@ -44,15 +44,14 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 @Service
-@ConditionalOnProperty(prefix = "jooq", name = "services.record", havingValue = "true")
-public class LBRecordServiceImpl implements LBRecordService {
+public class LbRecordServiceImpl implements LbRecordService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LBRecordServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LbRecordServiceImpl.class);
 
-  private final LBRecordDao recordDao;
+  private final LbRecordDao recordDao;
 
   @Autowired
-  public LBRecordServiceImpl(final LBRecordDao recordDao) {
+  public LbRecordServiceImpl(final LbRecordDao recordDao) {
     this.recordDao = recordDao;
   }
 
@@ -68,6 +67,12 @@ public class LBRecordServiceImpl implements LBRecordService {
   }
 
   @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(idType);
+    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
+  }
+
+  @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
     if (Objects.isNull(record.getId())) {
       record.setId(UUID.randomUUID().toString());
@@ -75,7 +80,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
-    return recordDao.executeInTransaction(txQE -> LBSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+    return recordDao.executeInTransaction(txQE -> LbSnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
         .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
       .compose(snapshot -> {
@@ -130,8 +135,7 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    // NOTE: will fail if idType is anything but INSTANCE or RECORD
-    ExternalIdType externalIdType = ExternalIdType.valueOf(idType);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(idType);
     return recordDao.getSourceRecordByExternalId(id, externalIdType, tenantId);
   }
 
@@ -160,16 +164,15 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   @Override
   public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
-    // NOTE: will fail if idType is anything but INSTANCE or RECORD
-    ExternalIdType externalIdType = ExternalIdType.valueOf(externalIdIdentifier);
+    ExternalIdType externalIdType = LbRecordDaoUtil.toExternalIdType(externalIdIdentifier);
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
         new NotFoundException(format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(suppressFromDiscoveryDto, tenantId);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
   }
 
   @Override
@@ -182,7 +185,7 @@ public class LBRecordServiceImpl implements LBRecordService {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordById(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(existingRecord -> LBSnapshotDaoUtil.save(txQE, new Snapshot()
+        .map(existingRecord -> LbSnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
             .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
@@ -194,7 +197,7 @@ public class LBRecordServiceImpl implements LBRecordService {
               .withOrder(existingRecord.getOrder())
               .withGeneration(existingRecord.getGeneration() + 1)
               .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(existingRecord.getParsedRecord().getContent()))
+              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
               .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
@@ -216,7 +219,7 @@ public class LBRecordServiceImpl implements LBRecordService {
   }
 
   private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) && Objects.isNull(record.getParsedRecord().getId())) {
+    if (Objects.isNull(record.getParsedRecord()) || Strings.isEmpty(record.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
     return record;
@@ -224,7 +227,7 @@ public class LBRecordServiceImpl implements LBRecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = (String) LBParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      String parsedRecordContent = (String) LbParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);

@@ -1,21 +1,27 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.processing.events.utils.ZIPArchiver;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import java.io.IOException;
 import java.util.UUID;
 
-@RunWith(VertxUnitRunner.class)
-public class EventHandlersApiTest extends AbstractRestVerticleTest {
+import org.apache.http.HttpStatus;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.LbSnapshotDaoUtil;
+import org.folio.processing.events.utils.ZIPArchiver;
+import org.junit.After;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-  public static final String HANDLERS_INSTANCE_PATH = "/source-storage/handlers/inventory-instance";
-  public static final String HANDLERS_UPDATED_RECORD_PATH = "/source-storage/handlers/updated-record";
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+@RunWith(VertxUnitRunner.class)
+public class LbEventHandlersApiTest extends AbstractRestVerticleTest {
+
+  public static final String HANDLERS_INSTANCE_PATH = "/lb-source-storage/handlers/inventory-instance";
+  public static final String HANDLERS_UPDATED_RECORD_PATH = "/lb-source-storage/handlers/updated-record";
 
   private JsonObject event = new JsonObject()
     .put("id", UUID.randomUUID().toString())
@@ -57,4 +63,5 @@ public class EventHandlersApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }
+
 }

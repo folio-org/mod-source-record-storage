@@ -9,6 +9,7 @@ import java.util.UUID;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.MarcRecordsLb;
@@ -23,9 +24,9 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link ParsedRecord}
  */
-public class LBParsedRecordDaoUtil {
+public class LbParsedRecordDaoUtil {
 
-  private LBParsedRecordDaoUtil() { }
+  private LbParsedRecordDaoUtil() { }
 
   /**
    * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -37,7 +38,7 @@ public class LBParsedRecordDaoUtil {
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBParsedRecordDaoUtil::toOptionalParsedRecord);
+        .map(LbParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
   /**
@@ -54,7 +55,7 @@ public class LBParsedRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBParsedRecordDaoUtil::toSingleParsedRecord);
+        .map(LbParsedRecordDaoUtil::toSingleParsedRecord);
   }
 
   /**
@@ -70,7 +71,7 @@ public class LBParsedRecordDaoUtil {
       .set(dbRecord)
       .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(parsedRecord.getId())))
       .returning())
-        .map(LBParsedRecordDaoUtil::toSingleOptionalParsedRecord)
+        .map(LbParsedRecordDaoUtil::toSingleOptionalParsedRecord)
         .map(optionalParsedRecord -> {
           if (optionalParsedRecord.isPresent()) {
             return optionalParsedRecord.get();
@@ -87,8 +88,11 @@ public class LBParsedRecordDaoUtil {
    */
   public static ParsedRecord toParsedRecord(Row row) {
     MarcRecordsLb pojo = RowMappers.getMarcRecordsLbMapper().apply(row);
-    return new ParsedRecord()
-      .withId(pojo.getId().toString())
+    ParsedRecord parsedRecord = new ParsedRecord();
+    if (Objects.nonNull(pojo.getId())) {
+      parsedRecord.withId(pojo.getId().toString());
+    }
+    return parsedRecord
       .withContent(pojo.getContent());
   }
 
@@ -96,7 +100,7 @@ public class LBParsedRecordDaoUtil {
    * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
    * 
    * @param row query result row
-   * @return optional ErrorRecord
+   * @return optional ParsedRecord
    */
   public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
@@ -126,11 +130,11 @@ public class LBParsedRecordDaoUtil {
    */
   public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
     String content;
-      if (parsedRecord.getContent() instanceof String) {
-        content = (String) parsedRecord.getContent();
-      } else {
-        content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
-      }
+    if (parsedRecord.getContent() instanceof String) {
+      content = (String) parsedRecord.getContent();
+    } else {
+      content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
+    }
     return parsedRecord.withContent(content);
   }
 

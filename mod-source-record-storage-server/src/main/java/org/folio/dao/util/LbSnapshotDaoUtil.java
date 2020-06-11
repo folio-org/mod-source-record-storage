@@ -1,5 +1,7 @@
 package org.folio.dao.util;
 
+import static com.google.common.base.CaseFormat.LOWER_CAMEL;
+import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 
 import java.time.ZoneOffset;
@@ -12,6 +14,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +29,8 @@ import org.jooq.Condition;
 import org.jooq.InsertSetStep;
 import org.jooq.InsertValuesStepN;
 import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
@@ -35,9 +40,11 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link Snapshot}
  */
-public class LBSnapshotDaoUtil {
+public class LbSnapshotDaoUtil {
 
-  private LBSnapshotDaoUtil() { }
+  private static final String COMMA = ",";
+
+  private LbSnapshotDaoUtil() { }
 
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
@@ -57,7 +64,7 @@ public class LBSnapshotDaoUtil {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit))
-        .map(LBSnapshotDaoUtil::toSnapshots);
+        .map(LbSnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -84,7 +91,7 @@ public class LBSnapshotDaoUtil {
   public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(condition))
-        .map(LBSnapshotDaoUtil::toOptionalSnapshot);
+        .map(LbSnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -97,7 +104,7 @@ public class LBSnapshotDaoUtil {
   public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBSnapshotDaoUtil::toOptionalSnapshot);
+        .map(LbSnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -108,13 +115,13 @@ public class LBSnapshotDaoUtil {
    * @return future with updated Snapshot
    */
   public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord dbRecord = toDatabaseRecord(snapshot);
+    SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
     return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
       .set(dbRecord)
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBSnapshotDaoUtil::toSingleSnapshot);
+        .map(LbSnapshotDaoUtil::toSingleSnapshot);
   }
 
   /**
@@ -129,10 +136,11 @@ public class LBSnapshotDaoUtil {
       InsertSetStep<SnapshotsLbRecord> insertSetStep = dsl.insertInto(SNAPSHOTS_LB);
       InsertValuesStepN<SnapshotsLbRecord> insertValuesStepN = null;
       for (Snapshot snapshot : snapshots) {
-          insertValuesStepN = insertSetStep.values(toDatabaseRecord(snapshot).intoArray());
+          SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
+          insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
       }
       return insertValuesStepN;
-    }).map(LBSnapshotDaoUtil::toSnapshots);
+    }).map(LbSnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -148,7 +156,7 @@ public class LBSnapshotDaoUtil {
       .set(dbRecord)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
       .returning())
-        .map(LBSnapshotDaoUtil::toSingleOptionalSnapshot)
+        .map(LbSnapshotDaoUtil::toSingleOptionalSnapshot)
         .map(optionalSnapshot -> {
           if (optionalSnapshot.isPresent()) {
             return optionalSnapshot.get();
@@ -254,6 +262,47 @@ public class LBSnapshotDaoUtil {
     return dbRecord;
   }
 
+  /**
+   * Get {@link Condition} to filter by snapshot id
+   * 
+   * @param status snapshot status
+   * @return condition
+   */
+  public static Condition filterSnapshotByStatus(String status) {
+    if (StringUtils.isNotEmpty(status)) {
+      try {
+        return SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.valueOf(status));
+      } catch(Exception e) {
+        throw new BadRequestException(String.format("Unknown job execution status %s", status));
+      }
+    }
+    return DSL.trueCondition();
+  }
+
+  /**
+   * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
+   * 
+   * Relies on strong convention between dto property name and database column name.
+   * Property name being lower camel case and column name being lower snake case of the property name.
+   * 
+   * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
+   * @return list of order fields
+   */
+  @SuppressWarnings("squid:S1452")
+  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy) {
+    return orderBy.stream()
+      .map(order -> order.split(COMMA))
+      .map(order -> {
+        try {
+          return SNAPSHOTS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
+            ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
+        } catch (Exception e) {
+          throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
+        }
+      })
+      .collect(Collectors.toList());
+  }
+
   private static Snapshot toSingleSnapshot(RowSet<Row> rows) {
     return toSnapshot(rows.iterator().next());
   }
@@ -264,7 +313,7 @@ public class LBSnapshotDaoUtil {
 
   private static List<Snapshot> toSnapshots(RowSet<Row> rows) {
     return StreamSupport.stream(rows.spliterator(), false)
-      .map(LBSnapshotDaoUtil::toSnapshot)
+      .map(LbSnapshotDaoUtil::toSnapshot)
       .collect(Collectors.toList());
   }
 

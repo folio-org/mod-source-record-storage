@@ -9,6 +9,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -25,6 +26,7 @@ import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -48,7 +50,7 @@ import static org.junit.Assert.assertThat;
 @RunWith(VertxUnitRunner.class)
 public class RecordApiTest extends AbstractRestVerticleTest {
 
-  static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
+  private static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/sourceRecords";
   private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   private static final String SOURCE_STORAGE_RECORDS_SUPPRESS_FROM_DISC_PATH = "/source-storage/record/suppressFromDiscovery";
   private static final String BATCH_RECORDS_PATH = "/source-storage/batch/records";
@@ -134,8 +136,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(invalidParsedRecord)
     .withOrder(101)
     .withState(Record.State.ACTUAL);
-
-  @Override
+  
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

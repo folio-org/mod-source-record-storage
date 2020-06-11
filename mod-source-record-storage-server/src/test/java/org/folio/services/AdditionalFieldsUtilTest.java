@@ -3,7 +3,7 @@ package org.folio.services;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.impl.TestUtil;
+import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.util.AdditionalFieldsUtil;

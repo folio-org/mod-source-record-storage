@@ -9,11 +9,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.impl.AbstractRestVerticleTest;
-import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -82,7 +83,7 @@ public class InstanceEventHandlingServiceImplTest extends AbstractRestVerticleTe
       .withRecordType(MARC);
   }
 
-  @Override
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

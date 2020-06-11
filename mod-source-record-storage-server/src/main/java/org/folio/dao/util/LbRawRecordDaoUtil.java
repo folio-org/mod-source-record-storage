@@ -20,9 +20,9 @@ import io.vertx.sqlclient.RowSet;
 /**
  * Utility class for managing {@link RawRecord}
  */
-public class LBRawRecordDaoUtil {
+public class LbRawRecordDaoUtil {
 
-  private LBRawRecordDaoUtil() { }
+  private LbRawRecordDaoUtil() { }
 
   /**
    * Searches for {@link RawRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -34,7 +34,7 @@ public class LBRawRecordDaoUtil {
   public static Future<Optional<RawRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
       .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(LBRawRecordDaoUtil::toOptionalRawRecord);
+        .map(LbRawRecordDaoUtil::toOptionalRawRecord);
   }
 
   /**
@@ -51,7 +51,7 @@ public class LBRawRecordDaoUtil {
       .onDuplicateKeyUpdate()
       .set(dbRecord)
       .returning())
-        .map(LBRawRecordDaoUtil::toSingleRawRecord);
+        .map(LbRawRecordDaoUtil::toSingleRawRecord);
   }
 
   /**

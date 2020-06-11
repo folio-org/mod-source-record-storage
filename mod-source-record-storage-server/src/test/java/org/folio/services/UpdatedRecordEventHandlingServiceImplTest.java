@@ -14,12 +14,13 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.SnapshotDao;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.impl.AbstractRestVerticleTest;
-import org.folio.rest.impl.TestUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -110,7 +111,7 @@ public class UpdatedRecordEventHandlingServiceImplTest extends AbstractRestVerti
       .withParsedRecord(parsedRecord);
   }
 
-  @Override
+  @Before
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);

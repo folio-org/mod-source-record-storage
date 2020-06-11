@@ -5,7 +5,7 @@ package org.folio.dao.util;
  */
 public enum RecordType {
 
-  MARC("marc_records");
+  MARC("marc_records_lb");
 
   private String tableName;
 

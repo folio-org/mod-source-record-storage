@@ -1,8 +1,8 @@
 package org.folio.dao;
 
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -19,13 +19,14 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
-import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.ErrorRecordDaoUtil;
+import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -35,6 +36,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +53,10 @@ import io.vertx.sqlclient.Row;
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
+
+  private static final String CTE_TABLE_NAME = "cte";
+  private static final String COUNT_COLUMN = "count";
+  private static final String TABLE_FIELD = "{0}.{1}";
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -125,19 +131,32 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    final String cteTableName = "cte";
-    final String countColumn = "count";
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(cteTableName).as(dsl.select()
+    // NOTE: currently only record type available is MARC
+    // having a dedicated table per record type has some complications
+    // if a new record type is added, will have two options to continue using single query to fetch source records
+    // 1. add record type query parameter to endpoint and join with table for that record type
+    //    - this will not afford source record request returning heterogeneous record types
+    // 2. join on every record type table
+    //    - this could present performance issues
+
+    // Performance metrics should be taken using this join query compared to getRecords above.
+    // getRecords method streams records from the record table looking up related raw record, parsed record,
+    // and error record per record in stream. When it looks up parsed record it will use record type
+    // from the record and lookup in the appropriate table.
+    RecordType recordType = RecordType.MARC;
+    String tableName = recordType.getTableName();
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, name(tableName), name(ParsedRecordDaoUtil.ID_COLUMN));
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(CTE_TABLE_NAME).as(dsl.select()
       .from(RECORDS_LB)
-      .innerJoin(MARC_RECORDS_LB).on(RECORDS_LB.ID.eq(MARC_RECORDS_LB.ID))
+      .innerJoin(table(name(tableName))).on(RECORDS_LB.ID.eq(parsedRecordIdField))
       .where(condition)
       .orderBy(orderFields)).select()
-        .from(dsl.select().from(table(name(cteTableName))).offset(offset).limit(limit))
-        .rightJoin(dsl.selectCount().from(table(name(cteTableName)))).on(trueCondition())
+        .from(dsl.select().from(table(name(CTE_TABLE_NAME))).offset(offset).limit(limit))
+        .rightJoin(dsl.selectCount().from(table(name(CTE_TABLE_NAME)))).on(trueCondition())
     )).map(res -> {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(countColumn));
+        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT_COLUMN));
         return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
           .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
       }).collect(Collectors.toList());
@@ -207,7 +226,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
       updateExternalIdsForRecord(txQE, record),
-      ParsedRecordDaoUtil.update(txQE, record.getParsedRecord())
+      ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
     ).map(res -> record.getParsedRecord()));
   }
 
@@ -285,7 +304,7 @@ public class RecordDaoImpl implements RecordDao {
       }
       return record;
     }));
-    futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId()).map(pr -> {
+    futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
       if (pr.isPresent()) {
         record.withParsedRecord(pr.get());
       }
@@ -334,7 +353,7 @@ public class RecordDaoImpl implements RecordDao {
     try {
       String content = (String) ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-      return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord()).map(pr -> true);
+      return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> true);
     } catch (Exception e) {
       LOG.error("Couldn't format MARC record", e);
       record.setErrorRecord(new ErrorRecord()

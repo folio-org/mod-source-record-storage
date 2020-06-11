@@ -1,6 +1,8 @@
 package org.folio.dao.util;
 
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -8,23 +10,24 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.MarcRecordsLb;
-import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.jooq.Field;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 
 /**
  * Utility class for managing {@link ParsedRecord}
  */
 public final class ParsedRecordDaoUtil {
+
+  private static final String CONTENT_COLUMN = "content";
+
+  public static final String ID_COLUMN = "id";
 
   private ParsedRecordDaoUtil() { }
 
@@ -33,48 +36,63 @@ public final class ParsedRecordDaoUtil {
    * 
    * @param queryExecutor query executor
    * @param id            id
+   * @param recordType    record type to find
    * @return future with optional ParsedRecord
    */
-  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(MARC_RECORDS_LB)
-      .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(id))))
+  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id, RecordType recordType) {
+    String tableName = recordType.getTableName();
+    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
+    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    return queryExecutor.findOneRow(dsl -> dsl.select(idField, contentField)
+      .from(table(name(tableName)))
+      .where(idField.eq(UUID.fromString(id))))
         .map(ParsedRecordDaoUtil::toOptionalParsedRecord);
   }
 
   /**
-   * Saves {@link ParsedRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record
+   * @param recordType    record type to save
    * @return future with updated ParsedRecord
    */
-  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
-    MarcRecordsLbRecord dbRecord = toDatabaseParsedRecord(parsedRecord);
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(MARC_RECORDS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning())
-        .map(ParsedRecordDaoUtil::toSingleParsedRecord);
+  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
+    String tableName = recordType.getTableName();
+    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
+    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    UUID id = UUID.fromString(parsedRecord.getId());
+    String content = (String) normalizeContent(parsedRecord).getContent();
+    return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(tableName)))
+      .set(idField, id)
+      .set(contentField, content)
+      .onConflict(idField)
+        .doUpdate()
+          .set(contentField, content)
+          .returning())
+        .map(res -> parsedRecord);
   }
 
   /**
-   * Updates {@link ParsedRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record to update
+   * @param recordType    record type to update
    * @return future of updated ParsedRecord
    */
-  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord) {
-    MarcRecordsLbRecord dbRecord = toDatabaseParsedRecord(parsedRecord);
-    return queryExecutor.executeAny(dsl -> dsl.update(MARC_RECORDS_LB)
-      .set(dbRecord)
-      .where(MARC_RECORDS_LB.ID.eq(UUID.fromString(parsedRecord.getId())))
-      .returning())
-        .map(ParsedRecordDaoUtil::toSingleOptionalParsedRecord)
-        .map(optionalParsedRecord -> {
-          if (optionalParsedRecord.isPresent()) {
-            return optionalParsedRecord.get();
+  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
+    String tableName = recordType.getTableName();
+    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
+    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    UUID id = UUID.fromString(parsedRecord.getId());
+    String content = (String) normalizeContent(parsedRecord).getContent();
+    return queryExecutor.executeAny(dsl -> dsl.update(table(name(tableName)))
+      .set(contentField, content)
+      .where(idField.eq(id)))
+        .map(update -> {
+          if (update.rowCount() > 0) {
+            return parsedRecord;
           }
           throw new NotFoundException(String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId()));
         });
@@ -87,15 +105,15 @@ public final class ParsedRecordDaoUtil {
    * @return ParsedRecord
    */
   public static ParsedRecord toParsedRecord(Row row) {
-    MarcRecordsLb pojo = RowMappers.getMarcRecordsLbMapper().apply(row);
     ParsedRecord parsedRecord = new ParsedRecord();
-    if (Objects.nonNull(pojo.getId())) {
-      parsedRecord.withId(pojo.getId().toString());
+    UUID id = row.getUUID(ID_COLUMN);
+    if (Objects.nonNull(id)) {
+      parsedRecord.withId(id.toString());
     }
     return parsedRecord
-      .withContent(pojo.getContent());
+      .withContent(row.getString(CONTENT_COLUMN));
   }
-
+  
   /**
    * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
    * 
@@ -104,23 +122,6 @@ public final class ParsedRecordDaoUtil {
    */
   public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
     return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
-  }
-
-  /**
-   * Convert {@link ParsedRecord} to database record {@link MarcRecordsLbRecord}
-   * 
-   * @param parsedRecord parsed record
-   * @return MarcRecordsLbRecord
-   */
-  public static MarcRecordsLbRecord toDatabaseParsedRecord(ParsedRecord parsedRecord) {
-    MarcRecordsLbRecord dbRecord = new MarcRecordsLbRecord();
-    if (StringUtils.isNotEmpty(parsedRecord.getId())) {
-      dbRecord.setId(UUID.fromString(parsedRecord.getId()));
-    }
-    if (Objects.nonNull(parsedRecord.getContent())) {
-      dbRecord.setContent((String) normalizeContent(parsedRecord).getContent());
-    }
-    return dbRecord;
   }
 
   /**
@@ -139,12 +140,17 @@ public final class ParsedRecordDaoUtil {
     return parsedRecord.withContent(content);
   }
 
-  private static ParsedRecord toSingleParsedRecord(RowSet<Row> rows) {
-    return toParsedRecord(rows.iterator().next());
-  }
-
-  private static Optional<ParsedRecord> toSingleOptionalParsedRecord(RowSet<Row> rows) {
-    return rows.rowCount() == 1 ? Optional.of(toParsedRecord(rows.iterator().next())) : Optional.empty();
+  /**
+   * Convinience method to get {@link RecordType} from {@link Record}
+   * 
+   * @param record record
+   * @return record type defaulting to MARC
+   */
+  public static RecordType toRecordType(Record record) {
+    if (Objects.nonNull(record.getRecordType())) {
+      return RecordType.valueOf(record.getRecordType().toString());
+    }
+    return RecordType.MARC;
   }
 
 }

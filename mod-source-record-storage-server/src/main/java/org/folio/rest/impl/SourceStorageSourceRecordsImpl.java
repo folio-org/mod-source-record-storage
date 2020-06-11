@@ -50,6 +50,8 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
       Boolean suppressFromDiscovery, Boolean deleted, Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    // NOTE: if and when a new record type is introduced and a parsed record table is added,
+    // will need to add a record type query parameter
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterRecordBy(recordId, recordType, suppressFromDiscovery, deleted, updatedAfter, updatedBefore)

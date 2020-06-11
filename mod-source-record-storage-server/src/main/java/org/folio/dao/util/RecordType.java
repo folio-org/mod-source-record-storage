@@ -1,7 +1,9 @@
 package org.folio.dao.util;
 
 /**
- * Enum used to distingush table for parsed record.
+ * Enum used to distingush table for parsed record. Used to conver {@link Record} type to database table.
+ * 
+ * Enum string value must match those of {@link org.folio.rest.jaxrs.model.Record.RecordType}.
  */
 public enum RecordType {
 

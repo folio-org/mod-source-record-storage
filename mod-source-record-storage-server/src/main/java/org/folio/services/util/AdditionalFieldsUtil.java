@@ -156,9 +156,9 @@ public final class AdditionalFieldsUtil {
   /**
    * Read value from controlled field in marc record
    *
-   * @param record - marc record
-   * @param tag    - tag to read
-   * @return - value from field
+   * @param record marc record
+   * @param tag    tag to read
+   * @return value from field
    */
   public static String getValueFromControlledField(Record record, String tag) {
     try {
@@ -253,7 +253,7 @@ public final class AdditionalFieldsUtil {
   /**
    * Move original marc hrId to 035 tag and assign created by inventory hrId into 001 tag
    *
-   * @param recordInstancePair - pair of related instance and record
+   * @param recordInstancePair pair of related instance and record
    */
   public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair) {
     String hrId = recordInstancePair.getValue().getString(HR_ID_FIELD);

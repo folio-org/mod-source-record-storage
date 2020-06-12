@@ -1,647 +1,386 @@
 package org.folio.dao;
 
-import com.fasterxml.jackson.databind.RuntimeJsonMappingException;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.UpdateResult;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
-import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.model.SqlSelect;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.NotFoundException;
+
+import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.MarcUtil;
+import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.dao.util.RawRecordDaoUtil;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
+import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.RecordModel;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
-import org.folio.rest.persist.Criteria.Criteria;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.cql.CQLQueryValidationException;
-import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.persist.interfaces.Results;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+import org.folio.rest.jooq.enums.JobExecutionStatus;
+import org.folio.rest.jooq.enums.RecordState;
+import org.jooq.Condition;
+import org.jooq.Field;
+import org.jooq.OrderField;
+import org.jooq.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.sqlclient.Row;
 
-import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.folio.dao.SnapshotDao.SNAPSHOTS_TABLE;
-import static org.folio.dao.SnapshotDao.SNAPSHOT_ID_FIELD;
-import static org.folio.dao.util.DbUtil.executeInTransaction;
-import static org.folio.dataimport.util.DaoUtil.constructCriteria;
-import static org.folio.dataimport.util.DaoUtil.getCQLWrapper;
-import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
-import static org.folio.rest.persist.PostgresClient.pojo2json;
-
-@Primary
 @Component
-@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String RECORDS_TABLE = "records";
-  private static final String RAW_RECORDS_TABLE = "raw_records";
-  private static final String ERROR_RECORDS_TABLE = "error_records";
-  private static final String ID_FIELD = "'id'";
-  private static final String SNAPSHOT_FIELD = "'snapshotId'";
-  private static final String GET_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_records('%s', '%s', %s, %s, '%s')";
-  private static final String GET_RECORD_BY_MATCHED_ID_QUERY = "SELECT get_record_by_matched_id('%s')";
-  private static final String GET_SOURCE_RECORD_BY_ID_QUERY = "SELECT get_source_record_by_id('%s')";
-  private static final String GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY = "SELECT get_source_record_by_external_id('%s', '%s')";
-  private static final String GET_SOURCE_RECORDS_QUERY = "SELECT id, jsonb, totalrows FROM get_source_records('%s', '%s', %s, %s, '%s', '%s')";
-  private static final String GET_HIGHEST_GENERATION_QUERY = "select get_highest_generation('%s', '%s');";
-  private static final String UPSERT_QUERY = "INSERT INTO %s.%s (id, jsonb) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET jsonb = ?;";
-  private static final String GET_RECORD_BY_EXTERNAL_ID_QUERY = "select get_record_by_external_id('%s', '%s');";
-  private static final String JSONB_COLUMN = "jsonb";
-  private static final String TOTALROWS_COLUMN = "totalrows";
+  private static final String CTE_TABLE_NAME = "cte";
+  private static final String COUNT_COLUMN = "count";
+  private static final String TABLE_FIELD = "{0}.{1}";
+
+  private final PostgresClientFactory postgresClientFactory;
 
   @Autowired
-  private PostgresClientFactory pgClientFactory;
-
-  @Override
-  public Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String whereClause = StringUtils.EMPTY;
-      String orderBy = StringUtils.EMPTY;
-      if (isNotBlank(query)) {
-        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
-        whereClause = String.format("WHERE %s ", sqlSelect.getWhere()).replace("'", "''");
-        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
-      }
-      String preparedGetQuery = String.format(GET_RECORDS_QUERY, whereClause, orderBy, limit, offset, convertToPsqlStandard(tenantId));
-      pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while querying records_view", e);
-      future.fail(e);
-    }
-    return future.map(this::mapResultSetToRecordCollection);
+  public RecordDaoImpl(final PostgresClientFactory postgresClientFactory) {
+    this.postgresClientFactory = postgresClientFactory;
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = String.format(GET_RECORD_BY_MATCHED_ID_QUERY, id);
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while querying records_view by id", e);
-      future.fail(e);
-    }
-    return future.map(resultSet -> {
-      String recordsAsString = resultSet.getResults().get(0).getString(0);
-      return Optional.ofNullable(recordsAsString).map(it -> new JsonObject(it).mapTo(Record.class));
+  public <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(action);
+  }
+
+  @Override
+  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> {
+      RecordCollection recordCollection = new RecordCollection();
+      recordCollection.withRecords(new ArrayList<>());
+      return CompositeFuture.all(
+        RecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
+          .compose(stream -> CompositeFuture.all(stream
+            .map(pr -> lookupAssociatedRecords(txQE, pr, true)
+            .map(r -> addToList(recordCollection.getRecords(), r)))
+            .collect(Collectors.toList()))),
+        RecordDaoUtil.countByCondition(txQE, condition)
+          .map(totalRecords -> addTotalRecords(recordCollection, totalRecords))
+      ).map(res -> recordCollection);
     });
   }
 
   @Override
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, id));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+      .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+    return getRecordByCondition(txQE, condition);
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByCondition(txQE, condition));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition) {
+    return RecordDaoUtil.findByCondition(txQE, condition)
+      .compose(record -> lookupAssociatedRecords(txQE, record, true));
+  }
+
+  @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    return executeInTransaction(pgClientFactory.createInstance(tenantId),
-      connection -> insertOrUpdateRecord(connection, record, tenantId));
+    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
+  }
+
+  @Override
+  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return insertOrUpdateRecord(txQE, record);
   }
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
-    return executeInTransaction(pgClientFactory.createInstance(tenantId),
-      connection -> insertOrUpdateRecord(connection, record, tenantId));
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
+      .compose(optionalRecord -> optionalRecord
+        .map(r -> saveRecord(txQE, record))
+        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", record.getId()))))));
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId) {
-    // an extremely ugly fix to allow searching of SourceRecords by id,
-    // should be revisited in Q2 2020 in scope of {@link https://issues.folio.org/browse/MODSOURCE-91}
-    if (isNotBlank(query) && query.contains("recordId")) {
-      String id = extractUUIDFromQuery(query);
-      return getSourceRecordCollectionById(id, tenantId);
-    }
-    Future<ResultSet> future = Future.future();
-    try {
-      String preparedGetQuery;
-      String queryFilter = StringUtils.EMPTY;
-      String orderBy = StringUtils.EMPTY;
-      if (isNotBlank(query)) {
-        SqlSelect sqlSelect = getSqlSelect(RECORDS_TABLE, query);
-        queryFilter = String.format(" AND (%s) ", sqlSelect.getWhere()).replace("'", "''");
-        orderBy = sqlSelect.getOrderBy().isEmpty() ? StringUtils.EMPTY : String.format("ORDER BY %s", sqlSelect.getOrderBy()).replace("'", "''");
-      }
-      preparedGetQuery = String.format(GET_SOURCE_RECORDS_QUERY, queryFilter, orderBy, limit, offset, deletedRecords, convertToPsqlStandard(tenantId));
-      pgClientFactory.createInstance(tenantId).select(preparedGetQuery, future.completer());
-    } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecords", e);
-      future.fail(e);
-    }
-    return future.map(this::mapResultSetToSourceRecordCollection);
-  }
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    // NOTE: currently only record type available is MARC
+    // having a dedicated table per record type has some complications
+    // if a new record type is added, will have two options to continue using single query to fetch source records
+    // 1. add record type query parameter to endpoint and join with table for that record type
+    //    - this will not afford source record request returning heterogeneous record types
+    // 2. join on every record type table
+    //    - this could present performance issues
 
-  private Future<SourceRecordCollection> getSourceRecordCollectionById(String id, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by id", e);
-      future.fail(e);
-    }
-    return future.map(resultSet -> {
-      String recordsAsString = resultSet.getResults().get(0).getString(0);
-      if (recordsAsString == null) {
-        return new SourceRecordCollection().withTotalRecords(0);
-      } else {
-        SourceRecord sourceRecord = new JsonObject(recordsAsString).mapTo(SourceRecord.class);
-        return new SourceRecordCollection().withSourceRecords(singletonList(sourceRecord)).withTotalRecords(1);
+    // Performance metrics should be taken using this join query compared to getRecords above.
+    // getRecords method streams records from the record table looking up related raw record, parsed record,
+    // and error record per record in stream. When it looks up parsed record it will use record type
+    // from the record and lookup in the appropriate table.
+    RecordType recordType = RecordType.MARC;
+    String tableName = recordType.getTableName();
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, name(tableName), name(ParsedRecordDaoUtil.ID_COLUMN));
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(CTE_TABLE_NAME).as(dsl.select()
+      .from(RECORDS_LB)
+      .innerJoin(table(name(tableName))).on(RECORDS_LB.ID.eq(parsedRecordIdField))
+      .where(condition)
+      .orderBy(orderFields)).select()
+        .from(dsl.select().from(table(name(CTE_TABLE_NAME))).offset(offset).limit(limit))
+        .rightJoin(dsl.selectCount().from(table(name(CTE_TABLE_NAME)))).on(trueCondition())
+    )).map(res -> {
+      SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
+      List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
+        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT_COLUMN));
+        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
+          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
+      }).collect(Collectors.toList());
+      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+        sourceRecordCollection.withSourceRecords(sourceRecords);
       }
+      return sourceRecordCollection;
     });
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = String.format(GET_SOURCE_RECORD_BY_ID_QUERY, id);
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by id(matchedId): {}", e, id);
-      future.fail(e);
-    }
-    return processResult(future);
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = String.format(GET_SOURCE_RECORD_BY_EXTERNAL_ID_QUERY, id, externalIdType.getExternalIdField());
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Failed to retrieve SourceRecord by externalId: {}", e, id);
-      future.fail(e);
-    }
-    return processResult(future);
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    return getSourceRecordByCondition(condition, tenantId);
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
+    return getQueryExecutor(tenantId)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+        .where(condition))
+          .map(RecordDaoUtil::toOptionalRecord)
+      .compose(optionalRecord -> {
+        if (optionalRecord.isPresent()) {
+          return lookupAssociatedRecords(txQE, optionalRecord.get(), false)
+            .map(RecordDaoUtil::toSourceRecord)
+            .map(sourceRecord -> {
+              if (Objects.nonNull(sourceRecord.getParsedRecord())) {
+                return Optional.of(sourceRecord);
+              }
+              return Optional.empty();
+            });
+        }
+        return Future.succeededFuture(Optional.empty());
+      }));
   }
 
   @Override
   public Future<Integer> calculateGeneration(Record record, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String getHighestGeneration = format(GET_HIGHEST_GENERATION_QUERY, record.getMatchedId(), record.getSnapshotId());
-      pgClientFactory.createInstance(tenantId).select(getHighestGeneration, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while searching for records highest generation", e);
-      future.fail(e);
-    }
-    return future.map(resultSet -> {
-      Integer generation = resultSet.getResults().get(0).getInteger(0);
-      if (generation == null) {
-        return 0;
-      }
-      return ++generation;
-    });
+    return getQueryExecutor(tenantId).transaction(txQE -> calculateGeneration(txQE, record));
+  }
+
+  @Override
+  public Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return txQE.query(dsl -> dsl.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
+      .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
+      .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
+        .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
+        .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
+          .from(SNAPSHOTS_LB)
+          .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(record.getSnapshotId())))))))
+            .map(res -> {
+              Integer generation = res.get(RECORDS_LB.GENERATION);
+              return Objects.nonNull(generation) ? ++generation : 0;
+            });
   }
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    return executeInTransaction(pgClient, connection -> Future.succeededFuture()
-      .compose(v -> updateExternalIdsForRecord(connection, record, tenantId))
-      .compose(updated -> updateParsedRecord(connection, record.getParsedRecord(), record.getRecordType(), tenantId))
-    );
+    return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
+      updateExternalIdsForRecord(txQE, record),
+      ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+    ).map(res -> record.getParsedRecord()));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
+      String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    return getQueryExecutor(tenantId)
+      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+        .where(condition)
+        .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.ASC))
+        .limit(1))
+          .map(RecordDaoUtil::toOptionalRecord)
+          .compose(optionalRecord -> optionalRecord
+            .map(record -> lookupAssociatedRecords(txQE, record, true).map(Optional::of))
+          .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId))))));
   }
 
   @Override
   public Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId) {
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    return executeInTransaction(pgClient, connection -> Future.succeededFuture()
-      .compose(v -> insertOrUpdateRecord(connection, oldRecord, tenantId))
-      .compose(v -> insertOrUpdateRecord(connection, newRecord, tenantId)));
-  }
-
-  /**
-   * Updates external relations ids for record in transaction
-   *
-   * @param tx       transaction connection
-   * @param record   record dto
-   * @param tenantId tenant id
-   * @return future with true if succeeded
-   */
-  private Future<Boolean> updateExternalIdsForRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    String rollBackMessage = format("Record with id: %s was not found", record.getId());
-    Future<Results<RecordModel>> resultSetFuture = Future.future();
-
-    Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
-    pgClient.get(tx, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
-    return resultSetFuture
-      .map(results -> {
-        if (results.getResults().isEmpty()) {
-          throw new NotFoundException(rollBackMessage);
-        }
-        return results.getResults().get(0);
-      })
-      .compose(recordModel -> {
-        recordModel.withExternalIdsHolder(record.getExternalIdsHolder())
-          .withMetadata(record.getMetadata());
-        return insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId)
-          .map(updated -> {
-            if (!updated) {
-              throw new NotFoundException(rollBackMessage);
-            }
-            return true;
-          });
-      });
-  }
-
-  /**
-   * Updates {@link ParsedRecord} in the db in scope of transaction
-   *
-   * @param tx           transaction connection
-   * @param parsedRecord {@link ParsedRecord} to update
-   * @param recordType   type of ParsedRecord
-   * @param tenantId     tenant id
-   * @return future with updated ParsedRecord
-   */
-  private Future<ParsedRecord> updateParsedRecord(AsyncResult<SQLConnection> tx, ParsedRecord parsedRecord, Record.RecordType recordType, String tenantId) {
-    Future<ParsedRecord> future = Future.future();
-    try {
-      CQLWrapper filter = getCQLWrapper(RecordType.valueOf(recordType.value()).getTableName(), "id==" + parsedRecord.getId());
-      pgClientFactory.createInstance(tenantId).update(tx, RecordType.valueOf(recordType.value()).getTableName(),
-        convertParsedRecordToJsonObject(parsedRecord), filter, true, updateResult -> {
-          if (updateResult.failed()) {
-            LOG.error("Could not update ParsedRecord with id {}", updateResult.cause(), parsedRecord.getId());
-            future.fail(updateResult.cause());
-          } else if (updateResult.result().getUpdated() != 1) {
-            String errorMessage = format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
-            LOG.error(errorMessage);
-            future.fail(new NotFoundException(errorMessage));
-          } else {
-            future.complete(parsedRecord);
-          }
-        });
-    } catch (Exception e) {
-      LOG.error("Error updating ParsedRecord with id {}", e, parsedRecord.getId());
-      future.fail(e);
-    }
-    return future;
+    return getQueryExecutor(tenantId).transaction(txQE -> saveUpdatedRecord(txQE, newRecord, oldRecord));
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    Future<ResultSet> future = Future.future();
-    try {
-      String query = format(GET_RECORD_BY_EXTERNAL_ID_QUERY, externalId, externalIdType.getExternalIdField());
-      pgClientFactory.createInstance(tenantId).select(query, future.completer());
-    } catch (Exception e) {
-      LOG.error("Error while searching for Record by instance id {}", e, externalId);
-      future.fail(e);
-    }
-    return future.map(resultSet -> {
-      String record = resultSet.getResults().get(0).getString(0);
-      return Optional.ofNullable(record).map(it -> new JsonObject(it).mapTo(Record.class));
-    });
+  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+    return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId) {
-
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    String queryForRecordSearchByExternalId = constructQueryForRecordSearchByExternalId(suppressFromDiscoveryDto);
-    String rollBackMessage = format("Record with %s id: %s was not found", suppressFromDiscoveryDto.getIncomingIdType().name(), suppressFromDiscoveryDto.getId());
-
-    return executeInTransaction(pgClient, connection ->
-      Future.succeededFuture()
-        .compose(v -> {
-          Future<ResultSet> resultSetFuture = Future.future();
-          pgClient.select(connection, queryForRecordSearchByExternalId, resultSetFuture);
-          return resultSetFuture
-            .map(resultSet -> {
-              if (resultSet.getResults() == null
-                || resultSet.getResults().isEmpty()
-                || resultSet.getResults().get(0) == null
-                || resultSet.getResults().get(0).getString(0) == null) {
-                throw new NotFoundException(rollBackMessage);
-              }
-              return new JsonObject(resultSet.getResults().get(0).getString(0)).mapTo(Record.class);
-            });
-        })
-        .compose(record -> {
-          Future<Results<RecordModel>> resultSetFuture = Future.future();
-          Criteria idCrit = constructCriteria(ID_FIELD, record.getId());
-          pgClient.get(connection, RECORDS_TABLE, RecordModel.class, new Criterion(idCrit), true, true, resultSetFuture);
-          return resultSetFuture
-            .map(results -> {
-              if (results.getResults().isEmpty()) {
-                throw new NotFoundException(format("Record with id %s was not found", record.getId()));
-              }
-              return results.getResults().get(0);
-            });
-        })
-        .compose(recordModel -> {
-          recordModel.getAdditionalInfo().setSuppressDiscovery(suppressFromDiscoveryDto.getSuppressFromDiscovery());
-          return insertOrUpdate(connection, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId)
-            .map(updated -> {
-              if (!updated) {
-                throw new NotFoundException(rollBackMessage);
-              }
-              return true;
-            });
-        })
-    );
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
+    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+    Condition condition = RecordDaoUtil.getExternalIdCondition(id, externalIdType);
+    return getQueryExecutor(tenantId).transaction(txQE -> RecordDaoUtil.findByCondition(txQE, condition)
+      .compose(optionalRecord -> optionalRecord
+        .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id))))))
+        .map(u -> true);
   }
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
-
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    Criterion snapshotIdCriterion = new Criterion(constructCriteria(SNAPSHOT_ID_FIELD, snapshotId));
-
-    return executeInTransaction(pgClient, connection ->
-      Future.succeededFuture()
-        .compose(v -> {
-          Future<Results<Snapshot>> snapshotFuture = Future.future();
-          pgClient.get(connection, SNAPSHOTS_TABLE, Snapshot.class, snapshotIdCriterion, true, false, null, snapshotFuture.completer());
-          return snapshotFuture
-            .map(results -> {
-              if (results.getResults().isEmpty()) {
-                throw new NotFoundException(format("Snapshot with id %s was not found", snapshotId));
-              }
-              return results.getResults().get(0);
-            });
-        })
-        .compose(snapshot -> {
-          Future<Results<RecordModel>> recordsFuture = Future.future();
-          Criteria snapshotCriterion = constructCriteria(SNAPSHOT_FIELD, snapshot.getJobExecutionId());
-          pgClient.get(connection, RECORDS_TABLE, RecordModel.class, new Criterion(snapshotCriterion), true, false, null, recordsFuture.completer());
-          return recordsFuture.map(Results::getResults);
-        })
-        .compose(records -> {
-          Future<Boolean> deletedFuture = Future.succeededFuture(true);
-          for (RecordModel record : records) {
-            deletedFuture = deletedFuture.compose(v -> deleteRecord(record, pgClient, connection));
-          }
-          return deletedFuture;
-        })
-        .compose(v -> {
-          Future<UpdateResult> deleteSnapshot = Future.future();
-          pgClient.delete(connection, SNAPSHOTS_TABLE, snapshotIdCriterion, deleteSnapshot.completer());
-          return deleteSnapshot.map(deleted -> deleted.getUpdated() == 1);
-        })
-    );
+    return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
-  /**
-   * Deletes Record
-   *
-   * @param record         Record to delete
-   * @param postgresClient Postgres Client
-   * @param connection     connection
-   * @return future with true if succeeded
-   */
-  private Future<Boolean> deleteRecord(RecordModel record, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
-    Future<Boolean> future = Future.future();
-    Future.succeededFuture()
-      .compose(v -> deleteById(record.getRawRecordId(), RAW_RECORDS_TABLE, postgresClient, connection))
-      .compose(v -> {
-        if (record.getParsedRecordId() != null) {
-          return deleteById(record.getParsedRecordId(), RecordType.valueOf(record.getRecordType().value()).getTableName(), postgresClient, connection);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> {
-        if (record.getErrorRecordId() != null) {
-          return deleteById(record.getErrorRecordId(), ERROR_RECORDS_TABLE, postgresClient, connection);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> deleteById(record.getId(), RECORDS_TABLE, postgresClient, connection))
-      .setHandler(result -> {
-        if (result.succeeded()) {
-          future.complete(true);
-        } else {
-          LOG.error("Failed to delete Record with id {}", result.cause(), record.getId());
-          future.fail(result.cause());
-        }
-      });
-    return future;
+  private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+    return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  /**
-   * Deletes entity by id
-   *
-   * @param id             id of the entity to delete
-   * @param tableName      table name
-   * @param postgresClient Postgres Client
-   * @param connection     connection
-   * @return future with true if succeeded
-   */
-  private Future<Boolean> deleteById(String id, String tableName, PostgresClient postgresClient, AsyncResult<SQLConnection> connection) {
-    Future<UpdateResult> deleteFuture = Future.future();
-    Criteria idCrit = constructCriteria(ID_FIELD, id);
-    postgresClient.delete(connection, tableName, new Criterion(idCrit), deleteFuture.completer());
-    return deleteFuture.map(deleted -> deleted.getUpdated() == 1);
+  private Record addToList(List<Record> records, Record record) {
+    records.add(record);
+    return record;
   }
 
-  private Future<Record> insertOrUpdateRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
-
-    RecordModel recordModel = new RecordModel()
-      .withId(record.getId())
-      .withSnapshotId(record.getSnapshotId())
-      .withMatchedId(record.getMatchedId())
-      .withGeneration(record.getGeneration())
-      .withRecordType(RecordModel.RecordType.fromValue(record.getRecordType().value()))
-      .withRawRecordId(record.getRawRecord().getId())
-      .withExternalIdsHolder(record.getExternalIdsHolder())
-      .withDeleted(record.getDeleted())
-      .withOrder(record.getOrder())
-      .withState(RecordModel.State.fromValue(record.getState().value()))
-      .withAdditionalInfo(record.getAdditionalInfo())
-      .withMetadata(record.getMetadata());
-
-    return Future.succeededFuture()
-      .compose(v -> insertOrUpdate(tx, record.getRawRecord(), record.getRawRecord().getId(), RAW_RECORDS_TABLE, tenantId))
-      .compose(v -> {
-        if (record.getParsedRecord() != null) {
-          // NOTE: this is a bug, the record will save with parsed record id even if parsed record contant fails to validate as JSON
-          recordModel.setParsedRecordId(record.getParsedRecord().getId());
-          return insertOrUpdateParsedRecord(tx, record, tenantId);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> {
-        if (record.getErrorRecord() != null) {
-          recordModel.setErrorRecordId(record.getErrorRecord().getId());
-          return insertOrUpdate(tx, record.getErrorRecord(), record.getErrorRecord().getId(), ERROR_RECORDS_TABLE, tenantId);
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> insertOrUpdate(tx, recordModel, recordModel.getId(), RECORDS_TABLE, tenantId).map(updated -> record));
+  private RecordCollection addTotalRecords(RecordCollection recordCollection, Integer totalRecords) {
+    return recordCollection.withTotalRecords(totalRecords);
   }
 
-  private Future<Boolean> insertOrUpdate(AsyncResult<SQLConnection> tx, Object rawRecord, String id, String tableName, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    try {
-      JsonArray params = new JsonArray().add(id).add(pojo2json(rawRecord)).add(pojo2json(rawRecord));
-      String query = format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), tableName);
-      pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
-      return future.map(result -> result.getUpdated() == 1);
-    } catch (Exception e) {
-      LOG.error("Error updating Record", e);
-      return Future.failedFuture(e);
+  private Row asRow(Row row) {
+    return row;
+  }
+
+  private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {
+    if (record.isPresent()) {
+      return lookupAssociatedRecords(txQE, record.get(), includeErrorRecord).map(Optional::of);
     }
+    return Future.succeededFuture(record);
   }
 
-  private Future<Boolean> insertOrUpdateParsedRecord(AsyncResult<SQLConnection> tx, Record record, String tenantId) {
-    Future<UpdateResult> future = Future.future();
-    ParsedRecord parsedRecord = record.getParsedRecord();
+  private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
+    @SuppressWarnings("squid:S3740")
+    List<Future> futures = new ArrayList<>();
+    futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+      if (rr.isPresent()) {
+        record.withRawRecord(rr.get());
+      }
+      return record;
+    }));
+    futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
+      if (pr.isPresent()) {
+        record.withParsedRecord(pr.get());
+      }
+      return record;
+    }));
+    if (includeErrorRecord) {
+      futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
+        if (er.isPresent()) {
+          record.withErrorRecord(er.get());
+        }
+        return record;
+      }));
+    }
+    return CompositeFuture.all(futures).map(res -> record);
+  }
+
+  private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return RawRecordDaoUtil.save(txQE, record.getRawRecord())
+      .compose(rr -> {
+        if (Objects.nonNull(record.getParsedRecord())) {
+          return insertOrUpdateParsedRecord(txQE, record);
+        }
+        return Future.succeededFuture();
+      })
+      .compose(s -> {
+        if (Objects.nonNull(record.getErrorRecord())) {
+          return ErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
+        }
+        return Future.succeededFuture();
+      })
+      .compose(er -> RecordDaoUtil.save(txQE, record)).map(r -> {
+        if (Objects.nonNull(record.getRawRecord())) {
+          r.withRawRecord(record.getRawRecord());
+        }
+        if (Objects.nonNull(record.getParsedRecord())) {
+          r.withParsedRecord(record.getParsedRecord());
+        }
+        if (Objects.nonNull(record.getErrorRecord())) {
+          r.withErrorRecord(record.getErrorRecord());
+        }
+        return r;
+      });
+  }
+
+  private Future<Boolean> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
-      JsonObject jsonData = convertParsedRecordToJsonObject(parsedRecord);
-      JsonArray params = new JsonArray().add(
-        parsedRecord.getId()).add(pojo2json(jsonData)).add(pojo2json(jsonData));
-      String query = format(UPSERT_QUERY, PostgresClient.convertToPsqlStandard(tenantId), RecordType.valueOf(record.getRecordType().value()).getTableName());
-      record.setParsedRecord(jsonData.mapTo(ParsedRecord.class));
-      pgClientFactory.createInstance(tenantId).execute(tx, query, params, future.completer());
-      return future.map(result -> result.getUpdated() == 1);
+      String content = (String) ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+      return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> true);
     } catch (Exception e) {
-      LOG.error("Error mapping ParsedRecord to JsonObject", e);
-      ErrorRecord error = new ErrorRecord()
-        .withId(UUID.randomUUID().toString())
+      LOG.error("Couldn't format MARC record", e);
+      record.setErrorRecord(new ErrorRecord()
+        .withId(record.getId())
         .withDescription(e.getMessage())
-        .withContent(parsedRecord.getContent());
-      record.setErrorRecord(error);
+        .withContent(record.getParsedRecord().getContent()));
       record.setParsedRecord(null);
       return Future.succeededFuture(false);
     }
   }
 
-  /**
-   * Maps parsedRecord to JsonObject
-   *
-   * @param parsedRecord parsed record
-   * @return JsonObject containing parsed record data
-   */
-  private JsonObject convertParsedRecordToJsonObject(ParsedRecord parsedRecord) {
-    if (parsedRecord.getContent() instanceof String) {
-      parsedRecord.setContent(new JsonObject(parsedRecord.getContent().toString()));
-    }
-    return JsonObject.mapFrom(parsedRecord);
-  }
-
-  /**
-   * Constructs query for record search by external id
-   *
-   * @param suppressFromDiscoveryDto SuppressDiscoveryDto containing incoming id type
-   * @return query
-   */
-  private String constructQueryForRecordSearchByExternalId(SuppressFromDiscoveryDto suppressFromDiscoveryDto) {
-    try {
-      ExternalIdType externalIdType = ExternalIdType.valueOf(suppressFromDiscoveryDto.getIncomingIdType().value());
-      return format(GET_RECORD_BY_EXTERNAL_ID_QUERY, suppressFromDiscoveryDto.getId(), externalIdType.getExternalIdField());
-    } catch (IllegalArgumentException e) {
-      throw new BadRequestException("Selected IncomingIdType is not supported");
-    }
-  }
-
-  private SqlSelect getSqlSelect(String table, String cql) throws FieldException {
-    try {
-      return new CQL2PgJSON(table + ".jsonb").toSql(cql);
-    } catch (QueryValidationException e) {
-      throw new CQLQueryValidationException(e);
-    }
-  }
-
-  /**
-   * Converts result set to {@link RecordCollection}
-   *
-   * @param resultSet result set
-   * @return RecordCollection
-   */
-  private RecordCollection mapResultSetToRecordCollection(ResultSet resultSet) {
-    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger(TOTALROWS_COLUMN) : 0;
-    List<Record> records = resultSet.getRows().stream()
-      .map(row -> mapJsonToEntity(row.getString(JSONB_COLUMN), Record.class))
-      .collect(Collectors.toList());
-
-    return new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(totalRecords);
-  }
-
-  /**
-   * Converts result set to {@link SourceRecordCollection}
-   *
-   * @param resultSet result set
-   * @return SourceRecordCollection
-   */
-  private SourceRecordCollection mapResultSetToSourceRecordCollection(ResultSet resultSet) {
-    int totalRecords = resultSet.getNumRows() != 0 ? resultSet.getRows(false).get(0).getInteger(TOTALROWS_COLUMN) : 0;
-    List<SourceRecord> records = resultSet.getRows().stream()
-      .map(row -> mapJsonToEntity(row.getString(JSONB_COLUMN), SourceRecord.class))
-      .collect(Collectors.toList());
-
-    return new SourceRecordCollection()
-      .withSourceRecords(records)
-      .withTotalRecords(totalRecords);
-  }
-
-  /**
-   * Deserializes JSON content from given json string to object of specified type.
-   *
-   * @param jsonString json content
-   * @param entityType type of objet to deserialize
-   * @return deserialized object from json string
-   */
-  private <T> T mapJsonToEntity(String jsonString, Class<T> entityType) {
-    try {
-      return ObjectMapperTool.getMapper().readValue(jsonString, entityType);
-    } catch (IOException e) {
-      LOG.error(format("Error while mapping json to %s object.", entityType.getSimpleName()), e);
-      throw new RuntimeJsonMappingException(e.getMessage());
-    }
-  }
-
-  private String extractUUIDFromQuery(String query) {
-    Pattern pairRegex = Pattern.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[1-5][a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}");
-    Matcher matcher = pairRegex.matcher(query);
-    if (matcher.find()) {
-      return matcher.group(0);
-    }
-    return EMPTY;
-  }
-
-  private Future<Optional<SourceRecord>> processResult(Future<ResultSet> future) {
-    return future.map(resultSet -> {
-      String recordAsString = resultSet.getResults().get(0).getString(0);
-      if (recordAsString == null) {
-        return Optional.empty();
-      }
-      return Optional.ofNullable(new JsonObject(recordAsString)
-        .mapTo(SourceRecord.class));
-    });
+  private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    return RecordDaoUtil.findById(txQE, record.getId())
+      .map(optionalRecord -> {
+        if (optionalRecord.isPresent()) {
+          return optionalRecord;
+        }
+        String rollBackMessage = String.format("Record with id %s was not found", record.getId());
+        throw new NotFoundException(rollBackMessage);
+      })
+      .map(Optional::get)
+      .compose(persistedRecord -> {
+        persistedRecord.withExternalIdsHolder(record.getExternalIdsHolder())
+          .withMetadata(record.getMetadata());
+        return RecordDaoUtil.update(txQE, persistedRecord)
+          .map(update -> true);
+      });
   }
 
 }

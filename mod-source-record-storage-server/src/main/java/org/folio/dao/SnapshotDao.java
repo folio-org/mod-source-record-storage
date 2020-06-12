@@ -1,29 +1,32 @@
 package org.folio.dao;
 
-import io.vertx.core.Future;
+import java.util.Collection;
+import java.util.Optional;
+
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
+import org.jooq.Condition;
+import org.jooq.OrderField;
 
-import java.util.Optional;
+import io.vertx.core.Future;
 
 /**
  * Data access object for {@link Snapshot}
  */
 public interface SnapshotDao {
 
-  String SNAPSHOTS_TABLE = "snapshots";
-  String SNAPSHOT_ID_FIELD = "'jobExecutionId'";
-
   /**
-   * Searches for {@link Snapshot} in database
-   *
-   * @param query    query string to filter snapshots based on matching criteria in fields
-   * @param offset   starting index in a list of results
-   * @param limit    maximum number of results to return
-   * @param tenantId tenant id
+   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   * 
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
    * @return future with {@link SnapshotCollection}
    */
-  Future<SnapshotCollection> getSnapshots(String query, int offset, int limit, String tenantId);
+  Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Snapshot} by id
@@ -60,4 +63,5 @@ public interface SnapshotDao {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteSnapshot(String id, String tenantId);
+
 }

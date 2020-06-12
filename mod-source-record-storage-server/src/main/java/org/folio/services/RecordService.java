@@ -1,6 +1,8 @@
 package org.folio.services;
 
-import io.vertx.core.Future;
+import java.util.Collection;
+import java.util.Optional;
+
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -8,25 +10,24 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jaxrs.model.SuppressFromDiscoveryDto;
+import org.jooq.Condition;
+import org.jooq.OrderField;
 
-import java.util.Optional;
+import io.vertx.core.Future;
 
-/**
- * Record Service
- */
 public interface RecordService {
 
   /**
-   * Searches for records
+   * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    *
-   * @param query    query from URL
-   * @param offset   starting index in a list of results
-   * @param limit    limit of records for pagination
-   * @param tenantId tenant id
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
    * @return future with {@link RecordCollection}
    */
-  Future<RecordCollection> getRecords(String query, int offset, int limit, String tenantId);
+  Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for record by id
@@ -65,23 +66,24 @@ public interface RecordService {
   Future<Record> updateRecord(Record record, String tenantId);
 
   /**
-   * Searches for source records
-   *
-   * @param query          query from URL
+   * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
+   * 
+   * @param condition      query where condition
+   * @param orderFields    fields to order by
    * @param offset         starting index in a list of results
    * @param limit          limit of records for pagination
    * @param deletedRecords indicates to return records marked as deleted or not
    * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(String query, int offset, int limit, boolean deletedRecords, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for source record by id via specific idType
    *
-   * @param id       - for searching
-   * @param idType   - search type
-   * @param tenantId - tenant id
+   * @param id       for searching
+   * @param idType   search type
+   * @param tenantId tenant id
    * @return future with optional source record
    */
   Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId);
@@ -108,18 +110,20 @@ public interface RecordService {
   /**
    * Change suppress from discovery flag for record by external relation id
    *
-   * @param suppressFromDiscoveryDto - dto that contains new value and id
-   * @param tenantId                 - tenant id
-   * @return - future with true if succeeded
+   * @param id       id
+   * @param idType   external id type
+   * @param suppress suppress from discovery
+   * @param tenantId tenant id
+   * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(SuppressFromDiscoveryDto suppressFromDiscoveryDto, String tenantId);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId);
 
   /**
    * Deletes records associated with specified snapshot and snapshot itself
    *
    * @param snapshotId snapshot id
    * @param tenantId   tenant id
-   * @return - future with true if succeeded
+   * @return future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
@@ -133,5 +137,15 @@ public interface RecordService {
    * @return future with updated Record
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
+
+  /**
+   * Searches for {@link Record} by id of external entity which was created from desired record
+   *
+   * @param externalId external relation id
+   * @param idType     id type
+   * @param tenantId   tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId);
 
 }

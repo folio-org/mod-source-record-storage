@@ -1,15 +1,21 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.UUID;
+
 import org.apache.http.HttpStatus;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
-import java.util.UUID;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class EventHandlersApiTest extends AbstractRestVerticleTest {
@@ -57,4 +63,5 @@ public class EventHandlersApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
   }
+
 }

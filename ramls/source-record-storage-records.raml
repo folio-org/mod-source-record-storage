@@ -1,0 +1,147 @@
+#%RAML 1.0
+
+title: Source Record Storage Record API
+version: v3.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Record API
+    content: API for managing records
+
+types:
+  errorRecord: !include raml-storage/schemas/mod-source-record-storage/errorRecord.json
+  errorRecordCollection: !include raml-storage/schemas/mod-source-record-storage/errorRecordCollection.json
+  parsedRecord: !include raml-storage/schemas/mod-source-record-storage/parsedRecord.json
+  parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
+  rawRecord: !include raml-storage/schemas/mod-source-record-storage/rawRecord.json
+  rawRecordCollection: !include raml-storage/schemas/mod-source-record-storage/rawRecordCollection.json
+  record: !include raml-storage/schemas/dto/record.json
+  recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  language: !include raml-storage/raml-util/traits/language.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+
+resourceTypes:
+  collection: !include raml-storage/raml-util/rtypes/collection.raml
+  collection-item: !include raml-storage/raml-util/rtypes/item-collection.raml
+
+/source-storage/records:
+  displayName: Records
+  description: API for managing Records
+  type:
+    collection:
+      schemaCollection: recordCollection
+      schemaItem: record
+      exampleCollection: !include raml-storage/examples/mod-source-record-storage/recordCollection.sample
+      exampleItem: !include raml-storage/examples/mod-source-record-storage/record.sample
+  post:
+    is: [validate]
+  get:
+    is: [
+      pageable,
+      validate
+    ]
+    queryParameters:
+      snapshotId:
+        description: Filter by Snapshot Id
+        type: string
+        example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
+        required: false
+      state:
+        description: Filter by State
+        type: string
+        example: "ACTUAL"
+        required: false
+      orderBy:
+        description: Sort Records
+        type: string[]
+        example: ["order,ASC"]
+        required: false
+  /{id}:
+    displayName: Record
+    description: Get, Delete or Update a specific Record
+    type:
+      collection-item:
+        schema: record
+        exampleItem: !include raml-storage/examples/mod-source-record-storage/record.sample
+    put:
+      is: [validate]
+      responses:
+        200:
+          body:
+            application/json:
+              type: record
+    delete:
+      responses:
+        204:
+    /formatted:
+      displayName: Formatted Record
+      get:
+        description: Get Record with formatted content
+        queryParameters:
+          idType:
+            description: Type of Id for Record lookup
+            type: string
+            example: INSTANCE
+            required: false
+            default: RECORD
+        responses:
+          200:
+            body:
+              application/json:
+                type: record
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          404:
+            description: "Not found"
+            body:
+              text/plain:
+                example: "Not found"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+    /suppress-from-discovery:
+      displayName: Suppress From Discovery
+      put:
+        description: Update Record suppress from discovery additional information
+        queryParameters:
+          idType:
+            description: Type of Id for Record lookup
+            type: string
+            example: INSTANCE
+            required: false
+            default: RECORD
+          suppress:
+            description: Whether to suppress or unsuppress from discovery
+            example: false
+            type: boolean
+            required: false
+            default: true
+        responses:
+          200:
+            body:
+              text/plain: !!null
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"

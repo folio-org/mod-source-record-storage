@@ -10,18 +10,13 @@
       <tableExists tableName="error_records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- migrate error records
       INSERT INTO ${database.defaultSchemaName}.error_records_lb
       SELECT
         r.id AS id,
-        -- er.id AS id,
-        -- er.jsonb->>'id' AS id,
         er.jsonb->>'content' AS content,
         (er.jsonb->>'description')::varchar(1024) AS description
-        -- er.creation_date AS creationDate,
-        -- er.created_by AS createdBy
       FROM ${database.defaultSchemaName}.records r
-      INNER JOIN ${database.defaultSchemaName}.error_records er ON r.jsonb->>'errorRecordId' = er.jsonb->>'id';
+      INNER JOIN ${database.defaultSchemaName}.error_records er ON (r.jsonb->>'errorRecordId')::uuid = er.id;
     </sql>
   </changeSet>
 

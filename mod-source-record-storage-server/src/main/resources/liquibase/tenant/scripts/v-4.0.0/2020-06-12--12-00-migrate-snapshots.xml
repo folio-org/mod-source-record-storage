@@ -9,20 +9,15 @@
       <tableExists tableName="snapshots" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- migrate snapshots
       INSERT INTO ${database.defaultSchemaName}.snapshots_lb
       SELECT
         id,
-        -- jsonb->>'id' AS id,
-        -- jsonb->>'jobExecutionId' AS jobExecutionId,
         (jsonb->>'status')::${database.defaultSchemaName}.job_execution_status AS status,
         (jsonb->>'processingStartedDate')::timestamptz AS processing_started_date,
         (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,
         (jsonb->'metadata'->>'createdDate')::timestamptz AS created_date,
         (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
         (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
-        -- creation_date AS creationDate,
-        -- created_by AS createdBy
       FROM ${database.defaultSchemaName}.snapshots;
     </sql>
   </changeSet>
@@ -33,7 +28,6 @@
       <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- create missing snapshots
       INSERT INTO ${database.defaultSchemaName}.snapshots_lb (
         id,
         status,

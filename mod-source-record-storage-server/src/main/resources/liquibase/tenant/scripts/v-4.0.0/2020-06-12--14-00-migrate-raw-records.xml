@@ -10,17 +10,12 @@
       <tableExists tableName="raw_records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- migrate raw records
       INSERT INTO ${database.defaultSchemaName}.raw_records_lb
       SELECT
         r.id AS id,
-        -- rr.id AS id,
-        -- rr.jsonb->>'id' AS id,
         rr.jsonb->>'content' AS content
-        -- rr.creation_date AS creationDate,
-        -- rr.created_by AS createdBy
       FROM ${database.defaultSchemaName}.records r
-      INNER JOIN ${database.defaultSchemaName}.raw_records rr ON r.jsonb->>'rawRecordId' = rr.jsonb->>'id';
+      INNER JOIN ${database.defaultSchemaName}.raw_records rr ON (r.jsonb->>'rawRecordId')::uuid = rr.id;
     </sql>
   </changeSet>
 

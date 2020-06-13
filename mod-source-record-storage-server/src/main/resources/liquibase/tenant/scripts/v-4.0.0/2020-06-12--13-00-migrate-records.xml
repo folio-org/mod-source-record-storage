@@ -9,11 +9,9 @@
       <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- migrate records
       INSERT INTO ${database.defaultSchemaName}.records_lb
       SELECT
         id,
-        -- jsonb->>'id' AS id,
         (jsonb->>'snapshotId')::uuid AS snapshot_id,
         (jsonb->>'matchedId')::uuid AS matched_id,
         (jsonb->>'generation')::integer AS generation,
@@ -28,13 +26,6 @@
         (jsonb->'metadata'->>'createdDate')::timestamptz AS created_date,
         (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
         (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
-        -- jsonb->>'deleted' AS deleted,
-        -- jsonb->>'rawRecordId' AS rawRecordId,
-        -- jsonb->>'parsedRecordId' AS parsedRecordId,
-        -- jsonb->>'errorRecordId' AS errorRecordId,
-        -- creation_date AS creationDate,
-        -- created_by AS createdBy,
-        -- jobexecutionid AS jobExecutionId
       FROM ${database.defaultSchemaName}.records;
     </sql>
   </changeSet>

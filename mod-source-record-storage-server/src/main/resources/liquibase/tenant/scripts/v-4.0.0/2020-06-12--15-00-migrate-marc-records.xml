@@ -10,17 +10,12 @@
       <tableExists tableName="marc_records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
     <sql>
-      -- migrate marc records
       INSERT INTO ${database.defaultSchemaName}.marc_records_lb
       SELECT
         r.id AS id,
-        -- mr.id AS id,
-        -- mr.jsonb->>'id' AS id,
         mr.jsonb->>'content' AS content
-        -- mr.creation_date AS creationDate,
-        -- mr.created_by AS createdBy
       FROM ${database.defaultSchemaName}.records r
-      INNER JOIN ${database.defaultSchemaName}.marc_records mr ON r.jsonb->>'parsedRecordId' = mr.jsonb->>'id';
+      INNER JOIN ${database.defaultSchemaName}.marc_records mr ON (r.jsonb->>'parsedRecordId')::uuid = mr.id;
     </sql>
   </changeSet>
 

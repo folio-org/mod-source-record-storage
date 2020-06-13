@@ -5,6 +5,10 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
   <changeSet id="2020-06-12--16-00-migrate-error-records" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+      <tableExists tableName="error_records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
     <sql>
       -- migrate error records
       INSERT INTO ${database.defaultSchemaName}.error_records_lb
@@ -18,7 +22,6 @@
         -- er.created_by AS createdBy
       FROM ${database.defaultSchemaName}.records r
       INNER JOIN ${database.defaultSchemaName}.error_records er ON r.jsonb->>'errorRecordId' = er.jsonb->>'id';
-
     </sql>
   </changeSet>
 

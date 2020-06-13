@@ -5,6 +5,10 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
   <changeSet id="2020-06-12--15-00-migrate-marc-records" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+      <tableExists tableName="marc_records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
     <sql>
       -- migrate marc records
       INSERT INTO ${database.defaultSchemaName}.marc_records_lb

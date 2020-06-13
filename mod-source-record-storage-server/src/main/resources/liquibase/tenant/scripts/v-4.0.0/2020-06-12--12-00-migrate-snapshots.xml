@@ -1,0 +1,48 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-06-12--12-00-migrate-snapshots" author="WilliamWelling">
+    <sql>
+      -- migrate snapshots
+      INSERT INTO ${database.defaultSchemaName}.snapshots_lb
+      SELECT
+        id,
+        -- jsonb->>'id' AS id,
+        -- jsonb->>'jobExecutionId' AS jobExecutionId,
+        (jsonb->>'status')::${database.defaultSchemaName}.job_execution_status AS status,
+        (jsonb->>'processingStartedDate')::timestamptz AS processing_started_date,
+        (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,
+        (jsonb->'metadata'->>'createdDate')::timestamptz AS created_date,
+        (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
+        (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
+        -- creation_date AS creationDate,
+        -- created_by AS createdBy
+      FROM ${database.defaultSchemaName}.snapshots;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-12--13-00-create-missing-snapshots" author="WilliamWelling">
+    <sql>
+      -- create missing snapshots
+      INSERT INTO ${database.defaultSchemaName}.snapshots_lb (
+        id,
+        status,
+        created_date,
+        updated_date
+      )
+      SELECT DISTINCT
+        (jsonb->>'snapshotId')::uuid AS id,
+        ('COMMITTED')::${database.defaultSchemaName}.job_execution_status AS status,
+        now() AS created_date,
+        now() AS updated_date
+      FROM ${database.defaultSchemaName}.records
+      WHERE (jsonb->>'snapshotId')::uuid NOT IN (
+        SELECT id FROM ${database.defaultSchemaName}.snapshots_lb
+      );
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

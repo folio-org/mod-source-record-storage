@@ -1,0 +1,39 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-06-12--13-00-migrate-records" author="WilliamWelling">
+    <sql>
+      -- migrate records
+      INSERT INTO ${database.defaultSchemaName}.records_lb
+      SELECT
+        id,
+        -- jsonb->>'id' AS id,
+        (jsonb->>'snapshotId')::uuid AS snapshot_id,
+        (jsonb->>'matchedId')::uuid AS matched_id,
+        (jsonb->>'generation')::integer AS generation,
+        (jsonb->>'recordType')::${database.defaultSchemaName}.record_type AS record_type,
+        (jsonb->'externalIdsHolder'->>'instanceId')::uuid AS instance_id,
+        CASE (jsonb->>'deleted')::boolean WHEN true THEN ('DELETED')::${database.defaultSchemaName}.record_state
+        ELSE coalesce(jsonb->>'state', 'ACTUAL')::${database.defaultSchemaName}.record_state
+        END AS state,
+        (jsonb->>'order')::integer AS order,
+        (jsonb->'additionalInfo'->>'suppressDiscovery')::boolean AS suppress_discovery,
+        (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,
+        (jsonb->'metadata'->>'createdDate')::timestamptz AS created_date,
+        (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
+        (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
+        -- jsonb->>'deleted' AS deleted,
+        -- jsonb->>'rawRecordId' AS rawRecordId,
+        -- jsonb->>'parsedRecordId' AS parsedRecordId,
+        -- jsonb->>'errorRecordId' AS errorRecordId,
+        -- creation_date AS creationDate,
+        -- created_by AS createdBy,
+        -- jobexecutionid AS jobExecutionId
+      FROM ${database.defaultSchemaName}.records;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -3,9 +3,9 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
-  <include file="scripts/v-0.0.1/2020-04-27--12-00-create-snapshots-table.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-0.0.1/2020-04-27--13-00-create-records-table.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-0.0.1/2020-04-27--14-00-create-raw-records-table.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-0.0.1/2020-04-27--15-00-create-marc-records-table.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-0.0.1/2020-04-27--16-00-create-error-records-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-04-27--12-00-create-snapshots-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-04-27--13-00-create-records-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-04-27--14-00-create-raw-records-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-04-27--15-00-create-marc-records-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-04-27--16-00-create-error-records-table.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

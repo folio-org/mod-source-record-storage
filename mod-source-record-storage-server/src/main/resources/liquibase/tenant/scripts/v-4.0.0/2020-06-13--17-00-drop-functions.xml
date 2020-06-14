@@ -46,4 +46,76 @@
     </sql>
   </changeSet>
 
+  <changeSet runAlways="true" id="2020-06-13--17-07-drop-error_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.error_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-08-drop-marc_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.marc_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-09-drop-raw_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.raw_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-10-drop-records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-11-drop-set_error_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_error_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-12-drop-set_id_in_jsonb" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-13-drop-set_marc_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_marc_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-14-drop-set_raw_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_raw_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-15-drop-set_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-16-drop-set_snapshots_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_snapshots_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-17-drop-snapshots_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.snapshots_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-18-drop-update_records_references" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.update_records_references();
+    </sql>
+  </changeSet>
+
 </databaseChangeLog>

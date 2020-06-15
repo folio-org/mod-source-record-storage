@@ -1,0 +1,79 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2020-06-10--12-00-drop-error-records-lb-table" author="WilliamWelling">
+    <dropTable
+      schemaName="${database.defaultSchemaName}"  
+      tableName="error_records_lb"/>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-01-drop-marc-records-lb-table" author="WilliamWelling">
+    <dropTable
+      schemaName="${database.defaultSchemaName}"  
+      tableName="marc_records_lb"/>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-02-drop-raw-records-lb-table" author="WilliamWelling">
+    <dropTable
+      schemaName="${database.defaultSchemaName}"  
+      tableName="raw_records_lb"/>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-03-drop-records-lb-table" author="WilliamWelling">
+    <dropTable
+      schemaName="${database.defaultSchemaName}"  
+      tableName="records_lb"/>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-04-drop-record_type" author="WilliamWelling">
+    <sql>
+      DROP TYPE ${database.defaultSchemaName}.record_type;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-05-drop-record_state_type" author="WilliamWelling">
+    <sql>
+      DROP TYPE ${database.defaultSchemaName}.record_state_type;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-06-drop-update_records_set_updated_date" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.update_records_set_updated_date();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-07-drop-insert_records_set_created_date" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.insert_records_set_created_date();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-08-drop-snapshots-lb-table" author="WilliamWelling">
+    <dropTable
+      schemaName="${database.defaultSchemaName}"  
+      tableName="snapshots_lb"/>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-09-drop-job_execution_status" author="WilliamWelling">
+    <sql>
+      DROP TYPE ${database.defaultSchemaName}.job_execution_status;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-10-drop-update_snapshots_set_updated_date" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.update_snapshots_set_updated_date();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-10--12-11-drop-insert_snapshots_set_created_date" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.insert_snapshots_set_created_date();
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

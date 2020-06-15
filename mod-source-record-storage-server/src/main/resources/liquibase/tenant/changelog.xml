@@ -16,4 +16,12 @@
   <include file="scripts/v-4.0.0/2020-06-12--15-00-migrate-marc-records.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-4.0.0/2020-06-12--16-00-migrate-error-records.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-4.0.0/2020-06-13--12-00-drop-error-records.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-06-13--13-00-drop-marc-records.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-06-13--14-00-drop-raw-records.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-06-13--15-00-drop-records.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-4.0.0/2020-06-13--16-00-drop-snapshots.xml" relativeToChangelogFile="true"/>
+
+  <include file="scripts/v-4.0.0/2020-06-13--17-00-drop-functions.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet runAlways="true" id="2020-06-13--16-00-drop-snapshots" author="WilliamWelling">
+    <sql>
+      DROP TABLE IF EXISTS ${database.defaultSchemaName}.snapshots;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

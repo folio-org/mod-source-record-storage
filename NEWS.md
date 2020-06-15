@@ -3,10 +3,6 @@
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
 * [MODSOURCE-129](https://issues.folio.org/browse/MODSOURCE-129) Add Liquibase schema management using [folio-liquibase-util](https://github.com/folio-org/folio-liquibase-util)
 * [MODSOURCE-116](https://issues.folio.org/browse/MODSOURCE-116) Add filtering of sourceRecords to return only latest generation.
-* [MODSOURCE-130](https://issues.folio.org/browse/MODSOURCE-130) Standard table creation using Liquibase
-* [MODSOURCE-102](https://issues.folio.org/browse/MODSOURCE-102) Add Data Access Objects for standard tables
-* [MODDATAIMP-300](https://issues.folio.org/browse/MODDATAIMP-300) Updated marc4j version to 2.9.1
-* [MODSOURCE-101](https://issues.folio.org/browse/MODSOURCE-101) Add Services for standard table DAOs
 * [MODDICORE-50](https://issues.folio.org/browse/MODDICORE-50) Fixed placement of newly-created 035 field
 * [MODSOURCE-137](https://issues.folio.org/browse/MODSOURCE-137) Port existing service logic to standard table DAO services
 * [MODSOURCE-145](https://issues.folio.org/browse/MODSOURCE-145) Remove matchedProfileId property from Record

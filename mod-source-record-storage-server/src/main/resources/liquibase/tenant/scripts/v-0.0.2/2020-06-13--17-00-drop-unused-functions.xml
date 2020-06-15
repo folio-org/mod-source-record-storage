@@ -118,4 +118,58 @@
     </sql>
   </changeSet>
 
+  <changeSet runAlways="true" id="2020-06-13--17-19-drop-get_source_marc_record_by_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_id(p_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-20-drop-get_source_marc_record_by_id_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_id_alt(p_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-21-drop-get_source_marc_record_by_instance_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_instance_id(p_instanceid uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-22-drop-get_source_marc_record_by_instance_id_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_instance_id_alt(p_instanceid uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-23-drop-get_all_source_marc_records" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_all_source_marc_records(p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-24-drop-get_all_source_marc_records_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_all_source_marc_records_alt(p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-25-drop-get_source_marc_records_for_period" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamptz, p_till timestamptz, p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-26-drop-get_source_marc_records_for_period_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamptz, p_till timestamptz, p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-27-drop-get_highest_generation_lb" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_highest_generation_lb(p_matchedid uuid, p_snapshotid uuid);
+    </sql>
+  </changeSet>
+
 </databaseChangeLog>

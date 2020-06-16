@@ -2,9 +2,9 @@
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
-  <changeSet id="2020-04-27--13-00-create-record-type" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-00-create-record-type" author="WilliamWelling">
     <sql>
       CREATE TYPE ${database.defaultSchemaName}.record_type AS ENUM (
         'MARC'
@@ -12,9 +12,9 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-01-create-record-type-state" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-01-create-record-type-state" author="WilliamWelling">
     <sql>
-      CREATE TYPE ${database.defaultSchemaName}.record_state_type AS ENUM (
+      CREATE TYPE ${database.defaultSchemaName}.record_state AS ENUM (
         'ACTUAL',
         'DRAFT',
         'OLD',
@@ -23,39 +23,39 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-02-create-records-table" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-02-create-records-table" author="WilliamWelling">
     <createTable tableName="records_lb">
       <column name="id" type="uuid">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="snapshotid" type="uuid">
+      <column name="snapshot_id" type="uuid">
         <constraints nullable="false"/>
       </column>
-      <column name="matchedid" type="uuid">
+      <column name="matched_id" type="uuid">
         <constraints nullable="false"/>
       </column>
       <column name="generation" type="integer">
         <constraints nullable="false"/>
       </column>
-      <column name="recordtype" type="${database.defaultSchemaName}.record_type">
+      <column name="record_type" type="${database.defaultSchemaName}.record_type">
         <constraints nullable="false"/>
       </column>
-      <column name="instanceid" type="uuid"></column>
-      <column name="state" type="${database.defaultSchemaName}.record_state_type">
+      <column name="instance_id" type="uuid"></column>
+      <column name="state" type="${database.defaultSchemaName}.record_state">
         <constraints nullable="false"/>
       </column>
-      <column name="orderinfile" type="integer"></column>
-      <column name="suppressdiscovery" type="boolean"></column>
-      <column name="createdbyuserid" type="uuid"></column>
-      <column name="createddate" type="timestamptz"></column>
-      <column name="updatedbyuserid" type="uuid"></column>
-      <column name="updateddate" type="timestamptz"></column>
+      <column name="order" type="integer"></column>
+      <column name="suppress_discovery" type="boolean"></column>
+      <column name="created_by_user_id" type="uuid"></column>
+      <column name="created_date" type="timestamptz"></column>
+      <column name="updated_by_user_id" type="uuid"></column>
+      <column name="updated_date" type="timestamptz"></column>
     </createTable>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-03-add-records-snapshot-foreign-key" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-03-add-records-snapshot-foreign-key" author="WilliamWelling">
     <addForeignKeyConstraint
-        baseColumnNames="snapshotid"
+        baseColumnNames="snapshot_id"
         baseTableName="records_lb"
         baseTableSchemaName="${database.defaultSchemaName}"
         constraintName="fk_records_snapshots"
@@ -68,78 +68,78 @@
         referencedTableSchemaName="${database.defaultSchemaName}"/>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
     <addDefaultValue
         columnDataType="integer"
-        columnName="suppressdiscovery"
+        columnName="suppress_discovery"
         defaultValueBoolean="false"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb" />
   </changeSet>
 
-  <changeSet id="2020-04-27--13-05-create-records-snapshotid-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-05-create-records-snapshotid-index" author="WilliamWelling">
     <createIndex
-        indexName="idx_records_snapshotid"
+        indexName="idx_records_snapshot_id"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb">
-      <column name="snapshotid"/>
+      <column name="snapshot_id"/>
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-06-create-records-instanceid-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-06-create-records-instanceid-index" author="WilliamWelling">
     <createIndex
-        indexName="idx_records_instanceid"
+        indexName="idx_records_instance_id"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb">
-      <column name="instanceid"/>
+      <column name="instance_id"/>
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-07-create-records-matchedid-generation-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-07-create-records-matchedid-generation-index" author="WilliamWelling">
     <createIndex
-        indexName="idx_records_matchedid_gen"
+        indexName="idx_records_matched_id_gen"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb"
         unique="true">
-      <column name="matchedid"/>
+      <column name="matched_id"/>
       <column name="generation"/>
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-08-create-records-updateddate-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-08-create-records-updateddate-index" author="WilliamWelling">
     <createIndex
-        indexName="idx_records_updateddate"
+        indexName="idx_records_updated_date"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb">
-      <column name="updateddate"/>
+      <column name="updated_date"/>
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-09-create-records-matchedid-state-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-09-create-records-matchedid-state-index" author="WilliamWelling">
     <createIndex
-        indexName="idx_records_matchedid_state"
+        indexName="idx_records_matched_id_state"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb">
-      <column name="matchedid"/>
+      <column name="matched_id"/>
       <column name="state"/>
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-10-create-update-records-set-updated-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-10-create-update-records-set-updated-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.update_records_set_updated_date() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          NEW.updateddate := current_timestamp;
+          NEW.updated_date := current_timestamp;
           RETURN NEW;
       END;
       $$;
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-11-create-update-records-set-updated-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-11-create-update-records-set-updated-date-trigger" author="WilliamWelling">
     <sql>
       create trigger update_records_set_updated_date
           before insert or update
@@ -149,22 +149,22 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-12-create-insert-records-set-created-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-12-create-insert-records-set-created-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.insert_records_set_created_date() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          NEW.createddate := current_timestamp;
-          NEW.updateddate := NEW.createddate;
+          NEW.created_date := current_timestamp;
+          NEW.updated_date := NEW.created_date;
           RETURN NEW;
       END;
       $$;
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-27--13-13-create-insert-records-set-created-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-13-create-insert-records-set-created-date-trigger" author="WilliamWelling">
     <sql>
       create trigger insert_records_set_created_date
           before insert or update

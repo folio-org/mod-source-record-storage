@@ -1,0 +1,175 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet runAlways="true" id="2020-06-13--17-00-drop-get_record_by_external_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_record_by_external_id(externalId uuid, idFieldName text);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-01-drop-get_record_by_matched_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_record_by_matched_id(record_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-02-drop-get_source_record_by_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_record_by_id(record_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-03-drop-get_source_record_by_external_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_record_by_external_id(externalId uuid, idFieldName text);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-04-drop-get_records" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_records(where_clause text, order_by text, limitVal int, offsetVal int, schema_name text);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-05-drop-get_source_records" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_records(query_filter text, order_by text, limitVal int, offsetVal int, deleted_records text, schema_name text);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-06-drop-get_highest_generation" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_highest_generation(matchedId uuid, snapshotId uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-07-drop-error_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.error_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-08-drop-marc_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.marc_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-09-drop-raw_records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.raw_records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-10-drop-records_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.records_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-11-drop-set_error_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_error_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-12-drop-set_id_in_jsonb" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-13-drop-set_marc_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_marc_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-14-drop-set_raw_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_raw_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-15-drop-set_records_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_records_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-16-drop-set_snapshots_md_json" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_snapshots_md_json();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-17-drop-snapshots_set_md" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.snapshots_set_md();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-18-drop-update_records_references" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.update_records_references();
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-19-drop-get_source_marc_record_by_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_id(p_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-20-drop-get_source_marc_record_by_id_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_id_alt(p_id uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-21-drop-get_source_marc_record_by_instance_id" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_instance_id(p_instanceid uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-22-drop-get_source_marc_record_by_instance_id_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_record_by_instance_id_alt(p_instanceid uuid);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-23-drop-get_all_source_marc_records" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_all_source_marc_records(p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-24-drop-get_all_source_marc_records_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_all_source_marc_records_alt(p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-25-drop-get_source_marc_records_for_period" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_records_for_period(p_from timestamptz, p_till timestamptz, p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-26-drop-get_source_marc_records_for_period_alt" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_source_marc_records_for_period_alt(p_from timestamptz, p_till timestamptz, p_offset integer, p_limit integer);
+    </sql>
+  </changeSet>
+
+  <changeSet runAlways="true" id="2020-06-13--17-27-drop-get_highest_generation_lb" author="WilliamWelling">
+    <sql>
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.get_highest_generation_lb(p_matchedid uuid, p_snapshotid uuid);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

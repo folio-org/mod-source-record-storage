@@ -1,0 +1,23 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-06-12--16-00-migrate-error-records" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+      <tableExists tableName="error_records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      INSERT INTO ${database.defaultSchemaName}.error_records_lb
+      SELECT
+        r.id AS id,
+        er.jsonb->>'content' AS content,
+        (er.jsonb->>'description')::varchar(1024) AS description
+      FROM ${database.defaultSchemaName}.records r
+      INNER JOIN ${database.defaultSchemaName}.error_records er ON (r.jsonb->>'errorRecordId')::uuid = er.id;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

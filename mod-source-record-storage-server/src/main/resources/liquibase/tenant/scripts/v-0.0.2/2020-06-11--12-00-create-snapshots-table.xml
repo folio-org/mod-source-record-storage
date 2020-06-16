@@ -2,9 +2,9 @@
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
-  <changeSet id="2020-04-27--12-00-create-job-execution-status" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-00-create-job-execution-status" author="WilliamWelling">
     <sql>
       CREATE TYPE ${database.defaultSchemaName}.job_execution_status AS ENUM (
         'PARENT',
@@ -22,7 +22,7 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-04-27--12-01-create-snapshots-table" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-01-create-snapshots-table" author="WilliamWelling">
     <createTable tableName="snapshots_lb">
       <column name="id" type="uuid">
         <constraints primaryKey="true" nullable="false"/>
@@ -31,28 +31,28 @@
         <constraints nullable="false"/>
       </column>
       <column name="processing_started_date" type="timestamptz"></column>
-      <column name="createdbyuserid" type="uuid"></column>
-      <column name="createddate" type="timestamptz"></column>
-      <column name="updatedbyuserid" type="uuid"></column>
-      <column name="updateddate" type="timestamptz"></column>
+      <column name="created_by_user_id" type="uuid"></column>
+      <column name="created_date" type="timestamptz"></column>
+      <column name="updated_by_user_id" type="uuid"></column>
+      <column name="updated_date" type="timestamptz"></column>
     </createTable>
   </changeSet>
 
-  <changeSet id="2020-04-27--12-02-create-update-snapshots-set-updated-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-02-create-update-snapshots-set-updated-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.update_snapshots_set_updated_date() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          NEW.updateddate := current_timestamp;
+          NEW.updated_date := current_timestamp;
           RETURN NEW;
       END;
       $$;
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-27--12-03-create-update-snapshots-set-updated-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-03-create-update-snapshots-set-updated-date-trigger" author="WilliamWelling">
     <sql>
       create trigger update_snapshots_set_updated_date
           before insert or update
@@ -62,22 +62,22 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-04-27--12-04-create-insert-snapshots-set-created-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-04-create-insert-snapshots-set-created-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.insert_snapshots_set_created_date() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          NEW.createddate := current_timestamp;
-          NEW.updateddate := NEW.createddate;
+          NEW.created_date := current_timestamp;
+          NEW.updated_date := NEW.created_date;
           RETURN NEW;
       END;
       $$;
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-27--12-05-create-insert-snapshots-set-created-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-05-create-insert-snapshots-set-created-date-trigger" author="WilliamWelling">
     <sql>
       create trigger insert_snapshots_set_created_date
           before insert or update

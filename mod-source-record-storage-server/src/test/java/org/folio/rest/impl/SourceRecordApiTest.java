@@ -8,7 +8,11 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -802,7 +806,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     async = testContext.async();
 
-
     String firstMatchedId = UUID.randomUUID().toString();
 
     Record record_4_tmp = new Record()
@@ -898,6 +901,132 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     testContext.assertEquals(11, sourceRecordList.get(0).getOrder().intValue());
     testContext.assertEquals(101, sourceRecordList.get(1).getOrder().intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSourceRecordsForPeriod(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+        .spec(spec)
+        .body(record_1)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+    Date fromDate = new Date();
+    String from = dateTimeFormatter.format(ZonedDateTime.ofInstant(fromDate.toInstant(), ZoneId.systemDefault()));
+
+    async = testContext.async();
+    // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
+    List<Record> recordsToPost = Arrays.asList(record_2, record_3, record_4, record_5);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    Date toDate = new Date();
+    String to = dateTimeFormatter.format(ZonedDateTime.ofInstant(toDate.toInstant(), ZoneId.systemDefault()));
+
+    async = testContext.async();
+    RestAssured.given()
+        .spec(spec)
+        .body(record_6)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    // NOTE: we do not expect record_3 or record_5 as they do not have a parsed record
+    List<SourceRecord> sourceRecordList = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from + "&updatedBefore=" + to)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.deleted", everyItem(is(false)))
+      .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
+
+    testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().after(fromDate));
+    testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().after(fromDate));
+    testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().before(toDate));
+    testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().before(toDate));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(3))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + to)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    // NOTE: we do not expect record_1 id does not have a parsed record
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + to)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + from)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(0))
+      .body("totalRecords", is(0))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
   }
 

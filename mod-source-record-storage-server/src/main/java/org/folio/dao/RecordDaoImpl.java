@@ -56,6 +56,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String CTE_TABLE_NAME = "cte";
+  private static final String CTEOP_TABLE_NAME = "cteop";
   private static final String ID_COLUMN = "id";
   private static final String COUNT_COLUMN = "count";
   private static final String TABLE_FIELD = "{0}.{1}";
@@ -144,15 +145,25 @@ public class RecordDaoImpl implements RecordDao {
     RecordType recordType = RecordType.MARC;
     Name id = name(ID_COLUMN);
     Name cte = name(CTE_TABLE_NAME);
-    Name cteop = name("cteop");
+    Name cteop = name(CTEOP_TABLE_NAME);
     Name prt = name(recordType.getTableName());
     Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cteop, id);
     Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
-
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte).as(dsl.select().from(RECORDS_LB).where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true))))
-      .with(cteop).as(dsl.select().from(RECORDS_LB).where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true))).orderBy(orderFields).offset(offset).limit(limit))
-      .select().from(table(cteop))
+      .with(cte.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true)))))
+      .with(cteop.as(dsl.select()
+        // unfortunately, cannot use .from(table(cte)) here
+        // it seems to be a bug with jOOQ
+        // not sure if both select are ran or if optimized
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true)))
+        .orderBy(orderFields)
+        .offset(offset)
+        .limit(limit)))
+      .select()
+        .from(table(cteop))
         .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
         .rightJoin(dsl.selectCount().from(table(cte))).on(trueCondition())
     )).map(res -> {

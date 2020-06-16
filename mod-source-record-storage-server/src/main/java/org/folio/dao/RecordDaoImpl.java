@@ -313,7 +313,7 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    if (record.getHasRawRecord()) {
+    if (Boolean.TRUE.equals(record.getHasRawRecord())) {
       futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
         if (rr.isPresent()) {
           record.withRawRecord(rr.get()).withHasRawRecord(true);
@@ -321,7 +321,7 @@ public class RecordDaoImpl implements RecordDao {
         return record;
       }));
     }
-    if (record.getHasParsedRecord()) {
+    if (Boolean.TRUE.equals(record.getHasParsedRecord())) {
       futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
         if (pr.isPresent()) {
           record.withParsedRecord(pr.get()).withHasParsedRecord(true);
@@ -329,7 +329,7 @@ public class RecordDaoImpl implements RecordDao {
         return record;
       }));
     }
-    if (includeErrorRecord && record.getHasErrorRecord()) {
+    if (includeErrorRecord && Boolean.TRUE.equals(record.getHasErrorRecord())) {
       futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
         if (er.isPresent()) {
           record.withErrorRecord(er.get()).withHasErrorRecord(true);

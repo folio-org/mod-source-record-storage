@@ -33,4 +33,33 @@
         referencedTableSchemaName="${database.defaultSchemaName}"/>
   </changeSet>
 
+  <changeSet id="2020-06-11--16-02-create-update-records-set-has-error-record-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.update_records_set_has_error_record() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          IF (TG_OP = 'DELETE') THEN
+            UPDATE ${database.defaultSchemaName}.records_lb SET has_error_record = false WHERE id = OLD.id;
+            RETURN OLD;
+          ELSE
+            UPDATE ${database.defaultSchemaName}.records_lb SET has_error_record = true WHERE id = NEW.id;
+            RETURN NEW;
+          END IF;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-06-11--16-03-create-update-records-set-updated-date-trigger" author="WilliamWelling">
+    <sql>
+      create trigger update_records_set_has_error_record
+          after insert or update or delete
+          on ${database.defaultSchemaName}.error_records_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.update_records_set_has_error_record();
+    </sql>
+  </changeSet>
+
 </databaseChangeLog>

@@ -802,7 +802,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     async = testContext.async();
 
-
     String firstMatchedId = UUID.randomUUID().toString();
 
     Record record_4_tmp = new Record()

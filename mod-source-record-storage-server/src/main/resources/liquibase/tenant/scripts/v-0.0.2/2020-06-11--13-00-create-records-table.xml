@@ -46,6 +46,15 @@
       </column>
       <column name="order" type="integer"></column>
       <column name="suppress_discovery" type="boolean"></column>
+      <column name="has_raw_record" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+      <column name="has_parsed_record" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+      <column name="has_error_record" type="boolean">
+        <constraints nullable="false"/>
+      </column>
       <column name="created_by_user_id" type="uuid"></column>
       <column name="created_date" type="timestamptz"></column>
       <column name="updated_by_user_id" type="uuid"></column>
@@ -68,10 +77,28 @@
         referencedTableSchemaName="${database.defaultSchemaName}"/>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-04-set-records-default-values" author="WilliamWelling">
     <addDefaultValue
-        columnDataType="integer"
+        columnDataType="boolean"
         columnName="suppress_discovery"
+        defaultValueBoolean="false"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb" />
+    <addDefaultValue
+        columnDataType="boolean"
+        columnName="has_raw_record"
+        defaultValueBoolean="false"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb" />
+    <addDefaultValue
+        columnDataType="boolean"
+        columnName="has_parsed_record"
+        defaultValueBoolean="false"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb" />
+    <addDefaultValue
+        columnDataType="boolean"
+        columnName="has_error_record"
         defaultValueBoolean="false"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb" />

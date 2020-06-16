@@ -37,6 +37,7 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String CTE_TABLE_NAME = "cte";
+  private static final String ID_COLUMN = "id";
   private static final String COUNT_COLUMN = "count";
   private static final String TABLE_FIELD = "{0}.{1}";
 
@@ -139,20 +141,20 @@ public class RecordDaoImpl implements RecordDao {
     // 2. join on every record type table
     //    - this could present performance issues
 
-    // Performance metrics should be taken using this join query compared to getRecords above.
-    // getRecords method streams records from the record table looking up related raw record, parsed record,
-    // and error record per record in stream. When it looks up parsed record it will use record type
-    // from the record and lookup in the appropriate table.
     RecordType recordType = RecordType.MARC;
-    String tableName = recordType.getTableName();
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, name(tableName), name(ParsedRecordDaoUtil.ID_COLUMN));
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(CTE_TABLE_NAME).as(dsl.select()
-      .from(RECORDS_LB)
-      .innerJoin(table(name(tableName))).on(RECORDS_LB.ID.eq(parsedRecordIdField))
-      .where(condition)
-      .orderBy(orderFields)).select()
-        .from(dsl.select().from(table(name(CTE_TABLE_NAME))).offset(offset).limit(limit))
-        .rightJoin(dsl.selectCount().from(table(name(CTE_TABLE_NAME)))).on(trueCondition())
+    Name id = name(ID_COLUMN);
+    Name cte = name(CTE_TABLE_NAME);
+    Name cteop = name("cteop");
+    Name prt = name(recordType.getTableName());
+    Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cteop, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte).as(dsl.select().from(RECORDS_LB).where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true))))
+      .with(cteop).as(dsl.select().from(RECORDS_LB).where(condition.and(RECORDS_LB.HAS_PARSED_RECORD.eq(true))).orderBy(orderFields).offset(offset).limit(limit))
+      .select().from(table(cteop))
+        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
+        .rightJoin(dsl.selectCount().from(table(cte))).on(trueCondition())
     )).map(res -> {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
@@ -170,14 +172,16 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.HAS_PARSED_RECORD.eq(true));
     return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.HAS_PARSED_RECORD.eq(true));
     return getSourceRecordByCondition(condition, tenantId);
   }
 
@@ -298,22 +302,26 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
-      if (rr.isPresent()) {
-        record.withRawRecord(rr.get());
-      }
-      return record;
-    }));
-    futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
-      if (pr.isPresent()) {
-        record.withParsedRecord(pr.get());
-      }
-      return record;
-    }));
-    if (includeErrorRecord) {
+    if (record.getHasRawRecord()) {
+      futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+        if (rr.isPresent()) {
+          record.withRawRecord(rr.get()).withHasRawRecord(true);
+        }
+        return record;
+      }));
+    }
+    if (record.getHasParsedRecord()) {
+      futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
+        if (pr.isPresent()) {
+          record.withParsedRecord(pr.get()).withHasParsedRecord(true);
+        }
+        return record;
+      }));
+    }
+    if (includeErrorRecord && record.getHasErrorRecord()) {
       futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
         if (er.isPresent()) {
-          record.withErrorRecord(er.get());
+          record.withErrorRecord(er.get()).withHasErrorRecord(true);
         }
         return record;
       }));
@@ -322,28 +330,31 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    record.withHasRawRecord(true);
     return RawRecordDaoUtil.save(txQE, record.getRawRecord())
       .compose(rr -> {
         if (Objects.nonNull(record.getParsedRecord())) {
+          record.withHasParsedRecord(true);
           return insertOrUpdateParsedRecord(txQE, record);
         }
         return Future.succeededFuture();
       })
       .compose(s -> {
         if (Objects.nonNull(record.getErrorRecord())) {
+          record.withHasErrorRecord(true);
           return ErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
         }
         return Future.succeededFuture();
       })
       .compose(er -> RecordDaoUtil.save(txQE, record)).map(r -> {
         if (Objects.nonNull(record.getRawRecord())) {
-          r.withRawRecord(record.getRawRecord());
+          r.withRawRecord(record.getRawRecord()).withHasRawRecord(true);
         }
         if (Objects.nonNull(record.getParsedRecord())) {
-          r.withParsedRecord(record.getParsedRecord());
+          r.withParsedRecord(record.getParsedRecord()).withHasParsedRecord(true);
         }
         if (Objects.nonNull(record.getErrorRecord())) {
-          r.withErrorRecord(record.getErrorRecord());
+          r.withErrorRecord(record.getErrorRecord()).withHasErrorRecord(true);
         }
         return r;
       });
@@ -356,11 +367,12 @@ public class RecordDaoImpl implements RecordDao {
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> true);
     } catch (Exception e) {
       LOG.error("Couldn't format MARC record", e);
-      record.setErrorRecord(new ErrorRecord()
+      record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())
-        .withContent(record.getParsedRecord().getContent()));
-      record.setParsedRecord(null);
+        .withContent(record.getParsedRecord().getContent()))
+        .withHasErrorRecord(true);
+      record.withParsedRecord(null).withHasParsedRecord(false);
       return Future.succeededFuture(false);
     }
   }

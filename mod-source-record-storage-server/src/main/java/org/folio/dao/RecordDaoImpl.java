@@ -155,7 +155,7 @@ public class RecordDaoImpl implements RecordDao {
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
       .with(cte2.as(dsl.select()
-        // Unfortunately, cannot use .from(table(cte)) here.
+        // Unfortunately, cannot use .from(table(cte1)) here.
         // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
@@ -185,7 +185,7 @@ public class RecordDaoImpl implements RecordDao {
         .from(RECORDS_LB)
         .where(condition)))
       .with(cte2.as(dsl.select()
-        // Unfortunately, cannot use .from(table(cte)) here.
+        // Unfortunately, cannot use .from(table(cte1)) here.
         // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))

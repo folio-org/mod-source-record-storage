@@ -149,7 +149,7 @@ public interface RecordDao {
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} from a list of ids by external entity which was created from desired record by specific type.
+   * Searches for {@link SourceRecord} from a list of ids defined by external id type. i.e. INSTANCE or RECORD
    * 
    * @param ids            list of ids
    * @param externalIdType external id type on which source record will be searched

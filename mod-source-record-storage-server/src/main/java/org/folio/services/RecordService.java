@@ -80,7 +80,7 @@ public interface RecordService {
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} from a list of ids of external entity which was created from desired record
+   * Searches for {@link SourceRecord} from a list of ids defined by id type. i.e. INSTANCE or RECORD
    * 
    * @param ids      list of ids
    * @param idType   id type

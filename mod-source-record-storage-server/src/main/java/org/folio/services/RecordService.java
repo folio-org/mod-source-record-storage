@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -77,6 +78,16 @@ public interface RecordService {
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} from a list of ids of external entity which was created from desired record
+   * 
+   * @param ids      list of ids
+   * @param idType   id type
+   * @param tenantId tenant id
+   * @return future with {@link SourceRecordCollection}
+   */
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, String tenantId);
 
   /**
    * Searches for source record by id via specific idType

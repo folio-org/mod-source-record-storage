@@ -60,6 +60,17 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} where in external list ids and {@link ExternalIdType} 
+   * 
+   * @param externalIds    list of external id
+   * @param externalIdType external id type
+   * @return condition
+   */
+  public static Condition getExternalIdCondition(List<String> externalIds, ExternalIdType externalIdType) {
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).in(toUUIDs(externalIds));
+  }
+
+  /**
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * using {@link ReactiveClassicGenericQueryExecutor}
    * 
@@ -477,6 +488,10 @@ public final class RecordDaoUtil {
     } catch (Exception e) {
       throw new BadRequestException(String.format("Invalid UUID %s", uuid));
     }
+  }
+
+  private static List<UUID> toUUIDs(List<String> uuids) {
+    return uuids.stream().map(RecordDaoUtil::toUUID).collect(Collectors.toList());
   }
 
   private static RecordType toRecordType(String type) {

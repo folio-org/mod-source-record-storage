@@ -17,10 +17,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -131,6 +131,12 @@ public class RecordServiceImpl implements RecordService {
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, String tenantId) {
+    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+    return recordDao.getSourceRecords(ids, externalIdType, tenantId);
   }
 
   @Override

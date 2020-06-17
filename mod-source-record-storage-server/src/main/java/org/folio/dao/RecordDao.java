@@ -1,6 +1,7 @@
 package org.folio.dao;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -146,6 +147,16 @@ public interface RecordDao {
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} from a list of ids by external entity which was created from desired record by specific type.
+   * 
+   * @param ids            list of ids
+   * @param externalIdType external id type on which source record will be searched
+   * @param tenantId       tenant id
+   * @return future with {@link SourceRecordCollection}
+   */
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}

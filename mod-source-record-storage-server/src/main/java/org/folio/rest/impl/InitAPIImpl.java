@@ -1,22 +1,21 @@
 package org.folio.rest.impl;
 
 import com.fasterxml.jackson.databind.JsonDeserializer;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+
 import org.folio.config.ApplicationConfig;
-import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class InitAPIImpl implements InitAPI {
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 
-  private static final String MODULE_CONFIGURATION_SCHEMA = "source_record_storage_config";
+public class InitAPIImpl implements InitAPI {
 
   @Autowired
   private JsonDeserializer<Snapshot> snapshotDeserializer;
@@ -27,7 +26,6 @@ public class InitAPIImpl implements InitAPI {
       future -> {
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
         SpringContextUtil.autowireDependencies(this, context);
-        LiquibaseUtil.initializeSchemaForModule(vertx, MODULE_CONFIGURATION_SCHEMA);
         ObjectMapperTool.registerDeserializer(Snapshot.class, snapshotDeserializer);
         future.complete();
       },

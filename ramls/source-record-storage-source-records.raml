@@ -73,6 +73,12 @@ resourceTypes:
         example: true
         required: false
         default: false
+      leaderRecordStatus:
+        description: Filter by MARC leader 05 status
+        type: string
+        example: "n"
+        required: false
+        "pattern": "^[a|c|d|n|p|o|s|x]{1}$"
       updatedAfter:
         description: Start date to filter after, inclusive
         type: datetime

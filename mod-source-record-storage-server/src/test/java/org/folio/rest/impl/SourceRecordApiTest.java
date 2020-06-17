@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -447,6 +448,56 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("recordId", is(SECOND_UUID))
       .body("externalIdsHolder.instanceId", is(FIRST_UUID));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_3);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    Record createdRecord =
+      RestAssured.given()
+        .spec(spec)
+        .body(record_2)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    String leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?leaderRecordStatus=" + leaderStatus + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1));
     async.complete();
   }
 

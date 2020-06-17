@@ -2,7 +2,9 @@ package org.folio.rest.impl;
 
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBy;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDate;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 
 import java.util.Date;
@@ -48,13 +50,16 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
 
   @Override
   public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
-      Boolean suppressFromDiscovery, Boolean deleted, Date updatedAfter, Date updatedBefore, List<String> orderBy, int offset, int limit,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Boolean suppressFromDiscovery, Boolean deleted, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
+      List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     // NOTE: if and when a new record type is introduced and a parsed record table is added,
     // will need to add a record type query parameter
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = filterRecordBy(recordId, recordType, suppressFromDiscovery, deleted, updatedAfter, updatedBefore)
+        Condition condition = filterRecordBy(recordId, recordType, suppressFromDiscovery, deleted)
+          .and(filterRecordByUpdatedDate(updatedAfter, updatedBefore))
+          .and(filterRecordByLeaderRecordState(leaderRecordStatus))
           .and(filterRecordBySnapshotId(snapshotId))
           .and(filterRecordByInstanceId(instanceId));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);

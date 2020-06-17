@@ -310,12 +310,9 @@ public final class RecordDaoUtil {
    * @param recordType            record type to equal
    * @param suppressFromDiscovery suppress from discovery to equal
    * @param deleted               deleted to equal
-   * @param updatedAfter          updated after to be greater than or equal
-   * @param updatedBefore         updated before to be less than or equal
    * @return condition
    */
-  public static Condition filterRecordBy(String recordId, String recordType, Boolean suppressFromDiscovery, Boolean deleted,
-      Date updatedAfter, Date updatedBefore) {
+  public static Condition filterRecordBy(String recordId, String recordType, Boolean suppressFromDiscovery, Boolean deleted) {
     Condition condition = DSL.trueCondition();
     if (StringUtils.isNotEmpty(recordId)) {
       condition = condition.and(RECORDS_LB.ID.eq(toUUID(recordId)));
@@ -331,6 +328,18 @@ public final class RecordDaoUtil {
         ? RECORDS_LB.STATE.eq(RecordState.DELETED)
         : RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     }
+    return condition;
+  }
+
+  /**
+   * Get {@link Condition} to filter by range of updated date
+   * 
+   * @param updatedAfter  updated after to be greater than or equal
+   * @param updatedBefore updated before to be less than or equal
+   * @return condition
+   */
+  public static Condition filterRecordByUpdatedDate(Date updatedAfter, Date updatedBefore) {
+    Condition condition = DSL.trueCondition();
     if (Objects.nonNull(updatedAfter)) {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
     }
@@ -338,6 +347,19 @@ public final class RecordDaoUtil {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
     }
     return condition;
+  }
+
+  /**
+   * Get {@link Condition} to filter by leader record status
+   * 
+   * @param leaderRecordState leader record status to equal
+   * @return condition
+   */
+  public static Condition filterRecordByLeaderRecordState(String leaderRecordState) {
+    if (StringUtils.isNotEmpty(leaderRecordState)) {
+      return RECORDS_LB.LEADER_RECORD_STATUS.eq(leaderRecordState);
+    }
+    return DSL.trueCondition();
   }
 
   /**

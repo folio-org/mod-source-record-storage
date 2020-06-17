@@ -176,6 +176,7 @@ public final class RecordDaoUtil {
       sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }
     if (Objects.nonNull(record.getState())) {
+      // TODO: should leader record status be checked for deleted here as well?
       sourceRecord.withDeleted(record.getState().equals(State.DELETED));
     }
     return sourceRecord
@@ -214,7 +215,8 @@ public final class RecordDaoUtil {
     }
     record
       .withOrder(pojo.getOrder())
-      .withGeneration(pojo.getGeneration());
+      .withGeneration(pojo.getGeneration())
+      .withLeaderRecordStatus(pojo.getLeaderRecordStatus());
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (Objects.nonNull(pojo.getSuppressDiscovery())) {
       additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
@@ -277,6 +279,7 @@ public final class RecordDaoUtil {
     }
     dbRecord.setOrder(record.getOrder());
     dbRecord.setGeneration(record.getGeneration());
+    dbRecord.setLeaderRecordStatus(record.getLeaderRecordStatus());
     if (Objects.nonNull(record.getAdditionalInfo())) {
       dbRecord.setSuppressDiscovery(record.getAdditionalInfo().getSuppressDiscovery());
     }

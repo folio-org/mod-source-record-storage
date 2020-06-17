@@ -5,6 +5,7 @@
   "generation": 0,
   "recordType": "MARC",
   "deleted": false,
+  "leaderRecordStatus": "n",
   "order": 2,
   "state": "ACTUAL"
 }

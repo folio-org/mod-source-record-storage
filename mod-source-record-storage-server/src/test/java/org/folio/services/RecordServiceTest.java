@@ -546,6 +546,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getMatchedId(), actual.getMatchedId());
     context.assertEquals(expected.getRecordType(), actual.getRecordType());
     context.assertEquals(expected.getState(), actual.getState());
+    context.assertEquals(expected.getLeaderRecordStatus(), actual.getLeaderRecordStatus());
     context.assertEquals(expected.getOrder(), actual.getOrder());
     context.assertEquals(expected.getGeneration(), actual.getGeneration());
     if (Objects.nonNull(expected.getRawRecord())) {

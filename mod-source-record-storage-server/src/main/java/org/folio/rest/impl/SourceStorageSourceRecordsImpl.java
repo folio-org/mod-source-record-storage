@@ -1,10 +1,13 @@
 package org.folio.rest.impl;
 
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBy;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDate;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 
 import java.util.Date;
@@ -50,18 +53,21 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
 
   @Override
   public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
-      Boolean suppressFromDiscovery, Boolean deleted, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
+      String recordState, Boolean suppressFromDiscovery, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
       List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     // NOTE: if and when a new record type is introduced and a parsed record table is added,
     // will need to add a record type query parameter
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = filterRecordBy(recordId, recordType, suppressFromDiscovery, deleted)
-          .and(filterRecordByUpdatedDate(updatedAfter, updatedBefore))
-          .and(filterRecordByLeaderRecordState(leaderRecordStatus))
+        Condition condition = filterRecordByRecordId(recordId)
           .and(filterRecordBySnapshotId(snapshotId))
-          .and(filterRecordByInstanceId(instanceId));
+          .and(filterRecordByInstanceId(instanceId))
+          .and(filterRecordByType(recordType))
+          .and(filterRecordByState(recordState))
+          .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
+          .and(filterRecordByLeaderRecordState(leaderRecordStatus))
+          .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
         recordService.getSourceRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)

@@ -56,6 +56,11 @@ resourceTypes:
         type: string
         example: "MARC"
         required: false
+      recordState:
+        description: Filter by Record State
+        type: string
+        example: "DELETED"
+        required: false
       suppressFromDiscovery:
         description: Filter by suppress from discovery
         type: boolean
@@ -64,15 +69,6 @@ resourceTypes:
             - name: core.box
         example: true
         required: false
-      deleted:
-        description: Filter by deleted records
-        type: boolean
-        (ramltojaxrs.types):
-          plugins:
-            - name: core.box
-        example: true
-        required: false
-        default: false
       leaderRecordStatus:
         description: Filter by MARC leader 05 status
         type: string

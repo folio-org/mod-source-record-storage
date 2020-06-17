@@ -119,7 +119,7 @@ public final class RecordDaoUtil {
    */
   public static Future<Optional<Record>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
     return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-      .where(RECORDS_LB.ID.eq(UUID.fromString(id))))
+      .where(RECORDS_LB.ID.eq(toUUID(id))))
         .map(RecordDaoUtil::toOptionalRecord);
   }
 
@@ -151,7 +151,7 @@ public final class RecordDaoUtil {
     RecordsLbRecord dbRecord = toDatabaseRecord(record);
     return queryExecutor.executeAny(dsl -> dsl.update(RECORDS_LB)
       .set(dbRecord)
-      .where(RECORDS_LB.ID.eq(UUID.fromString(record.getId())))
+      .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
       .returning())
         .map(RecordDaoUtil::toSingleOptionalRecord)
         .map(optionalRecord -> {
@@ -304,62 +304,55 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by combination of properties using only 'and'
+   * Get {@link Condition} to filter by record id
    * 
-   * @param recordId              record id to equal
-   * @param recordType            record type to equal
-   * @param suppressFromDiscovery suppress from discovery to equal
-   * @param deleted               deleted to equal
+   * @param recordId record id to equal
    * @return condition
    */
-  public static Condition filterRecordBy(String recordId, String recordType, Boolean suppressFromDiscovery, Boolean deleted) {
-    Condition condition = DSL.trueCondition();
+  public static Condition filterRecordByRecordId(String recordId) {
     if (StringUtils.isNotEmpty(recordId)) {
-      condition = condition.and(RECORDS_LB.ID.eq(toUUID(recordId)));
+      return RECORDS_LB.ID.eq(toUUID(recordId));
     }
-    if (StringUtils.isNotEmpty(recordType)) {
-      condition = condition.and(RECORDS_LB.RECORD_TYPE.eq(toRecordType(recordType)));
-    }
-    if (Objects.nonNull(suppressFromDiscovery)) {
-      condition = condition.and(RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery));
-    }
-    if (Objects.nonNull(deleted)) {
-      condition = condition.and(Boolean.TRUE.equals(deleted)
-        ? RECORDS_LB.STATE.eq(RecordState.DELETED)
-        : RECORDS_LB.STATE.eq(RecordState.ACTUAL));
-    }
-    return condition;
+    return DSL.noCondition();
   }
 
   /**
-   * Get {@link Condition} to filter by range of updated date
+   * Get {@link Condition} to filter by instance id
    * 
-   * @param updatedAfter  updated after to be greater than or equal
-   * @param updatedBefore updated before to be less than or equal
+   * @param instanceId instance id to equal
    * @return condition
    */
-  public static Condition filterRecordByUpdatedDate(Date updatedAfter, Date updatedBefore) {
-    Condition condition = DSL.trueCondition();
-    if (Objects.nonNull(updatedAfter)) {
-      condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+  public static Condition filterRecordByInstanceId(String instanceId) {
+    if (StringUtils.isNotEmpty(instanceId)) {
+      return RECORDS_LB.INSTANCE_ID.eq(toUUID(instanceId));
     }
-    if (Objects.nonNull(updatedBefore)) {
-      condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
-    }
-    return condition;
+    return DSL.noCondition();
   }
 
   /**
-   * Get {@link Condition} to filter by leader record status
+   * Get {@link Condition} to filter by snapshotId id
    * 
-   * @param leaderRecordState leader record status to equal
+   * @param snapshotId snapshot id to equal
    * @return condition
    */
-  public static Condition filterRecordByLeaderRecordState(String leaderRecordState) {
-    if (StringUtils.isNotEmpty(leaderRecordState)) {
-      return RECORDS_LB.LEADER_RECORD_STATUS.eq(leaderRecordState);
+  public static Condition filterRecordBySnapshotId(String snapshotId) {
+    if (StringUtils.isNotEmpty(snapshotId)) {
+      return RECORDS_LB.SNAPSHOT_ID.eq(toUUID(snapshotId));
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by type
+   * 
+   * @param type type to equal
+   * @return condition
+   */
+  public static Condition filterRecordByType(String type) {
+    if (StringUtils.isNotEmpty(type)) {
+      return RECORDS_LB.RECORD_TYPE.eq(toRecordType(type));
+    }
+    return DSL.noCondition();
   }
 
   /**
@@ -372,33 +365,51 @@ public final class RecordDaoUtil {
     if (StringUtils.isNotEmpty(state)) {
       return RECORDS_LB.STATE.eq(toRecordState(state));
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
   }
 
   /**
-   * Get {@link Condition} to filter by instance id
+   * Get {@link Condition} to filter by suppressFromDiscovery
    * 
-   * @param instanceId instance id to equal
+   * @param suppressFromDiscovery suppressFromDiscovery to equal
    * @return condition
    */
-  public static Condition filterRecordByInstanceId(String instanceId) {
-    if (StringUtils.isNotEmpty(instanceId)) {
-      return RECORDS_LB.INSTANCE_ID.eq(UUID.fromString(instanceId));
+  public static Condition filterRecordBySuppressFromDiscovery(Boolean suppressFromDiscovery) {
+    if (Objects.nonNull(suppressFromDiscovery)) {
+      return RECORDS_LB.SUPPRESS_DISCOVERY.eq(suppressFromDiscovery);
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
   }
 
   /**
-   * Get {@link Condition} to filter by snapshotId id
+   * Get {@link Condition} to filter by leader record status
    * 
-   * @param snapshotId snapshot id to equal
+   * @param leaderRecordState leader record status to equal
    * @return condition
    */
-  public static Condition filterRecordBySnapshotId(String snapshotId) {
-    if (StringUtils.isNotEmpty(snapshotId)) {
-      return RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+  public static Condition filterRecordByLeaderRecordState(String leaderRecordState) {
+    if (StringUtils.isNotEmpty(leaderRecordState)) {
+      return RECORDS_LB.LEADER_RECORD_STATUS.eq(leaderRecordState);
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by range of updated date
+   * 
+   * @param updatedAfter  updated after to be greater than or equal
+   * @param updatedBefore updated before to be less than or equal
+   * @return condition
+   */
+  public static Condition filterRecordByUpdatedDateRange(Date updatedAfter, Date updatedBefore) {
+    Condition condition = DSL.trueCondition();
+    if (Objects.nonNull(updatedAfter)) {
+      condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+    }
+    if (Objects.nonNull(updatedBefore)) {
+      condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
+    }
+    return condition;
   }
 
   /**
@@ -409,9 +420,9 @@ public final class RecordDaoUtil {
    */
   public static Condition filterRecordByNotSnapshotId(String snapshotId) {
     if (StringUtils.isNotEmpty(snapshotId)) {
-      return RECORDS_LB.SNAPSHOT_ID.notEqual(UUID.fromString(snapshotId));
+      return RECORDS_LB.SNAPSHOT_ID.notEqual(toUUID(snapshotId));
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
   }
 
   /**
@@ -468,11 +479,11 @@ public final class RecordDaoUtil {
     }
   }
 
-  private static RecordType toRecordType(String recordType) {
+  private static RecordType toRecordType(String type) {
     try {
-      return RecordType.valueOf(recordType);
+      return RecordType.valueOf(type);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Unknown record type %s", recordType));
+      throw new BadRequestException(String.format("Unknown record type %s", type));
     }
   }
 

@@ -752,7 +752,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnEmptyCollectionOnGetByRecordIdIfRecordWasDeleted(TestContext testContext) {
+  public void shouldReturnEmptyCollectionOnGetByRecordIdAndRecordStateActualIfRecordWasDeleted(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -786,7 +786,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordId=" + parsed.getId() + "&limit=1&offset=0")
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordId=" + parsed.getId() + "&recordState=ACTUAL&limit=1&offset=0")
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
@@ -1135,7 +1135,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnParsedResultsOnGetWhenNoQueryIsSpecifiedWithActualState(TestContext testContext) {
+  public void shouldReturnParsedResultsWithAnyStateWithNoParametersSpecified(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -1161,6 +1161,16 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
+    Record recordWithoutDeletedState = new Record()
+      .withId(THIRD_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(0)
+      .withState(Record.State.DELETED);
+
     Record recordWithActualState = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -1180,7 +1190,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.ACTUAL);
 
-    List<Record> recordsToPost = Arrays.asList(recordWithOldState, recordWithActualState, recordWithoutParsedRecord);
+    List<Record> recordsToPost = Arrays.asList(recordWithOldState, recordWithoutDeletedState,
+      recordWithActualState, recordWithoutParsedRecord);
     for (Record record : recordsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -1199,9 +1210,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
-      .body("sourceRecords*.parsedRecord", notNullValue())
-      .body("sourceRecords*.deleted", everyItem(is(false)));
+      .body("totalRecords", is(3))
+      .body("sourceRecords*.parsedRecord", notNullValue());
     async.complete();
   }
 
@@ -1289,7 +1299,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllSourceRecordsMarkedAsDeletedOnGetWhenParameterDeletedIsTrue(TestContext testContext) {
+  public void shouldReturnAllSourceRecordsMarkedAsDeletedOnFindByRecordStateDeleted(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1354,7 +1364,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?deleted=true")
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordState=DELETED")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(2))

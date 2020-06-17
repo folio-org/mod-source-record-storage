@@ -4,4 +4,10 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
+  <changeSet id="2020-06-17--12-00-drop-source-record-storage-config" author="WilliamWelling">
+    <sql>
+      DROP SCHEMA IF EXISTS source_record_storage_config CASCADE;
+    </sql>
+  </changeSet>
+
 </databaseChangeLog>

@@ -3,6 +3,7 @@
 * [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ
 * [MODSOURCE-136](https://issues.folio.org/browse/MODSOURCE-136) New API
 * [MODSOURCE-144](https://issues.folio.org/browse/MODSOURCE-144) Remove Old API, liquibase migration scripts, drop old tables and functions
+* [MODSOURCE-139](https://issues.folio.org/browse/MODSOURCE-139) Upgrade RMB to 30.0.3
 
 ## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.

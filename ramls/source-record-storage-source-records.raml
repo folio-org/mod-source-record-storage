@@ -10,7 +10,7 @@ documentation:
     content: API for fetching source records
 
 uses:
-  ramltojaxrs: library/ramltojaxrs.raml
+  ramltojaxrs: raml-storage/raml-util/library/ramltojaxrs.raml
 
 types:
   sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
@@ -74,7 +74,7 @@ resourceTypes:
         required: false
         default: false
       updatedAfter:
-        description: Start date to filter after
+        description: Start date to filter after, inclusive
         type: datetime
         required: false
       updatedBefore:

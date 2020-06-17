@@ -313,26 +313,25 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     @SuppressWarnings("squid:S3740")
     List<Future> futures = new ArrayList<>();
-    if (Boolean.TRUE.equals(record.getHasRawRecord())) {
-      futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
-        if (rr.isPresent()) {
-          record.withRawRecord(rr.get()).withHasRawRecord(true);
-        }
-        return record;
-      }));
-    }
+    futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+      if (rr.isPresent()) {
+        record.withRawRecord(rr.get());
+      }
+      return record;
+    }));
     if (Boolean.TRUE.equals(record.getHasParsedRecord())) {
       futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
         if (pr.isPresent()) {
-          record.withParsedRecord(pr.get()).withHasParsedRecord(true);
+          record.withParsedRecord(pr.get())
+            .withHasParsedRecord(true);
         }
         return record;
       }));
     }
-    if (includeErrorRecord && Boolean.TRUE.equals(record.getHasErrorRecord())) {
+    if (includeErrorRecord) {
       futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
         if (er.isPresent()) {
-          record.withErrorRecord(er.get()).withHasErrorRecord(true);
+          record.withErrorRecord(er.get());
         }
         return record;
       }));
@@ -341,7 +340,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    record.withHasRawRecord(true);
     return RawRecordDaoUtil.save(txQE, record.getRawRecord())
       .compose(rr -> {
         if (Objects.nonNull(record.getParsedRecord())) {
@@ -352,22 +350,22 @@ public class RecordDaoImpl implements RecordDao {
       })
       .compose(s -> {
         if (Objects.nonNull(record.getErrorRecord())) {
-          record.withHasErrorRecord(true);
           return ErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
         }
         return Future.succeededFuture();
       })
-      .compose(er -> RecordDaoUtil.save(txQE, record)).map(r -> {
+      .compose(er -> RecordDaoUtil.save(txQE, record)).map(rec -> {
         if (Objects.nonNull(record.getRawRecord())) {
-          r.withRawRecord(record.getRawRecord()).withHasRawRecord(true);
+          rec.withRawRecord(record.getRawRecord());
         }
         if (Objects.nonNull(record.getParsedRecord())) {
-          r.withParsedRecord(record.getParsedRecord()).withHasParsedRecord(true);
+          rec.withParsedRecord(record.getParsedRecord())
+            .withHasParsedRecord(true);
         }
         if (Objects.nonNull(record.getErrorRecord())) {
-          r.withErrorRecord(record.getErrorRecord()).withHasErrorRecord(true);
+          rec.withErrorRecord(record.getErrorRecord());
         }
-        return r;
+        return rec;
       });
   }
 
@@ -381,8 +379,7 @@ public class RecordDaoImpl implements RecordDao {
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())
-        .withContent(record.getParsedRecord().getContent()))
-        .withHasErrorRecord(true);
+        .withContent(record.getParsedRecord().getContent()));
       record.withParsedRecord(null).withHasParsedRecord(false);
       return Future.succeededFuture(false);
     }

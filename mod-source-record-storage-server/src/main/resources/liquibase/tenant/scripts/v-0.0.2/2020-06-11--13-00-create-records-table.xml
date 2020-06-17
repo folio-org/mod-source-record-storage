@@ -46,13 +46,7 @@
       </column>
       <column name="order" type="integer"></column>
       <column name="suppress_discovery" type="boolean"></column>
-      <column name="has_raw_record" type="boolean">
-        <constraints nullable="false"/>
-      </column>
       <column name="has_parsed_record" type="boolean">
-        <constraints nullable="false"/>
-      </column>
-      <column name="has_error_record" type="boolean">
         <constraints nullable="false"/>
       </column>
       <column name="created_by_user_id" type="uuid"></column>
@@ -86,19 +80,7 @@
         tableName="records_lb" />
     <addDefaultValue
         columnDataType="boolean"
-        columnName="has_raw_record"
-        defaultValueBoolean="false"
-        schemaName="${database.defaultSchemaName}"
-        tableName="records_lb" />
-    <addDefaultValue
-        columnDataType="boolean"
         columnName="has_parsed_record"
-        defaultValueBoolean="false"
-        schemaName="${database.defaultSchemaName}"
-        tableName="records_lb" />
-    <addDefaultValue
-        columnDataType="boolean"
-        columnName="has_error_record"
         defaultValueBoolean="false"
         schemaName="${database.defaultSchemaName}"
         tableName="records_lb" />

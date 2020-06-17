@@ -34,6 +34,4 @@
 
   <include file="scripts/v-0.0.2/2020-06-13--17-00-drop-unused-functions.xml" relativeToChangelogFile="true"/>
 
-  <include file="scripts/v-0.0.2/2020-06-17--12-00-drop-source-record-storage-config.xml" relativeToChangelogFile="true"/>
-
 </databaseChangeLog>

@@ -56,11 +56,11 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String CTE1_TABLE_NAME = "cte1";
-  private static final String CTE2_TABLE_NAME = "cte2";
-  private static final String ID_COLUMN = "id";
-  private static final String COUNT_COLUMN = "count";
-  private static final String TABLE_FIELD = "{0}.{1}";
+  private static final String CTE1 = "cte1";
+  private static final String CTE2 = "cte2";
+  private static final String ID = "id";
+  private static final String COUNT = "count";
+  private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -144,19 +144,17 @@ public class RecordDaoImpl implements RecordDao {
     //    - this could present performance issues
 
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID_COLUMN);
-    Name cte1 = name(CTE1_TABLE_NAME);
-    Name cte2 = name(CTE2_TABLE_NAME);
+    Name id = name(ID);
+    Name cte1 = name(CTE1);
+    Name cte2 = name(CTE2);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
+    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte1.as(dsl.select()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
       .with(cte2.as(dsl.select()
-        // Unfortunately, cannot use .from(table(cte1)) here.
-        // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
         .orderBy(orderFields)
@@ -172,21 +170,18 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType);
-
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID_COLUMN);
-    Name cte1 = name(CTE1_TABLE_NAME);
-    Name cte2 = name(CTE2_TABLE_NAME);
+    Name id = name(ID);
+    Name cte1 = name(CTE1);
+    Name cte2 = name(CTE2);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
+    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte1.as(dsl.select()
         .from(RECORDS_LB)
         .where(condition)))
       .with(cte2.as(dsl.select()
-        // Unfortunately, cannot use .from(table(cte1)) here.
-        // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
       .select()
@@ -422,7 +417,7 @@ public class RecordDaoImpl implements RecordDao {
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
     SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT_COLUMN));
+        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
         return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
           .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
       }).collect(Collectors.toList());

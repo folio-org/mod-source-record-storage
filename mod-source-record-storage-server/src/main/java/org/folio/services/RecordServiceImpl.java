@@ -169,11 +169,11 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(externalIdIdentifier);
+  public Future<Record> getFormattedRecord(String id, String idType, String tenantId) {
+    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
-        new NotFoundException(format("Couldn't find Record with %s id %s", externalIdIdentifier, id)))));
+        new NotFoundException(format("Couldn't find Record with %s id %s", idType, id)))));
   }
 
   @Override

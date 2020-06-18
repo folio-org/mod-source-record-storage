@@ -276,7 +276,7 @@ public final class SnapshotDaoUtil {
         throw new BadRequestException(String.format("Unknown job execution status %s", status));
       }
     }
-    return DSL.trueCondition();
+    return DSL.noCondition();
   }
 
   /**

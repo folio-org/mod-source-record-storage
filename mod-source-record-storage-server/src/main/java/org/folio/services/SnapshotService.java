@@ -13,7 +13,8 @@ import io.vertx.core.Future;
 public interface SnapshotService {
 
   /**
-   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField}
+   * with offset and limit
    * 
    * @param condition   query where condition
    * @param orderFields fields to order by
@@ -22,7 +23,8 @@ public interface SnapshotService {
    * @param tenantId    tenant id
    * @return future with {@link SnapshotCollection}
    */
-  Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Snapshot} by id

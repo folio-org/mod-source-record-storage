@@ -187,7 +187,6 @@ public final class RecordDaoUtil {
       sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }
     if (Objects.nonNull(record.getState())) {
-      // TODO: should leader record status be checked for deleted here as well?
       sourceRecord.withDeleted(record.getState().equals(State.DELETED));
     }
     return sourceRecord
@@ -413,9 +412,9 @@ public final class RecordDaoUtil {
    * @return condition
    */
   public static Condition filterRecordByUpdatedDateRange(Date updatedAfter, Date updatedBefore) {
-    Condition condition = DSL.trueCondition();
+    Condition condition = DSL.noCondition();
     if (Objects.nonNull(updatedAfter)) {
-      condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+      condition = RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC));
     }
     if (Objects.nonNull(updatedBefore)) {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));

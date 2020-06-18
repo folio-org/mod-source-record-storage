@@ -429,7 +429,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      recordService.getFormattedRecord(ExternalIdType.INSTANCE.name(), expected.getExternalIdsHolder().getInstanceId(), TENANT_ID).onComplete(get -> {
+      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE.name(), TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

@@ -103,6 +103,37 @@ resourceTypes:
         body:
           text/plain:
             example: "Internal server error"
+  post:
+    description: Get a list of Source Records from list of ids
+    is: [
+      validate
+    ]
+    body:
+      application/json:
+        description: List of Instance or Record ids
+        type: string[]
+    queryParameters:
+      idType:
+        description: Type of id for Record lookup
+        type: string
+        example: INSTANCE
+        required: false
+        default: RECORD
+    responses:
+      200:
+        body:
+          application/json:
+            type: sourceRecordCollection
+      400:
+        description: Bad request
+        body:
+          text/plain:
+            example: "Bad request"
+      500:
+        description: Internal server error
+        body:
+          text/plain:
+            example: "Internal server error"
   /{id}:
     displayName: Source Record
     description: API for getting Source Records via different idTypes

@@ -14,7 +14,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -94,7 +96,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(marcRecord)
     .withMatchedId(SECOND_UUID)
     .withOrder(11)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString()));
   private static Record record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -111,7 +115,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(marcRecord)
     .withMatchedId(FOURTH_UUID)
     .withOrder(1)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString()));
   private static Record record_5 = new Record()
     .withId(FIFTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -129,7 +135,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withMatchedId(SIXTH_UUID)
     .withParsedRecord(marcRecord)
     .withOrder(101)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString()));
 
   @Before
   public void setUp(TestContext context) {
@@ -1077,6 +1085,88 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
       .body("totalRecords", is(0))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4, record_6);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    List<String> ids = recordsToPost.stream()
+      .filter(record -> Objects.nonNull(record.getParsedRecord()))
+      .map(record -> record.getId())
+      .collect(Collectors.toList());
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(ids)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(ids.size()))
+      .body("totalRecords", is(ids.size()))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    List<String> externalIds = recordsToPost.stream()
+      .filter(record -> Objects.nonNull(record.getParsedRecord()))
+      .map(record -> record.getExternalIdsHolder().getInstanceId())
+      .collect(Collectors.toList());
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(ids.size()))
+      .body("totalRecords", is(ids.size()))
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    List<String> allIds = recordsToPost.stream()
+      .map(record -> record.getId())
+      .collect(Collectors.toList());
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(allIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(ids.size()))
+      .body("totalRecords", is(allIds.size()))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
   }

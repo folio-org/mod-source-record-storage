@@ -60,6 +60,17 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} where in external list ids and {@link ExternalIdType} 
+   * 
+   * @param externalIds    list of external id
+   * @param externalIdType external id type
+   * @return condition
+   */
+  public static Condition getExternalIdCondition(List<String> externalIds, ExternalIdType externalIdType) {
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).in(toUUIDs(externalIds));
+  }
+
+  /**
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * using {@link ReactiveClassicGenericQueryExecutor}
    * 
@@ -176,7 +187,6 @@ public final class RecordDaoUtil {
       sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }
     if (Objects.nonNull(record.getState())) {
-      // TODO: should leader record status be checked for deleted here as well?
       sourceRecord.withDeleted(record.getState().equals(State.DELETED));
     }
     return sourceRecord
@@ -402,9 +412,9 @@ public final class RecordDaoUtil {
    * @return condition
    */
   public static Condition filterRecordByUpdatedDateRange(Date updatedAfter, Date updatedBefore) {
-    Condition condition = DSL.trueCondition();
+    Condition condition = DSL.noCondition();
     if (Objects.nonNull(updatedAfter)) {
-      condition = condition.and(RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC)));
+      condition = RECORDS_LB.UPDATED_DATE.greaterOrEqual(updatedAfter.toInstant().atOffset(ZoneOffset.UTC));
     }
     if (Objects.nonNull(updatedBefore)) {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
@@ -477,6 +487,10 @@ public final class RecordDaoUtil {
     } catch (Exception e) {
       throw new BadRequestException(String.format("Invalid UUID %s", uuid));
     }
+  }
+
+  private static List<UUID> toUUIDs(List<String> uuids) {
+    return uuids.stream().map(RecordDaoUtil::toUUID).collect(Collectors.toList());
   }
 
   private static RecordType toRecordType(String type) {

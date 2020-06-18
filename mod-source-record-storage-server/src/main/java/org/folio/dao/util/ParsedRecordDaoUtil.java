@@ -25,11 +25,10 @@ import io.vertx.sqlclient.Row;
  */
 public final class ParsedRecordDaoUtil {
 
-  private static final String LEADER_PROPERTY = "leader";
+  private static final String LEADER = "leader";
+  private static final String CONTENT = "content";
 
-  private static final String CONTENT_COLUMN = "content";
-
-  public static final String ID_COLUMN = "id";
+  public static final String ID = "id";
 
   private ParsedRecordDaoUtil() { }
 
@@ -43,8 +42,8 @@ public final class ParsedRecordDaoUtil {
    */
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id, RecordType recordType) {
     String tableName = recordType.getTableName();
-    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
-    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    Field<UUID> idField = field(name(ID), UUID.class);
+    Field<String> contentField = field(name(CONTENT), String.class);
     return queryExecutor.findOneRow(dsl -> dsl.select(idField, contentField)
       .from(table(name(tableName)))
       .where(idField.eq(UUID.fromString(id))))
@@ -61,8 +60,8 @@ public final class ParsedRecordDaoUtil {
    */
   public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
     String tableName = recordType.getTableName();
-    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
-    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    Field<UUID> idField = field(name(ID), UUID.class);
+    Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
     String content = (String) normalizeContent(parsedRecord).getContent();
     return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(tableName)))
@@ -85,8 +84,8 @@ public final class ParsedRecordDaoUtil {
    */
   public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
     String tableName = recordType.getTableName();
-    Field<UUID> idField = field(name(ID_COLUMN), UUID.class);
-    Field<String> contentField = field(name(CONTENT_COLUMN), String.class);
+    Field<UUID> idField = field(name(ID), UUID.class);
+    Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
     String content = (String) normalizeContent(parsedRecord).getContent();
     return queryExecutor.executeAny(dsl -> dsl.update(table(name(tableName)))
@@ -108,12 +107,12 @@ public final class ParsedRecordDaoUtil {
    */
   public static ParsedRecord toParsedRecord(Row row) {
     ParsedRecord parsedRecord = new ParsedRecord();
-    UUID id = row.getUUID(ID_COLUMN);
+    UUID id = row.getUUID(ID);
     if (Objects.nonNull(id)) {
       parsedRecord.withId(id.toString());
     }
     return parsedRecord
-      .withContent(row.getString(CONTENT_COLUMN));
+      .withContent(row.getString(CONTENT));
   }
   
   /**
@@ -156,7 +155,7 @@ public final class ParsedRecordDaoUtil {
       } else {
         content = JsonObject.mapFrom(parsedRecord.getContent());
       }
-      String leader = content.getString(LEADER_PROPERTY);
+      String leader = content.getString(LEADER);
       if (Objects.nonNull(leader) && leader.length() > 5) {
         return String.valueOf(leader.charAt(5));
       }

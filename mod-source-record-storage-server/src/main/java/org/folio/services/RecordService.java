@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -79,7 +80,17 @@ public interface RecordService {
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for source record by id via specific idType
+   * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
+   * 
+   * @param ids      list of ids
+   * @param idType   id type
+   * @param tenantId tenant id
+   * @return future with {@link SourceRecordCollection}
+   */
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, String tenantId);
+
+  /**
+   * Searches for source record by id via specific id type
    *
    * @param id       for searching
    * @param idType   search type
@@ -100,12 +111,12 @@ public interface RecordService {
   /**
    * Searches for Record either by SRS id or external relation id
    *
-   * @param externalIdIdentifier specifies of external relation id type
-   * @param id                   either SRS id or external relation id
-   * @param tenantId             tenant id
+   * @param id       either SRS id or external relation id
+   * @param idType   specifies of external relation id type
+   * @param tenantId tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecord(String externalIdIdentifier, String id, String tenantId);
+  Future<Record> getFormattedRecord(String id, String idType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

@@ -1,4 +1,4 @@
-## 2020-06-10 v3.3.0-SNAPSHOT
+## 2020-06-10 v4.0.0-SNAPSHOT
 * [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ
 * [MODSOURCE-136](https://issues.folio.org/browse/MODSOURCE-136) New API
@@ -6,6 +6,7 @@
 * [MODSOURCE-139](https://issues.folio.org/browse/MODSOURCE-139) Upgrade RMB to 30.0.3
 * [MODSOURCE-155](https://issues.folio.org/browse/MODSOURCE-155) MARC leader 05 status on record and query parameter to filter by
 * [MODSOURCE-157](https://issues.folio.org/browse/MODSOURCE-157) Replace get source records filter by deleted with filter by record state
+* [MODSOURCE-156](https://issues.folio.org/browse/MODSOURCE-156) Get source records from list of ids
 
 ## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.

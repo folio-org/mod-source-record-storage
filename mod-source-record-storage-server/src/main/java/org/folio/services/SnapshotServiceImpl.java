@@ -24,7 +24,8 @@ public class SnapshotServiceImpl implements SnapshotService {
   }
 
   @Override
-  public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+  public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId) {
     return snapshotDao.getSnapshots(condition, orderFields, offset, limit, tenantId);
   }
 

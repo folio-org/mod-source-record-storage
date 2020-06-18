@@ -157,6 +157,8 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
+        context.assertTrue(update.result().getMetadata().getUpdatedDate()
+          .after(update.result().getMetadata().getCreatedDate()));
         compareSnapshots(context, expected, update.result());
         async.complete();
       });

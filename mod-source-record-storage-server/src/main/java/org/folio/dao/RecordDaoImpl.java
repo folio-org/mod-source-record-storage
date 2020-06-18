@@ -44,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
@@ -55,11 +56,11 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String CTE_TABLE_NAME = "cte";
-  private static final String CTEOP_TABLE_NAME = "cteop";
-  private static final String ID_COLUMN = "id";
-  private static final String COUNT_COLUMN = "count";
-  private static final String TABLE_FIELD = "{0}.{1}";
+  private static final String CTE1 = "cte1";
+  private static final String CTE2 = "cte2";
+  private static final String ID = "id";
+  private static final String COUNT = "count";
+  private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -143,40 +144,51 @@ public class RecordDaoImpl implements RecordDao {
     //    - this could present performance issues
 
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID_COLUMN);
-    Name cte = name(CTE_TABLE_NAME);
-    Name cteop = name(CTEOP_TABLE_NAME);
+    Name id = name(ID);
+    Name cte1 = name(CTE1);
+    Name cte2 = name(CTE2);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cteop, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
+    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.select()
+      .with(cte1.as(dsl.select()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .with(cteop.as(dsl.select()
-        // Unfortunately, cannot use .from(table(cte)) here.
-        // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
+      .with(cte2.as(dsl.select()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)))
       .select()
-        .from(table(cteop))
+        .from(table(cte2))
         .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .rightJoin(dsl.selectCount().from(table(cte))).on(trueCondition())
-    )).map(res -> {
-      SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
-      List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT_COLUMN));
-        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
-          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
-      }).collect(Collectors.toList());
-      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
-        sourceRecordCollection.withSourceRecords(sourceRecords);
-      }
-      return sourceRecordCollection;
-    });
+        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+    )).map(this::toSourceRecordCollection);
+  }
+
+  @Override
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType);
+    RecordType recordType = RecordType.MARC;
+    Name id = name(ID);
+    Name cte1 = name(CTE1);
+    Name cte2 = name(CTE2);
+    Name prt = name(recordType.getTableName());
+    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte1.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition)))
+      .with(cte2.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
+      .select()
+        .from(table(cte2))
+        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
+        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+    )).map(this::toSourceRecordCollection);
   }
 
   @Override
@@ -400,6 +412,19 @@ public class RecordDaoImpl implements RecordDao {
         return RecordDaoUtil.update(txQE, persistedRecord)
           .map(update -> true);
       });
+  }
+
+  private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
+    SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
+      List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
+        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
+          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
+      }).collect(Collectors.toList());
+      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+        sourceRecordCollection.withSourceRecords(sourceRecords);
+      }
+      return sourceRecordCollection;
   }
 
 }

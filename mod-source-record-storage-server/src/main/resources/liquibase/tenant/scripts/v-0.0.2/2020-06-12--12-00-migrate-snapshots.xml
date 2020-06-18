@@ -4,7 +4,17 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
-  <changeSet id="2020-06-12--12-00-migrate-snapshots" author="WilliamWelling">
+  <changeSet id="2020-06-12--12-00-disable-snapshots-triggers" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="snapshots" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.snapshots_lb DISABLE TRIGGER insert_snapshots_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.snapshots_lb DISABLE TRIGGER update_snapshots_set_dates;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-12--12-01-migrate-snapshots" author="WilliamWelling">
     <preConditions onFail="MARK_RAN">
       <tableExists tableName="snapshots" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
@@ -22,7 +32,17 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-06-12--13-00-create-missing-snapshots" author="WilliamWelling">
+  <changeSet id="2020-06-12--12-02-enable-snapshots-triggers" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="snapshots" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.snapshots_lb ENABLE TRIGGER insert_snapshots_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.snapshots_lb ENABLE TRIGGER update_snapshots_set_dates;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-12--12-03-create-missing-snapshots" author="WilliamWelling">
     <preConditions onFail="MARK_RAN">
       <tableExists tableName="snapshots" schemaName="${database.defaultSchemaName}"/>
       <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>

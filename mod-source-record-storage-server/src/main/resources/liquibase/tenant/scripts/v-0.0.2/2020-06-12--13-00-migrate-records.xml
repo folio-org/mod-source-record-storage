@@ -4,7 +4,17 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
-  <changeSet id="2020-06-12--13-00-migrate-records" author="WilliamWelling">
+  <changeSet id="2020-06-12--13-00-disable-records-triggers" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.records_lb DISABLE TRIGGER insert_records_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.records_lb DISABLE TRIGGER update_records_set_dates;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-12--13-01-migrate-records" author="WilliamWelling">
     <preConditions onFail="MARK_RAN">
       <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
     </preConditions>
@@ -28,6 +38,16 @@
         (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
         (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
       FROM ${database.defaultSchemaName}.records;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-12--13-02-enable-records-triggers" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.records_lb ENABLE TRIGGER insert_records_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.records_lb ENABLE TRIGGER update_records_set_dates;
     </sql>
   </changeSet>
 

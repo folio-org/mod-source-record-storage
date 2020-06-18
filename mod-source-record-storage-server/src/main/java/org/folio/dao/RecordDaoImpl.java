@@ -267,7 +267,7 @@ public class RecordDaoImpl implements RecordDao {
         .limit(1))
           .map(RecordDaoUtil::toOptionalRecord)
           .compose(optionalRecord -> optionalRecord
-            .map(record -> lookupAssociatedRecords(txQE, record, true).map(Optional::of))
+            .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
           .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId))))));
   }
 

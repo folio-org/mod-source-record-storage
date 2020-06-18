@@ -5,6 +5,7 @@
 * [MODSOURCE-144](https://issues.folio.org/browse/MODSOURCE-144) Remove Old API, liquibase migration scripts, drop old tables and functions
 * [MODSOURCE-139](https://issues.folio.org/browse/MODSOURCE-139) Upgrade RMB to 30.0.3
 * [MODSOURCE-155](https://issues.folio.org/browse/MODSOURCE-155) MARC leader 05 status on record and query parameter to filter by
+* [MODSOURCE-157](https://issues.folio.org/browse/MODSOURCE-157) Replace get source records filter by deleted with filter by record state
 
 ## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.

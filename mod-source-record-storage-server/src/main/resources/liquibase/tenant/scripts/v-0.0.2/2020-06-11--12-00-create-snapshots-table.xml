@@ -38,21 +38,41 @@
     </createTable>
   </changeSet>
 
-  <changeSet id="2020-06-11--12-02-create-snapshots-set-created-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-02-create-insert-snapshots-set-dates-function" author="WilliamWelling">
     <createProcedure>
-      create function ${database.defaultSchemaName}.insert_snapshots_set_created_date() returns trigger
+      create function ${database.defaultSchemaName}.insert_snapshots_set_dates() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          IF (TG_OP = 'INSERT') THEN
-              NEW.created_date := current_timestamp;
-              NEW.updated_date := NEW.created_date;
-          ELSIF (TG_OP = 'UPDATE') THEN
-              NEW.updated_date := current_timestamp;
-              IF OLD.created_date IS NULL THEN
-                NEW.created_date := NEW.updated_date;
-              END IF;
+          NEW.created_date := current_timestamp;
+          NEW.updated_date := NEW.created_date;
+          RETURN NEW;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-06-11--12-03-create-insert-snapshots-set-dates-trigger" author="WilliamWelling">
+    <sql>
+      create trigger insert_snapshots_set_dates
+          before insert
+          on ${database.defaultSchemaName}.snapshots_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.insert_snapshots_set_dates();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-06-11--12-04-create-update-snapshots-set-dates-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.update_snapshots_set_dates() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          NEW.updated_date := current_timestamp;
+          IF OLD.created_date IS NULL THEN
+            NEW.created_date := NEW.updated_date;
           END IF;
           RETURN NEW;
       END;
@@ -60,13 +80,13 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-06-11--12-03-create-snapshots-set-created-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--12-05-create-update-snapshots-set-dates-trigger" author="WilliamWelling">
     <sql>
-      create trigger insert_snapshots_set_created_date
-          before insert or update
+      create trigger update_snapshots_set_dates
+          before update
           on ${database.defaultSchemaName}.snapshots_lb
           for each row
-      execute procedure ${database.defaultSchemaName}.insert_snapshots_set_created_date();
+      execute procedure ${database.defaultSchemaName}.update_snapshots_set_dates();
     </sql>
   </changeSet>
 

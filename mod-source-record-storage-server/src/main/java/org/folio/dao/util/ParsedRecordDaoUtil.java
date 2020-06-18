@@ -112,7 +112,7 @@ public final class ParsedRecordDaoUtil {
       parsedRecord.withId(id.toString());
     }
     return parsedRecord
-      .withContent(row.getString(CONTENT));
+      .withContent(row.getValue(CONTENT));
   }
   
   /**

@@ -244,6 +244,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
+        context.assertTrue(update.result().getMetadata().getUpdatedDate()
+          .after(update.result().getMetadata().getCreatedDate()));
         context.assertNotNull(update.result().getRawRecord());
         context.assertNotNull(update.result().getParsedRecord());
         context.assertNull(update.result().getErrorRecord());

@@ -126,46 +126,29 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-10-create-update-records-set-updated-date-function" author="WilliamWelling">
-    <createProcedure>
-      create function ${database.defaultSchemaName}.update_records_set_updated_date() returns trigger
-          language plpgsql
-      as
-      $$
-      BEGIN
-          NEW.updated_date := current_timestamp;
-          RETURN NEW;
-      END;
-      $$;
-    </createProcedure>
-  </changeSet>
-
-  <changeSet id="2020-06-11--13-11-create-update-records-set-updated-date-trigger" author="WilliamWelling">
-    <sql>
-      create trigger update_records_set_updated_date
-          before insert or update
-          on ${database.defaultSchemaName}.records_lb
-          for each row
-      execute procedure ${database.defaultSchemaName}.update_records_set_updated_date();
-    </sql>
-  </changeSet>
-
-  <changeSet id="2020-06-11--13-12-create-insert-records-set-created-date-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-10-create-records-set-created-date-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.insert_records_set_created_date() returns trigger
           language plpgsql
       as
       $$
       BEGIN
-          NEW.created_date := current_timestamp;
-          NEW.updated_date := NEW.created_date;
+          IF (TG_OP = 'INSERT') THEN
+              NEW.created_date := current_timestamp;
+              NEW.updated_date := NEW.created_date;
+          ELSIF (TG_OP = 'UPDATE') THEN
+              NEW.updated_date := current_timestamp;
+              IF OLD.created_date IS NULL THEN
+                NEW.created_date := NEW.updated_date;
+              END IF;
+          END IF;
           RETURN NEW;
       END;
       $$;
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-13-create-insert-records-set-created-date-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-11-create-records-set-created-date-trigger" author="WilliamWelling">
     <sql>
       create trigger insert_records_set_created_date
           before insert or update

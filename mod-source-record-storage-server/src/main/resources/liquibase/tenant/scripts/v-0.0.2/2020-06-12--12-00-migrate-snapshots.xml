@@ -25,9 +25,9 @@
         (jsonb->>'status')::${database.defaultSchemaName}.job_execution_status AS status,
         (jsonb->>'processingStartedDate')::timestamptz AS processing_started_date,
         (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,
-        (jsonb->'metadata'->>'createdDate')::timestamptz AS created_date,
+        coalesce((jsonb->'metadata'->>'createdDate')::timestamptz, current_timestamp) AS created_date,
         (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
-        (jsonb->'metadata'->>'updatedDate')::timestamptz AS updated_date
+        coalesce((jsonb->'metadata'->>'updatedDate')::timestamptz, current_timestamp) AS updated_date
       FROM ${database.defaultSchemaName}.snapshots;
     </sql>
   </changeSet>

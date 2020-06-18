@@ -233,7 +233,7 @@ public class RecordServiceImpl implements RecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = (String) ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      String parsedRecordContent = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
     } catch (IOException e) {
       LOG.error("Couldn't format MARC record", e);

@@ -63,7 +63,7 @@ public final class ParsedRecordDaoUtil {
     Field<UUID> idField = field(name(ID), UUID.class);
     Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
-    String content = (String) normalizeContent(parsedRecord).getContent();
+    String content = normalizeContent(parsedRecord);
     return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(tableName)))
       .set(idField, id)
       .set(contentField, content)
@@ -87,7 +87,7 @@ public final class ParsedRecordDaoUtil {
     Field<UUID> idField = field(name(ID), UUID.class);
     Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
-    String content = (String) normalizeContent(parsedRecord).getContent();
+    String content = normalizeContent(parsedRecord);
     return queryExecutor.executeAny(dsl -> dsl.update(table(name(tableName)))
       .set(contentField, content)
       .where(idField.eq(id)))
@@ -126,19 +126,19 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
-   * Ensure normalize content of {@link ParsedRecord} is type {@link String}
+   * Normalize parsed record content content of {@link ParsedRecord} is type {@link String}
    * 
    * @param parsedRecord parsed record
-   * @return parsed record with normalized content
+   * @return parsed record normalized content
    */
-  public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
+  public static String normalizeContent(ParsedRecord parsedRecord) {
     String content;
     if (parsedRecord.getContent() instanceof String) {
       content = (String) parsedRecord.getContent();
     } else {
       content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
     }
-    return parsedRecord.withContent(content);
+    return content;
   }
 
   /**

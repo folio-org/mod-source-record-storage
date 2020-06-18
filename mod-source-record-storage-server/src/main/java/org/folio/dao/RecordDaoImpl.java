@@ -377,7 +377,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
-      String content = (String) ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
+      String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {

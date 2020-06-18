@@ -69,7 +69,7 @@
         referencedTableSchemaName="${database.defaultSchemaName}"/>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-04-set-records-suppress-discovery-default" author="WilliamWelling">
     <addDefaultValue
         columnDataType="boolean"
         columnName="suppress_discovery"
@@ -107,7 +107,7 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-08-create-records-updateddate-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-08-create-records-updated-date-index" author="WilliamWelling">
     <createIndex
         indexName="idx_records_updated_date"
         schemaName="${database.defaultSchemaName}"
@@ -116,7 +116,16 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-09-create-records-matchedid-state-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-09-create-records-leader_record_status-index" author="WilliamWelling">
+    <createIndex
+        indexName="idx_records_leader_record_status"
+        schemaName="${database.defaultSchemaName}"
+        tableName="records_lb">
+      <column name="leader_record_status"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2020-06-11--13-10-create-records-matchedid-state-index" author="WilliamWelling">
     <createIndex
         indexName="idx_records_matched_id_state"
         schemaName="${database.defaultSchemaName}"
@@ -126,7 +135,7 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-10-create-insert-records-set-dates-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-11-create-insert-records-set-dates-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.insert_records_set_dates() returns trigger
           language plpgsql
@@ -141,7 +150,7 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-11-create-insert-records-set-dates-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-12-create-insert-records-set-dates-trigger" author="WilliamWelling">
     <sql>
       create trigger insert_records_set_dates
           before insert
@@ -151,7 +160,7 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-12-create-update-records-set-dates-function" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-13-create-update-records-set-dates-function" author="WilliamWelling">
     <createProcedure>
       create function ${database.defaultSchemaName}.update_records_set_dates() returns trigger
           language plpgsql
@@ -168,7 +177,7 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-13-create-update-records-set-dates-trigger" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-14-create-update-records-set-dates-trigger" author="WilliamWelling">
     <sql>
       create trigger update_records_set_dates
           before update

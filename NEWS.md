@@ -8,6 +8,50 @@
 * [MODSOURCE-157](https://issues.folio.org/browse/MODSOURCE-157) Replace get source records filter by deleted with filter by record state
 * [MODSOURCE-156](https://issues.folio.org/browse/MODSOURCE-156) Get source records from list of ids
 
+### Snapshots API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/snapshots                            | Get list of snapshots                                   |
+ | POST   | /source-storage/snapshots                            | Create new snapshot                                     |
+ | PUT    | /source-storage/snapshots/{jobExecutionId}           | Update snapshot                                         |
+ | GET    | /source-storage/snapshots/{jobExecutionId}           | Get snapshot by JobExecution id                         |
+ | DELETE | /source-storage/snapshots/{jobExecutionId}           | Delete snapshot and all records by JobExecution id      |
+
+### Records API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/records                              | Get list of records                                     |
+ | POST   | /source-storage/records                              | Create new record                                       |
+ | PUT    | /source-storage/records/{id}                         | Update record                                           |
+ | GET    | /source-storage/records/{id}                         | Get record by id                                        |
+ | GET    | /source-storage/records/{id}/formatted               | Get formatted record by sourceRecordId or by instanceId |
+ | PUT    | /source-storage/records/{id}/suppress-from-discovery | Change suppress from discovery flag for record          |
+ | DELETE | /source-storage/records/{id}                         | Set record state to DELETED                             |
+
+### Source Records API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | GET    | /source-storage/source-records                       | Get list of source records                              |
+ | POST   | /source-storage/source-records                       | Get list of source records from list of ids             |
+ | GET    | /source-storage/source-records/{id}                  | Get source record by sourceRecordId or by instanceId    |
+
+### Batch Records API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | POST   | /source-storage/batch/records                        | Create new records                                      |
+ | PUT    | /source-storage/batch/parsed-records                 | Update a collection of ParsedRecords                    |
+
+### Event Handlers API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | POST   | /source-storage/handlers/inventory-instance          | Update record instance id from inventory instance event |
+ | POST   | /source-storage/handlers/updated-record              | Crete updated record with generation under new snapshot |
+
+### Test Records API
+ | METHOD |             URL                                      | DESCRIPTION                                             |
+ |--------|------------------------------------------------------|---------------------------------------------------------|
+ | POST   | /source-storage/populate-test-marc-records           | Fill db with test marc records                          |
+
 ## 2020-06-10 v3.2.0
 * [MODSOURCE-124](https://issues.folio.org/browse/MODSOURCE-124) Apply archive/unarchive eventPayload mechanism.
 * [MODSOURCE-115](https://issues.folio.org/browse/MODSOURCE-115) Create endpoint for retrieving "sourceRecords" using "matchedId" and generationId-mechanism.
@@ -97,7 +141,7 @@
  | GET    | /source-storage/records/{id}               | Get record by id                                        |
  | DELETE | /source-storage/records/{id}               | Mark record deleted                                     |
  | GET    | /source-storage/sourceRecords              | Get list of source records                              |
- | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          | 
+ | POST   | /source-storage/populate-test-marc-records | Fill db with test marc records                          |
  | POST   | /source-storage/batch/records              | Create new records                                      |
  | PUT    | /source-storage/batch/parsed-records       | Update a collection of ParsedRecords                    |
  | GET    | /source-storage/formattedRecords/{id}      | Get Formatted Record by sourceRecordId or by instanceId |

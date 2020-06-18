@@ -116,7 +116,7 @@
     </createIndex>
   </changeSet>
 
-  <changeSet id="2020-06-11--13-09-create-records-leader_record_status-index" author="WilliamWelling">
+  <changeSet id="2020-06-11--13-09-create-records-leader-record-status-index" author="WilliamWelling">
     <createIndex
         indexName="idx_records_leader_record_status"
         schemaName="${database.defaultSchemaName}"

@@ -44,6 +44,7 @@
       <column name="state" type="${database.defaultSchemaName}.record_state">
         <constraints nullable="false"/>
       </column>
+      <column name="leader_record_status" type="char(1)"></column>
       <column name="order" type="integer"></column>
       <column name="suppress_discovery" type="boolean"></column>
       <column name="created_by_user_id" type="uuid"></column>
@@ -70,7 +71,7 @@
 
   <changeSet id="2020-06-11--13-04-set-records-suppressdiscovery-default" author="WilliamWelling">
     <addDefaultValue
-        columnDataType="integer"
+        columnDataType="boolean"
         columnName="suppress_discovery"
         defaultValueBoolean="false"
         schemaName="${database.defaultSchemaName}"

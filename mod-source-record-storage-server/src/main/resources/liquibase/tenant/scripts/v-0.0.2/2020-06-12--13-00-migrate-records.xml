@@ -20,6 +20,7 @@
         CASE (jsonb->>'deleted')::boolean WHEN true THEN ('DELETED')::${database.defaultSchemaName}.record_state
         ELSE coalesce(jsonb->>'state', 'ACTUAL')::${database.defaultSchemaName}.record_state
         END AS state,
+        NULL as leader_record_status,
         (jsonb->>'order')::integer AS order,
         (jsonb->'additionalInfo'->>'suppressDiscovery')::boolean AS suppress_discovery,
         (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,

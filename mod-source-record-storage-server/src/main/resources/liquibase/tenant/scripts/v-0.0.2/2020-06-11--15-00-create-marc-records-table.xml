@@ -9,7 +9,7 @@
       <column name="id" type="uuid">
         <constraints primaryKey="true" nullable="false"/>
       </column>
-      <column name="content" type="text">
+      <column name="content" type="jsonb">
         <constraints nullable="false"/>
       </column>
     </createTable>
@@ -28,6 +28,35 @@
         referencedColumnNames="id"
         referencedTableName="records_lb"
         referencedTableSchemaName="${database.defaultSchemaName}"/>
+  </changeSet>
+
+  <changeSet id="2020-06-11--15-02-create-update-records-set-leader-record-status-function" author="WilliamWelling">
+    <createProcedure>
+      create function ${database.defaultSchemaName}.update_records_set_leader_record_status() returns trigger
+          language plpgsql
+      as
+      $$
+      BEGIN
+          IF (TG_OP = 'DELETE') THEN
+            UPDATE ${database.defaultSchemaName}.records_lb SET leader_record_status = NULL WHERE id = OLD.id;
+            RETURN OLD;
+          ELSE
+            UPDATE ${database.defaultSchemaName}.records_lb SET leader_record_status = substring(NEW.content->>'leader' from 6 for 1)::char(1) WHERE id = NEW.id;
+            RETURN NEW;
+          END IF;
+      END;
+      $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2020-06-11--15-03-create-update-records-set-leader-record-status-trigger" author="WilliamWelling">
+    <sql>
+      create trigger update_records_set_leader_record_status
+          after insert or update or delete
+          on ${database.defaultSchemaName}.marc_records_lb
+          for each row
+      execute procedure ${database.defaultSchemaName}.update_records_set_leader_record_status();
+    </sql>
   </changeSet>
 
 </databaseChangeLog>

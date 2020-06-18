@@ -37,6 +37,7 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
   private static final String CTE_TABLE_NAME = "cte";
+  private static final String CTEOP_TABLE_NAME = "cteop";
+  private static final String ID_COLUMN = "id";
   private static final String COUNT_COLUMN = "count";
   private static final String TABLE_FIELD = "{0}.{1}";
 
@@ -139,20 +142,29 @@ public class RecordDaoImpl implements RecordDao {
     // 2. join on every record type table
     //    - this could present performance issues
 
-    // Performance metrics should be taken using this join query compared to getRecords above.
-    // getRecords method streams records from the record table looking up related raw record, parsed record,
-    // and error record per record in stream. When it looks up parsed record it will use record type
-    // from the record and lookup in the appropriate table.
     RecordType recordType = RecordType.MARC;
-    String tableName = recordType.getTableName();
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, name(tableName), name(ParsedRecordDaoUtil.ID_COLUMN));
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.with(CTE_TABLE_NAME).as(dsl.select()
-      .from(RECORDS_LB)
-      .innerJoin(table(name(tableName))).on(RECORDS_LB.ID.eq(parsedRecordIdField))
-      .where(condition)
-      .orderBy(orderFields)).select()
-        .from(dsl.select().from(table(name(CTE_TABLE_NAME))).offset(offset).limit(limit))
-        .rightJoin(dsl.selectCount().from(table(name(CTE_TABLE_NAME)))).on(trueCondition())
+    Name id = name(ID_COLUMN);
+    Name cte = name(CTE_TABLE_NAME);
+    Name cteop = name(CTEOP_TABLE_NAME);
+    Name prt = name(recordType.getTableName());
+    Field<UUID> recordIdField = field(TABLE_FIELD, UUID.class, cteop, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD, UUID.class, prt, id);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
+      .with(cteop.as(dsl.select()
+        // Unfortunately, cannot use .from(table(cte)) here.
+        // It seems to be a bug with jOOQ, but seems to be optimized out to not execute select twice.
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+        .orderBy(orderFields)
+        .offset(offset)
+        .limit(limit)))
+      .select()
+        .from(table(cteop))
+        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
+        .rightJoin(dsl.selectCount().from(table(cte))).on(trueCondition())
     )).map(res -> {
       SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
       List<SourceRecord> sourceRecords = res.stream().map(r -> asRow(r.unwrap())).map(row -> {
@@ -170,14 +182,16 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     return getSourceRecordByCondition(condition, tenantId);
   }
 
@@ -323,45 +337,50 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return RawRecordDaoUtil.save(txQE, record.getRawRecord())
-      .compose(rr -> {
+      .compose(rawRecord -> {
         if (Objects.nonNull(record.getParsedRecord())) {
           return insertOrUpdateParsedRecord(txQE, record);
         }
-        return Future.succeededFuture();
+        return Future.succeededFuture(null);
       })
-      .compose(s -> {
+      .compose(parsedRecord -> {
         if (Objects.nonNull(record.getErrorRecord())) {
           return ErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
         }
-        return Future.succeededFuture();
+        return Future.succeededFuture(null);
       })
-      .compose(er -> RecordDaoUtil.save(txQE, record)).map(r -> {
+      .compose(errorRecord -> RecordDaoUtil.save(txQE, record)).map(savedRecord -> {
         if (Objects.nonNull(record.getRawRecord())) {
-          r.withRawRecord(record.getRawRecord());
+          savedRecord.withRawRecord(record.getRawRecord());
         }
         if (Objects.nonNull(record.getParsedRecord())) {
-          r.withParsedRecord(record.getParsedRecord());
+          savedRecord.withParsedRecord(record.getParsedRecord());
         }
         if (Objects.nonNull(record.getErrorRecord())) {
-          r.withErrorRecord(record.getErrorRecord());
+          savedRecord.withErrorRecord(record.getErrorRecord());
         }
-        return r;
+        return savedRecord;
       });
   }
 
-  private Future<Boolean> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
       String content = (String) ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()).getContent();
       record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-      return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> true);
+      return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+        .map(parsedRecord -> {
+          record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
+          return parsedRecord;
+        });
     } catch (Exception e) {
       LOG.error("Couldn't format MARC record", e);
-      record.setErrorRecord(new ErrorRecord()
+      record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())
         .withContent(record.getParsedRecord().getContent()));
-      record.setParsedRecord(null);
-      return Future.succeededFuture(false);
+      record.withParsedRecord(null)
+        .withLeaderRecordStatus(null);
+      return Future.succeededFuture(null);
     }
   }
 

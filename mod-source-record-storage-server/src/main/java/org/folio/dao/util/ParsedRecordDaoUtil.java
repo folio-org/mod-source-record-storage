@@ -25,6 +25,8 @@ import io.vertx.sqlclient.Row;
  */
 public final class ParsedRecordDaoUtil {
 
+  private static final String LEADER_PROPERTY = "leader";
+
   private static final String CONTENT_COLUMN = "content";
 
   public static final String ID_COLUMN = "id";
@@ -138,6 +140,28 @@ public final class ParsedRecordDaoUtil {
       content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
     }
     return parsedRecord.withContent(content);
+  }
+
+  /**
+   * Extract MARC Leader status 05 from {@link ParsedRecord} content.
+   * 
+   * @param parsedRecord parsed record
+   * @return MARC Leader status 05
+   */
+  public static String getLeaderStatus(ParsedRecord parsedRecord) {
+    if (Objects.nonNull(parsedRecord)) {
+      JsonObject content;
+      if (parsedRecord.getContent() instanceof String) {
+        content = new JsonObject((String) parsedRecord.getContent());
+      } else {
+        content = JsonObject.mapFrom(parsedRecord.getContent());
+      }
+      String leader = content.getString(LEADER_PROPERTY);
+      if (Objects.nonNull(leader) && leader.length() > 5) {
+        return String.valueOf(leader.charAt(5));
+      }
+    } 
+    return null;
   }
 
   /**

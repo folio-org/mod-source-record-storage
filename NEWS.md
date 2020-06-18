@@ -1,4 +1,4 @@
-## 2020-06-10 v3.3.0-SNAPSHOT
+## 2020-06-10 v4.0.0-SNAPSHOT
 * [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ
 * [MODSOURCE-136](https://issues.folio.org/browse/MODSOURCE-136) New API

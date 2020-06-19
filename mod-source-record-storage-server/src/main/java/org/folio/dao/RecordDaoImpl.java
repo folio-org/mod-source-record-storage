@@ -259,16 +259,22 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-        .where(condition)
-        .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.ASC))
-        .limit(1))
-          .map(RecordDaoUtil::toOptionalRecord)
-          .compose(optionalRecord -> optionalRecord
-            .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-          .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId))))));
+      .transaction(txQE -> getRecordByExternalId(txQE, externalId, externalIdType));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
+      String externalId, ExternalIdType externalIdType) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+      .where(condition)
+      .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
+      .limit(1))
+        .map(RecordDaoUtil::toOptionalRecord)
+        .compose(optionalRecord -> optionalRecord
+          .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
+        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId)))));
   }
 
   @Override
@@ -284,8 +290,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
     ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    Condition condition = RecordDaoUtil.getExternalIdCondition(id, externalIdType);
-    return getQueryExecutor(tenantId).transaction(txQE -> RecordDaoUtil.findByCondition(txQE, condition)
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
       .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id))))))

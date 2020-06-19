@@ -137,6 +137,16 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
 
   /**
+   * Searches for {@link Record} by id of external entity which was created from desired record
+   *
+   * @param txQE           query execution
+   * @param externalId     external relation id
+   * @param externalIdType external id type
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE, String externalId, ExternalIdType externalIdType);
+
+  /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    * 
    * @param condition   query where condition

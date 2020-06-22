@@ -434,7 +434,7 @@ public final class RecordDaoUtil {
    */
   public static Condition filterRecordByDeleted(Boolean deleted) {
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
-    if (Objects.isNull(deleted) || Boolean.TRUE.equals(deleted)) {
+    if (Boolean.TRUE.equals(deleted)) {
       condition = condition.or(filterRecordByState(RecordState.DELETED.name()));
       for(String status : DELETED_LEADER_RECORD_STATUS) {
         condition = condition.or(filterRecordByLeaderRecordStatus(status));

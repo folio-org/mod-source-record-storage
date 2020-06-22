@@ -84,10 +84,11 @@ public interface RecordService {
    * 
    * @param ids      list of ids
    * @param idType   id type
+   * @param deleted  filter by state DELETED or leader record status d, s, or x
    * @param tenantId tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, String tenantId);
 
   /**
    * Searches for source record by id via specific id type

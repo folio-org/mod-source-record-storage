@@ -163,10 +163,11 @@ public interface RecordDao {
    * 
    * @param ids            list of ids
    * @param externalIdType external id type on which source record will be searched
+   * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, Boolean deleted, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}

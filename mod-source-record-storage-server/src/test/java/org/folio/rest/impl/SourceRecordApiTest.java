@@ -40,6 +40,7 @@ import org.junit.runner.RunWith;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -1104,8 +1105,44 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     }
     async.complete();
 
+    String firstSrsId = UUID.randomUUID().toString();
+    String firstInstanceId = UUID.randomUUID().toString();
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(firstSrsId)
+      .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields", new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))))));
+
+    Record deleted_record_1 = new Record()
+      .withId(firstSrsId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord)
+      .withMatchedId(firstSrsId)
+      .withLeaderRecordStatus("d")
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(firstInstanceId));
+
+    String secondSrsId = UUID.randomUUID().toString();
+    String secondInstanceId = UUID.randomUUID().toString();
+
+    Record deleted_record_2 = new Record()
+        .withId(secondSrsId)
+        .withSnapshotId(snapshot_2.getJobExecutionId())
+        .withRecordType(Record.RecordType.MARC)
+        .withRawRecord(rawRecord)
+        .withParsedRecord(marcRecord)
+        .withMatchedId(secondSrsId)
+        .withOrder(1)
+        .withState(Record.State.DELETED)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId(secondInstanceId));
+
     async = testContext.async();
-    List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4, record_6);
+    List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4, record_6, deleted_record_1, deleted_record_2);
     for (Record record : recordsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -1127,12 +1164,24 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(ids)
       .when()
-      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=false")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(ids.size()))
-      .body("totalRecords", is(ids.size()))
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(ids)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=true")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(4))
+      .body("totalRecords", is(5));
     async.complete();
 
     List<String> externalIds = recordsToPost.stream()
@@ -1145,29 +1194,36 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(externalIds)
       .when()
-      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE")
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=false")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(ids.size()))
-      .body("totalRecords", is(ids.size()))
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
-
-    List<String> allIds = recordsToPost.stream()
-      .map(record -> record.getId())
-      .collect(Collectors.toList());
 
     async = testContext.async();
     RestAssured.given()
       .spec(spec)
-      .body(allIds)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=true")
+      .then().log().all()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(4))
+      .body("totalRecords", is(5));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(ids)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(ids.size()))
-      .body("totalRecords", is(allIds.size()))
-      .body("sourceRecords*.deleted", everyItem(is(false)));
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(4));
     async.complete();
   }
 
@@ -1300,7 +1356,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(3))
+      .body("totalRecords", is(1))
       .body("sourceRecords*.parsedRecord", notNullValue());
     async.complete();
   }
@@ -1454,7 +1510,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordState=DELETED")
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?deleted=true")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(2))

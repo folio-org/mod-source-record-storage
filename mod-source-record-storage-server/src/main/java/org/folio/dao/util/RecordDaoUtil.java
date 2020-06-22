@@ -47,7 +47,7 @@ public final class RecordDaoUtil {
 
   private static final String COMMA = ",";
 
-  private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList(new String[] { "d", "s", "X" });
+  private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
 
   private RecordDaoUtil() { }
 

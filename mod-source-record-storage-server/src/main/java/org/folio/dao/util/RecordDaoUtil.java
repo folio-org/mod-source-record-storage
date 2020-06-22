@@ -5,6 +5,7 @@ import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -45,6 +46,8 @@ import io.vertx.sqlclient.RowSet;
 public final class RecordDaoUtil {
 
   private static final String COMMA = ",";
+
+  private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList(new String[] { "d", "s", "X" });
 
   private RecordDaoUtil() { }
 
@@ -221,12 +224,13 @@ public final class RecordDaoUtil {
     }
     if (Objects.nonNull(pojo.getState())) {
       record.withState(org.folio.rest.jaxrs.model.Record.State.valueOf(pojo.getState().toString()));
-      record.withDeleted(record.getState().equals(State.DELETED));
     }
     record
       .withOrder(pojo.getOrder())
       .withGeneration(pojo.getGeneration())
       .withLeaderRecordStatus(pojo.getLeaderRecordStatus());
+    record.withDeleted(record.getState().equals(State.DELETED)
+      || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (Objects.nonNull(pojo.getSuppressDiscovery())) {
       additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
@@ -394,12 +398,12 @@ public final class RecordDaoUtil {
   /**
    * Get {@link Condition} to filter by leader record status
    * 
-   * @param leaderRecordState leader record status to equal
+   * @param leaderRecordStatus leader record status to equal
    * @return condition
    */
-  public static Condition filterRecordByLeaderRecordState(String leaderRecordState) {
-    if (StringUtils.isNotEmpty(leaderRecordState)) {
-      return RECORDS_LB.LEADER_RECORD_STATUS.eq(leaderRecordState);
+  public static Condition filterRecordByLeaderRecordStatus(String leaderRecordStatus) {
+    if (StringUtils.isNotEmpty(leaderRecordStatus)) {
+      return RECORDS_LB.LEADER_RECORD_STATUS.eq(leaderRecordStatus);
     }
     return DSL.noCondition();
   }
@@ -418,6 +422,23 @@ public final class RecordDaoUtil {
     }
     if (Objects.nonNull(updatedBefore)) {
       condition = condition.and(RECORDS_LB.UPDATED_DATE.lessOrEqual(updatedBefore.toInstant().atOffset(ZoneOffset.UTC)));
+    }
+    return condition;
+  }
+
+  /**
+   * Get {@link Condition} to filter by state ACTUAL or DELETED or leader record status d, s, or x
+   * 
+   * @param deleted deleted flag
+   * @return condition
+   */
+  public static Condition filterRecordByDeleted(Boolean deleted) {
+    Condition condition = filterRecordByState(RecordState.ACTUAL.name());
+    if (Objects.isNull(deleted) || Boolean.TRUE.equals(deleted)) {
+      condition = condition.or(filterRecordByState(RecordState.DELETED.name()));
+      for(String status : DELETED_LEADER_RECORD_STATUS) {
+        condition = condition.or(filterRecordByLeaderRecordStatus(status));
+      }
     }
     return condition;
   }

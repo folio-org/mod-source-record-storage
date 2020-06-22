@@ -4,8 +4,8 @@
   "matchedId": "8f462542-387c-4f06-a01b-50829c7c7b13",
   "generation": 0,
   "recordType": "MARC",
-  "leaderRecordStatus": "n",
   "deleted": false,
+  "leaderRecordStatus": "n",
   "order": 1,
   "state": "ACTUAL"
 }

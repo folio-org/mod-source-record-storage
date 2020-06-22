@@ -326,7 +326,60 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), false, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .map(RecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetSourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords().stream()
+      .map(record -> {
+        Record deletedRecord = new Record()
+          .withId(record.getId())
+          .withSnapshotId(record.getSnapshotId())
+          .withMatchedId(record.getMatchedId())
+          .withRecordType(record.getRecordType())
+          .withState(State.DELETED)
+          .withGeneration(record.getGeneration())
+          .withOrder(record.getOrder())
+          .withLeaderRecordStatus(record.getLeaderRecordStatus())
+          .withRawRecord(record.getRawRecord())
+          .withParsedRecord(record.getParsedRecord())
+          .withAdditionalInfo(record.getAdditionalInfo())
+          .withExternalIdsHolder(record.getExternalIdsHolder());
+        if (Objects.nonNull(record.getMetadata())) {
+          deletedRecord.withMetadata(record.getMetadata());
+        }
+        if (Objects.nonNull(record.getErrorRecord())) {
+          deletedRecord.withErrorRecord(record.getErrorRecord());
+        }
+        return deletedRecord;
+      })
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<String> ids = records.stream()
+        .map(record -> record.getExternalIdsHolder().getInstanceId())
+        .collect(Collectors.toList());
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

@@ -168,8 +168,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType);
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType)
+      .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     RecordType recordType = RecordType.MARC;
     Name id = name(ID);
     Name cte1 = name(CTE1);

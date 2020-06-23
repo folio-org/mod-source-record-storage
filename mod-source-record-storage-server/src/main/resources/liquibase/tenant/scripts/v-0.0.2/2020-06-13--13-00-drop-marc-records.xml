@@ -4,7 +4,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
 
-  <changeSet runAlways="true" id="2020-06-13--13-00-drop-marc-records" author="WilliamWelling">
+  <changeSet id="2020-06-13--13-00-drop-marc-records" author="WilliamWelling">
     <sql>
       DROP TABLE IF EXISTS ${database.defaultSchemaName}.marc_records;
     </sql>

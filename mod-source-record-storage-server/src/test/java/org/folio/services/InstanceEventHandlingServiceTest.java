@@ -183,7 +183,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
 
         context.assertNotNull(updatedRecord.getParsedRecord());
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        JsonObject parsedContent = new JsonObject((String) updatedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
@@ -289,7 +289,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
         context.assertTrue(expectedInstanceId.equals(updatedRecord.getExternalIdsHolder().getInstanceId()));
 
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        JsonObject parsedContent = new JsonObject((String) updatedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());

@@ -25,10 +25,9 @@ import io.vertx.sqlclient.Row;
  */
 public final class ParsedRecordDaoUtil {
 
-  private static final String LEADER = "leader";
+  private static final String ID = "id";
   private static final String CONTENT = "content";
-
-  public static final String ID = "id";
+  private static final String LEADER = "leader";
 
   private ParsedRecordDaoUtil() { }
 
@@ -40,7 +39,8 @@ public final class ParsedRecordDaoUtil {
    * @param recordType    record type to find
    * @return future with optional ParsedRecord
    */
-  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id, RecordType recordType) {
+  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor,
+      String id, RecordType recordType) {
     String tableName = recordType.getTableName();
     Field<UUID> idField = field(name(ID), UUID.class);
     Field<String> contentField = field(name(CONTENT), String.class);
@@ -51,51 +51,58 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
-   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using
+   * {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record
    * @param recordType    record type to save
    * @return future with updated ParsedRecord
    */
-  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
+  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
+      ParsedRecord parsedRecord, RecordType recordType) {
     String tableName = recordType.getTableName();
     Field<UUID> idField = field(name(ID), UUID.class);
     Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
-    String content = normalizeContent(parsedRecord);
+    JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(tableName)))
       .set(idField, id)
-      .set(contentField, content)
+      .set(contentField, content.encode())
       .onConflict(idField)
         .doUpdate()
-          .set(contentField, content)
+          .set(contentField, content.encode())
           .returning())
-        .map(res -> parsedRecord);
+        .map(res -> parsedRecord
+          .withContent(content.getMap()));
   }
 
   /**
-   * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using {@link ReactiveClassicGenericQueryExecutor}
+   * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
+   * {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record to update
    * @param recordType    record type to update
    * @return future of updated ParsedRecord
    */
-  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
+  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
+      ParsedRecord parsedRecord, RecordType recordType) {
     String tableName = recordType.getTableName();
     Field<UUID> idField = field(name(ID), UUID.class);
     Field<String> contentField = field(name(CONTENT), String.class);
     UUID id = UUID.fromString(parsedRecord.getId());
-    String content = normalizeContent(parsedRecord);
+    JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.update(table(name(tableName)))
-      .set(contentField, content)
+      .set(contentField, content.encode())
       .where(idField.eq(id)))
         .map(update -> {
           if (update.rowCount() > 0) {
-            return parsedRecord;
+            return parsedRecord
+              .withContent(content.getMap());
           }
-          throw new NotFoundException(String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId()));
+          String message = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+          throw new NotFoundException(message);
         });
   }
 
@@ -111,8 +118,11 @@ public final class ParsedRecordDaoUtil {
     if (Objects.nonNull(id)) {
       parsedRecord.withId(id.toString());
     }
-    return parsedRecord
-      .withContent(row.getValue(CONTENT));
+    Object content = row.getValue(CONTENT);
+    if (Objects.nonNull(content)) {
+      parsedRecord.withContent(normalize(content).getMap());
+    }
+    return parsedRecord;
   }
   
   /**
@@ -132,13 +142,7 @@ public final class ParsedRecordDaoUtil {
    * @return parsed record normalized content
    */
   public static String normalizeContent(ParsedRecord parsedRecord) {
-    String content;
-    if (parsedRecord.getContent() instanceof String) {
-      content = (String) parsedRecord.getContent();
-    } else {
-      content = JsonObject.mapFrom(parsedRecord.getContent()).encode();
-    }
-    return content;
+    return normalize(parsedRecord.getContent()).encode();
   }
 
   /**
@@ -149,13 +153,8 @@ public final class ParsedRecordDaoUtil {
    */
   public static String getLeaderStatus(ParsedRecord parsedRecord) {
     if (Objects.nonNull(parsedRecord)) {
-      JsonObject content;
-      if (parsedRecord.getContent() instanceof String) {
-        content = new JsonObject((String) parsedRecord.getContent());
-      } else {
-        content = JsonObject.mapFrom(parsedRecord.getContent());
-      }
-      String leader = content.getString(LEADER);
+      JsonObject marcJson = normalize(parsedRecord.getContent());
+      String leader = marcJson.getString(LEADER);
       if (Objects.nonNull(leader) && leader.length() > 5) {
         return String.valueOf(leader.charAt(5));
       }
@@ -174,6 +173,12 @@ public final class ParsedRecordDaoUtil {
       return RecordType.valueOf(record.getRecordType().toString());
     }
     return RecordType.MARC;
+  }
+
+  private static JsonObject normalize(Object content) {
+    return (content instanceof String)
+      ? new JsonObject((String) content)
+      : JsonObject.mapFrom(content);
   }
 
 }

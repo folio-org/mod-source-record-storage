@@ -20,7 +20,6 @@ import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -367,7 +366,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
-    assertThat((String) updatedParsedRecord.getContent(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
 
     RestAssured.given()
@@ -468,7 +467,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
-    assertThat(ParsedRecordDaoUtil.normalizeContent(updatedParsedRecord), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
   }
 

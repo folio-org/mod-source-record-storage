@@ -179,7 +179,7 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
           context.assertEquals(State.OLD, existingRecord.getState());
           context.assertEquals(0, existingRecord.getGeneration());
           context.assertEquals(parsedRecord.getId(), existingRecord.getParsedRecord().getId());
-          context.assertEquals((String) parsedRecord.getContent(), (String) existingRecord.getParsedRecord().getContent());
+          context.assertEquals(parsedRecord.getContent(), existingRecord.getParsedRecord().getContent());
           context.assertEquals(record.getSnapshotId(), existingRecord.getSnapshotId());
           async.complete();
         });

@@ -154,12 +154,12 @@ public class SourceStorageSourceRecordsClient {
         }
         if (updatedAfter!= null) {
             queryParams.append("updatedAfter=");
-            queryParams.append(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").format(ZonedDateTime.ofInstant(updatedAfter.toInstant(), ZoneId.systemDefault())));
+            queryParams.append(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ZonedDateTime.ofInstant(updatedAfter.toInstant(), ZoneId.systemDefault())));
             queryParams.append("&");
         }
         if (updatedBefore!= null) {
             queryParams.append("updatedBefore=");
-            queryParams.append(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").format(ZonedDateTime.ofInstant(updatedBefore.toInstant(), ZoneId.systemDefault())));
+            queryParams.append(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ZonedDateTime.ofInstant(updatedBefore.toInstant(), ZoneId.systemDefault())));
             queryParams.append("&");
         }
         if (orderBy!= null) {

@@ -5,6 +5,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.rest.jaxrs.model.Record;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
@@ -40,8 +41,7 @@ public final class AdditionalFieldsUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';
 
-  private AdditionalFieldsUtil() {
-  }
+  private AdditionalFieldsUtil() { }
 
   /**
    * Adds field if it does not exist and a subfield with a value to that field
@@ -157,9 +157,9 @@ public final class AdditionalFieldsUtil {
   /**
    * Read value from controlled field in marc record
    *
-   * @param record - marc record
-   * @param tag    - tag to read
-   * @return - value from field
+   * @param record marc record
+   * @param tag    tag to read
+   * @return value from field
    */
   public static String getValueFromControlledField(Record record, String tag) {
     try {
@@ -254,7 +254,7 @@ public final class AdditionalFieldsUtil {
   /**
    * Move original marc hrId to 035 tag and assign created by inventory hrId into 001 tag
    *
-   * @param recordInstancePair - pair of related instance and record
+   * @param recordInstancePair pair of related instance and record
    */
   public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair) {
     String hrId = recordInstancePair.getValue().getString(HR_ID_FIELD);
@@ -269,7 +269,8 @@ public final class AdditionalFieldsUtil {
   }
 
   private static MarcReader buildMarcReader(Record record) {
-    return new SortedMarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes(StandardCharsets.UTF_8)));
+    String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+    return new SortedMarcJsonReader(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
   }
 
   private static VariableField getSingleFieldByIndicators(List<VariableField> list, char ind1, char ind2) {

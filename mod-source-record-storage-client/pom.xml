@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>3.3.0-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -105,31 +105,6 @@
                 <systemProperty>
                   <key>raml_files</key>
                   <value>${ramlfiles_path}</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>generate_client</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>client.generate</key>
-                  <value>true</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>json.type</key>
-                  <value>postgres</value>
                 </systemProperty>
               </systemProperties>
             </configuration>

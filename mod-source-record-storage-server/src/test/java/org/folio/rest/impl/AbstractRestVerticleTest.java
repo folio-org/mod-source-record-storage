@@ -1,8 +1,25 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+
+import java.util.Collections;
+import java.util.UUID;
+
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+
+import org.folio.dao.PostgresClientFactory;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
@@ -11,28 +28,23 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import java.util.Collections;
-import java.util.UUID;
-import org.folio.rest.RestVerticle;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
 
 public abstract class AbstractRestVerticleTest {
 
   static final String TENANT_ID = "diku";
+
+  static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
+  static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
+  static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/source-records";
+
+  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
+  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
+  static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
+
   static Vertx vertx;
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
-  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
-  public static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
+
   private static String useExternalDatabase;
 
   @Rule
@@ -80,10 +92,9 @@ public abstract class AbstractRestVerticleTest {
       try {
         tenantClient.postTenant(new TenantAttributes()
           .withModuleTo("1.0")
-          .withParameters(Collections.singletonList(
-            new Parameter()
-              .withKey("loadSample")
-              .withValue("true"))), res2 -> {
+          .withParameters(Collections.singletonList(new Parameter()
+            .withKey(LOAD_SAMPLE_PARAMETER)
+            .withValue("true"))), res2 -> {
           async.complete();
         });
       } catch (Exception e) {
@@ -109,6 +120,7 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
+    PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopEmbeddedPostgres();
@@ -116,8 +128,5 @@ public abstract class AbstractRestVerticleTest {
       async.complete();
     }));
   }
-
-  @Before
-  public abstract void clearTables(TestContext context);
 
 }

@@ -1,0 +1,22 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-06-12--14-00-migrate-raw-records" author="WilliamWelling">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+      <tableExists tableName="raw_records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      INSERT INTO ${database.defaultSchemaName}.raw_records_lb
+      SELECT
+        r.id AS id,
+        rr.jsonb->>'content' AS content
+      FROM ${database.defaultSchemaName}.records r
+      INNER JOIN ${database.defaultSchemaName}.raw_records rr ON (r.jsonb->>'rawRecordId')::uuid = rr.id;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

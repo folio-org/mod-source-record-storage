@@ -1,0 +1,179 @@
+#%RAML 1.0
+
+title: Source Record Storage Source Record API
+version: v3.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Source Record API
+    content: API for fetching source records
+
+uses:
+  ramltojaxrs: raml-storage/raml-util/library/ramltojaxrs.raml
+
+types:
+  sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
+  sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  language: !include raml-storage/raml-util/traits/language.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+
+resourceTypes:
+  collection: !include raml-storage/raml-util/rtypes/collection.raml
+  collection-item: !include raml-storage/raml-util/rtypes/item-collection.raml
+
+/source-storage/source-records:
+  displayName: Source Records
+  description: API for getting Source Records
+  get:
+    description: Get a list of Source Records
+    is: [
+      pageable,
+      validate
+    ]
+    queryParameters:
+      recordId:
+        description: Filter by Record Id
+        type: string
+        example: "876270bc-fbb4-409d-b8b0-3f59b1cb61f2"
+        required: false
+      snapshotId:
+        description: Filter by Snapshot Id
+        type: string
+        example: "7a8fbd77-5b2a-496c-93e7-cd04478f4fcc"
+        required: false
+      instanceId:
+        description: Filter by Instance Id
+        type: string
+        example: "8b07da70-8ea7-4acd-83a0-44d83979c73b"
+        required: false
+      recordType:
+        description: Filter by Record Type
+        type: string
+        example: "MARC"
+        required: false
+      suppressFromDiscovery:
+        description: Filter by suppress from discovery
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: true
+        required: false
+      deleted:
+        description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: true
+        default: false
+      leaderRecordStatus:
+        description: Filter by MARC leader 05 status
+        type: string
+        example: "n"
+        required: false
+        "pattern": "^[a|c|d|n|p|o|s|x]{1}$"
+      updatedAfter:
+        description: Start date to filter after, inclusive
+        type: datetime
+        required: false
+      updatedBefore:
+        description: End date to filter before, inclusive
+        type: datetime
+        required: false
+      orderBy:
+        description: Sort records
+        type: string[]
+        example: ["order,ASC"]
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: sourceRecordCollection
+      400:
+        description: Bad request
+        body:
+          text/plain:
+            example: "Bad request"
+      500:
+        description: Internal server error
+        body:
+          text/plain:
+            example: "Internal server error"
+  post:
+    description: Get a list of Source Records from list of ids
+    is: [
+      validate
+    ]
+    body:
+      application/json:
+        description: List of Instance or Record ids
+        type: string[]
+    queryParameters:
+      idType:
+        description: Type of id for Record lookup
+        type: string
+        example: INSTANCE
+        required: false
+        default: RECORD
+      deleted:
+        description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: true
+        default: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: sourceRecordCollection
+      400:
+        description: Bad request
+        body:
+          text/plain:
+            example: "Bad request"
+      500:
+        description: Internal server error
+        body:
+          text/plain:
+            example: "Internal server error"
+  /{id}:
+    displayName: Source Record
+    description: API for getting Source Records via different idTypes
+    get:
+      description: selection condition of sourceRecords by which id will be searched record
+      queryParameters:
+        idType:
+          description: Type of id for record lookup
+          type: string
+          example: INSTANCE
+          required: false
+          default: RECORD
+      responses:
+        200:
+          body:
+            application/json:
+              type: sourceRecord
+        400:
+          description: Bad request
+          body:
+            text/plain:
+              example: "Bad request"
+        404:
+          description: Not found
+          body:
+            text/plain:
+              example: "Not found"
+        500:
+          description: Internal server error
+          body:
+            text/plain:
+              example: "Internal server error"

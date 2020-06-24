@@ -1,27 +1,32 @@
 package org.folio.services;
 
-import io.vertx.core.Future;
+import java.util.Collection;
+import java.util.Optional;
+
 import org.folio.dao.SnapshotDao;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
+import org.jooq.Condition;
+import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import javax.ws.rs.NotFoundException;
-import java.util.Date;
-import java.util.Optional;
+import io.vertx.core.Future;
 
-import static java.lang.String.format;
-
-@Component
+@Service
 public class SnapshotServiceImpl implements SnapshotService {
 
+  private final SnapshotDao snapshotDao;
+
   @Autowired
-  private SnapshotDao snapshotDao;
+  public SnapshotServiceImpl(final SnapshotDao snapshotDao) {
+    this.snapshotDao = snapshotDao;
+  }
 
   @Override
-  public Future<SnapshotCollection> getSnapshots(String query, int offset, int limit, String tenantId) {
-    return snapshotDao.getSnapshots(query, offset, limit, tenantId);
+  public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId) {
+    return snapshotDao.getSnapshots(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override
@@ -31,17 +36,12 @@ public class SnapshotServiceImpl implements SnapshotService {
 
   @Override
   public Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId) {
-    return snapshotDao.saveSnapshot(setProcessingStartedDate(snapshot), tenantId);
+    return snapshotDao.saveSnapshot(snapshot, tenantId);
   }
 
   @Override
   public Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId) {
-    return getSnapshotById(snapshot.getJobExecutionId(), tenantId)
-      .compose(optionalSnapshot -> optionalSnapshot
-        .map(s -> snapshotDao.updateSnapshot(setProcessingStartedDate(snapshot), tenantId))
-        .orElse(Future.failedFuture(new NotFoundException(
-          format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()))))
-      );
+    return snapshotDao.updateSnapshot(snapshot, tenantId);
   }
 
   @Override
@@ -49,16 +49,4 @@ public class SnapshotServiceImpl implements SnapshotService {
     return snapshotDao.deleteSnapshot(id, tenantId);
   }
 
-  /**
-   * Sets processing start date if snapshot status is PARSING_IN_PROGRESS
-   *
-   * @param snapshot snapshot
-   * @return snapshot with populated processingStartedDate field if snapshot status is PARSING_IN_PROGRESS
-   */
-  private Snapshot setProcessingStartedDate(Snapshot snapshot) {
-    if (Snapshot.Status.PARSING_IN_PROGRESS.equals(snapshot.getStatus())) {
-      snapshot.setProcessingStartedDate(new Date());
-    }
-    return snapshot;
-  }
 }

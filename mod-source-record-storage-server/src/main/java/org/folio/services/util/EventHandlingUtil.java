@@ -13,8 +13,7 @@ import org.folio.util.pubsub.PubSubClientUtils;
 
 public final class EventHandlingUtil {
 
-  private EventHandlingUtil() {
-  }
+  private EventHandlingUtil() { }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EventHandlingUtil.class);
 

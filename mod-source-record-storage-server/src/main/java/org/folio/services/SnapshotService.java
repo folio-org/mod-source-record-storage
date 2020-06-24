@@ -1,26 +1,30 @@
 package org.folio.services;
 
-import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SnapshotCollection;
-
+import java.util.Collection;
 import java.util.Optional;
 
-/**
- * Snapshot Service
- */
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SnapshotCollection;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+
+import io.vertx.core.Future;
+
 public interface SnapshotService {
 
   /**
-   * Searches for {@link Snapshot}
-   *
-   * @param query    query from URL
-   * @param offset   starting index in a list of results
-   * @param limit    limit of records for pagination
-   * @param tenantId tenant id
+   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField}
+   * with offset and limit
+   * 
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
    * @return future with {@link SnapshotCollection}
    */
-  Future<SnapshotCollection> getSnapshots(String query, int offset, int limit, String tenantId);
+  Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Snapshot} by id
@@ -57,4 +61,5 @@ public interface SnapshotService {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteSnapshot(String id, String tenantId);
+
 }

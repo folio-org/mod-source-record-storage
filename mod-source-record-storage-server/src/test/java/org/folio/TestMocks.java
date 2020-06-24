@@ -1,9 +1,11 @@
 package org.folio;
 
 import static java.lang.String.format;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,6 +19,8 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.tools.utils.ObjectMapperTool;
+
+import io.vertx.core.json.JsonObject;
 
 public class TestMocks {
 
@@ -110,14 +114,7 @@ public class TestMocks {
   }
 
   private static ParsedRecord toParsedRecord(SourceRecord sourceRecord) {
-    ParsedRecord parsedRecord = new ParsedRecord()
-      .withId(sourceRecord.getParsedRecord().getId())
-      .withFormattedContent(sourceRecord.getParsedRecord().getFormattedContent());
-    Optional<String> content = getContent(sourceRecord);
-    if (content.isPresent()) {
-      parsedRecord.withContent(content.get());
-    }
-    return parsedRecord;
+    return sourceRecord.getParsedRecord();
   }
 
   private static List<SourceRecord> readSourceRecords() {
@@ -132,7 +129,8 @@ public class TestMocks {
 
   private static Optional<SourceRecord> readSourceRecord(File file) {
     try {
-      return Optional.of(ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class));
+      SourceRecord sourceRecord = ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class);
+      return Optional.of(sourceRecord.withParsedRecord(normalizeContent(sourceRecord.getParsedRecord())));
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -209,10 +207,7 @@ public class TestMocks {
     if (file.exists()) {
       try {
         ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);
-        Optional<String> content = getContent(sourceRecord);
-        if (content.isPresent()) {
-          errorRecord.withContent(content.get());
-        }
+        errorRecord.withContent(sourceRecord.getParsedRecord().getContent());
         return Optional.of(errorRecord);
       } catch (IOException e) {
         e.printStackTrace();
@@ -221,13 +216,11 @@ public class TestMocks {
     return Optional.empty();
   }
 
-  private static Optional<String> getContent(SourceRecord sourceRecord) {
-    try {
-      return Optional.of(ObjectMapperTool.getDefaultMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent()));
-    } catch (IOException e) {
-      e.printStackTrace();
+  public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
+    if (Objects.nonNull(parsedRecord.getContent()) && parsedRecord.getContent() instanceof LinkedHashMap) {
+      parsedRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
     }
-    return Optional.empty();
+    return parsedRecord;
   }
 
 }

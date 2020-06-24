@@ -22,7 +22,7 @@
   "provides": [
     {
       "id": "source-storage-snapshots",
-      "version": "1.0",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -73,7 +73,7 @@
     },
     {
       "id": "source-storage-records",
-      "version": "1.0",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -124,43 +124,49 @@
           "methods": [
             "GET"
           ],
-          "pathPattern": "/source-storage/sourceRecords",
-          "permissionsRequired": [
-            "source-storage.sourceRecords.get"
-          ]
-        },
-        {
-          "methods": [
-            "GET"
-          ],
-          "pathPattern": "/source-storage/sourceRecords/{id}",
-          "permissionsRequired": [
-            "source-storage.sourceRecords.get"
-          ]
-        },
-        {
-          "methods": [
-            "GET"
-          ],
-          "pathPattern": "/source-storage/formattedRecords/{id}",
+          "pathPattern": "/source-storage/records/{id}/formatted",
           "permissionsRequired": [
             "source-storage.records.get"
           ]
         },
         {
           "methods": [
-            "DELETE"
+            "PUT"
           ],
-          "pathPattern": "/source-storage/snapshots/{jobExecutionId}/records",
+          "pathPattern": "/source-storage/records/{id}/suppress-from-discovery",
           "permissionsRequired": [
-            "source-storage.snapshots.records.delete"
+            "source-storage.records.update"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "source-storage-source-records",
+      "version": "2.0",
+      "handlers": [
+        {
+          "methods": [
+            "GET", "POST"
+          ],
+          "pathPattern": "/source-storage/source-records",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/source-records/{id}",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
           ]
         }
       ]
     },
     {
       "id": "source-storage-test-records",
-      "version": "1.0",
+      "version": "2.0",
       "handlers": [
         {
           "methods": [
@@ -169,21 +175,6 @@
           "pathPattern": "/source-storage/populate-test-marc-records",
           "permissionsRequired": [
             "source-storage.populate.records"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "source-storage-suppress-discovery",
-      "version": "1.0",
-      "handlers": [
-        {
-          "methods": [
-            "PUT"
-          ],
-          "pathPattern": "/source-storage/record/suppressFromDiscovery",
-          "permissionsRequired": [
-            "source-storage.record.update"
           ]
         }
       ]
@@ -264,6 +255,11 @@
   ],
   "permissionSets": [
     {
+      "permissionName": "source-storage.populate.records",
+      "displayName": "Source Storage - populate storage with test records",
+      "description": "Populate storage with test records"
+    },
+    {
       "permissionName": "source-storage.snapshots.get",
       "displayName": "Source Storage - get snapshot(s)",
       "description": "Get Snapshot(s)"
@@ -280,13 +276,8 @@
     },
     {
       "permissionName": "source-storage.snapshots.delete",
-      "displayName": "Source Storage - delete snapshot",
-      "description": "Delete Snapshot"
-    },
-    {
-      "permissionName": "source-storage.snapshots.records.delete",
-      "displayName": "Source Storage - delete records and snapshot",
-      "description": "Delete Records and Snapshot"
+      "displayName": "Source Storage - delete snapshot and records",
+      "description": "Delete Snapshot and all related Records"
     },
     {
       "permissionName": "source-storage.records.get",
@@ -319,27 +310,21 @@
       "description": "Get Results"
     },
     {
-      "permissionName": "source-storage.populate.records",
-      "displayName": "Source Storage - populate storage with test records",
-      "description": "Populate storage with test records"
-    },
-    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
       "subPermissions": [
+        "source-storage.populate.records",
         "source-storage.snapshots.get",
         "source-storage.snapshots.post",
         "source-storage.snapshots.put",
         "source-storage.snapshots.delete",
-        "source-storage.snapshots.records.delete",
         "source-storage.records.get",
         "source-storage.records.post",
         "source-storage.records.put",
         "source-storage.records.delete",
-        "source-storage.sourceRecords.get",
-        "source-storage.populate.records",
-        "source-storage.record.update"
+        "source-storage.record.update",
+        "source-storage.sourceRecords.get"
       ],
       "visible": false
     }

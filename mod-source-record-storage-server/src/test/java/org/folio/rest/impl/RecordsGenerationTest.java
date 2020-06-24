@@ -1,44 +1,39 @@
 package org.folio.rest.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
-
-  private static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
-  private static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
-  private static final String SOURCE_STORAGE_FORMATTED_RECORDS_PATH = "/source-storage/formattedRecords";
-  private static final String SNAPSHOTS_TABLE_NAME = "snapshots";
-  private static final String RECORDS_TABLE_NAME = "records";
-  private static final String RAW_RECORDS_TABLE_NAME = "raw_records";
-  private static final String ERROR_RECORDS_TABLE_NAME = "error_records";
-  private static final String MARC_RECORDS_TABLE_NAME = "marc_records";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -68,23 +63,14 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
 
-  @Override
-  public void clearTables(TestContext context) {
+  @Before
+  public void setUp(TestContext context) {
     Async async = context.async();
-    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(RECORDS_TABLE_NAME, new Criterion(), event -> {
-      pgClient.delete(RAW_RECORDS_TABLE_NAME, new Criterion(), event1 -> {
-        pgClient.delete(ERROR_RECORDS_TABLE_NAME, new Criterion(), event2 -> {
-          pgClient.delete(MARC_RECORDS_TABLE_NAME, new Criterion(), event3 -> {
-            pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event4 -> {
-              if (event4.failed()) {
-                context.fail(event4.cause());
-              }
-              async.complete();
-            });
-          });
-        });
-      });
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      async.complete();
     });
   }
 
@@ -380,7 +366,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + UUID.randomUUID().toString())
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "/formatted")
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -390,7 +376,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "?identifier=INSTANCE")
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "/formatted?idType=INSTANCE")
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -410,7 +396,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async = testContext.async();
     String srsId = UUID.randomUUID().toString();
 
-    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+    ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
           .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)))))));
@@ -443,7 +429,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     Record getBySRSIdRecord = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + srsId)
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + srsId + "/formatted")
       .body().as(Record.class);
 
     Assert.assertThat(getByIdRecord.getId(), is(getBySRSIdRecord.getId()));
@@ -469,7 +455,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     String srsId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
 
-    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+    ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
           .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
@@ -498,7 +484,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_FORMATTED_RECORDS_PATH + "/" + instanceId + "?identifier=INSTANCE")
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + instanceId + "/formatted?idType=INSTANCE")
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("parsedRecord.content", notNullValue());

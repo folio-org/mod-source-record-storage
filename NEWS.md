@@ -7,6 +7,7 @@
 * [MODSOURCE-155](https://issues.folio.org/browse/MODSOURCE-155) MARC leader 05 status on record and query parameter to filter by
 * [MODSOURCE-157](https://issues.folio.org/browse/MODSOURCE-157) Replace get source records filter by deleted with filter by record state
 * [MODSOURCE-156](https://issues.folio.org/browse/MODSOURCE-156) Get source records from list of ids
+* Remove sample data
 
 ### Snapshots API
  | METHOD |             URL                                      | DESCRIPTION                                             |

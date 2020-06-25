@@ -1,0 +1,18 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-06-25--12-00-delete-sample-data" author="KaterynaSenchenko">
+    <delete tableName="records_lb" schemaName="${database.defaultSchemaName}">
+      <where>id IN ('4c0ff739-3f4d-4670-a693-84dd48e31c53',
+        '8452daf9-c130-4955-99ce-1c397a218900', 'ec53a386-9616-428b-92a9-e1f07756ea1f',
+        '0f0fe962-d502-4a4f-9e74-7732bec94ee8', '009286d6-f89e-4881-9562-11158f02664a',
+        '8f462542-387c-4f06-a01b-50829c7c7b13', 'e567b8e2-a45b-45f1-a85a-6b6312bdf4d8',
+        'a2d6893e-c6b3-4c95-bec5-8b997aa1776d', '8fb19e31-0920-49d7-9438-b573c292b1a6',
+        '7293f287-bb51-41f5-805d-00ff18a1f791', 'be1b25ae-4a9d-4077-93e6-7f8e59efd609')</where>
+    </delete>
+  </changeSet>
+
+</databaseChangeLog>

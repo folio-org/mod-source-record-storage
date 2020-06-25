@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>4.0.0-SNAPSHOT</version>
+    <version>4.1.0-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -368,7 +368,7 @@
                 <inputSchema>public</inputSchema>
                 <outputSchemaToDefault>true</outputSchemaToDefault>
                 <unsignedTypes>false</unsignedTypes>
-                <forcedTypes></forcedTypes>
+                <forcedTypes />
               </database>
               <generate>
                 <daos>true</daos>

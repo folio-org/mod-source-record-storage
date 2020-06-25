@@ -33,5 +33,6 @@
   <include file="scripts/v-0.0.2/2020-06-13--16-00-drop-snapshots.xml" relativeToChangelogFile="true"/>
 
   <include file="scripts/v-0.0.2/2020-06-13--17-00-drop-unused-functions.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2020-06-25--12-00-delete-sample-data.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

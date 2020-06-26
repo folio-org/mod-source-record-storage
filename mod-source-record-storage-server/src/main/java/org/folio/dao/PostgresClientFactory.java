@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
 
@@ -33,6 +34,7 @@ public class PostgresClientFactory {
   private static final String DATABASE = "database";
   private static final String PASSWORD = "password";
   private static final String USERNAME = "username";
+  private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
 
@@ -54,7 +56,7 @@ public class PostgresClientFactory {
 
   /**
    * Get {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param tenantId tenant id
    * @return reactive query executor
    */
@@ -64,7 +66,7 @@ public class PostgresClientFactory {
 
   /**
    * Get {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param vertx    current Vertx
    * @param tenantId tenant id
    * @return reactive query executor
@@ -93,7 +95,7 @@ public class PostgresClientFactory {
   }
 
   // NOTE: This should be able to get database configuration without PostgresClient.
-  // Additionally, with knowledge of tenant at this time, we are not confined to 
+  // Additionally, with knowledge of tenant at this time, we are not confined to
   // schema isolation and can provide database isolation.
   private static PgConnectOptions getConnectOptions(Vertx vertx, String tenantId) {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenantId);
@@ -109,6 +111,8 @@ public class PostgresClientFactory {
       .setDatabase(postgreSQLClientConfig.getString(DATABASE))
       .setUser(postgreSQLClientConfig.getString(USERNAME))
       .setPassword(postgreSQLClientConfig.getString(PASSWORD))
+      .setIdleTimeout(postgreSQLClientConfig.getInteger(IDLE_TIMEOUT, 60000))
+      .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
       // using RMB convention driven tenant to schema name
       .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
   }

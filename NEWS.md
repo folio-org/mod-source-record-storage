@@ -1,3 +1,8 @@
+## 2020-07-01 v4.0.1
+* [MODSOURCE-160](https://issues.folio.org/browse/MODSOURCE-160) Set idle timeout for Postgres connection
+* [MODSOURCE-164](https://issues.folio.org/browse/MODSOURCE-164) No longer downgrade jackson from 2.10.2 to 2.10.0.pr1
+* [MODSOURCE-163](https://issues.folio.org/browse/MODSOURCE-163) Use UTC instead of system default
+
 ## 2020-06-25 v4.0.0
 * [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor
 * [MODSOURCE-143](https://issues.folio.org/browse/MODSOURCE-143) Refactor using jOOQ

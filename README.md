@@ -94,7 +94,7 @@ curl -w '\n' -X POST -D -   \
 
 ## Database schemas
 
-The mod-source-record-storage module uses relational approach and Liquibase to define database schemas. It contains a non-tenant (`source_record_storage_config`) database schema for storing module config data not related to tenants. This module schema is created at the time of module initialization.
+The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.
 
 Database schemas are described in Liquibase scripts using XML syntax.
 Every script file should contain only one "databaseChangeLog" that consists of at least one "changeset" describing the operations on tables. 
@@ -111,15 +111,15 @@ If needed, database schema name can be obtained using Liquibase context property
 Liquibase scripts are stored in `/resources/liquibase/` directory.
 Scripts files for module and tenant schemas are stored separately in `/resources/liquibase/module/scripts` and `/resources/liquibase/tenant/scripts` respectively.
 \
-To simplify the tracking of schemas changes, the module versioning is displayed in the directories structure:
+To simplify the tracking of schemas changes, the tenant versioning is displayed in the directories structure:
 ```
 /resources/liquibase
-    /module/scripts
+    /tenant/scripts
               /v-1.0.0
-                  /2019-08-14--14-00-create-module-table.xml
+                  /2019-08-14--14-00-create-tenant-table.xml
               /v-2.0.0
                   /2019-09-03--11-00-change-id-column-type.xml
-    /module/scripts
+    /tenant/scripts
               /v-1.0.0
                   /2019-09-06--15-00-create-record-field-table.xml
 ```

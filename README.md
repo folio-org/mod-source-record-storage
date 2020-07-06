@@ -166,8 +166,16 @@ Example with sending request to the mod-source-record-storage for creating new R
     });
 ```
 
-## Sample data for module testing
-To install the sample data during module initialization, you need to add a parameter to the TenantAttributes with the key "loadSample" and the value "true".
+## Load sample data for module testing
+To load sample data after module initialization, you need to POST [testMarcRecordsCollection](https://github.com/folio-org/data-import-raml-storage/blob/master/schemas/mod-source-record-storage/testMarcRecordsCollection.json) DTO to `/source-storage/populate-test-marc-records`.
+
+```
+{
+  "rawRecords": [
+    ...
+  ]
+}
+```
  
 ## Issue tracker
 

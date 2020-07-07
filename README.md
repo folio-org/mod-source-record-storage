@@ -134,7 +134,7 @@ The database has recently been redesigned to use standard relational table desig
 
 During the redesign we opted to use jOOQ for type safe fluent SQL building. The jOOQ type safe tables and resources are generated during the `generate-source` Maven lifecycle using [vertx-jooq](https://github.com/jklingsporn/vertx-jooq) reactive Vert.x generator. The code is generated from the database metadata. For this to occur during build, `liquibase-maven-plugin` is used to consume the Liquibase changelog and provision a temporary database started using `embedded-postgresql-maven-plugin`.
 
-> jOOQ affords plain SQL strings, but it is not recommended. Using the type safe Java abstraction including variable binding, eliminates SQL injection vulnerabilities.
+> jOOQ affords plain SQL strings, but it is not recommended. Use of type safe Java abstraction including variable binding eliminates SQL injection vulnerabilities.
 
 ## REST Client for mod-source-record-storage
 

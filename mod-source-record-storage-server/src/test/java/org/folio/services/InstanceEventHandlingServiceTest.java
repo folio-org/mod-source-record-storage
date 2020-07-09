@@ -59,7 +59,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     WireMockConfiguration.wireMockConfig()
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
-  
+
   private RecordDao recordDao;
 
   private InstanceEventHandlingService eventHandlingService;
@@ -95,7 +95,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     recordDao = new RecordDaoImpl(postgresClientFactory);
     eventHandlingService = new InstanceEventHandlingService(recordDao);
     Async async = context.async();
-    
+
     Snapshot snapshot1 = new Snapshot()
       .withJobExecutionId(snapshotId1)
       .withProcessingStartedDate(new Date())
@@ -117,7 +117,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
       .withRecordType(MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      
+
       .withExternalIdsHolder(null);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
@@ -170,7 +170,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -213,7 +213,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
 
         HashMap<String, String> payloadContextForUpdate = new HashMap<>();
         payloadContextForUpdate.put(INSTANCE.value(), instance.encode());
-        payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));  
+        payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
 
         DataImportEventPayload dataImportEventPayloadForUpdate = new DataImportEventPayload()
           .withContext(payloadContextForUpdate);
@@ -232,7 +232,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
           if (result.failed()) {
             context.fail(result.cause());
           }
-          recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(recordAr -> {
+          recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
               context.fail(recordAr.cause());
             }

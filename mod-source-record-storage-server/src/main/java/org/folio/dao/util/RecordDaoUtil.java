@@ -53,7 +53,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} for provided external id and {@link ExternalIdType}
-   * 
+   *
    * @param externalId     external id
    * @param externalIdType external id type
    * @return condition
@@ -63,8 +63,8 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} where in external list ids and {@link ExternalIdType} 
-   * 
+   * Get {@link Condition} where in external list ids and {@link ExternalIdType}
+   *
    * @param externalIds    list of external id
    * @param externalIdType external id type
    * @return condition
@@ -76,7 +76,7 @@ public final class RecordDaoUtil {
   /**
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param condition     condition
    * @param orderFields   fields to order by
@@ -97,7 +97,7 @@ public final class RecordDaoUtil {
 
   /**
    * Count query by {@link Condition}
-   * 
+   *
    * @param queryExecutor query executor
    * @param condition     condition
    * @return future with count
@@ -126,7 +126,7 @@ public final class RecordDaoUtil {
 
  /**
    * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional Record
@@ -139,7 +139,7 @@ public final class RecordDaoUtil {
 
   /**
    * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param record        record
    * @return future with updated Record
@@ -156,7 +156,7 @@ public final class RecordDaoUtil {
 
   /**
    * Updates {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param record        record to update
    * @return future of updated Record
@@ -178,13 +178,13 @@ public final class RecordDaoUtil {
 
   /**
    * Convert {@link Record} to {@link SourceRecord}
-   * 
+   *
    * @param record Record
    * @return SourceRecord
    */
   public static SourceRecord toSourceRecord(Record record) {
     SourceRecord sourceRecord = new SourceRecord()
-      .withRecordId(record.getId())
+      .withRecordId(record.getMatchedId())
       .withSnapshotId(record.getSnapshotId());
     if (Objects.nonNull(record.getRecordType())) {
       sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
@@ -203,7 +203,7 @@ public final class RecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link Record}
-   * 
+   *
    * @param row query result row
    * @return Record
    */
@@ -260,7 +260,7 @@ public final class RecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link Optional} {@link Record}
-   * 
+   *
    * @param row query result row
    * @return optional Record
    */
@@ -270,7 +270,7 @@ public final class RecordDaoUtil {
 
   /**
    * Convert {@link Record} to database record {@link RecordsLbRecord}
-   * 
+   *
    * @param record record
    * @return RecordsLbRecord
    */
@@ -319,20 +319,20 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by record id
-   * 
+   *
    * @param recordId record id to equal
    * @return condition
    */
   public static Condition filterRecordByRecordId(String recordId) {
     if (StringUtils.isNotEmpty(recordId)) {
-      return RECORDS_LB.ID.eq(toUUID(recordId));
+      return RECORDS_LB.MATCHED_ID.eq(toUUID(recordId));
     }
     return DSL.noCondition();
   }
 
   /**
    * Get {@link Condition} to filter by instance id
-   * 
+   *
    * @param instanceId instance id to equal
    * @return condition
    */
@@ -345,7 +345,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by snapshotId id
-   * 
+   *
    * @param snapshotId snapshot id to equal
    * @return condition
    */
@@ -358,7 +358,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by type
-   * 
+   *
    * @param type type to equal
    * @return condition
    */
@@ -371,7 +371,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by state
-   * 
+   *
    * @param state state to equal
    * @return condition
    */
@@ -384,7 +384,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by suppressFromDiscovery
-   * 
+   *
    * @param suppressFromDiscovery suppressFromDiscovery to equal
    * @return condition
    */
@@ -397,7 +397,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by leader record status
-   * 
+   *
    * @param leaderRecordStatus leader record status to equal
    * @return condition
    */
@@ -410,7 +410,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by range of updated date
-   * 
+   *
    * @param updatedAfter  updated after to be greater than or equal
    * @param updatedBefore updated before to be less than or equal
    * @return condition
@@ -428,7 +428,7 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by state ACTUAL or DELETED or leader record status d, s, or x
-   * 
+   *
    * @param deleted deleted flag
    * @return condition
    */
@@ -445,8 +445,8 @@ public final class RecordDaoUtil {
 
   /**
    * Get {@link Condition} to filter by not snapshot id
-   * 
-   * @param notSnapshotId snapshot id to not equal
+   *
+   * @param snapshotId snapshot id to not equal
    * @return condition
    */
   public static Condition filterRecordByNotSnapshotId(String snapshotId) {
@@ -458,10 +458,10 @@ public final class RecordDaoUtil {
 
   /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
-   * 
+   *
    * Relies on strong convention between dto property name and database column name.
    * Property name being lower camel case and column name being lower snake case of the property name.
-   * 
+   *
    * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
    * @return list of sort fields
    */
@@ -482,7 +482,7 @@ public final class RecordDaoUtil {
 
   /**
    * Tries to convert string to {@link ExternalIdType}, else returns default RECORD
-   * 
+   *
    * @param externalIdType external id type as string
    * @return external id type
    */

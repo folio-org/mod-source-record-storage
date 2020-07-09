@@ -4,7 +4,7 @@ public enum  ExternalIdType {
 
   INSTANCE("instanceId"),
   // NOTE: not really external id but is default from dto
-  RECORD("id");
+  RECORD("matchedId");
 
   private String externalIdField;
 

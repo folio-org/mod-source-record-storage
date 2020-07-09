@@ -22,12 +22,8 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.Record.State;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jooq.Tables;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
@@ -61,9 +57,9 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
       .notifier(new Slf4jNotifier(true)));
 
   private RecordDao recordDao;
-  
+
   private RecordService recordService;
-  
+
   private UpdateRecordEventHandlingService updateRecordEventHandler;
 
   private OkapiConnectionParams params;
@@ -129,10 +125,10 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
   @Test
   public void shouldUpdateParsedRecord(TestContext context) {
     Async async = context.async();
-    
+
     ParsedRecord parsedRecord = record.getParsedRecord();
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
-      .withId(record.getId())
+      .withId(record.getMatchedId())
       .withParsedRecord(new ParsedRecord()
         .withContent(UPDATED_PARSED_RECORD_CONTENT))
       .withRecordType(ParsedRecordDto.RecordType.MARC);
@@ -157,15 +153,13 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getRecordById(record.getId(), TENANT_ID).onComplete(getNew -> {
+      recordService.getSourceRecordById(record.getMatchedId(), "RECORD", TENANT_ID).onComplete(getNew -> {
         if (getNew.failed()) {
           context.fail(getNew.cause());
         }
         context.assertTrue(getNew.result().isPresent());
-        Record updatedRecord = getNew.result().get();
-
-        context.assertEquals(State.ACTUAL, updatedRecord.getState());
-        context.assertEquals(1, updatedRecord.getGeneration());
+        SourceRecord updatedRecord = getNew.result().get();
+        
         context.assertNotEquals(parsedRecord.getId(), updatedRecord.getParsedRecord().getId());
         context.assertNotEquals(record.getSnapshotId(), updatedRecord.getSnapshotId());
 

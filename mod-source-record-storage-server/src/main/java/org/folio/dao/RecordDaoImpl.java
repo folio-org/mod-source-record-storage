@@ -98,11 +98,23 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id) {
-    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
-      .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+    Condition condition = RECORDS_LB.ID.eq(UUID.fromString(id));
     return getRecordByCondition(txQE, condition);
   }
+
+  @Override
+  public Future<Optional<Record>> getRecordByMatchedId(String matchedId, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByMatchedId(txQE, matchedId));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String id) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+    return getRecordByCondition(txQE, condition);
+  }
+
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {

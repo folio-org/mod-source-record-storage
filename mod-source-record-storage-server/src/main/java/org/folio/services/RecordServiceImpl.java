@@ -62,8 +62,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String matchedId, String tenantId) {
-    return recordDao.getRecordById(matchedId, tenantId);
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return recordDao.getRecordById(id, tenantId);
   }
 
   @Override
@@ -189,7 +189,7 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     String newRecordId = UUID.randomUUID().toString();
-    return recordDao.executeInTransaction(txQE -> recordDao.getRecordById(txQE, parsedRecordDto.getId())
+    return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)

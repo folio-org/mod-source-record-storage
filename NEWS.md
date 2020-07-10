@@ -1,3 +1,6 @@
+## 2020-07-10 v4.0.2
+* [MODSOURCE-168](https://issues.folio.org/browse/MODSOURCE-168) Set matchedId as recordId for SourceRecord
+
 ## 2020-07-01 v4.0.1
 * [MODSOURCE-160](https://issues.folio.org/browse/MODSOURCE-160) Set idle timeout for Postgres connection
 * [MODSOURCE-164](https://issues.folio.org/browse/MODSOURCE-164) No longer downgrade jackson from 2.10.2 to 2.10.0.pr1

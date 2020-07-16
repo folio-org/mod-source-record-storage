@@ -24,7 +24,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
-   * 
+   *
    * @param condition   query where condition
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
@@ -45,7 +45,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param txQE query execution
    * @param id   Record id
    * @return future with optional {@link Record}
@@ -53,8 +53,26 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id);
 
   /**
+   * Searches for {@link Record} by matchedId
+   *
+   * @param matchedId       Record matchedId
+   * @param tenantId tenant id
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByMatchedId(String matchedId, String tenantId);
+
+  /**
+   * Searches for {@link Record} by matchedId using {@link ReactiveClassicGenericQueryExecutor}
+   *
+   * @param txQE query execution
+   * @param matchedId   Record matchedId
+   * @return future with optional {@link Record}
+   */
+  Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
+
+  /**
    * Searches for {@link Record} by condition
-   * 
+   *
    * @param condition query where condition
    * @param tenantId  tenant id
    * @return future with optional {@link Record}
@@ -63,7 +81,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link Record} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param txQE      query executor
    * @param condition query where condition
    * @return future with optional {@link Record}
@@ -81,7 +99,7 @@ public interface RecordDao {
 
   /**
    * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param txQE   query executor
    * @param record Record to save
    * @return future with saved Record
@@ -148,7 +166,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
-   * 
+   *
    * @param condition   query where condition
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
@@ -160,7 +178,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
-   * 
+   *
    * @param ids            list of ids
    * @param externalIdType external id type on which source record will be searched
    * @param deleted        filter by state DELETED or leader record status d, s, or x
@@ -171,7 +189,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}
-   * 
+   *
    * @param condition query where condition
    * @param tenantId  tenant id
    * @return return future with optional {@link SourceRecord}
@@ -221,7 +239,7 @@ public interface RecordDao {
    * Creates new Record and updates status of the "old" one,
    * no data is overwritten as a result of update. Creates
    * new snapshot.
-   * 
+   *
    * @param txQE      query execution
    * @param newRecord new Record to create
    * @param oldRecord old Record that has to be marked as "old"
@@ -242,7 +260,7 @@ public interface RecordDao {
 
   /**
    * Execute action within transaction.
-   * 
+   *
    * @param <T>      future generic type
    * @param action   action
    * @param tenantId tenant id

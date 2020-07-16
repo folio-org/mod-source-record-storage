@@ -1,10 +1,9 @@
 package org.folio.services;
 
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
-
-import java.util.HashMap;
-import java.util.UUID;
-
+import io.vertx.core.Future;
+import io.vertx.core.json.Json;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -14,10 +13,10 @@ import org.folio.rest.util.OkapiConnectionParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.Future;
-import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import java.util.HashMap;
+import java.util.UUID;
+
+import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
 
 @Component
 public class UpdateRecordEventHandlingService implements EventHandlingService {
@@ -25,6 +24,7 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
   private static final Logger LOG = LoggerFactory.getLogger(UpdateRecordEventHandlingService.class);
 
   private static final String QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE = "QM_SRS_MARC_BIB_RECORD_UPDATED";
+  private static final String QM_ERROR_EVENT_TYPE = "QM_ERROR";
 
   private final RecordService recordService;
 
@@ -35,7 +35,7 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
 
   /**
    * Handles QM_RECORD_UPDATED event and sends QM_SRS_MARC_BIB_RECORD_UPDATED as a result of the update
-   *
+   * <p>
    * {@inheritDoc}
    */
   @Override
@@ -56,7 +56,8 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
         .compose(updatedRecord -> {
           eventPayload.put(Record.RecordType.MARC.value(), Json.encode(updatedRecord));
           return sendEventWithPayload(Json.encode(eventPayload), QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE, params);
-        });
+        })
+        .onFailure(f -> sendEventWithPayload(Json.encode(eventPayload), QM_ERROR_EVENT_TYPE, params));
     } catch (Exception e) {
       LOG.error("Failed to handle QM_RECORD_UPDATED event", e);
       return Future.failedFuture(e);

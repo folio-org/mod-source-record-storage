@@ -1,18 +1,10 @@
 package org.folio.services;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
@@ -37,11 +29,17 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 @Service
 public class RecordServiceImpl implements RecordService {

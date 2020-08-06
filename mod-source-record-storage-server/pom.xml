@@ -15,9 +15,16 @@
     <jooq.version>3.13.2</jooq.version>
     <vertx-jooq.version>5.1.1</vertx-jooq.version>
     <postgres.version>42.2.12</postgres.version>
+    <lombok.version>1.18.12</lombok.version>
   </properties>
 
   <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
@@ -132,6 +139,37 @@
       <artifactId>data-import-processing-core</artifactId>
       <version>2.1.1</version>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-kafka-client</artifactId>
+      <version>3.8.4</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>org.slf4j</artifactId>
+          <groupId>slf4j-api</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>org.slf4j</artifactId>
+          <groupId>slf4j-log4j12</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>log4j</artifactId>
+          <groupId>log4j</groupId>
+        </exclusion>
+        <exclusion>
+          <groupId>net.sf.jopt-simple</groupId>
+          <artifactId>jopt-simple</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.zookeeper</groupId>
+          <artifactId>zookeeper</artifactId>
+        </exclusion>
+        <exclusion>
+          <artifactId>jackson-module-scala_2.12</artifactId>
+          <groupId>com.fasterxml.jackson.module</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 
   <build>
@@ -151,6 +189,9 @@
           <source>1.8</source>
           <target>1.8</target>
           <encoding>UTF-8</encoding>
+          <annotationProcessors>
+            <annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
+          </annotationProcessors>
         </configuration>
       </plugin>
 

@@ -25,7 +25,7 @@ public class InstanceCreatedConsumersVerticle extends AbstractVerticle {
 
   @Autowired
   @Qualifier("InstanceCreatedKafkaHandler")
-  private AsyncRecordHandler<String, String> parsedMarcChunksKafkaHandler;
+  private AsyncRecordHandler<String, String> instanceCreatedKafkaHandler;
 
   @Autowired
   private KafkaConfig kafkaConfig;
@@ -52,7 +52,7 @@ public class InstanceCreatedConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedMarcChunksKafkaHandler).onComplete(sar -> {
+    consumerWrapper.start(instanceCreatedKafkaHandler).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {

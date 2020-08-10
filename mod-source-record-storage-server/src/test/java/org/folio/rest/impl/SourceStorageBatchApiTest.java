@@ -77,7 +77,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  
+
   private static Record record_1 = new Record()
     .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -116,11 +116,11 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(new PostgresClientFactory(vertx).getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
-      SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+      SnapshotDaoUtil.save(new PostgresClientFactory(vertx).getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());
         }
@@ -294,7 +294,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("errorMessages.size()", is(0))
       .body("totalRecords", is(10));
     async.complete();
-    
+
     async = testContext.async();
     List<Record> updated = original.stream()
       .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))

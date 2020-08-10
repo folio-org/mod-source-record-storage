@@ -43,7 +43,6 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
   //TODO: make it an ENUM value
   public static final String DI_PARSED_MARCS_CHUNK_STORED_EVENT_TYPE = "DI_PARSED_MARCS_CHUNK_STORED";
 
-  private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
   private RecordService recordService;
@@ -64,23 +63,25 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+    List<KafkaHeader> kafkaHeaders = record.headers();
+    OkapiConnectionParams okapiConnectionParams = fromKafkaHeaders(kafkaHeaders);
+    String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
+    String chunkNumber = okapiConnectionParams.getHeaders().get("chunkNumber");
+
     Event event = new JsonObject(record.value()).mapTo(Event.class);
 
     try {
       RecordCollection recordCollection = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(RecordCollection.class);
 
-      List<KafkaHeader> kafkaHeaders = record.headers();
-
-      String tenantId = fromKafkaHeaders(kafkaHeaders).getTenantId();
+      String tenantId = okapiConnectionParams.getTenantId();
       String key = record.key();
 
-      int chunkNumber = chunkCounter.incrementAndGet();
-      LOGGER.debug("RecordCollection has been received, starting processing... chunkNumber " + chunkNumber + " - " + key);
+      LOGGER.debug("RecordCollection has been received, starting processing correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
       return recordService.saveRecords(recordCollection, tenantId)
-        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber),
+        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber),
           th -> {
             th.printStackTrace();
-            LOGGER.error("RecordCollection processing has failed with errors... chunkNumber " + chunkNumber + " - " + key, th);
+            LOGGER.error("RecordCollection processing has failed with errors correlationId:" + correlationId + " chunkNumber:" + chunkNumber, th);
             return Future.failedFuture(th);
           });
     } catch (IOException e) {
@@ -90,7 +91,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
     }
   }
 
-  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber) {
+  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, String correlationId, String chunkNumber) {
     //TODO: this could be some utility method
     Event event;
     try {
@@ -126,7 +127,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkNumber " + chunkNumber + " - " + record.key());
+        LOGGER.debug("RecordCollection processing has been completed with response sent correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
         writePromise.complete(record.key());
       } else {
         Throwable cause = war.cause();

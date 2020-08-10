@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 public class KafkaConsumerWrapper<K, V> implements Handler<KafkaConsumerRecord<K, V>> {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConsumerWrapper.class);
+
   private final static AtomicInteger indexer = new AtomicInteger();
 
   private final int id = indexer.getAndIncrement();

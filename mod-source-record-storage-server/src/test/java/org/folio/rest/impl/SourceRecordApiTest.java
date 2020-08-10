@@ -143,7 +143,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(new PostgresClientFactory(vertx).getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -1586,7 +1586,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?limit=select * from table")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
-      
+
     RestAssured.given()
       .spec(spec)
       .when()

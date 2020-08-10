@@ -66,7 +66,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(new PostgresClientFactory(vertx).getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

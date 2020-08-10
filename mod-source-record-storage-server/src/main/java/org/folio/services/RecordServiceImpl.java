@@ -97,7 +97,17 @@ public class RecordServiceImpl implements RecordService {
         }
         return Future.succeededFuture(record.getGeneration());
       })
-      .compose(generation -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))), tenantId);
+      .compose(generation -> {
+        if (generation > 0) {
+          return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+            .compose(optionalMatchedRecord -> optionalMatchedRecord
+            .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
+              .orElse(recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+        } else {
+          return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
+        }
+      }),
+      tenantId);
   }
 
   @Override

@@ -20,7 +20,7 @@ public class InitAPIImpl implements InitAPI {
   @Value("${srs.kafka.ParsedMarcChunkConsumer.instancesNumber:1}")
   private int parsedMarcChunkConsumerInstancesNumber;
 
-  @Value("${srs.kafka.InstanceCreatedConsumer.instancesNumber:5}")
+  @Value("${srs.kafka.InstanceCreatedConsumer.instancesNumber:1}")
   private int instanceCreatedConsumerInstancesNumber;
 
   @Override

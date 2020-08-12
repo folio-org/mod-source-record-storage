@@ -30,7 +30,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
   @Autowired
   private KafkaConfig kafkaConfig;
 
-  @Value("${srs.kafka.ParsedMarcChunkConsumer.loadLimit:2}")
+  @Value("${srs.kafka.ParsedMarcChunkConsumer.loadLimit:5}")
   private int loadLimit;
 
   private KafkaConsumerWrapper<String, String> consumerWrapper;

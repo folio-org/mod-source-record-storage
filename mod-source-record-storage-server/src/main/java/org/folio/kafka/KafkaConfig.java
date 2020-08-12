@@ -42,6 +42,7 @@ public class KafkaConfig {
     Map<String, String> consumerProps = new HashMap<>();
     consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, getKafkaUrl());
     consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");
     consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, SimpleConfigurationReader.getValue(KAFKA_CONSUMER_AUTO_OFFSET_RESET, KAFKA_CONSUMER_AUTO_OFFSET_RESET_DEFAULT));
     consumerProps.put(ConsumerConfig.METADATA_MAX_AGE_CONFIG, SimpleConfigurationReader.getValue(KAFKA_CONSUMER_METADATA_MAX_AGE, KAFKA_CONSUMER_METADATA_MAX_AGE_DEFAULT));
     consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");

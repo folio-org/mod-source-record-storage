@@ -43,12 +43,20 @@ public class InstanceCreatedKafkaHandler implements AsyncRecordHandler<String, S
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     List<KafkaHeader> kafkaHeaders = record.headers();
     OkapiConnectionParams okapiConnectionParams = fromKafkaHeaders(kafkaHeaders);
+    String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
+    String chunkNumber = okapiConnectionParams.getHeaders().get("chunkNumber");
 
     Event event = new JsonObject(record.value()).mapTo(Event.class);
+    LOGGER.debug("DataImportEventPayload has been received, starting processing correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
 
     return instanceEventHandlingService.handleEvent(event.getEventPayload(), okapiConnectionParams)
-      .map(record.key())
-      .onFailure(Future::failedFuture);
+      .map(v -> {
+        LOGGER.debug("DataImportEventPayload processing has been completed correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
+        return record.key();
+      })
+      .onFailure(th -> {
+        LOGGER.error("DataImportEventPayload processing has failed with errors correlationId:" + correlationId + " chunkNumber:" + chunkNumber);
+      });
 
   }
 

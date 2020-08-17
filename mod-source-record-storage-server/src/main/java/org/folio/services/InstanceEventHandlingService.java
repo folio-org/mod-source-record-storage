@@ -42,8 +42,9 @@ public class InstanceEventHandlingService implements EventHandlingService {
   private static final Logger LOG = LoggerFactory.getLogger(InstanceEventHandlingService.class);
 
   private static final String FAIL_MSG = "Failed to handle instance event {}";
-
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
+  private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
+  private static final String DATA_IMPORT_IDENTIFIER = "DI";
 
   private final RecordDao recordDao;
 
@@ -74,8 +75,8 @@ public class InstanceEventHandlingService implements EventHandlingService {
           .compose(ar -> {
             HashMap<String, String> context = dataImportEventPayload.getContext();
             context.put(Record.RecordType.MARC.value(), Json.encode(record));
-            context.put("DI", "true");
-            return sendEventWithPayload(Json.encode(context), "DI_SRS_MARC_BIB_SET_INSTANCE_HRID", params);
+            context.put(DATA_IMPORT_IDENTIFIER, "true");
+            return sendEventWithPayload(Json.encode(context), RECORD_UPDATED_EVENT_TYPE, params);
           }));
     } catch (IOException e) {
       LOG.error(FAIL_MSG, e, eventContent);

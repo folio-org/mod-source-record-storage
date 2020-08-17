@@ -23,6 +23,12 @@
       "description": "Error during updating source record in QM workflow",
       "eventTTL": 1,
       "signed": false
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIB_SET_INSTANCE_HRID",
+      "description": "Instance HRID is set as 001 field of MARC Bibliographic Record",
+      "eventTTL": 1,
+      "signed": false
     }
   ],
   "subscriptions": [

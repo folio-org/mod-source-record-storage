@@ -7,11 +7,14 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
+import io.vertx.core.json.Json;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.RecordDao;
@@ -51,34 +54,33 @@ public class InstanceEventHandlingService implements EventHandlingService {
 
   /**
    * Handles DI_INVENTORY_INSTANCE_CREATED or DI_INVENTORY_INSTANCE_UPDATED event
-   *
+   * <p>
    * {@inheritDoc}
    */
   @Override
   public Future<Boolean> handleEvent(String eventContent, OkapiConnectionParams params) {
     try {
-      Pair<String, String> instanceRecordPair = extractPayload(eventContent);
-      if (StringUtils.isEmpty(instanceRecordPair.getLeft()) || StringUtils.isEmpty(instanceRecordPair.getRight())) {
+      DataImportEventPayload dataImportEventPayload = ObjectMapperTool.getMapper().readValue(ZIPArchiver.unzip(eventContent), DataImportEventPayload.class);
+      String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
+      String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
+      if (StringUtils.isEmpty(instanceAsString) || StringUtils.isEmpty(recordAsString)) {
         LOG.error(EVENT_HAS_NO_DATA_MSG);
         return Future.failedFuture(EVENT_HAS_NO_DATA_MSG);
       }
       String tenantId = params.getTenantId();
       return setInstanceIdToRecord(
-        ObjectMapperTool.getMapper().readValue(instanceRecordPair.getRight(), Record.class),
-        new JsonObject(instanceRecordPair.getLeft()), tenantId)
-        .compose(record -> updatePreviousRecords(record.getExternalIdsHolder().getInstanceId(), record.getSnapshotId(), tenantId))
-        .map(true);
+        ObjectMapperTool.getMapper().readValue(recordAsString, Record.class), new JsonObject(instanceAsString), tenantId)
+        .compose(record -> updatePreviousRecords(record.getExternalIdsHolder().getInstanceId(), record.getSnapshotId(), tenantId)
+          .compose(ar -> {
+            HashMap<String, String> context = dataImportEventPayload.getContext();
+            context.put(Record.RecordType.MARC.value(), Json.encode(record));
+            context.put("DI", "true");
+            return sendEventWithPayload(Json.encode(context), "DI_SRS_MARC_BIB_SET_INSTANCE_HRID", params);
+          }));
     } catch (IOException e) {
       LOG.error(FAIL_MSG, e, eventContent);
       return Future.failedFuture(e);
     }
-  }
-
-  private Pair<String, String> extractPayload(String eventContent) throws IOException {
-    DataImportEventPayload dataImportEventPayload = ObjectMapperTool.getMapper().readValue(ZIPArchiver.unzip(eventContent), DataImportEventPayload.class);
-    String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
-    String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
-    return Pair.of(instanceAsString, recordAsString);
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {

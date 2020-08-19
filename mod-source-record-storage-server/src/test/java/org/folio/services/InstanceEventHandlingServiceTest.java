@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -53,6 +55,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
   private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static final String PARSED_CONTENT_WITH_999_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
+  private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -142,12 +145,15 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
   public void shouldSetInstanceIdToRecord(TestContext context) {
     Async async = context.async();
 
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
     JsonObject instance = new JsonObject()
       .put("id", expectedInstanceId)
-      .put(expectedHrId, expectedHrId);
+      .put("hrid", expectedHrId);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
@@ -252,6 +258,10 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
+
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
     record.withParsedRecord(new ParsedRecord()
         .withId(recordId)
         .withContent(PARSED_CONTENT_WITH_999_FIELD));

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
@@ -34,6 +35,7 @@ public final class AdditionalFieldsUtil {
   public static final String TAG_999 = "999";
 
   private static final String HR_ID_FROM_FIELD = "001";
+  private static final String HR_ID_PREFIX_FROM_FIELD = "003";
   private static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
   private static final char HR_ID_FIELD_SUB = 'a';
@@ -273,13 +275,23 @@ public final class AdditionalFieldsUtil {
   public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair) {
     String hrId = recordInstancePair.getValue().getString(HR_ID_FIELD);
     String originalHrId = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+    String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
+    originalHrId = mergeFieldsFor035(originalHrIdPrefix, originalHrId);
     if (StringUtils.isNotEmpty(hrId) && StringUtils.isNotEmpty(originalHrId)) {
       removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+      removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
       addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
       if (!isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
         addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
       }
     }
+  }
+
+  private static String mergeFieldsFor035(String valueFrom003, String valueFrom001) {
+    if (isBlank(valueFrom003)) {
+      return valueFrom001;
+    }
+    return "(" + valueFrom003 + ")" + valueFrom001;
   }
 
   private static MarcReader buildMarcReader(Record record) {

@@ -7,6 +7,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.rest.jaxrs.model.Record;
+import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamWriter;
@@ -202,7 +203,7 @@ public final class AdditionalFieldsUtil {
           org.marc4j.marc.Record marcRecord = reader.next();
           DataField dataField = factory.newDataField(tag, ind1, ind2);
           dataField.addSubfield(factory.newSubfield(subfield, value));
-          marcRecord.addVariableField(dataField);
+          addDataFieldInNumericalOrder(dataField, marcRecord);
           // use stream writer to recalculate leader
           streamWriter.write(marcRecord);
           jsonWriter.write(marcRecord);
@@ -214,6 +215,18 @@ public final class AdditionalFieldsUtil {
       LOGGER.error("Failed to add additional data field {) to record {}", e, tag, record.getId());
     }
     return result;
+  }
+
+  private static void addDataFieldInNumericalOrder(DataField field, org.marc4j.marc.Record marcRecord) {
+    String tag = field.getTag();
+    List<DataField> dataFields = marcRecord.getDataFields();
+    for (int i = 0; i < dataFields.size(); i++) {
+      if (dataFields.get(i).getTag().compareTo(tag) > 0) {
+        marcRecord.getDataFields().add(i, field);
+        return;
+      }
+    }
+    marcRecord.addVariableField(field);
   }
 
   /**
@@ -271,7 +284,7 @@ public final class AdditionalFieldsUtil {
 
   private static MarcReader buildMarcReader(Record record) {
     String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-    return new SortedMarcJsonReader(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
+    return new MarcJsonReader(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
   }
 
   private static VariableField getSingleFieldByIndicators(List<VariableField> list, char ind1, char ind2) {

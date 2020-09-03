@@ -35,4 +35,7 @@
   <include file="scripts/v-0.0.2/2020-06-13--17-00-drop-unused-functions.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-0.0.2/2020-06-25--12-00-delete-sample-data.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-0.0.2/2020-09-01--13-00-create-instance-hrid-column.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2020-09-01--14-00-migrate-instance-hrid.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

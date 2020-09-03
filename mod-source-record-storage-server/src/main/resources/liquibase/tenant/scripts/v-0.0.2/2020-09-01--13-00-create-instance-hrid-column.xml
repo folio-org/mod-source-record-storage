@@ -1,0 +1,22 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet author="VolodymyrRohach" id="2020-09-01--13-00-create-records-instancehrid-index">
+    <addColumn tableName="records_lb">
+      <column name="instance_hrid" type="uuid"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="2020-09-01--13-01-create-records-instancehrid-index" author="VolodymyrRohach">
+    <createIndex
+      indexName="idx_records_instance_hrid"
+      schemaName="${database.defaultSchemaName}"
+      tableName="records_lb">
+      <column name="instance_hrid"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

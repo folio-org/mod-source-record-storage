@@ -1,3 +1,6 @@
+## 2020-09-03 v4.0.4
+* [MODSOURCE-178](https://issues.folio.org/browse/MODSOURCE-178) Send event after instanceHrid is set for record
+
 ## 2020-08-10 v4.0.3
 * [MODSOURMAN-322](https://issues.folio.org/browse/MODSOURMAN-322) Add source-record states storing mechanism for QM edit workflow
 * [MODSOURCE-175](https://issues.folio.org/browse/MODSOURCE-175) Do not override 999 $s when exported file is re-imported to update an instance

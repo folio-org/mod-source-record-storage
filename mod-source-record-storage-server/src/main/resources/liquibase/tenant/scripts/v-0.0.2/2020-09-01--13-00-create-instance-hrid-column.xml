@@ -6,7 +6,7 @@
 
   <changeSet author="VolodymyrRohach" id="2020-09-01--13-00-create-records-instancehrid-index">
     <addColumn tableName="records_lb">
-      <column name="instance_hrid" type="uuid"/>
+      <column name="instance_hrid" type="text"/>
     </addColumn>
   </changeSet>
 

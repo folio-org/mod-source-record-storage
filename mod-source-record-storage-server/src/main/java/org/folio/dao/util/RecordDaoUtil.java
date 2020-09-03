@@ -304,7 +304,7 @@ public final class RecordDaoUtil {
       dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
     }
     if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
-      dbRecord.setInstanceHrid(UUID.fromString(record.getExternalIdsHolder().getInstanceHrid()));
+      dbRecord.setInstanceHrid(record.getExternalIdsHolder().getInstanceHrid());
     }
     if (Objects.nonNull(record.getMetadata())) {
       if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
@@ -357,7 +357,7 @@ public final class RecordDaoUtil {
    */
   public static Condition filterRecordByInstanceHrid(String instanceHrid) {
     if (StringUtils.isNotEmpty(instanceHrid)) {
-      return RECORDS_LB.INSTANCE_HRID.eq(toUUID(instanceHrid));
+      return RECORDS_LB.INSTANCE_HRID.eq(instanceHrid);
     }
     return DSL.noCondition();
   }

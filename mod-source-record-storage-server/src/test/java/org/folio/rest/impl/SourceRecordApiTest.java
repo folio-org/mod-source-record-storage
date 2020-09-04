@@ -99,7 +99,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withOrder(11)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
   private static Record record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -118,7 +119,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withOrder(1)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
   private static Record record_5 = new Record()
     .withId(FIFTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -138,7 +140,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withOrder(101)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
 
   @Before
   public void setUp(TestContext context) {
@@ -358,6 +361,109 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("recordId", is(THIRD_UUID))
       .body("externalIdsHolder.instanceId", is(instanceId));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificNumberOfSourceRecordsOnGetByInstanceExternalHrid(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+
+    String firstHrid = "123";
+    String secondHrid = "1234";
+    String thirdHrid = "1235";
+
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(firstHrid));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(secondHrid));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    Record recordWithOldState = new Record().withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(11)
+      .withState(Record.State.OLD)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(thirdHrid));
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(secondHrid));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(record)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordWithOldState)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?instanceHrid=" + secondHrid)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.instanceHrid", everyItem(is(secondHrid)));
     async.complete();
   }
 
@@ -1586,7 +1692,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?limit=select * from table")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
-      
+
     RestAssured.given()
       .spec(spec)
       .when()

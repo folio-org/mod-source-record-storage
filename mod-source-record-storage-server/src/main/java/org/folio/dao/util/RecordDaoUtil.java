@@ -239,6 +239,9 @@ public final class RecordDaoUtil {
     if (Objects.nonNull(pojo.getInstanceId())) {
       externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
     }
+    if (Objects.nonNull(pojo.getInstanceHrid())) {
+      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid().toString());
+    }
     Metadata metadata = new Metadata();
     if (Objects.nonNull(pojo.getCreatedByUserId())) {
       metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
@@ -300,6 +303,9 @@ public final class RecordDaoUtil {
     if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
       dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
     }
+    if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
+      dbRecord.setInstanceHrid(record.getExternalIdsHolder().getInstanceHrid());
+    }
     if (Objects.nonNull(record.getMetadata())) {
       if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
         dbRecord.setCreatedByUserId(UUID.fromString(record.getMetadata().getCreatedByUserId()));
@@ -339,6 +345,19 @@ public final class RecordDaoUtil {
   public static Condition filterRecordByInstanceId(String instanceId) {
     if (StringUtils.isNotEmpty(instanceId)) {
       return RECORDS_LB.INSTANCE_ID.eq(toUUID(instanceId));
+    }
+    return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by instance hrid
+   *
+   * @param instanceHrid instance id to equal
+   * @return condition
+   */
+  public static Condition filterRecordByInstanceHrid(String instanceHrid) {
+    if (StringUtils.isNotEmpty(instanceHrid)) {
+      return RECORDS_LB.INSTANCE_HRID.eq(instanceHrid);
     }
     return DSL.noCondition();
   }

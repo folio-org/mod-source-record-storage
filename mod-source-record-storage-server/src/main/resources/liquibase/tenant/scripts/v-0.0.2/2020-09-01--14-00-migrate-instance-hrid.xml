@@ -1,0 +1,55 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2020-09-01--14-00-disable-records-triggers-with-instance-hrid" author="VolodymyrRohach">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.records_lb DISABLE TRIGGER insert_records_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.records_lb DISABLE TRIGGER update_records_set_dates;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-09-01--14-01-migrate-records-with-instance-hrid" author="VolodymyrRohach">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      INSERT INTO ${database.defaultSchemaName}.records_lb
+      SELECT
+      id,
+      (jsonb->>'snapshotId')::uuid AS snapshot_id,
+      (jsonb->>'matchedId')::uuid AS matched_id,
+      (jsonb->>'generation')::integer AS generation,
+      (jsonb->>'recordType')::${database.defaultSchemaName}.record_type AS record_type,
+      (jsonb->'externalIdsHolder'->>'instanceId')::uuid AS instance_id,
+      (jsonb->'externalIdsHolder'->>'instanceHrid')::text AS instance_hrid,
+      CASE (jsonb->>'deleted')::boolean WHEN true THEN ('DELETED')::${database.defaultSchemaName}.record_state
+      ELSE coalesce(jsonb->>'state', 'ACTUAL')::${database.defaultSchemaName}.record_state
+      END AS state,
+      NULL as leader_record_status,
+      (jsonb->>'order')::integer AS order,
+      (jsonb->'additionalInfo'->>'suppressDiscovery')::boolean AS suppress_discovery,
+      (jsonb->'metadata'->>'createdByUserId')::uuid AS created_by_user_id,
+      coalesce((jsonb->'metadata'->>'createdDate')::timestamptz, current_timestamp) AS created_date,
+      (jsonb->'metadata'->>'updatedByUserId')::uuid AS updated_by_user_id,
+      coalesce((jsonb->'metadata'->>'updatedDate')::timestamptz, current_timestamp) AS updated_date
+      FROM ${database.defaultSchemaName}.records;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2020-09-01--14-02-enable-records-triggers-with-instance-hrid" author="VolodymyrRohach">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="records" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      ALTER TABLE ${database.defaultSchemaName}.records_lb ENABLE TRIGGER insert_records_set_dates;
+      ALTER TABLE ${database.defaultSchemaName}.records_lb ENABLE TRIGGER update_records_set_dates;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

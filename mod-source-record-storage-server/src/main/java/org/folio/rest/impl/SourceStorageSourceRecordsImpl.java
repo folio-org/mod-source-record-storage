@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
@@ -52,7 +53,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String recordType,
+  public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String instanceHrid, String recordType,
       Boolean suppressFromDiscovery, Boolean deleted, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
       List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
@@ -63,6 +64,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
         Condition condition = filterRecordByRecordId(recordId)
           .and(filterRecordBySnapshotId(snapshotId))
           .and(filterRecordByInstanceId(instanceId))
+          .and(filterRecordByInstanceHrid(instanceHrid))
           .and(filterRecordByType(recordType))
           .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
           .and(filterRecordByDeleted(deleted))

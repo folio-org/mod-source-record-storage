@@ -15,19 +15,17 @@ types:
   entityType: !include raml-storage/schemas/mod-data-import-converter-storage/entityType.json
   dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
   parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
-
-traits:
-  validate: !include raml-storage/raml-util/traits/validation.raml
+  data: !include raml-storage/schemas/mod-data-import-converter-storage/mapping-profile-detail/marcData.json
 
 /source-storage/handlers:
-  /inventory-instance:
-    description: "Handler for DI_INVENTORY_INSTANCE events."
+  /data-import:
+    description: "Handler for data import process events"
     post:
       body:
         application/json:
           type: string
       responses:
-        200:
+        204:
   /updated-record:
     description: "Handler for QM_RECORD_UPDATED event"
     post:

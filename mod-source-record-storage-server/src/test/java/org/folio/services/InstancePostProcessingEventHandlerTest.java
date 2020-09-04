@@ -1,39 +1,31 @@
 package org.folio.services;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.ActionProfile;
+import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -41,16 +33,28 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
-import io.vertx.core.Future;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 @RunWith(VertxUnitRunner.class)
-public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
+public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
@@ -65,9 +69,7 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
 
   private RecordDao recordDao;
 
-  private InstanceEventHandlingService eventHandlingService;
-
-  private OkapiConnectionParams params;
+  private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
 
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
@@ -94,9 +96,8 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
     headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
     headers.put(OKAPI_TOKEN_HEADER, "token");
-    params = new OkapiConnectionParams(headers, vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    eventHandlingService = new InstanceEventHandlingService(recordDao);
+    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -160,21 +161,19 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext);
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
 
-    Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> {
-        try {
-          return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), params);
-        } catch (IOException e) {
-          e.printStackTrace();
-          return Future.failedFuture(e);
-        }
-      });
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
+        .thenApply(payload -> future.complete(payload))
+        .exceptionally(future::completeExceptionally));
 
-    future.onComplete(ar -> {
-      if (ar.failed()) {
-        context.fail(ar.cause());
+    future.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
       }
       recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
@@ -222,21 +221,19 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
         payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
 
         DataImportEventPayload dataImportEventPayloadForUpdate = new DataImportEventPayload()
-          .withContext(payloadContextForUpdate);
+          .withContext(payloadContextForUpdate)
+          .withTenant(TENANT_ID);
 
-        Future<Boolean> future2 = recordDao.saveRecord(recordForUpdate, TENANT_ID)
-          .compose(v -> {
-            try {
-              return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayloadForUpdate)), params);
-            } catch (IOException e) {
-              e.printStackTrace();
-              return Future.failedFuture(e);
-            }
-          });
+        CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
+        recordDao.saveRecord(recordForUpdate, TENANT_ID)
+          .onFailure(future2::completeExceptionally)
+          .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayloadForUpdate)
+            .thenApply(future2::complete)
+            .exceptionally(future2::completeExceptionally));
 
-        future2.onComplete(result -> {
-          if (result.failed()) {
-            context.fail(result.cause());
+        future2.whenComplete((payload2, ex) -> {
+          if (ex != null) {
+            context.fail(ex);
           }
           recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
@@ -263,8 +260,8 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
       .willReturn(WireMock.noContent()));
 
     record.withParsedRecord(new ParsedRecord()
-        .withId(recordId)
-        .withContent(PARSED_CONTENT_WITH_999_FIELD));
+      .withId(recordId)
+      .withContent(PARSED_CONTENT_WITH_999_FIELD));
 
     String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -272,21 +269,19 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext);
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
 
-    Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> {
-        try {
-          return eventHandlingService.handleEvent(ZIPArchiver.zip(Json.encode(dataImportEventPayload)), params);
-        } catch (IOException e) {
-          e.printStackTrace();
-          return Future.failedFuture(e);
-        }
-      });
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(rec -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
+        .thenApply(payload -> future.complete(payload))
+        .exceptionally(future::completeExceptionally));
 
-    future.onComplete(ar -> {
-      if (ar.failed()) {
-        context.fail(ar.cause());
+    future.whenComplete((payload, throwable) -> {
+      if (throwable != null) {
+        context.fail(throwable);
       }
       recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
@@ -330,10 +325,10 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext);
 
-    Future<Boolean> future = eventHandlingService.handleEvent(Json.encode(dataImportEventPayload), params);
+    CompletableFuture<DataImportEventPayload> future = instancePostProcessingEventHandler.handle(dataImportEventPayload);
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.failed());
+    future.whenComplete((payload, throwable) -> {
+      context.assertNotNull(throwable);
       async.complete();
     });
   }
@@ -353,13 +348,68 @@ public class InstanceEventHandlingServiceTest extends AbstractLBServiceTest {
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext);
 
-    Future<Boolean> future = recordDao.saveRecord(record, TENANT_ID)
-      .compose(rec -> eventHandlingService.handleEvent(Json.encode(dataImportEventPayload), params));
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
+        .exceptionally(future::completeExceptionally));
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.failed());
+    future.whenComplete((payload, throwable) -> {
+      context.assertNotNull(throwable);
       async.complete();
     });
+  }
+
+  @Test
+  public void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
+    MappingProfile mappingProfile = new MappingProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("Create instance")
+      .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(INSTANCE);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(mappingProfile.getId())
+      .withContentType(MAPPING_PROFILE)
+      .withContent(mappingProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType("DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING")
+      .withContext(new HashMap<>())
+      .withCurrentNode(profileSnapshotWrapper);
+
+    boolean isEligible = instancePostProcessingEventHandler.isEligible(dataImportEventPayload);
+
+    Assert.assertTrue(isEligible);
+  }
+
+  @Test
+  public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
+    ActionProfile actionProfile = new ActionProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("Create instance")
+      .withAction(ActionProfile.Action.CREATE)
+      .withFolioRecord(ActionProfile.FolioRecord.INSTANCE);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(actionProfile.getId())
+      .withContentType(ACTION_PROFILE)
+      .withContent(actionProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(new HashMap<>())
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper);
+
+    boolean isEligible = instancePostProcessingEventHandler.isEligible(dataImportEventPayload);
+
+    Assert.assertFalse(isEligible);
   }
 
 }

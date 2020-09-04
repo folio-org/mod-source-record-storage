@@ -27,7 +27,7 @@
       (jsonb->>'generation')::integer AS generation,
       (jsonb->>'recordType')::${database.defaultSchemaName}.record_type AS record_type,
       (jsonb->'externalIdsHolder'->>'instanceId')::uuid AS instance_id,
-      (jsonb->'externalIdsHolder'->>'instanceHrid') AS instance_hrid,
+      (jsonb->'externalIdsHolder'->>'instanceHrid')::text AS instance_hrid,
       CASE (jsonb->>'deleted')::boolean WHEN true THEN ('DELETED')::${database.defaultSchemaName}.record_state
       ELSE coalesce(jsonb->>'state', 'ACTUAL')::${database.defaultSchemaName}.record_state
       END AS state,

@@ -2,6 +2,7 @@
 * [MODSOURMAN-340](https://issues.folio.org/browse/MODSOURMAN-340) MARC field sort into numerical order when record is imported
 * [MODSOURMAN-345](https://issues.folio.org/browse/MODSOURMAN-345) 003 handling in SRS for MARC Bib records: Create
 * [MODDICORE-58](https://issues.folio.org/browse/MODDICORE-58) MARC-MARC matching for 001 and 999 ff fields
+* [MODDATAIMP-324](https://issues.folio.org/browse/MODDATAIMP-324) Update all Data-Import modules to the new RMB version
 
 ## 2020-06-25 v4.0.0
 * [MODSOURCE-134](https://issues.folio.org/browse/MODSOURCE-134) New Source Record Storage API RAML and updated module descriptor

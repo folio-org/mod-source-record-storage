@@ -4,6 +4,7 @@ buildMvn {
   publishAPI = 'yes'
   runLintRamlCop = 'yes'
   doKubeDeploy = true
+  buildNode = 'jenkins-agent-java11'
 
   doDocker = {
     buildJavaDocker {

@@ -1,5 +1,31 @@
 package org.folio.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.folio.dao.RecordDao;
+import org.folio.processing.events.utils.ZIPArchiver;
+import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.jooq.Condition;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
@@ -8,33 +34,6 @@ import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
-import io.vertx.core.json.Json;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.folio.dao.RecordDao;
-import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.jaxrs.model.DataImportEventPayload;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.folio.rest.util.OkapiConnectionParams;
-import org.folio.services.util.AdditionalFieldsUtil;
-import org.jooq.Condition;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 @Component
 public class InstanceEventHandlingService implements EventHandlingService {
@@ -61,7 +60,7 @@ public class InstanceEventHandlingService implements EventHandlingService {
   @Override
   public Future<Boolean> handleEvent(String eventContent, OkapiConnectionParams params) {
     try {
-      DataImportEventPayload dataImportEventPayload = ObjectMapperTool.getMapper().readValue(ZIPArchiver.unzip(eventContent), DataImportEventPayload.class);
+      DataImportEventPayload dataImportEventPayload = new ObjectMapper().readValue(ZIPArchiver.unzip(eventContent), DataImportEventPayload.class);
       String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
       String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
       if (StringUtils.isEmpty(instanceAsString) || StringUtils.isEmpty(recordAsString)) {
@@ -70,7 +69,7 @@ public class InstanceEventHandlingService implements EventHandlingService {
       }
       String tenantId = params.getTenantId();
       return setInstanceIdToRecord(
-        ObjectMapperTool.getMapper().readValue(recordAsString, Record.class), new JsonObject(instanceAsString), tenantId)
+        new ObjectMapper().readValue(recordAsString, Record.class), new JsonObject(instanceAsString), tenantId)
         .compose(record -> updatePreviousRecords(record.getExternalIdsHolder().getInstanceId(), record.getSnapshotId(), tenantId)
           .compose(ar -> {
             HashMap<String, String> context = dataImportEventPayload.getContext();

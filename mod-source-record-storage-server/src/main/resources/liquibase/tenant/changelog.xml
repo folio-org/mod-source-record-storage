@@ -38,4 +38,6 @@
   <include file="scripts/v-0.0.2/2020-09-01--13-00-create-instance-hrid-column.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-0.0.2/2020-09-01--14-00-migrate-instance-hrid.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-0.0.2/2020-09-09--15-00-fill-instance-hrid.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

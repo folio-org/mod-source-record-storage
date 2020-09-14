@@ -8,10 +8,10 @@ import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Json;
 
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,7 +29,7 @@ public class MarcUtilTest {
   @Before
   public void readSourceRecord() throws JsonParseException, JsonMappingException, IOException {
     File file = new File(SOURCE_RECORD_PATH);
-    sourceRecord = ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class);
+    sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
   }
 
   @Test
@@ -42,7 +42,7 @@ public class MarcUtilTest {
 
   @Test
   public void shouldConvertRawMarcToTxtMarc() throws IOException, MarcException {
-    String marcJson = ObjectMapperTool.getDefaultMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
+    String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String rawMarc = MarcUtil.marcJsonToRawMarc(marcJson);
     assertNotNull(rawMarc);
     String txtMarc = MarcUtil.rawMarcToTxtMarc(rawMarc);
@@ -52,7 +52,7 @@ public class MarcUtilTest {
 
   @Test
   public void shouldConvertMarcJsonToRawMarc() throws IOException, MarcException {
-    String marcJson = ObjectMapperTool.getDefaultMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
+    String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String rawMarc = MarcUtil.marcJsonToRawMarc(marcJson);
     assertNotNull(rawMarc);
     assertEquals(Json.node(marcJson), Json.node(MarcUtil.rawMarcToMarcJson(rawMarc)));
@@ -60,7 +60,7 @@ public class MarcUtilTest {
 
   @Test
   public void shouldConvertMarcJsonToTxtMarc() throws IOException, MarcException {
-    String marcJson = ObjectMapperTool.getDefaultMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
+    String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String txtMarc = MarcUtil.marcJsonToTxtMarc(marcJson);
     assertNotNull(txtMarc);
     assertEquals(sourceRecord.getParsedRecord().getFormattedContent().trim(), txtMarc.trim());

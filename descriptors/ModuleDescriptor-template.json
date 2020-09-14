@@ -205,13 +205,13 @@
     },
     {
       "id": "source-storage-event-handlers",
-      "version": "0.1",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
             "POST"
           ],
-          "pathPattern": "/source-storage/handlers/inventory-instance",
+          "pathPattern": "/source-storage/handlers/data-import",
           "permissionsRequired": [
             "source-storage.events.post"
           ],

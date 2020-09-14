@@ -1,4 +1,4 @@
-FROM folioci/alpine-jre-openjdk8:latest
+FROM folioci/alpine-jre-openjdk11:latest
 
 ENV VERTICLE_FILE mod-source-record-storage-server-fat.jar
 

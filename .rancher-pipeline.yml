@@ -1,0 +1,26 @@
+stages:
+- name: Build
+  steps:
+  - runScriptConfig:
+      image: maven:3-adoptopenjdk-11
+      shellScript: mvn package -DskipTests
+- name: Build Docker with DIND
+  steps:
+  - publishImageConfig:
+      dockerfilePath: ./Dockerfile
+      buildContext: .
+      tag: docker.dev.folio.org/mod-source-record-storage:folijet-latest
+      pushRemote: true
+      registry: docker.dev.folio.org
+- name: Deploy
+  steps:
+  - applyAppConfig:
+      catalogTemplate: p-mf42h:folijet-helmcharts-mod-source-record-storage
+      version: 0.1.9
+      answers:
+        image.repository: docker.dev.folio.org/mod-source-record-storage
+        image.tag: folijet-latest
+      targetNamespace: folijet
+      name: mod-source-record-storage
+timeout: 60
+notification: {}

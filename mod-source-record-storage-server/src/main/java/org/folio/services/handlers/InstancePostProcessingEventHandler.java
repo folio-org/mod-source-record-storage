@@ -13,6 +13,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.RecordDao;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -84,8 +85,9 @@ public class InstancePostProcessingEventHandler implements EventHandler {
           .map(updatedRecord))
         .onComplete(updateAr -> {
           if (updateAr.succeeded()) {
+            record.getParsedRecord().setContent(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
             HashMap<String, String> context = dataImportEventPayload.getContext();
-            context.put(Record.RecordType.MARC.value(), Json.encode(updateAr.result()));
+            context.put(Record.RecordType.MARC.value(), Json.encode(record));
             context.put(DATA_IMPORT_IDENTIFIER, "true");
             OkapiConnectionParams params = getConnectionParams(dataImportEventPayload);
             sendEventWithPayload(Json.encode(context), RECORD_UPDATED_EVENT_TYPE, params);

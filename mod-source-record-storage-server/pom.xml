@@ -431,6 +431,14 @@
                   <name>log4j.configurationFile</name>
                   <value>${project.baseUri}src/main/resources/log4j2.properties</value>
                 </property>
+                <property>
+                  <name>LC_ALL</name>
+                  <value>en_US.UTF-8</value>
+                </property>
+                <property>
+                  <name>LC_CTYPE</name>
+                  <value>en_US.UTF-8</value>
+                </property>
               </properties>
             </configuration>
           </execution>

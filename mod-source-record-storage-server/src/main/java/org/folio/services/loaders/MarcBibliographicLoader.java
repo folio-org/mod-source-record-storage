@@ -43,7 +43,7 @@ public class MarcBibliographicLoader implements MatchValueLoader {
         RowSet<Row> result = ar.result();
         if (result.size() == 1) {
           for (Row row : result) {
-            row.getString()
+           // row.getString() -- retreive each field from SELECT result
           }
           loadResult.setValue(result.toString()); // Map to record.json
         } else if (result.size() > 1) {

@@ -14,7 +14,7 @@
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
     <jooq.version>3.13.2</jooq.version>
     <vertx-jooq.version>5.1.1</vertx-jooq.version>
-    <postgres.version>42.2.12</postgres.version>
+    <postgres.version>42.2.16</postgres.version>
   </properties>
 
   <dependencies>
@@ -257,10 +257,11 @@
       </plugin>
 
       <plugin>
-        <groupId>com.gitlab.janecekpetr</groupId>
+        <groupId>com.github.slavaz</groupId>
         <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <version>1.2.4</version>
         <configuration>
+          <pgServerVersion>9.6</pgServerVersion>
           <pgServerPort>15432</pgServerPort>
           <dbName>postgres</dbName>
           <userName>postgres</userName>
@@ -287,7 +288,7 @@
       <plugin>
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>
-        <version>3.9.0</version>
+        <version>4.0.0</version>
         <configuration>
           <changeLogFile>src/main/resources/liquibase/tenant/changelog.xml</changeLogFile>
           <driver>org.postgresql.Driver</driver>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>mod-source-record-storage-server</artifactId>
   <parent>
@@ -109,6 +110,11 @@
       <artifactId>guava</artifactId>
       <!-- matching RMB guava dependency version, otherwise RMB code generation fails -->
       <version>19.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.raml.jaxrs</groupId>
+      <artifactId>jaxrs-code-generator</artifactId>
+      <version>3.0.2</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -257,9 +263,9 @@
       </plugin>
 
       <plugin>
-        <groupId>com.gitlab.janecekpetr</groupId>
+        <groupId>com.github.slavaz</groupId>
         <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <version>1.0.1</version>
         <configuration>
           <pgServerPort>15432</pgServerPort>
           <dbName>postgres</dbName>
@@ -344,36 +350,36 @@
           </dependency>
         </dependencies>
         <configuration>
-            <jdbc>
-              <driver>org.postgresql.Driver</driver>
-              <url>jdbc:postgresql://localhost:15432/postgres</url>
-              <user>postgres</user>
-              <password>postgres</password>
-            </jdbc>
-            <generator>
-              <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>
-              <database>
-                <name>org.jooq.meta.postgres.PostgresDatabase</name>
-                <includes>.*</includes>
-                <excludes>
-                  databasechangelog|databasechangeloglock
-                </excludes>
-                <inputSchema>public</inputSchema>
-                <outputSchemaToDefault>true</outputSchemaToDefault>
-                <unsignedTypes>false</unsignedTypes>
-                <forcedTypes />
-              </database>
-              <generate>
-                <daos>true</daos>
-                <fluentSetters>true</fluentSetters>
-              </generate>
-              <target>
-                <packageName>org.folio.rest.jooq</packageName>
-              </target>
-              <strategy>
-                <name>io.github.jklingsporn.vertx.jooq.generate.VertxGeneratorStrategy</name>
-              </strategy>
-            </generator>
+          <jdbc>
+            <driver>org.postgresql.Driver</driver>
+            <url>jdbc:postgresql://localhost:15432/postgres</url>
+            <user>postgres</user>
+            <password>postgres</password>
+          </jdbc>
+          <generator>
+            <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>
+            <database>
+              <name>org.jooq.meta.postgres.PostgresDatabase</name>
+              <includes>.*</includes>
+              <excludes>
+                databasechangelog|databasechangeloglock
+              </excludes>
+              <inputSchema>public</inputSchema>
+              <outputSchemaToDefault>true</outputSchemaToDefault>
+              <unsignedTypes>false</unsignedTypes>
+              <forcedTypes/>
+            </database>
+            <generate>
+              <daos>true</daos>
+              <fluentSetters>true</fluentSetters>
+            </generate>
+            <target>
+              <packageName>org.folio.rest.jooq</packageName>
+            </target>
+            <strategy>
+              <name>io.github.jklingsporn.vertx.jooq.generate.VertxGeneratorStrategy</name>
+            </strategy>
+          </generator>
         </configuration>
       </plugin>
 
@@ -438,6 +444,10 @@
                 <property>
                   <name>LC_CTYPE</name>
                   <value>en_US.UTF-8</value>
+                </property>
+                <property>
+                  <name>LANG</name>
+                  <value>en_US</value>
                 </property>
               </properties>
             </configuration>
@@ -505,7 +515,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet />
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>
@@ -529,14 +539,18 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.2</version>
         <configuration>
+          <forkMode>always</forkMode>
           <useSystemClassLoader>false</useSystemClassLoader>
           <systemPropertyVariables>
-            <LC_ALL>en_US.UTF-8</LC_ALL>
-            <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
             <vertx.logger-delegate-factory-class-name>
               io.vertx.core.logging.Log4j2LogDelegateFactory
             </vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
+          <environmentVariables>
+            <LC_ALL>en_US.UTF-8</LC_ALL>
+            <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
+            <LANG>en_US</LANG>
+          </environmentVariables>
         </configuration>
       </plugin>
 

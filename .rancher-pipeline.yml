@@ -2,7 +2,7 @@ stages:
 - name: Build
   steps:
   - runScriptConfig:
-      image: maven:3-adoptopenjdk-11
+      image: grizzlysoftware/maven-non-root:3.6.2-11.0.4-jdk-stretch
       shellScript: mvn package -DskipTests
 - name: Build Docker with DIND
   steps:

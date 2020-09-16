@@ -3,17 +3,9 @@ package org.folio.services.util;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.processing.exceptions.ReaderException;
-import org.folio.processing.value.ListValue;
-import org.folio.processing.value.MissingValue;
-import org.folio.processing.value.StringValue;
-import org.folio.processing.value.Value;
-import org.folio.rest.jaxrs.model.Field;
-import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.Record;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
@@ -28,22 +20,12 @@ import org.marc4j.marc.VariableField;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static org.folio.processing.matching.reader.util.MatchExpressionUtil.extractComparisonPart;
-import static org.folio.processing.matching.reader.util.MatchExpressionUtil.isQualified;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Util to work with additional fields
@@ -62,8 +44,7 @@ public final class AdditionalFieldsUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';
 
-  private AdditionalFieldsUtil() {
-  }
+  private AdditionalFieldsUtil() { }
 
   /**
    * Adds field if it does not exist and a subfield with a value to that field
@@ -202,27 +183,6 @@ public final class AdditionalFieldsUtil {
       return null;
     }
     return null;
-  }
-
-
-  public static String getValueFromField(Record record, String field, char indicator1,
-                                         char indicator2, char subfield) {
-    String result = null;
-      if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
-        MarcReader reader = buildMarcReader(record);
-        if (reader.hasNext()) {
-          org.marc4j.marc.Record marcRecord = reader.next();
-          VariableField variableField = getSingleFieldByIndicators(marcRecord.getVariableFields(field), indicator1, indicator2);
-          DataField dataField;
-          if (variableField != null
-            && ((DataField) variableField).getIndicator1() == INDICATOR
-            && ((DataField) variableField).getIndicator2() == INDICATOR) {
-            dataField = (DataField) variableField;
-            result = dataField.getSubfield(subfield).getData();
-          }
-        }
-      }
-    return result;
   }
 
   /**

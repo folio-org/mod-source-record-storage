@@ -263,9 +263,9 @@
       </plugin>
 
       <plugin>
-        <groupId>com.github.slavaz</groupId>
+        <groupId>com.gitlab.janecekpetr</groupId>
         <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>1.0.1</version>
+        <version>0.1.0</version>
         <configuration>
           <pgServerPort>15432</pgServerPort>
           <dbName>postgres</dbName>

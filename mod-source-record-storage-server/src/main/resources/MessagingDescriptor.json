@@ -53,6 +53,18 @@
       "description": "Payload for DI_SRS_MARC_BIB_RECORD_MODIFIED event ready for post processing",
       "eventTTL": 1,
       "signed": false
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED",
+      "description": "",
+      "eventTTL": 1,
+      "signed": false
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED",
+      "description": "",
+      "eventTTL": 1,
+      "signed": false
     }
   ],
   "subscriptions": [
@@ -78,6 +90,14 @@
     },
     {
       "eventType": "DI_SRS_MARC_BIB_RECORD_MODIFIED",
+      "callbackAddress": "/source-storage/handlers/data-import"
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED",
+      "callbackAddress": "/source-storage/handlers/data-import"
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {

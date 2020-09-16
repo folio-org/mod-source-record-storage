@@ -3,17 +3,18 @@ package org.folio.services.handlers;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.folio.DataImportEventPayload;
@@ -29,12 +30,10 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -44,97 +43,60 @@ import io.vertx.core.logging.LoggerFactory;
 public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MarcBibliographicMatchEventHandler.class);
-  private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
-  private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
-  private static final String DATA_IMPORT_IDENTIFIER = "DI";
+  private static final String MATCHED_ID_MARC_FIELD = "999ffs";
+  private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
+  private static final String INSTANCE_HRID_MARC_FIELD = "001";
+  private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
+  private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
+  private static final String CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE = "Can`t find records by this MARC-field path: %s";
 
   private final RecordDao recordDao;
-  private final Vertx vertx;
 
   @Autowired
-  public MarcBibliographicMatchEventHandler(final RecordDao recordDao, Vertx vertx) {
+  public MarcBibliographicMatchEventHandler(final RecordDao recordDao) {
     this.recordDao = recordDao;
-    this.vertx = vertx;
   }
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    HashMap<String, String> context = dataImportEventPayload.getContext();
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
-    String tenantId = dataImportEventPayload.getTenant();
-    String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
-    String recordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
-    if (StringUtils.isEmpty(instanceAsString) || StringUtils.isEmpty(recordAsString)) {
+    String recordAsString = context.get(MARC_BIBLIOGRAPHIC.value());
+    if (StringUtils.isEmpty(recordAsString)) {
       LOG.error(EVENT_HAS_NO_DATA_MSG);
       future.completeExceptionally(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
       return future;
     }
 
-    ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
-    MatchProfile matchProfile;
-    if (matchingProfileWrapper.getContent() instanceof Map) {
-      matchProfile = new JsonObject((Map) matchingProfileWrapper.getContent()).mapTo(MatchProfile.class);
-    } else {
-      matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
-    }
-    MatchDetail matchDetail = matchProfile.getMatchDetails().get(0);
-    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchDetail.getExistingMatchExpression());
-    String valueFromField = StringUtils.EMPTY;
-    if (value.getType() == Value.ValueType.STRING) {
-      valueFromField = String.valueOf(value.getValue());
-    }
-
+    MatchDetail matchDetail = retrieveMatchDetail(dataImportEventPayload);
+    String valueFromField = retrieveValueFromMarcFile(recordAsString, matchDetail.getExistingMatchExpression());
     MatchExpression matchExpression = matchDetail.getExistingMatchExpression();
+
     Condition condition = null;
+    String marcFieldPath = null;
     if (matchExpression != null && matchExpression.getDataValueType() == VALUE_FROM_RECORD) {
       List<Field> fields = matchExpression.getFields();
       if (fields != null && matchDetail.getIncomingRecordType() == EntityType.MARC_BIBLIOGRAPHIC
         && matchDetail.getExistingRecordType() == EntityType.MARC_BIBLIOGRAPHIC) {
-        StringBuilder result = new StringBuilder();
-        for (Field field : fields) {
-          result.append(field.getValue().trim());
-        }
-        switch (result.toString()) {
-          case "999ffs":
-            condition = filterRecordByRecordId(valueFromField);
-            break;
-          case "999ffi":
-            condition = filterRecordByInstanceId(valueFromField);
-            break;
-          case "001":
-            condition = filterRecordByInstanceHrid(valueFromField);
-            break;
-          default:
-            condition = null;
-        }
+        marcFieldPath = fields.stream().map(field -> field.getValue().trim()).collect(Collectors.joining());
+        condition = buildConditionBasedOnMarcField(valueFromField, marcFieldPath);
       }
     }
-    OkapiConnectionParams params = getConnectionParams(dataImportEventPayload);
-    HashMap<String, String> context = dataImportEventPayload.getContext();
 
-    recordDao.getRecords(condition, new ArrayList<>(), 0, 999, tenantId)
-      .onComplete(ar -> {
-        if (ar.succeeded()) {
-          if (ar.result().getTotalRecords() == 1) {
-            context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
-            sendEventWithPayload(Json.encode(context), "DI_INVENTORY_MARC_BIBLIOGRAPHIC_MATCHED", params);
-            future.complete(dataImportEventPayload);
-          } else if (ar.result().getTotalRecords() > 1) {
-            String errorMessage = "Found multiple records matching specified conditions";
-            LOG.error(errorMessage);
-            sendEventWithPayload(Json.encode(context), "DI_INVENTORY_MARC_BIBLIOGRAPHIC_NOT_MATCHED", params);
-            future.completeExceptionally(new MatchingException(errorMessage));
-          } else if (ar.result().getTotalRecords() == 0) {
-            String errorMessage = "Can`t find records matching specified conditions";
-            LOG.error(errorMessage);
-            sendEventWithPayload(Json.encode(context), "DI_INVENTORY_MARC_BIBLIOGRAPHIC_NOT_MATCHED", params);
-            future.completeExceptionally(new MatchingException(errorMessage));
+    if (condition != null) {
+      recordDao.getRecords(condition, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            processSucceededResult(dataImportEventPayload, future, context, ar);
+          } else {
+            future.completeExceptionally(new MatchingException(ar.cause()));
           }
-        } else {
-          future.completeExceptionally(new MatchingException(ar.cause()));
-        }
-      });
+        });
+    } else {
+      constructError(dataImportEventPayload, String.format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
+    }
     return future;
   }
 
@@ -147,12 +109,58 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     return false;
   }
 
-  private OkapiConnectionParams getConnectionParams(DataImportEventPayload dataImportEventPayload) {
-    OkapiConnectionParams params = new OkapiConnectionParams();
-    params.setOkapiUrl(dataImportEventPayload.getOkapiUrl());
-    params.setTenantId(dataImportEventPayload.getTenant());
-    params.setToken(dataImportEventPayload.getToken());
-    params.setVertx(vertx);
-    return params;
+  private String retrieveValueFromMarcFile(String recordAsString, MatchExpression existingMatchExpression) {
+    String valueFromField = StringUtils.EMPTY;
+    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, existingMatchExpression);
+    if (value.getType() == Value.ValueType.STRING) {
+      valueFromField = String.valueOf(value.getValue());
+    }
+    return valueFromField;
+  }
+
+  private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
+    MatchProfile matchProfile;
+    ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
+    if (matchingProfileWrapper.getContent() instanceof Map) {
+      matchProfile = new JsonObject((Map) matchingProfileWrapper.getContent()).mapTo(MatchProfile.class);
+    } else {
+      matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
+    }
+    return matchProfile.getMatchDetails().get(0);
+  }
+
+  private Condition buildConditionBasedOnMarcField(String valueFromField, String result) {
+    Condition condition;
+    switch (result) {
+      case MATCHED_ID_MARC_FIELD:
+        condition = filterRecordByRecordId(valueFromField);
+        break;
+      case INSTANCE_ID_MARC_FIELD:
+        condition = filterRecordByInstanceId(valueFromField);
+        break;
+      case INSTANCE_HRID_MARC_FIELD:
+        condition = filterRecordByInstanceHrid(valueFromField);
+        break;
+      default:
+        condition = null;
+    }
+    return condition;
+  }
+
+  private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
+    if (ar.result().getTotalRecords() == 1) {
+      dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED.toString());
+      context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
+      future.complete(dataImportEventPayload);
+    } else if (ar.result().getTotalRecords() > 1) {
+      constructError(dataImportEventPayload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+    } else if (ar.result().getTotalRecords() == 0) {
+      constructError(dataImportEventPayload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
+    }
+  }
+
+  private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
+    LOG.error(errorMessage);
+    dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED.toString());
   }
 }

@@ -80,7 +80,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = ObjectMapperTool.getMapper().readValue(recordAsString, Record.class);
-      setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId)
+      setExternalIdsToRecord(record, new JsonObject(instanceAsString), tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))
         .onComplete(updateAr -> {
@@ -146,18 +146,21 @@ public class InstancePostProcessingEventHandler implements EventHandler {
    * @param tenantId tenant id
    * @return future with updated record
    */
-  private Future<Record> setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
+  private Future<Record> setExternalIdsToRecord(Record record, JsonObject instance, String tenantId) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
-    if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
+    if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())
+      || isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
       return Future.succeededFuture(record);
     }
     String instanceId = instance.getString("id");
+    String instanceHrid = instance.getString("hrid");
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
     if (isAddedField) {
       record.getExternalIdsHolder().setInstanceId(instanceId);
+      record.getExternalIdsHolder().setInstanceHrid(instanceHrid);
       return recordDao.updateParsedRecord(record, tenantId).map(record);
     }
     return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));

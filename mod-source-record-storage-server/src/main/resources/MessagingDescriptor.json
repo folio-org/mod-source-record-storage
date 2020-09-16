@@ -55,13 +55,13 @@
       "signed": false
     },
     {
-      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_MATCHED",
       "description": "",
       "eventTTL": 1,
       "signed": false
     },
     {
-      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_NOT_MATCHED",
       "description": "",
       "eventTTL": 1,
       "signed": false
@@ -93,11 +93,11 @@
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {
-      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {
-      "eventType": "DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_NOT_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {

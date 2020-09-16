@@ -3,8 +3,6 @@ package org.folio.services.handlers;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
@@ -149,7 +147,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
-      dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED.toString());
+      dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_MATCHED.toString());
       context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
@@ -161,6 +159,6 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
     LOG.error(errorMessage);
-    dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED.toString());
+    dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_NOT_MATCHED.toString());
   }
 }

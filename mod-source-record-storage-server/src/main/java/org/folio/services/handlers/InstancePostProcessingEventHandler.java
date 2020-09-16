@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -19,7 +20,6 @@ import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
@@ -79,7 +79,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
       }
 
       String tenantId = dataImportEventPayload.getTenant();
-      Record record = ObjectMapperTool.getMapper().readValue(recordAsString, Record.class);
+      Record record = new ObjectMapper().readValue(recordAsString, Record.class);
       setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))

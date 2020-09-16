@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.logging.Logger;
@@ -8,7 +9,7 @@ import org.apache.commons.lang.StringUtils;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.tools.utils.ObjectMapperTool;
+
 import org.folio.rest.util.OkapiConnectionParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -41,7 +42,7 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
   @Override
   public Future<Boolean> handleEvent(String eventContent, OkapiConnectionParams params) {
     try {
-      HashMap<String, String> eventPayload = ObjectMapperTool.getMapper().readValue(ZIPArchiver.unzip(eventContent), HashMap.class);
+      HashMap<String, String> eventPayload = new ObjectMapper().readValue(ZIPArchiver.unzip(eventContent), HashMap.class);
       String parsedRecordDtoAsString = eventPayload.get("PARSED_RECORD_DTO");
       String snapshotId = eventPayload.getOrDefault("SNAPSHOT_ID", UUID.randomUUID().toString());
 
@@ -50,7 +51,7 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
         LOG.error(error);
         return Future.failedFuture(error);
       }
-      ParsedRecordDto record = ObjectMapperTool.getMapper().readValue(parsedRecordDtoAsString, ParsedRecordDto.class);
+      ParsedRecordDto record = new ObjectMapper().readValue(parsedRecordDtoAsString, ParsedRecordDto.class);
 
       return recordService.updateSourceRecord(record, snapshotId, params.getTenantId())
         .compose(updatedRecord -> {

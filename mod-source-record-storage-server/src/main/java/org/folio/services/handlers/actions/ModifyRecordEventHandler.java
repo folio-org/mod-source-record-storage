@@ -1,5 +1,6 @@
 package org.folio.services.handlers.actions;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -9,7 +10,6 @@ import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.folio.services.RecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -51,7 +51,7 @@ public class ModifyRecordEventHandler implements EventHandler {
 
       preparePayloadForMappingManager(dataImportEventPayload);
       MappingManager.map(dataImportEventPayload);
-      Record modifiedRecord = ObjectMapperTool.getMapper().readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      Record modifiedRecord = new ObjectMapper().readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       recordService.saveRecord(modifiedRecord, dataImportEventPayload.getTenant())
         .onComplete(saveAr -> {
           if (saveAr.succeeded()) {

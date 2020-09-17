@@ -3,6 +3,8 @@ package org.folio.services.handlers;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
@@ -69,7 +71,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
 
     MatchDetail matchDetail = retrieveMatchDetail(dataImportEventPayload);
-    String valueFromField = retrieveValueFromMarcFile(recordAsString, matchDetail.getExistingMatchExpression());
+    String valueFromField = retrieveValueFromMarcFile(recordAsString, matchDetail.getIncomingMatchExpression());
     MatchExpression matchExpression = matchDetail.getExistingMatchExpression();
 
     Condition condition = null;
@@ -152,8 +154,10 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
       constructError(dataImportEventPayload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+      future.completeExceptionally(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
     } else if (ar.result().getTotalRecords() == 0) {
       constructError(dataImportEventPayload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
+      future.complete(dataImportEventPayload);
     }
   }
 

@@ -11,14 +11,9 @@ import io.vertx.core.logging.LoggerFactory;
 import org.folio.DataImportEventPayload;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.processing.mapping.MappingManager;
-import org.folio.processing.mapping.mapper.reader.record.MarcBibReaderFactory;
 import org.folio.rest.jaxrs.resource.SourceStorageHandlers;
 import org.folio.rest.util.OkapiConnectionParams;
-import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.UpdateRecordEventHandlingService;
-import org.folio.services.handlers.MarcRecordWriterFactory;
-import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -29,25 +24,17 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceStorageHandlersImpl.class);
 
-  @Autowired
-  private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
-  @Autowired
-  private ModifyRecordEventHandler modifyRecordEventHandler;
+
   @Autowired
   private UpdateRecordEventHandlingService updateRecordEventHandlingService;
 
   public SourceStorageHandlersImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-
-    MappingManager.registerReaderFactory(new MarcBibReaderFactory());
-    MappingManager.registerWriterFactory(new MarcRecordWriterFactory());
-    EventManager.registerEventHandler(instancePostProcessingEventHandler);
-    EventManager.registerEventHandler(modifyRecordEventHandler);
   }
 
   @Override
   public void postSourceStorageHandlersDataImport(String entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         LOG.debug("Data import process event was received: {}", entity);
@@ -63,7 +50,7 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
 
   @Override
   public void postSourceStorageHandlersUpdatedRecord(String entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       LOG.debug("Received QM_RECORD_UPDATED event: {}", entity);
       asyncResultHandler.handle(Future.succeededFuture(PostSourceStorageHandlersUpdatedRecordResponse.respond204()));

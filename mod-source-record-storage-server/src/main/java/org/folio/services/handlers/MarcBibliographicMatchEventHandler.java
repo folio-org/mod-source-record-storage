@@ -39,6 +39,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+/**
+ * Handler for MARC-MARC matching/not-matching MARC-record by specific fields.
+ */
 @Component
 public class MarcBibliographicMatchEventHandler implements EventHandler {
 
@@ -58,6 +61,9 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     this.recordDao = recordDao;
   }
 
+  /**
+   * Handles MARC_BIB_CREATED event.
+   */
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
@@ -109,15 +115,26 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     return false;
   }
 
-  private String retrieveValueFromMarcFile(String recordAsString, MatchExpression existingMatchExpression) {
+  /**
+   * Read value from MARC-file using di-core library.
+   * @param recordAsString - record
+   * @param matchExpression - matchExpression
+   * @return result - string value from MARC-file from specific field.
+   */
+  private String retrieveValueFromMarcFile(String recordAsString, MatchExpression matchExpression) {
     String valueFromField = StringUtils.EMPTY;
-    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, existingMatchExpression);
+    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchExpression);
     if (value.getType() == Value.ValueType.STRING) {
       valueFromField = String.valueOf(value.getValue());
     }
     return valueFromField;
   }
 
+  /**
+   * Logic for retreiving MatchDetail from eventPayload.
+   * @param dataImportEventPayload - payload
+   * @return - resulted MatchDetail
+   */
   private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
     MatchProfile matchProfile;
     ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
@@ -129,9 +146,15 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     return matchProfile.getMatchDetails().get(0);
   }
 
-  private Condition buildConditionBasedOnMarcField(String valueFromField, String result) {
+  /**
+   * Builds Condition for filtering by specific field.
+   * @param valueFromField - value by which will be filtered from DB.
+   * @param fieldPath - resulted fieldPath
+   * @return - built Condition
+   */
+  private Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath) {
     Condition condition;
-    switch (result) {
+    switch (fieldPath) {
       case MATCHED_ID_MARC_FIELD:
         condition = filterRecordByRecordId(valueFromField);
         break;
@@ -147,6 +170,9 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     return condition;
   }
 
+  /**
+   * Process result if it was succeeded.
+   */
   private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
       dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_MATCHED.toString());
@@ -161,6 +187,9 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
   }
 
+  /**
+   * Logic for processing errors.
+   */
   private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
     LOG.error(errorMessage);
     dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_NOT_MATCHED.toString());

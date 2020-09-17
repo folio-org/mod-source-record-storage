@@ -34,6 +34,7 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -55,10 +56,12 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   private static final String CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE = "Can`t find records by this MARC-field path: %s";
 
   private final RecordDao recordDao;
+  private final Vertx vertx;
 
   @Autowired
-  public MarcBibliographicMatchEventHandler(final RecordDao recordDao) {
+  public MarcBibliographicMatchEventHandler(final RecordDao recordDao, Vertx vertx) {
     this.recordDao = recordDao;
+    this.vertx = vertx;
   }
 
   /**

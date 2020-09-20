@@ -4,8 +4,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_NOT_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
@@ -199,7 +199,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
           context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_MATCHED.value());
+            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
           context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(EntityType.MARC_BIBLIOGRAPHIC.value())).mapTo(Record.class), record);
           async.complete();
         }));
@@ -251,7 +251,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
           context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_MATCHED.value());
+            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
           context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(EntityType.MARC_BIBLIOGRAPHIC.value())).mapTo(Record.class), record);
           async.complete();
         }));
@@ -303,7 +303,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
           context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_MATCHED.value());
+            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
           context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(EntityType.MARC_BIBLIOGRAPHIC.value())).mapTo(Record.class), record);
           async.complete();
         }));
@@ -355,7 +355,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
           context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED.value());
+            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
           async.complete();
         }));
   }

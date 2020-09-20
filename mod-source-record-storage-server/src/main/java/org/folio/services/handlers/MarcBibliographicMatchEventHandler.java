@@ -1,10 +1,11 @@
 package org.folio.services.handlers;
 
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_NOT_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -47,7 +49,7 @@ import io.vertx.core.logging.LoggerFactory;
 public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MarcBibliographicMatchEventHandler.class);
-  private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
+  private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String MATCHED_ID_MARC_FIELD = "999ffs";
   private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
   private static final String INSTANCE_HRID_MARC_FIELD = "001";
@@ -71,16 +73,19 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     HashMap<String, String> context = dataImportEventPayload.getContext();
-    dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
-    String recordAsString = context.get(MARC_BIBLIOGRAPHIC.value());
-    if (StringUtils.isEmpty(recordAsString)) {
-      LOG.error(EVENT_HAS_NO_DATA_MSG);
-      future.completeExceptionally(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
+    if (context == null || context.isEmpty() ||
+      isEmpty(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value())) ||
+      Objects.isNull(dataImportEventPayload.getCurrentNode()) ||
+      Objects.isNull(dataImportEventPayload.getEventsChain())) {
+      LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
+      future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
     }
 
+    dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
+    String recordAsString = context.get(MARC_BIBLIOGRAPHIC.value());
     MatchDetail matchDetail = retrieveMatchDetail(dataImportEventPayload);
-    String valueFromField = retrieveValueFromMarcFile(recordAsString, matchDetail.getIncomingMatchExpression());
+    String valueFromField = retrieveValueFromMarcRecord(recordAsString, matchDetail.getIncomingMatchExpression());
     MatchExpression matchExpression = matchDetail.getExistingMatchExpression();
 
     Condition condition = null;
@@ -120,11 +125,12 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   /**
    * Read value from MARC-file using di-core library.
-   * @param recordAsString - record
+   *
+   * @param recordAsString  - record
    * @param matchExpression - matchExpression
    * @return result - string value from MARC-file from specific field.
    */
-  private String retrieveValueFromMarcFile(String recordAsString, MatchExpression matchExpression) {
+  private String retrieveValueFromMarcRecord(String recordAsString, MatchExpression matchExpression) {
     String valueFromField = StringUtils.EMPTY;
     Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchExpression);
     if (value.getType() == Value.ValueType.STRING) {
@@ -135,6 +141,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   /**
    * Logic for retreiving MatchDetail from eventPayload.
+   *
    * @param dataImportEventPayload - payload
    * @return - resulted MatchDetail
    */
@@ -151,8 +158,9 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   /**
    * Builds Condition for filtering by specific field.
+   *
    * @param valueFromField - value by which will be filtered from DB.
-   * @param fieldPath - resulted fieldPath
+   * @param fieldPath      - resulted fieldPath
    * @return - built Condition
    */
   private Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath) {
@@ -178,7 +186,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
    */
   private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
-      dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_MATCHED.toString());
+      dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED.toString());
       context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
@@ -195,6 +203,6 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
    */
   private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
     LOG.error(errorMessage);
-    dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_NOT_MATCHED.toString());
+    dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED.toString());
   }
 }

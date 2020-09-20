@@ -55,14 +55,14 @@
       "signed": false
     },
     {
-      "eventType": "DI_SRS_MARC_BIB_MATCHED",
-      "description": "",
+      "eventType": "DI_SRS_MARC_BIB_RECORD_MATCHED",
+      "description": "SRS Marc Bibliographic Record matched",
       "eventTTL": 1,
       "signed": false
     },
     {
-      "eventType": "DI_SRS_MARC_BIB_NOT_MATCHED",
-      "description": "",
+      "eventType": "DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
+      "description": "SRS Marc Bibliographic Record not matched",
       "eventTTL": 1,
       "signed": false
     }
@@ -93,11 +93,11 @@
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {
-      "eventType": "DI_SRS_MARC_BIB_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_RECORD_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {
-      "eventType": "DI_SRS_MARC_BIB_NOT_MATCHED",
+      "eventType": "DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {

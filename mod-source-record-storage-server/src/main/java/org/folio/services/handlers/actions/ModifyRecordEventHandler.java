@@ -1,25 +1,29 @@
 package org.folio.services.handlers.actions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
-import org.folio.processing.mapping.MappingManager;
+import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -28,8 +32,11 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 @Component
 public class ModifyRecordEventHandler implements EventHandler {
 
-  public static final Logger LOG = LoggerFactory.getLogger(ModifyRecordEventHandler.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ModifyRecordEventHandler.class);
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data to modify MARC record";
+
+  public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
+  private static final String MAPPING_PARAMS_KEY = "MAPPING_PARAMS";
 
   private RecordService recordService;
 
@@ -43,16 +50,22 @@ public class ModifyRecordEventHandler implements EventHandler {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
       HashMap<String, String> payloadContext = dataImportEventPayload.getContext();
-      if (isNull(payloadContext) || isBlank(payloadContext.get(MARC_BIBLIOGRAPHIC.value()))) {
+      if (isNull(payloadContext) || isBlank(payloadContext.get(MARC_BIBLIOGRAPHIC.value()))
+        || isBlank(payloadContext.get(MAPPING_PARAMS_KEY))) {
         LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
+      MappingProfile mappingProfile = retrieveMappingProfile(dataImportEventPayload);
+      preparePayload(dataImportEventPayload);
 
-      preparePayloadForMappingManager(dataImportEventPayload);
-      MappingManager.map(dataImportEventPayload);
-      Record modifiedRecord = new ObjectMapper().readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      recordService.saveRecord(modifiedRecord, dataImportEventPayload.getTenant())
+      MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
+      marcRecordModifier.initialize(dataImportEventPayload, mappingProfile);
+      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
+      marcRecordModifier.getResult(dataImportEventPayload);
+
+      Record changedRecord = retrieveChangedRecord(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
+      recordService.saveRecord(changedRecord, dataImportEventPayload.getTenant())
         .onComplete(saveAr -> {
           if (saveAr.succeeded()) {
             dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_MODIFIED.value());
@@ -69,7 +82,22 @@ public class ModifyRecordEventHandler implements EventHandler {
     return future;
   }
 
-  private void preparePayloadForMappingManager(DataImportEventPayload dataImportEventPayload) {
+  private Record retrieveChangedRecord(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws JsonProcessingException {
+    String changedRecordAsString;
+    if (marcMappingOption == MappingDetail.MarcMappingOption.MODIFY) {
+      changedRecordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
+    } else {
+      changedRecordAsString = dataImportEventPayload.getContext().get(MATCHED_MARC_BIB_KEY);
+    }
+    return new ObjectMapper().readValue(changedRecordAsString, Record.class);
+  }
+
+  private MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {
+    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0);
+    return new JsonObject((Map) mappingProfileWrapper.getContent()).mapTo(MappingProfile.class);
+  }
+
+  private void preparePayload(DataImportEventPayload dataImportEventPayload) {
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
     dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0));
   }
@@ -78,7 +106,7 @@ public class ModifyRecordEventHandler implements EventHandler {
   public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
     if (dataImportEventPayload.getCurrentNode() != null && ACTION_PROFILE == dataImportEventPayload.getCurrentNode().getContentType()) {
       ActionProfile actionProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getContent()).mapTo(ActionProfile.class);
-      return actionProfile.getAction() == MODIFY && actionProfile.getFolioRecord() == ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
+      return actionProfile.getAction() == ActionProfile.Action.MODIFY && actionProfile.getFolioRecord() == ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
     }
     return false;
   }

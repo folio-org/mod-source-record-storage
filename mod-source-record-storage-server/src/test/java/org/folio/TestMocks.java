@@ -1,6 +1,14 @@
 package org.folio;
 
-import static java.lang.String.format;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.json.JsonObject;
+import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,16 +19,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.tools.utils.ObjectMapperTool;
-
-import io.vertx.core.json.JsonObject;
+import static java.lang.String.format;
 
 public class TestMocks {
 
@@ -40,7 +39,7 @@ public class TestMocks {
 
   private static List<ErrorRecord> errorRecords;
 
-  static { 
+  static {
     List<SourceRecord> sourceRecords = readSourceRecords();
     rawRecords = sourceRecords.stream().map(TestMocks::toRawRecord).collect(Collectors.toList());
     parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).collect(Collectors.toList());
@@ -119,7 +118,7 @@ public class TestMocks {
 
   private static List<SourceRecord> readSourceRecords() {
     File sourceRecordsDirectory = new File(SOURCE_RECORDS_FOLDER_PATH);
-    String[] extensions = new String[] { "json" };
+    String[] extensions = new String[]{"json"};
     return FileUtils.listFiles(sourceRecordsDirectory, extensions, false).stream()
       .map(TestMocks::readSourceRecord)
       .filter(sr -> sr.isPresent())
@@ -129,7 +128,7 @@ public class TestMocks {
 
   private static Optional<SourceRecord> readSourceRecord(File file) {
     try {
-      SourceRecord sourceRecord = ObjectMapperTool.getDefaultMapper().readValue(file, SourceRecord.class);
+      SourceRecord sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
       return Optional.of(sourceRecord.withParsedRecord(normalizeContent(sourceRecord.getParsedRecord())));
     } catch (IOException e) {
       e.printStackTrace();
@@ -150,7 +149,7 @@ public class TestMocks {
     File file = new File(format(SNAPSHOT_PATH_TEMPLATE, sourceRecord.getSnapshotId()));
     if (file.exists()) {
       try {
-        Snapshot snapshot = ObjectMapperTool.getDefaultMapper().readValue(file, Snapshot.class);
+        Snapshot snapshot = new ObjectMapper().readValue(file, Snapshot.class);
         return Optional.of(snapshot);
       } catch (IOException e) {
         e.printStackTrace();
@@ -172,7 +171,7 @@ public class TestMocks {
     File file = new File(format(RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
-        Record record = ObjectMapperTool.getDefaultMapper().readValue(file, Record.class)
+        Record record = new ObjectMapper().readValue(file, Record.class)
           .withRawRecord(sourceRecord.getRawRecord())
           .withParsedRecord(sourceRecord.getParsedRecord())
           .withExternalIdsHolder(sourceRecord.getExternalIdsHolder())
@@ -206,7 +205,7 @@ public class TestMocks {
     File file = new File(format(ERROR_RECORD_PATH_TEMPLATE, sourceRecord.getRecordId()));
     if (file.exists()) {
       try {
-        ErrorRecord errorRecord = ObjectMapperTool.getDefaultMapper().readValue(file, ErrorRecord.class);
+        ErrorRecord errorRecord = new ObjectMapper().readValue(file, ErrorRecord.class);
         errorRecord.withContent(sourceRecord.getParsedRecord().getContent());
         return Optional.of(errorRecord);
       } catch (IOException e) {

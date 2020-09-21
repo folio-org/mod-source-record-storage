@@ -138,7 +138,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   }
 
   /**
-   * Adds specified instanceId and instanceHrid to record and additional custom field with instanceId to parsed record.
+   * Adds specified instanceId to record and additional custom field with instanceId to parsed record.
    * Updates changed record in database.
    *
    * @param record   record to update
@@ -150,13 +150,10 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
-    if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())
-      || isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
+    if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
       return Future.succeededFuture(record);
     }
     String instanceId = instance.getString("id");
-    String instanceHrid = instance.getString("hrid");
-    record.getExternalIdsHolder().setInstanceHrid(instanceHrid);
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
     if (isAddedField) {

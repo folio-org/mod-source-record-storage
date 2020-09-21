@@ -369,6 +369,57 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  public void shouldNotMatchByMatchedIdFieldIfNotMatch(TestContext context) {
+    Async async = context.async();
+
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("r"))))
+            .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("d"))))))));
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(),
+            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
+          async.complete();
+        }));
+  }
+
+  @Test
   public void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
     MatchProfile matchProfile = new MatchProfile()
       .withId(UUID.randomUUID().toString())
@@ -416,53 +467,5 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
-  }
-
-  @Test(expected = ExecutionException.class)
-  public void shouldFailIfContextIsEmptyIdField(TestContext context) {
-    Async async = context.async();
-
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(null)
-      .withTenant(TENANT_ID)
-      .withCurrentNode(new ProfileSnapshotWrapper()
-        .withId(UUID.randomUUID().toString())
-        .withContentType(MATCH_PROFILE)
-        .withContent(new MatchProfile()
-          .withExistingRecordType(MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
-          .withMatchDetails(singletonList(new MatchDetail()
-            .withMatchCriterion(EXACTLY_MATCHES)
-            .withExistingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("999"),
-                new Field().withLabel("indicator1").withValue("f"),
-                new Field().withLabel("indicator2").withValue("f"),
-                new Field().withLabel("recordSubfield").withValue("s"))))
-            .withExistingRecordType(MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
-            .withIncomingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("b"))))))));
-
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
-        .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
-          async.complete();
-        }));
   }
 }

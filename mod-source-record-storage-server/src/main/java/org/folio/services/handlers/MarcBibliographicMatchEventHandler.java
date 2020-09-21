@@ -110,6 +110,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
         });
     } else {
       constructError(dataImportEventPayload, String.format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
+      future.complete(dataImportEventPayload);
     }
     return future;
   }

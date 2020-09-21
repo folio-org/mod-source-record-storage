@@ -30,6 +30,7 @@ import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -154,6 +155,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldModifyMarcRecordAndSaveAsNew(TestContext context) {
     // given
     Async async = context.async();

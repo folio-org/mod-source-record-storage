@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.resource.SourceStorageHandlers;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.UpdateRecordEventHandlingService;
+import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,12 +33,15 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
   private ModifyRecordEventHandler modifyRecordEventHandler;
   @Autowired
   private UpdateRecordEventHandlingService updateRecordEventHandlingService;
+  @Autowired
+  private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
 
   public SourceStorageHandlersImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
 
     EventManager.registerEventHandler(instancePostProcessingEventHandler);
     EventManager.registerEventHandler(modifyRecordEventHandler);
+    EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
   }
 
   @Override

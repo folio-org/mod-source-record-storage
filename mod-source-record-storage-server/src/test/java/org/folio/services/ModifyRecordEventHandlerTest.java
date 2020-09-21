@@ -42,10 +42,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.MODIFY;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
@@ -76,7 +76,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
-    .withAction(ActionProfile.Action.MODIFY)
+    .withAction(MODIFY)
     .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC);
 
   private MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
@@ -163,7 +163,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
     payloadContext.put("MAPPING_PARAMS", Json.encode(new MappingParameters()));
 
-    mappingProfile.getMappingDetails().withMarcMappingOption(MODIFY);
+    mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(mappingProfile.getId())

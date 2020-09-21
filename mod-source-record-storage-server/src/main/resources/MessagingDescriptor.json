@@ -53,6 +53,18 @@
       "description": "Payload for DI_SRS_MARC_BIB_RECORD_MODIFIED event ready for post processing",
       "eventTTL": 1,
       "signed": false
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIB_RECORD_MATCHED",
+      "description": "SRS Marc Bibliographic Record matched",
+      "eventTTL": 1,
+      "signed": false
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
+      "description": "SRS Marc Bibliographic Record not matched",
+      "eventTTL": 1,
+      "signed": false
     }
   ],
   "subscriptions": [
@@ -78,6 +90,14 @@
     },
     {
       "eventType": "DI_SRS_MARC_BIB_RECORD_MODIFIED",
+      "callbackAddress": "/source-storage/handlers/data-import"
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIB_RECORD_MATCHED",
+      "callbackAddress": "/source-storage/handlers/data-import"
+    },
+    {
+      "eventType": "DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
       "callbackAddress": "/source-storage/handlers/data-import"
     },
     {

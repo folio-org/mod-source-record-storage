@@ -171,8 +171,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
       .willReturn(WireMock.noContent()));
 
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(null)
+      .withContext(payloadContext)
       .withTenant(TENANT_ID)
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())

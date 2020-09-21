@@ -2,6 +2,7 @@ package org.folio.services;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static java.util.Collections.singletonList;
+import static org.folio.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
@@ -14,6 +15,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,6 +25,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
@@ -31,9 +37,13 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.processing.mapping.MappingManager;
+import org.folio.processing.mapping.mapper.reader.Reader;
+import org.folio.processing.value.StringValue;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Field;
+import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -48,6 +58,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -160,11 +171,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
       .willReturn(WireMock.noContent()));
 
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
+      .withContext(null)
       .withTenant(TENANT_ID)
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
@@ -408,5 +416,53 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
+  }
+
+  @Test(expected = ExecutionException.class)
+  public void shouldFailIfContextIsEmptyIdField(TestContext context) {
+    Async async = context.async();
+
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(null)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s"))))
+            .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("b"))))))));
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(),
+            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
+          async.complete();
+        }));
   }
 }

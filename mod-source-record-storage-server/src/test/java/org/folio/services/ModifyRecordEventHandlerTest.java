@@ -122,9 +122,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId)
       .withContent(PARSED_CONTENT);
-
-//    MappingManager.registerReaderFactory(new MarcBibReaderFactory());
-//    MappingManager.registerWriterFactory(new MarcRecordWriterFactory());
   }
 
   @Before

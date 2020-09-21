@@ -54,6 +54,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE = "Can`t find records by this MARC-field path: %s";
+  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
 
   private final RecordDao recordDao;
   private final Vertx vertx;
@@ -182,7 +183,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
       dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.toString());
-      context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
+      context.put(MATCHED_MARC_BIB_KEY, Json.encode(ar.result().getRecords().get(0)));
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
       constructError(dataImportEventPayload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);

@@ -26,7 +26,6 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.services.handlers.MarcRecordWriterFactory;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.Assert;
 import org.junit.Before;
@@ -124,7 +123,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       .withContent(PARSED_CONTENT);
 
     MappingManager.registerReaderFactory(new MarcBibReaderFactory());
-    MappingManager.registerWriterFactory(new MarcRecordWriterFactory());
   }
 
   @Before

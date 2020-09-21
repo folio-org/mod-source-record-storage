@@ -18,7 +18,6 @@ import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.UpdateRecordEventHandlingService;
 import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
-import org.folio.services.handlers.MarcRecordWriterFactory;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +42,6 @@ public class SourceStorageHandlersImpl implements SourceStorageHandlers {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
 
     MappingManager.registerReaderFactory(new MarcBibReaderFactory());
-    MappingManager.registerWriterFactory(new MarcRecordWriterFactory());
     EventManager.registerEventHandler(instancePostProcessingEventHandler);
     EventManager.registerEventHandler(modifyRecordEventHandler);
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);

@@ -63,8 +63,9 @@ public class ModifyRecordEventHandler implements EventHandler {
       marcRecordModifier.initialize(dataImportEventPayload, mappingProfile);
       marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
       marcRecordModifier.getResult(dataImportEventPayload);
+      prepareModificationResult(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
 
-      Record changedRecord = retrieveChangedRecord(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
+      Record changedRecord = new ObjectMapper().readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       recordService.saveRecord(changedRecord, dataImportEventPayload.getTenant())
         .onComplete(saveAr -> {
           if (saveAr.succeeded()) {
@@ -82,14 +83,11 @@ public class ModifyRecordEventHandler implements EventHandler {
     return future;
   }
 
-  private Record retrieveChangedRecord(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws JsonProcessingException {
-    String changedRecordAsString;
-    if (marcMappingOption == MappingDetail.MarcMappingOption.MODIFY) {
-      changedRecordAsString = dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
-    } else {
-      changedRecordAsString = dataImportEventPayload.getContext().get(MATCHED_MARC_BIB_KEY);
+  private void prepareModificationResult(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
+    HashMap<String, String> context = dataImportEventPayload.getContext();
+    if (marcMappingOption == MappingDetail.MarcMappingOption.UPDATE) {
+      context.put(MARC_BIBLIOGRAPHIC.value(), context.remove(MATCHED_MARC_BIB_KEY));
     }
-    return new ObjectMapper().readValue(changedRecordAsString, Record.class);
   }
 
   private MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {

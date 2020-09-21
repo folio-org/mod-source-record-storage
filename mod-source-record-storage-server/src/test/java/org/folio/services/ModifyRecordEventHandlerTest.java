@@ -229,7 +229,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       context.assertNull(throwable);
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
 
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MATCHED_MARC_BIB_KEY), Record.class);
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       async.complete();

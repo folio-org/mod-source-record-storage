@@ -186,7 +186,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
    */
   private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
-      dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_MATCHED.toString());
+      dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.toString());
       context.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(ar.result().getRecords().get(0)));
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
@@ -203,6 +203,6 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
    */
   private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
     LOG.error(errorMessage);
-    dataImportEventPayload.setEventType(DI_SRS_MARC_BIBLIOGRAPHIC_NOT_MATCHED.toString());
+    dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.toString());
   }
 }

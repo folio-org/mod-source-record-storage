@@ -157,7 +157,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
-    String expectedParsedContent = "{\"leader\":\"00084nam  22000371a 4500\",\"fields\":[{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00084nam  22000371a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));

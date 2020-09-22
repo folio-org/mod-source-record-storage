@@ -1,6 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -15,6 +14,7 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.util.AdditionalFieldsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +37,7 @@ public class ModifyRecordEventHandler implements EventHandler {
 
   public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String MAPPING_PARAMS_KEY = "MAPPING_PARAMS";
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private RecordService recordService;
 
@@ -56,6 +57,8 @@ public class ModifyRecordEventHandler implements EventHandler {
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
+      Record record = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      String hrId = AdditionalFieldsUtil.getValueFromControlledField(record, AdditionalFieldsUtil.HR_ID_FROM_FIELD);
       MappingProfile mappingProfile = retrieveMappingProfile(dataImportEventPayload);
       preparePayload(dataImportEventPayload);
 
@@ -65,7 +68,11 @@ public class ModifyRecordEventHandler implements EventHandler {
       marcRecordModifier.getResult(dataImportEventPayload);
       prepareModificationResult(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
 
-      Record changedRecord = new ObjectMapper().readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      Record changedRecord = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      AdditionalFieldsUtil.addControlledFieldToMarcRecord(changedRecord, AdditionalFieldsUtil.HR_ID_FROM_FIELD, hrId, true);
+
+      payloadContext.put(MARC_BIBLIOGRAPHIC.value(), OBJECT_MAPPER.writeValueAsString(changedRecord));
+
       recordService.saveRecord(changedRecord, dataImportEventPayload.getTenant())
         .onComplete(saveAr -> {
           if (saveAr.succeeded()) {

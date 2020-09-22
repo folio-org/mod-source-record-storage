@@ -26,6 +26,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -148,7 +149,11 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
     MatchProfile matchProfile;
     ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
-    matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
+    if (matchingProfileWrapper.getContent() instanceof Map) {
+      matchProfile = new JsonObject((Map) matchingProfileWrapper.getContent()).mapTo(MatchProfile.class);
+    } else {
+      matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
+    }
     return matchProfile.getMatchDetails().get(0);
   }
 

@@ -34,7 +34,7 @@ public final class AdditionalFieldsUtil {
 
   public static final String TAG_999 = "999";
 
-  private static final String HR_ID_FROM_FIELD = "001";
+  public static final String HR_ID_FROM_FIELD = "001";
   private static final String HR_ID_PREFIX_FROM_FIELD = "003";
   private static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
@@ -44,7 +44,8 @@ public final class AdditionalFieldsUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';
 
-  private AdditionalFieldsUtil() { }
+  private AdditionalFieldsUtil() {
+  }
 
   /**
    * Adds field if it does not exist and a subfield with a value to that field
@@ -101,12 +102,20 @@ public final class AdditionalFieldsUtil {
    * @return true if succeeded, false otherwise
    */
   public static boolean addControlledFieldToMarcRecord(Record record, String field, String value) {
+    return addControlledFieldToMarcRecord(record, field, value, false);
+  }
+
+  public static boolean addControlledFieldToMarcRecord(Record record, String field, String value, boolean replace) {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        if (replace) {
+          removeField(record, field);
+        }
         MarcReader reader = buildMarcReader(record);
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
+
         MarcFactory factory = MarcFactory.newInstance();
         if (reader.hasNext()) {
           org.marc4j.marc.Record marcRecord = reader.next();

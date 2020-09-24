@@ -438,6 +438,31 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
+    MatchProfile matchProfile = new MatchProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("MARC-MARC matching")
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.HOLDINGS);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(matchProfile.getId())
+      .withContentType(MATCH_PROFILE)
+      .withContent(matchProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
+      .withContext(new HashMap<>())
+      .withCurrentNode(profileSnapshotWrapper);
+
+    boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
+
+    Assert.assertFalse(isEligible);
+  }
+
+  @Test
   public void shouldReturnFalseWhenNotMatchProfileForProfile() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())

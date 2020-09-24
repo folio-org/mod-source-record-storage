@@ -119,7 +119,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
     if (dataImportEventPayload.getCurrentNode() != null && MATCH_PROFILE == dataImportEventPayload.getCurrentNode().getContentType()) {
       MatchProfile matchProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getContent()).mapTo(MatchProfile.class);
-      return matchProfile.getIncomingRecordType() == MARC_BIBLIOGRAPHIC;
+      return matchProfile.getIncomingRecordType() == MARC_BIBLIOGRAPHIC && matchProfile.getExistingRecordType() == MARC_BIBLIOGRAPHIC;
     }
     return false;
   }

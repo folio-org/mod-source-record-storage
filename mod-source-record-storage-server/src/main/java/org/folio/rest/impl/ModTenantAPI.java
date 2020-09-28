@@ -52,22 +52,10 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private SnapshotService snapshotService;
 
-  @Autowired
-  private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
-
-  @Autowired
-  private ModifyRecordEventHandler modifyRecordEventHandler;
-
-  @Autowired
-  private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
-
   private String tenantId;
 
   public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-    EventManager.registerEventHandler(instancePostProcessingEventHandler);
-    EventManager.registerEventHandler(modifyRecordEventHandler);
-    EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
     this.tenantId = TenantTool.calculateTenantId(tenantId);
   }
 

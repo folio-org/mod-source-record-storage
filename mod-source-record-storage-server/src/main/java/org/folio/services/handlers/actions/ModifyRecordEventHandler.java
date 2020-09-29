@@ -1,5 +1,6 @@
 package org.folio.services.handlers.actions;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -57,9 +58,8 @@ public class ModifyRecordEventHandler implements EventHandler {
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
-      Record record = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      String hrId = AdditionalFieldsUtil.getValueFromControlledField(record, AdditionalFieldsUtil.HR_ID_FROM_FIELD);
       MappingProfile mappingProfile = retrieveMappingProfile(dataImportEventPayload);
+      String hrId = retrieveHrid(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
       preparePayload(dataImportEventPayload);
 
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
@@ -88,6 +88,14 @@ public class ModifyRecordEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws JsonProcessingException {
+    String recordAsString = marcMappingOption == MappingDetail.MarcMappingOption.UPDATE
+      ? eventPayload.getContext().get(MATCHED_MARC_BIB_KEY) : eventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
+
+    Record recordWithHrid = OBJECT_MAPPER.readValue(recordAsString, Record.class);
+    return AdditionalFieldsUtil.getValueFromControlledField(recordWithHrid, AdditionalFieldsUtil.HR_ID_FROM_FIELD);
   }
 
   private void prepareModificationResult(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) {

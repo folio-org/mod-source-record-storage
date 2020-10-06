@@ -271,6 +271,35 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldReturnTrueWhenHandlerIsEligibleForUpdateMarcBibActionProfile() {
+    // given
+    ActionProfile actionProfile = new ActionProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("Update marc bib")
+      .withAction(ActionProfile.Action.UPDATE)
+      .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(actionProfile.getId())
+      .withContentType(ACTION_PROFILE)
+      .withContent(actionProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(new HashMap<>())
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper);
+
+    // when
+    boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
+
+    // then
+    Assert.assertTrue(isEligible);
+  }
+
+  @Test
   public void shouldReturnFalseWhenHandlerIsNotEligibleForActionProfile() {
     // given
     ActionProfile actionProfile = new ActionProfile()

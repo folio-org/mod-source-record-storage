@@ -1,8 +1,9 @@
-## 2020-08-18 v4.1.0-SNAPSHOT
+## 2020-10-09 v4.1.0
 * [MODSOURMAN-340](https://issues.folio.org/browse/MODSOURMAN-340) MARC field sort into numerical order when record is imported
 * [MODSOURMAN-345](https://issues.folio.org/browse/MODSOURMAN-345) 003 handling in SRS for MARC Bib records: Create
 * [MODDICORE-58](https://issues.folio.org/browse/MODDICORE-58) MARC-MARC matching for 001 and 999 ff fields
-* [MODDATAIMP-324](https://issues.folio.org/browse/MODDATAIMP-324) Update all Data-Import modules to the new RMB version
+* [MODSOURCE-187](https://issues.folio.org/browse/MODSOURCE-187) Upgrade MODSOURCE to RMB31.0.2
+* [MODSOURCE-189](https://issues.folio.org/browse/MODSOURCE-189) Upgrade MODSOURCE to JDK 11
 * [MODSOURCE-184](https://issues.folio.org/browse/MODSOURCE-184) Enable Action profile action for incoming MARC Bibs: UPDATE MARC Bib in SRS 
 * [MODSOURCE-186](https://issues.folio.org/browse/MODSOURCE-186) Job status is "Completed with errors" when holding updating.
 

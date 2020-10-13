@@ -1,32 +1,45 @@
 package org.folio.rest.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import org.apache.http.HttpStatus;
-import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-
 @RunWith(VertxUnitRunner.class)
 public class SnapshotApiTest extends AbstractRestVerticleTest {
+
+  public static final String INVENTORY_INSTANCES_PATH = "/inventory/instances";
 
   private static Snapshot snapshot_1 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
@@ -41,8 +54,19 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_FINISHED);
 
+  private static RawRecord rawRecord;
+
+  @BeforeClass
+  public static void setUpClass() throws IOException {
+    rawRecord = new RawRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+  }
+
   @Before
   public void setUp(TestContext context) {
+    WireMock.stubFor(WireMock.delete(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true))
+      .willReturn(WireMock.noContent()));
+
     Async async = context.async();
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
@@ -302,6 +326,25 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .body("status", is(snapshot_3.getStatus().name()));
     async.complete();
 
+    String instanceId = UUID.randomUUID().toString();
+    String recordId = UUID.randomUUID().toString();
+    Record record = new Record()
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withSnapshotId(snapshot_3.getJobExecutionId());
+
+    List<String> recordIds = Arrays.asList(recordId, UUID.randomUUID().toString());
+    for (String id : recordIds) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record.withId(id).withMatchedId(id))
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
     async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -310,6 +353,16 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
     async.complete();
+
+    for (String id : recordIds) {
+      RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(SOURCE_STORAGE_RECORDS_PATH + "/" + id)
+        .then()
+        .statusCode(HttpStatus.SC_NOT_FOUND);
+    }
+    verify(recordIds.size(), deleteRequestedFor(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true)));
   }
 
   @Test

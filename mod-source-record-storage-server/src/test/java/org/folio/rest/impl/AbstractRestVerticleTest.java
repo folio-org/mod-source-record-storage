@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 import java.util.Collections;
@@ -17,6 +18,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 
@@ -46,6 +48,7 @@ public abstract class AbstractRestVerticleTest {
   static RequestSpecification specWithoutUserId;
 
   private static String useExternalDatabase;
+  private static int okapiPort;
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -57,9 +60,8 @@ public abstract class AbstractRestVerticleTest {
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
-    int port = NetworkUtils.nextFreePort();
-    String okapiUrl = "http://localhost:" + port;
-    String okapiUserId = UUID.randomUUID().toString();
+    okapiPort = NetworkUtils.nextFreePort();
+    String okapiUrl = "http://localhost:" + okapiPort;
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");
@@ -87,7 +89,7 @@ public abstract class AbstractRestVerticleTest {
 
     TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
-      .setConfig(new JsonObject().put("http.port", port));
+      .setConfig(new JsonObject().put("http.port", okapiPort));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
         tenantClient.postTenant(new TenantAttributes()
@@ -101,17 +103,22 @@ public abstract class AbstractRestVerticleTest {
         e.printStackTrace();
       }
     });
+  }
 
+  @Before
+  public void setUp() {
+    String okapiUserId = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .setBaseUri(okapiUrl)
+      .setBaseUri("http://localhost:" + okapiPort)
+      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
       .build();
 
     specWithoutUserId = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .setBaseUri(okapiUrl)
+      .setBaseUri("http://localhost:" + okapiPort)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_HEADER_TOKEN, OKAPI_TOKEN)
       .build();

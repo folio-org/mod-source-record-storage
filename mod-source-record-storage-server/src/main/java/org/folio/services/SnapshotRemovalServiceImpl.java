@@ -26,7 +26,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 @Service
 public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SnapshotServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SnapshotRemovalServiceImpl.class);
 
   private static final String INVENTORY_INSTANCES_PATH = "/inventory/instances/%s";
   private static final int RECORDS_LIMIT = 50;

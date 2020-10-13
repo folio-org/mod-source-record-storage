@@ -29,7 +29,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
   private static final Logger LOG = LoggerFactory.getLogger(SnapshotRemovalServiceImpl.class);
 
   private static final String INVENTORY_INSTANCES_PATH = "/inventory/instances/%s";
-  private static final int RECORDS_LIMIT = 50;
+  private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "50"));
 
   private SnapshotService snapshotService;
   private RecordService recordService;

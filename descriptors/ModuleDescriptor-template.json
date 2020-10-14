@@ -65,9 +65,8 @@
             "DELETE"
           ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
-          "permissionsRequired": [
-            "source-storage.snapshots.delete"
-          ]
+          "permissionsRequired": ["source-storage.snapshots.delete"],
+          "modulePermissions": ["inventory.instances.item.delete"]
         }
       ]
     },

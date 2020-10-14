@@ -1,24 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
-import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
-
-import java.util.List;
-import java.util.Map;
-
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-
-import org.folio.dataimport.util.ExceptionHelper;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.resource.SourceStorageSnapshots;
-import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.SnapshotService;
-import org.folio.spring.SpringContextUtil;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -26,6 +7,25 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.resource.SourceStorageSnapshots;
+import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.SnapshotRemovalService;
+import org.folio.services.SnapshotService;
+import org.folio.spring.SpringContextUtil;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+import java.util.List;
+import java.util.Map;
+
+import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
+import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
 
 public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
 
@@ -34,6 +34,8 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
 
   @Autowired
   private SnapshotService snapshotService;
+  @Autowired
+  private SnapshotRemovalService snapshotRemovalService;
 
   private final String tenantId;
 
@@ -101,11 +103,11 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotService.deleteSnapshot(jobExecutionId, tenantId)
-          .map(deleted -> Boolean.TRUE.equals(deleted) ?
-            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204() :
-            DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
-              String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
+        snapshotRemovalService.deleteSnapshot(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+          .map(deleted -> Boolean.TRUE.equals(deleted)
+            ? DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204()
+            : DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
+                String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
@@ -134,5 +136,5 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
       }
     });
   }
- 
+
 }

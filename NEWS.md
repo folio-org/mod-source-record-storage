@@ -1,4 +1,4 @@
-## 2020-10-14 v4.1.1-SNAPSHOT
+## 2020-10-14 v4.1.1
 * [MODSOURMAN-361](https://issues.folio.org/browse/MODSOURMAN-361) Add capability to remove jobs that are stuck
 
 ## 2020-10-09 v4.1.0

@@ -1,5 +1,6 @@
 ## 2020-10-09 v4.1.1-SNAPSHOT
 * [MODSOURMAN-361](https://issues.folio.org/browse/MODSOURMAN-361) Add capability to remove jobs that are stuck
+* [MODSOURCE-200](https://issues.folio.org/browse/MODSOURCE-200) Post to /source-storage/batch/records returns "null value in column \"description\" violates not-null constraint" [BUGFIX]
 
 ## 2020-10-09 v4.1.0
 * [MODSOURMAN-340](https://issues.folio.org/browse/MODSOURMAN-340) MARC field sort into numerical order when record is imported

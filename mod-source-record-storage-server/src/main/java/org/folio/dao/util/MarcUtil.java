@@ -21,12 +21,13 @@ import org.marc4j.marc.Record;
 public class MarcUtil {
 
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+  private static final String MARC_RECORD_ERROR_MESSAGE = "Unable to read marc record!";
 
   private MarcUtil() { }
 
   /**
    * Converts raw MARC to MARC json
-   * 
+   *
    * @param rawMarc raw MARC
    * @return MARC json
    * @throws IOException
@@ -38,7 +39,7 @@ public class MarcUtil {
 
   /**
    * Converts raw MARC to text formatted MARC
-   * 
+   *
    * @param rawMarc raw MARC
    * @return text formatted MARC
    * @throws IOException
@@ -50,7 +51,7 @@ public class MarcUtil {
 
   /**
    * Converts MARC json to raw MARC
-   * 
+   *
    * @param marcJson MARC json
    * @return raw MARC
    * @throws IOException
@@ -62,7 +63,7 @@ public class MarcUtil {
 
   /**
    * Converts MARC json to text formatted MARC
-   * 
+   *
    * @param marcJson MARC json
    * @return text formatted MARC
    * @throws IOException
@@ -86,10 +87,14 @@ public class MarcUtil {
     try (InputStream in = new ByteArrayInputStream(marcJson.getBytes())) {
       final MarcJsonReader reader = new MarcJsonReader(in);
       if (reader.hasNext()) {
-        return reader.next();
+        try {
+          return reader.next();
+        } catch (Exception e) {
+          throw new MarcException(MARC_RECORD_ERROR_MESSAGE);
+        }
       }
     }
-    throw new MarcException(String.format("Unable to read: %s", marcJson));
+    throw new MarcException(MARC_RECORD_ERROR_MESSAGE);
   }
 
   private static String recordToMarcJson(Record record) throws IOException {

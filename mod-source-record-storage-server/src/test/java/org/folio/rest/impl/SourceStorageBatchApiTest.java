@@ -48,6 +48,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String SOURCE_STORAGE_BATCH_RECORDS_PATH = "/source-storage/batch/records";
   private static final String SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
 
+  private static final String INVALID_POST_REQUEST = "{\"records\":[{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"snapshotId\":\"7f939c0b-618c-4eab-8276-a14e0bfe5728\",\"matchedId\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"generation\":0,\"recordType\":\"MARC\",\"rawRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":\"01104cam a2200253   4500001001400000005001700014008004100031010001300072035002000085040003500105049000900140050002000149050002200169082001900191086002800210110012600238245024000364260004800604300002300652336002600675337002800701338002700729600009400756\\u001Ein00000000007\\u001E20120817205822.0\\u001E690410s1965    dcu          f000 0 eng  \\u001E  \\u001Fa65062892\\u001E  \\u001Fa(OCoLC)00000048\\u001E  \\u001FaDLC\\u001Fbeng\\u001FcDLC\\u001FdBTCTA\\u001FdUCO\\u001FdCOD\\u001E  \\u001FaNDLL\\u001E00\\u001FaKF26\\u001Fb.L3 1965e\\u001E04\\u001FaHD8051\\u001Fb.B56 1965\\u001E00\\u001Fa353.008/3/0924\\u001E0 \\u001FaY 4.L 11/2:N 72/5/965-4\\u001E1 \\u001FaUnited States.\\u001FbCongress.\\u001FbSenate.\\u001FbCommittee on Labor and Public Welfare.\\u001F0http://id.loc.gov/authorities/names/n79032283\\u001E10\\u001FaNomination.\\u001FbHearing before the committee on Labor and Public Welfare, United States Senate, Eighty-ninth Congress, first session, Arthur Ross, of California, to be Commissioner of the Bureau of Labor Statistics. September 16, 1965 ...\\u001E  \\u001FaWashington,\\u001FbU.S. Govt. Print. Off.,\\u001Fc1965.\\u001E  \\u001Faii, 4 p. ;\\u001Fc24 cm.\\u001E  \\u001Fatext\\u001Fbtxt\\u001F2rdacontent\\u001E  \\u001Faunmediated\\u001Fbn\\u001F2rdamedia\\u001E  \\u001Favolume\\u001Fbnc\\u001F2rdacarrier\\u001E10\\u001FaRoss, Arthur M.\\u001Fq(Arthur Max),\\u001Fd1916-1970.\\u001F0http://id.loc.gov/authorities/names/n50047449\\u001E\\u001D\"},\"parsedRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":{\"leader\":\"00000cam a2200277   4500\",\"fields\":[{\"001\":\"in00000000007\"},{\"005\":\"20120817205822.0\"},{\"008\":\"690410s1965    dcu          f000 0 eng  \"},{\"010\":{\"subfields\":[{\"a\":\"65062892\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"600\":{\"subfields\":[{\"a\":\"Ross, Arthur M.\"},{\"q\":\"(Arthur Max),\"},{\"d\":\"1916-1970.\"},{\"0\":\"http://id.loc.gov/authorities/names/n50047449\"}],\"ind1\":\"1\",\"ind2\":\"0\"}}],\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"i\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"}]}}},\"deleted\":false,\"order\":0,\"externalIdsHolder\":{\"instanceId\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"},\"additionalInfo\":{\"suppressDiscovery\":false},\"state\":\"ACTUAL\",\"leaderRecordStatus\":\"c\"}],\"totalRecords\":1}";
+
+
   private static final String FIRST_UUID = UUID.randomUUID().toString();
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
@@ -77,7 +80,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  
+
   private static Record record_1 = new Record()
     .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -146,6 +149,22 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("records.size()", is(10))
       .body("errorMessages.size()", is(0))
       .body("totalRecords", is(10));
+    async.complete();
+  }
+
+  @Test
+  public void shouldPostWithoutErrorsSourceStorageBatchRecordsWithInvalidRecord(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(INVALID_POST_REQUEST)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records.size()", is(1))
+      .body("errorMessages.size()", is(0))
+      .body("totalRecords", is(1));
     async.complete();
   }
 
@@ -294,7 +313,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("errorMessages.size()", is(0))
       .body("totalRecords", is(10));
     async.complete();
-    
+
     async = testContext.async();
     List<Record> updated = original.stream()
       .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))

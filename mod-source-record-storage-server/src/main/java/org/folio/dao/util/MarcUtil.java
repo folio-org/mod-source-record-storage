@@ -94,7 +94,7 @@ public class MarcUtil {
         }
       }
     }
-    throw new MarcException(MARC_RECORD_ERROR_MESSAGE);
+    throw new MarcException(String.format("Unable to read: %s", marcJson));
   }
 
   private static String recordToMarcJson(Record record) throws IOException {

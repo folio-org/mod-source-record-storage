@@ -20,9 +20,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <raml-module-builder.version>31.0.2</raml-module-builder.version>
+    <raml-module-builder.version>31.1.5</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>3.9.1</vertx.version>
+    <vertx.version>3.9.4</vertx.version>
     <junit.version>4.13</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
   </properties>

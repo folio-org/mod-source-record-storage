@@ -23,7 +23,7 @@
     <raml-module-builder.version>31.1.5</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>3.9.4</vertx.version>
-    <junit.version>4.13</junit.version>
+    <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
   </properties>
 
@@ -39,6 +39,16 @@
         <version>${vertx.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-sql-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-pg-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
       </dependency>
 
     </dependencies>

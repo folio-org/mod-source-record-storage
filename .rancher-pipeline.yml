@@ -3,7 +3,7 @@ stages:
   steps:
   - runScriptConfig:
       image: grizzlysoftware/maven-non-root:3.6.2-11.0.4-jdk-stretch
-      shellScript: mvn package -DskipTests
+      shellScript: mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
 - name: Build Docker with DIND
   steps:
   - publishImageConfig:

@@ -30,6 +30,7 @@ import org.folio.MatchProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -91,6 +92,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
   private Record record;
 
+  private Record secondRecord;
+
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
@@ -125,6 +128,21 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withId(recordId)
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
+      .withGeneration(1)
+      .withRecordType(MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(new ParsedRecord()
+        .withId(recordId)
+        .withContent(PARSED_CONTENT_WITH_ADDITIONAL_FIELDS))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119")
+        .withInstanceHrid("12345"))
+    .withState(Record.State.ACTUAL);
+
+    this.secondRecord = new Record()
+      .withId(String.valueOf(UUID.randomUUID()))
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
       .withGeneration(0)
       .withRecordType(MARC)
       .withRawRecord(rawRecord)
@@ -133,7 +151,9 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
         .withContent(PARSED_CONTENT_WITH_ADDITIONAL_FIELDS))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119")
-        .withInstanceHrid("12345"));
+        .withInstanceHrid("12345"))
+    .withState(Record.State.OLD);
+
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
@@ -141,6 +161,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       }
       async.complete();
     });
+
   }
 
   @After
@@ -191,6 +212,13 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator1").withValue(""),
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      async.complete();
+    });
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)

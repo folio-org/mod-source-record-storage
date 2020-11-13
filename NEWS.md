@@ -1,10 +1,13 @@
-## 2020-11-12 v4.1.2
-* [MODSOURCE-200](https://issues.folio.org/browse/MODSOURCE-200) Post to /source-storage/batch/records returns "null value in column \"description\" violates not-null constraint"
-* [MODSOURCE-174](https://issues.folio.org/browse/MODSOURCE-174) Disable CQL2PgJSON & CQLWrapper extra logging in mod-source-record-storage
+## 2020-10-22 v4.1.3-SNAPSHOT
+* [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Update MARC record with field protections - job failed [BUGFIX]
+
+## 2020-10-22 v4.1.2
+* [MODSOURCE-200](https://issues.folio.org/browse/MODSOURCE-200) Post to /source-storage/batch/records returns "null value in column \"description\" violates not-null constraint" [BUGFIX]
+* [MODSOURCE-174](https://issues.folio.org/browse/MODSOURCE-174) Disable CQL2PgJSON & CQLWrapper extra logging in mod-source-record-storage.
 * [MODSOURCE-207](https://issues.folio.org/browse/MODSOURCE-207) Upgrade to RMB v31.1.5
 * [MODSOURCE-199](https://issues.folio.org/browse/MODSOURCE-199) Store ParsedRecord content as json instead of string
 
-## 2020-10-14 v4.1.1
+## 2020-10-09 v4.1.1
 * [MODSOURMAN-361](https://issues.folio.org/browse/MODSOURMAN-361) Add capability to remove jobs that are stuck
 
 ## 2020-10-09 v4.1.0

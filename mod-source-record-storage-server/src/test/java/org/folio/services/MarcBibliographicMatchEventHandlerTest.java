@@ -162,12 +162,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       async.complete();
     });
 
-    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
   }
 
   @After
@@ -218,6 +212,13 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator1").withValue(""),
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      async.complete();
+    });
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)

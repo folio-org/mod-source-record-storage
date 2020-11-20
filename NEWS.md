@@ -1,5 +1,5 @@
-## 2020-10-22 v4.1.3-SNAPSHOT
-* [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Update MARC record with field protections - job failed [BUGFIX]
+## 2020-11-20 v4.1.3
+* [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Fix matching by 999 ff s field
 
 ## 2020-10-22 v4.1.2
 * [MODSOURCE-200](https://issues.folio.org/browse/MODSOURCE-200) Post to /source-storage/batch/records returns "null value in column \"description\" violates not-null constraint" [BUGFIX]

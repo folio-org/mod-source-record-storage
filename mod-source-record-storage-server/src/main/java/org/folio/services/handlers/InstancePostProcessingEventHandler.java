@@ -1,6 +1,7 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -9,6 +10,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.DataImportEventPayload;
@@ -159,11 +161,23 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     record.getExternalIdsHolder().setInstanceHrid(instanceHrid);
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
-    if (isAddedField) {
-      record.getExternalIdsHolder().setInstanceId(instanceId);
-      return recordDao.updateParsedRecord(record, tenantId).map(record);
+    if (!isAddedField) {
+      return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
+
     }
-    return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
+
+    return recordDao.getRecordById(record.getId(), tenantId)
+      .compose(record1 -> {
+        record.getExternalIdsHolder().setInstanceId(instanceId);
+        boolean present = record1.isPresent();
+        if (present) {
+          record.getExternalIdsHolder().setInstanceId(instanceId);
+          return recordDao.updateParsedRecord(record, tenantId).map(record);
+        } else {
+          record.getRawRecord().setId(record.getId());
+          return recordDao.saveRecord(record, tenantId).map(record);
+        }
+      });
   }
 
   @Override

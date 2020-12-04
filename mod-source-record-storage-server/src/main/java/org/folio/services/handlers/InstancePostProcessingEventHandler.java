@@ -23,6 +23,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -162,7 +163,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
     if (!isAddedField) {
-      throw new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId()));
+      throw new PostProcessingException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId()));
     }
     record.getExternalIdsHolder().setInstanceId(instanceId);
   }

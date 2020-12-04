@@ -82,7 +82,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
-      setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId)
+      setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId);
+      insertOrUpdateRecordWithExternalIdsHolder(record, tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))
         .onComplete(updateAr -> {
@@ -146,15 +147,14 @@ public class InstancePostProcessingEventHandler implements EventHandler {
    * @param record   record to update
    * @param instance instance in Json
    * @param tenantId tenant id
-   * @return future with updated record
    */
-  private Future<Record> setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
+  private void setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
     if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())
       || isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
-      return Future.succeededFuture(record);
+      return;
     }
     String instanceId = instance.getString("id");
     String instanceHrid = instance.getString("hrid");
@@ -162,16 +162,16 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
     if (!isAddedField) {
-      return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
-
+      throw new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId()));
     }
+    record.getExternalIdsHolder().setInstanceId(instanceId);
+  }
 
+  private Future<Record> insertOrUpdateRecordWithExternalIdsHolder(Record record, String tenantId) {
     return recordDao.getRecordById(record.getId(), tenantId)
       .compose(record1 -> {
-        record.getExternalIdsHolder().setInstanceId(instanceId);
         boolean present = record1.isPresent();
         if (present) {
-          record.getExternalIdsHolder().setInstanceId(instanceId);
           return recordDao.updateParsedRecord(record, tenantId).map(record);
         } else {
           record.getRawRecord().setId(record.getId());

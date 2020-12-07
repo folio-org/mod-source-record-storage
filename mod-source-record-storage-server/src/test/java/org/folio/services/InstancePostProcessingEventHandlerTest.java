@@ -19,6 +19,7 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -255,11 +256,26 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) {
+  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
     Async async = context.async();
 
     WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
       .willReturn(WireMock.noContent()));
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withGeneration(0)
+      .withRecordType(MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
@@ -270,7 +286,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
-    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
@@ -285,20 +301,20 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
 
         context.assertTrue(getAr.result().isPresent());
-        Record updatedRecord = getAr.result().get();
+        Record savedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedInstanceId, updatedRecord.getExternalIdsHolder().getInstanceId());
+        context.assertNotNull(savedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, savedRecord.getExternalIdsHolder().getInstanceId());
 
-        context.assertNotNull(updatedRecord.getParsedRecord());
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
+        context.assertNotNull(savedRecord.getParsedRecord());
+        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
@@ -317,47 +333,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
           }
         }
         context.assertEquals(expectedInstanceId, actualInstanceId);
-
-        String recordForUdateId = UUID.randomUUID().toString();
-        Record recordForUpdate = JsonObject.mapFrom(record).mapTo(Record.class)
-          .withId(recordForUdateId)
-          .withSnapshotId(snapshotId2)
-          .withRawRecord(record.getRawRecord().withId(recordForUdateId))
-          .withParsedRecord(record.getParsedRecord().withId(recordForUdateId))
-          .withGeneration(1);
-
-        HashMap<String, String> payloadContextForUpdate = new HashMap<>();
-        payloadContextForUpdate.put(INSTANCE.value(), instance.encode());
-        payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
-
-        DataImportEventPayload dataImportEventPayloadForUpdate = new DataImportEventPayload()
-          .withContext(payloadContextForUpdate)
-          .withTenant(TENANT_ID);
-
-        CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
-        recordDao.saveRecord(recordForUpdate, TENANT_ID)
-          .onFailure(future2::completeExceptionally)
-          .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayloadForUpdate)
-            .thenApply(future2::complete)
-            .exceptionally(future2::completeExceptionally));
-
-        future2.whenComplete((payload2, ex) -> {
-          if (ex != null) {
-            context.fail(ex);
-          }
-          recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
-            if (recordAr.failed()) {
-              context.fail(recordAr.cause());
-            }
-            context.assertTrue(recordAr.result().isPresent());
-            Record rec = recordAr.result().get();
-            context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
-            context.assertNotNull(rec.getExternalIdsHolder());
-            context.assertTrue(expectedInstanceId.equals(rec.getExternalIdsHolder().getInstanceId()));
-            context.assertNotEquals(rec.getId(), record.getId());
-            async.complete();
-          });
-        });
       });
     });
   }

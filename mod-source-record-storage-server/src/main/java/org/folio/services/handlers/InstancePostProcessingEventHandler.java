@@ -143,7 +143,6 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
   /**
    * Adds specified instanceId and instanceHrid to record and additional custom field with instanceId to parsed record.
-   * Updates changed record in database.
    *
    * @param record   record to update
    * @param instance instance in Json
@@ -168,6 +167,12 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     record.getExternalIdsHolder().setInstanceId(instanceId);
   }
 
+  /**
+   * Updates specific record. If it doesn't exist - then just save it.
+   * @param record - target record
+   * @param tenantId - tenantId
+   * @return - Future with Record result
+   */
   private Future<Record> insertOrUpdateRecordWithExternalIdsHolder(Record record, String tenantId) {
     return recordDao.getRecordById(record.getId(), tenantId)
       .compose(r -> {

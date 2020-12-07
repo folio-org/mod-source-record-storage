@@ -5,18 +5,21 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -248,6 +251,89 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
             async.complete();
           });
         });
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
+    Async async = context.async();
+
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withGeneration(0)
+      .withRecordType(MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = new JsonObject()
+      .put("id", expectedInstanceId)
+      .put("hrid", expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+      .thenApply(future::complete)
+      .exceptionally(future::completeExceptionally);
+
+    future.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record savedRecord = getAr.result().get();
+
+        context.assertNotNull(savedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, savedRecord.getExternalIdsHolder().getInstanceId());
+
+        context.assertNotNull(savedRecord.getParsedRecord());
+        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceId = null;
+        for (int i = 0; i < fields.size(); i++) {
+          JsonObject field = fields.getJsonObject(i);
+          if (field.containsKey(TAG_999)) {
+            JsonArray subfields = field.getJsonObject(TAG_999).getJsonArray("subfields");
+            for (int j = 0; j < subfields.size(); j++) {
+              JsonObject subfield = subfields.getJsonObject(j);
+              if (subfield.containsKey("i")) {
+                actualInstanceId = subfield.getString("i");
+              }
+            }
+          }
+        }
+        context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
       });
     });
   }

@@ -1,4 +1,5 @@
-## xxxx-xx-xx v4.2.0-SNAPSHOT
+## 2020-12-07 v4.2.0-SNAPSHOT
+* [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.
 
 ## 2020-11-20 v4.1.3
 * [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Fix matching by 999 ff s field

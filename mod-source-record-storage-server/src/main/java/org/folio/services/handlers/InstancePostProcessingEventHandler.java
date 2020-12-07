@@ -171,8 +171,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private Future<Record> insertOrUpdateRecordWithExternalIdsHolder(Record record, String tenantId) {
     return recordDao.getRecordById(record.getId(), tenantId)
       .compose(r -> {
-        boolean present = r.isPresent();
-        if (present) {
+        if (r.isPresent()) {
           return recordDao.updateParsedRecord(record, tenantId).map(record);
         } else {
           record.getRawRecord().setId(record.getId());

@@ -103,7 +103,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             future.completeExceptionally(updateAr.cause());
           }
         });
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error(FAIL_MSG, e, dataImportEventPayload);
       future.completeExceptionally(e);
     }

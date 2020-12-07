@@ -83,7 +83,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
-      setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId);
+      setInstanceIdToRecord(record, new JsonObject(instanceAsString));
       insertOrUpdateRecordWithExternalIdsHolder(record, tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))
@@ -146,9 +146,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
    *
    * @param record   record to update
    * @param instance instance in Json
-   * @param tenantId tenant id
    */
-  private void setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
+  private void setInstanceIdToRecord(Record record, JsonObject instance) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }

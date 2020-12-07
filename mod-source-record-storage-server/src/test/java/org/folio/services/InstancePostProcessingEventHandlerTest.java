@@ -333,6 +333,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
           }
         }
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
       });
     });
   }

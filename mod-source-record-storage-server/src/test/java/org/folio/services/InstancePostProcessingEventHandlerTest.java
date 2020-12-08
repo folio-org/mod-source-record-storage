@@ -62,6 +62,9 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static final String PARSED_CONTENT_WITH_999_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
+
+  private static final String PARSED_CONTENT_WITHOUT_001_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
+
   private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
 
   @Rule
@@ -399,6 +402,68 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
           }
         }
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
+    Async async = context.async();
+
+    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
+      .willReturn(WireMock.noContent()));
+
+    record.withParsedRecord(new ParsedRecord()
+      .withId(recordId)
+      .withContent(PARSED_CONTENT_WITHOUT_001_FIELD));
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedInstanceHrid = UUID.randomUUID().toString();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).put("hrid", expectedInstanceHrid).encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(rec -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
+        .thenApply(payload -> future.complete(payload))
+        .exceptionally(future::completeExceptionally));
+
+    future.whenComplete((payload, throwable) -> {
+      if (throwable != null) {
+        context.fail(throwable);
+      }
+      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+        context.assertTrue(getAr.result().isPresent());
+        Record updatedRecord = getAr.result().get();
+
+        context.assertNotNull(updatedRecord.getExternalIdsHolder());
+        context.assertTrue(expectedInstanceId.equals(updatedRecord.getExternalIdsHolder().getInstanceId()));
+
+        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceHrid = null;
+        for (int i = 0; i < fields.size(); i++) {
+          JsonObject field = fields.getJsonObject(i);
+          if (field.containsKey("001")) {
+            actualInstanceHrid = field.getString("001");
+          }
+        }
+        context.assertEquals(expectedInstanceId, actualInstanceHrid);
         async.complete();
       });
     });

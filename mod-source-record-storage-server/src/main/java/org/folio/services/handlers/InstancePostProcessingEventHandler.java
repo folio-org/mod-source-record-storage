@@ -1,6 +1,7 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -9,6 +10,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.DataImportEventPayload;
@@ -21,6 +23,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,7 +83,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
-      setInstanceIdToRecord(record, new JsonObject(instanceAsString), tenantId)
+      setInstanceIdToRecord(record, new JsonObject(instanceAsString));
+      insertOrUpdateRecordWithExternalIdsHolder(record, tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))
         .onComplete(updateAr -> {
@@ -99,7 +103,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             future.completeExceptionally(updateAr.cause());
           }
         });
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error(FAIL_MSG, e, dataImportEventPayload);
       future.completeExceptionally(e);
     }
@@ -139,31 +143,45 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
   /**
    * Adds specified instanceId and instanceHrid to record and additional custom field with instanceId to parsed record.
-   * Updates changed record in database.
    *
    * @param record   record to update
    * @param instance instance in Json
-   * @param tenantId tenant id
-   * @return future with updated record
    */
-  private Future<Record> setInstanceIdToRecord(Record record, JsonObject instance, String tenantId) {
+  private void setInstanceIdToRecord(Record record, JsonObject instance) {
     if (record.getExternalIdsHolder() == null) {
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
     if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())
       || isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
-      return Future.succeededFuture(record);
+      return;
     }
     String instanceId = instance.getString("id");
     String instanceHrid = instance.getString("hrid");
     record.getExternalIdsHolder().setInstanceHrid(instanceHrid);
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
-    if (isAddedField) {
-      record.getExternalIdsHolder().setInstanceId(instanceId);
-      return recordDao.updateParsedRecord(record, tenantId).map(record);
+    if (!isAddedField) {
+      throw new PostProcessingException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId()));
     }
-    return Future.failedFuture(new RuntimeException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId())));
+    record.getExternalIdsHolder().setInstanceId(instanceId);
+  }
+
+  /**
+   * Updates specific record. If it doesn't exist - then just save it.
+   * @param record - target record
+   * @param tenantId - tenantId
+   * @return - Future with Record result
+   */
+  private Future<Record> insertOrUpdateRecordWithExternalIdsHolder(Record record, String tenantId) {
+    return recordDao.getRecordById(record.getId(), tenantId)
+      .compose(r -> {
+        if (r.isPresent()) {
+          return recordDao.updateParsedRecord(record, tenantId).map(record);
+        } else {
+          record.getRawRecord().setId(record.getId());
+          return recordDao.saveRecord(record, tenantId).map(record);
+        }
+      });
   }
 
   @Override

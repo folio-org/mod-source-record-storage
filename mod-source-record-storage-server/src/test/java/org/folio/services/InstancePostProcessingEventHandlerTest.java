@@ -463,7 +463,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
             actualInstanceHrid = field.getString("001");
           }
         }
-        context.assertEquals(expectedInstanceId, actualInstanceHrid);
+        context.assertEquals(expectedInstanceHrid, actualInstanceHrid);
         async.complete();
       });
     });

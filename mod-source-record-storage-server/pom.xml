@@ -134,7 +134,7 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <!-- matching RMB guava dependency version, otherwise RMB code generation fails -->
-      <version>21.0</version>
+      <version>19.0</version>
     </dependency>
     <dependency>
       <groupId>org.raml.jaxrs</groupId>

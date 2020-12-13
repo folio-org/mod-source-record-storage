@@ -140,6 +140,17 @@
       <groupId>org.raml.jaxrs</groupId>
       <artifactId>jaxrs-code-generator</artifactId>
       <version>3.0.2</version>
+      <exclusions>
+        <exclusion>
+          <groupId>net.sf.jopt-simple</groupId>
+          <artifactId>jopt-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.jopt-simple</groupId>
+      <artifactId>jopt-simple</artifactId>
+      <version>5.0.3</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -196,6 +207,10 @@
         <exclusion>
           <groupId>log4j</groupId>
           <artifactId>log4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>net.sf.jopt-simple</groupId>
+          <artifactId>jopt-simple</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

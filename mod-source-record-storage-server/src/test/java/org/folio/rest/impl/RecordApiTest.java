@@ -400,7 +400,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     createdRecord.setParsedRecord(marcRecord);
     Response putResponse = RestAssured.given()
       .spec(spec)
-      .body(createdRecord)
+      .body(createdRecord.withMetadata(null))
       .when()
       .put(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId());
     assertThat(putResponse.statusCode(), is(HttpStatus.SC_OK));

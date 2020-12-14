@@ -67,17 +67,19 @@ public abstract class AbstractRestVerticleTest {
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
-//  @ClassRule
-//  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+  @ClassRule
+  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
-//    String[] hostAndPort = cluster.getBrokerList().split(":");
-//    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-//    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    String[] hostAndPort = cluster.getBrokerList().split(":");
+    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+    System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
+    okapiPort = NetworkUtils.nextFreePort();
+    String okapiUrl = "http://localhost:" + okapiPort;
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");
@@ -103,7 +105,7 @@ public abstract class AbstractRestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient(OKAPI_URL, "diku", "dummy-token");
+    TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", okapiPort));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {

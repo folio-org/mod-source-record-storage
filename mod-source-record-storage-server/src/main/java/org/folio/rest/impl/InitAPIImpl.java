@@ -60,10 +60,9 @@ public class InitAPIImpl implements InitAPI {
     ParsedMarcChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
 
     Promise<String> deployConsumers = Promise.promise();
-    deployConsumers.complete();
 
-//    vertx.deployVerticle("org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle",
-//      new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumers);
+    vertx.deployVerticle("org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle",
+      new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumers);
 
     return deployConsumers.future();
   }

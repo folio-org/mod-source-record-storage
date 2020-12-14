@@ -35,17 +35,17 @@ public abstract class AbstractLBServiceTest {
 
   static Vertx vertx;
 
-  @ClassRule
-  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+//  @ClassRule
+//  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
 
-    String[] hostAndPort = cluster.getBrokerList().split(":");
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+//    String[] hostAndPort = cluster.getBrokerList().split(":");
+//    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+//    System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
     PostgresClient.setIsEmbedded(true);
@@ -66,6 +66,7 @@ public abstract class AbstractLBServiceTest {
         });
       } catch (Exception e) {
         e.printStackTrace();
+        async.complete();
       }
     });
   }

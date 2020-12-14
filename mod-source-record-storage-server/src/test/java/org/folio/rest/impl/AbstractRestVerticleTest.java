@@ -67,16 +67,16 @@ public abstract class AbstractRestVerticleTest {
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
-  @ClassRule
-  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+//  @ClassRule
+//  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
-    String[] hostAndPort = cluster.getBrokerList().split(":");
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+//    String[] hostAndPort = cluster.getBrokerList().split(":");
+//    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+//    System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
@@ -117,6 +117,7 @@ public abstract class AbstractRestVerticleTest {
         });
       } catch (Exception e) {
         e.printStackTrace();
+        async.complete();
       }
     });
   }

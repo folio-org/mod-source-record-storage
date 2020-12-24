@@ -287,7 +287,8 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::toOptionalRecord)
         .compose(optionalRecord -> optionalRecord
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId)))));
+          .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId)))))
+        .onFailure(v -> txQE.rollback());
   }
 
   @Override

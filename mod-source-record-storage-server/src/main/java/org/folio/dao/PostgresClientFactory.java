@@ -80,7 +80,7 @@ public class PostgresClientFactory {
     POOL_CACHE.clear();
   }
 
-  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
+  public static PgPool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
     if (POOL_CACHE.containsKey(tenantId)) {
       LOG.debug("Using existing database connection pool for tenant {}", tenantId);

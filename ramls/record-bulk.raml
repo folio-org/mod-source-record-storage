@@ -1,0 +1,20 @@
+#%RAML 1.0
+title: Source Record Storage Batch API
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage API
+    content: API for searching records
+
+types:
+  searchRecordRqBody: !include raml-storage/schemas/dto/searchRecordRqBody.json
+
+/source-storage/record-bulk:
+      displayName: Records Bulk Download API
+      post:
+        description: Retrieve a list of records.
+        body:
+          application/json:
+            type: searchRecordRqBody

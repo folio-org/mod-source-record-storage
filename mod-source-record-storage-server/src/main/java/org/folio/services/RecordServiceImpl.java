@@ -1,18 +1,10 @@
 package org.folio.services;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
@@ -37,11 +29,17 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -57,7 +55,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
-      int limit, String tenantId) {
+                                             int limit, String tenantId) {
     return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
   }
 
@@ -81,32 +79,32 @@ public class RecordServiceImpl implements RecordService {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
-      .map(optionalSnapshot -> optionalSnapshot
-        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
-      .compose(snapshot -> {
-        if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-          String message = String.format(msgTemplate, snapshot.getStatus());
-          return Future.failedFuture(new BadRequestException(message));
-        }
-        return Future.succeededFuture();
-      })
-      .compose(v -> {
-        if (Objects.isNull(record.getGeneration())) {
-          return recordDao.calculateGeneration(txQE, record);
-        }
-        return Future.succeededFuture(record.getGeneration());
-      })
-      .compose(generation -> {
-        if (generation > 0) {
-          return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
-            .compose(optionalMatchedRecord -> optionalMatchedRecord
-              .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
-              .orElse(recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
-        } else {
-          return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
-        }
-      }),
+        .map(optionalSnapshot -> optionalSnapshot
+          .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+        .compose(snapshot -> {
+          if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+            String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
+            String message = String.format(msgTemplate, snapshot.getStatus());
+            return Future.failedFuture(new BadRequestException(message));
+          }
+          return Future.succeededFuture();
+        })
+        .compose(v -> {
+          if (Objects.isNull(record.getGeneration())) {
+            return recordDao.calculateGeneration(txQE, record);
+          }
+          return Future.succeededFuture(record.getGeneration());
+        })
+        .compose(generation -> {
+          if (generation > 0) {
+            return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+              .compose(optionalMatchedRecord -> optionalMatchedRecord
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
+                .orElse(recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+          } else {
+            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
+          }
+        }),
       tenantId);
   }
 
@@ -139,7 +137,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
-      int offset, int limit, String tenantId) {
+                                                         int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
   }
 
@@ -204,19 +202,19 @@ public class RecordServiceImpl implements RecordService {
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
-            .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-              .withId(newRecordId)
-              .withSnapshotId(snapshot.getJobExecutionId())
-              .withMatchedId(parsedRecordDto.getId())
-              .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-              .withState(Record.State.ACTUAL)
-              .withOrder(existingRecord.getOrder())
-              .withGeneration(existingRecord.getGeneration() + 1)
-              .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-              .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-              .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-              .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
+          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
+            .withId(newRecordId)
+            .withSnapshotId(snapshot.getJobExecutionId())
+            .withMatchedId(parsedRecordDto.getId())
+            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+            .withState(Record.State.ACTUAL)
+            .withOrder(existingRecord.getOrder())
+            .withGeneration(existingRecord.getGeneration() + 1)
+            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
           String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
   }

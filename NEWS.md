@@ -1,7 +1,8 @@
 ## 2020-12-07 v4.2.0-SNAPSHOT
-* [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.
-* [MODSOURCE-217](https://issues.folio.org/browse/MODSOURCE-217) If incoming MARC bib lacks 001, sometimes it is added and sometimes not.[BUGFIX].
+* [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing
+* [MODSOURCE-217](https://issues.folio.org/browse/MODSOURCE-217) If incoming MARC bib lacks 001, sometimes it is added and sometimes not
 * [MODSOURCE-218](https://issues.folio.org/browse/MODSOURCE-218) Performance issues with SRS requests when instance ID is not found
+* [MODSOURCE-177](https://issues.folio.org/browse/MODSOURCE-177) Use kafka to receive chunks of parsed records for saving
 
 ## 2020-11-20 v4.1.3
 * [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Fix matching by 999 ff s field

@@ -71,6 +71,16 @@
       ]
     },
     {
+      "id": "record-bulk",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["POST"],
+          "pathPattern": "/source-storage/record-bulk"
+        }
+      ]
+    },
+    {
       "id": "source-storage-records",
       "version": "2.0",
       "handlers": [

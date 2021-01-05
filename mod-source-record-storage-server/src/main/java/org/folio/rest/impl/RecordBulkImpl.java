@@ -30,12 +30,6 @@ public class RecordBulkImpl implements RecordBulk {
   @Override
   public void postRecordBulk(RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders, vertxContext.owner());
-    bulkRecordService.searchRecords(params)
-    .onSuccess(cursor -> {
-      LOG.info(cursor.fetchNext());
-    })
-    .onFailure(throwable -> {
-      LOG.error(throwable);
-    });
+    bulkRecordService.dummySearchRecords(routingContext, asyncResultHandler);
   }
 }

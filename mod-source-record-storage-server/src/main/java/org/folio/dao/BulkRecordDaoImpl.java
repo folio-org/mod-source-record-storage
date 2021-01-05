@@ -4,11 +4,10 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Tuple;
 import org.jooq.Condition;
-
 import org.jooq.Cursor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -33,7 +32,13 @@ public class BulkRecordDaoImpl implements BulkRecordDao {
 
     Promise<RowStream<Row>> promise = Promise.promise();
     client.getConnection(car -> {
-      car.result().prepare(sqlQuery, psar -> {
+      SqlConnection connection = car.result();
+      connection.prepare(sqlQuery, psar -> {
+        /*
+         * this read stream should be wrapped into another read stream
+         * and the purpose of that wrapper is to close connection
+         * before doing that check if it is really needed.
+         */
         RowStream<Row> rowStream = psar.result().createStream(100, bindParams);
         promise.complete(rowStream);
       });

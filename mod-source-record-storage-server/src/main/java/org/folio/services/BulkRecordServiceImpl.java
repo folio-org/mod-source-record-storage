@@ -1,23 +1,16 @@
 package org.folio.services;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.streams.WriteStream;
-import io.vertx.ext.web.RoutingContext;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Tuple;
 import org.folio.dao.BulkRecordDao;
+import org.folio.rest.jaxrs.model.SearchRecordRqBody;
 import org.folio.rest.util.OkapiConnectionParams;
-import org.jooq.Condition;
-import org.jooq.Cursor;
-import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.ws.rs.core.Response;
+import java.util.UUID;
 
 @Service
 public class BulkRecordServiceImpl implements BulkRecordService {
@@ -28,34 +21,24 @@ public class BulkRecordServiceImpl implements BulkRecordService {
     this.bulkRecordDao = bulkRecordDao;
   }
 
-  @Override
-  public Future<Cursor> searchRecords(OkapiConnectionParams params) {
-    Condition noCondition = DSL.noCondition();
-    return bulkRecordDao.searchRecords(noCondition, params.getTenantId());
-  }
+  public void searchRecords(HttpServerResponse response, SearchRecordRqBody searchRecordBody, OkapiConnectionParams okapiParams) {
+    String query = generateSQLQuery(searchRecordBody);
+    Tuple params = getParamsForQuery(searchRecordBody);
 
-  public void dummySearchRecords(RoutingContext routingContext, Handler<AsyncResult<Response>> asyncResultHandler) {
-    String query = generateSQLQuery();
-    Tuple params = getParamsForQuery();
-
-    Future<RowStream<Row>> rowStreamFuture = bulkRecordDao.dummySearchRecords(query, params);
-
-    rowStreamFuture.onComplete(ar -> {
+    bulkRecordDao.searchRecords(query, params, okapiParams.getTenantId()).onComplete(ar -> {
       RowStream<Row> rowStream = ar.result();
-      rowStream.pipeTo(new WriteStreamRowToResponseWrapper(routingContext.response()) {}, completionEvent -> {
-        rowStream.close(arc -> {
-          asyncResultHandler.handle(Future.succeededFuture());//???
-        });
+      rowStream.pipeTo(new WriteStreamRowToResponseWrapper(response), completionEvent -> {
+        rowStream.close();
       });
     });
   }
 
-  private static class WriteStreamRowToResponseWrapper implements WriteStream<Row> {
-    private final HttpServerResponse delegate;
+  private Tuple getParamsForQuery(SearchRecordRqBody searchRecordBody) {
+    String snapshotId = searchRecordBody.getSearchExpression().replace("snapshotId=", "");
+    return Tuple.of(UUID.fromString(snapshotId));
+  }
 
-
-    private WriteStreamRowToResponseWrapper(HttpServerResponse delegate) {
-      this.delegate = delegate;
-    }
+  private String generateSQLQuery(SearchRecordRqBody searchRecordBody) {
+    return "SELECT * FROM diku_mod_source_record_storage.records_lb WHERE snapshot_id = $1";
   }
 }

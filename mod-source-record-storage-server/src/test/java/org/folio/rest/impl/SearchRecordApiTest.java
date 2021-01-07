@@ -2,8 +2,6 @@ package org.folio.rest.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -11,43 +9,25 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(VertxUnitRunner.class)
-public class BulkSourceRecordApiTest extends AbstractRestVerticleTest {
+public class SearchRecordApiTest extends AbstractRestVerticleTest {
 
   private static final String FIRST_UUID = UUID.randomUUID().toString();
+  private static final String SECOND_UUID = UUID.randomUUID().toString();
+  private static final String THIRD_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -63,21 +43,35 @@ public class BulkSourceRecordApiTest extends AbstractRestVerticleTest {
     }
   }
 
-  private static ParsedRecord invalidParsedRecord = new ParsedRecord()
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  private static ErrorRecord errorRecord = new ErrorRecord()
-    .withDescription("Oops... something happened")
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  private static Snapshot snapshot_1 = new Snapshot()
+  private static Snapshot snapshot = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Record record_1 = new Record()
     .withId(FIRST_UUID)
-    .withSnapshotId(snapshot_1.getJobExecutionId())
+    .withSnapshotId(snapshot.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC)
     .withRawRecord(rawRecord)
-    .withMatchedId(FIRST_UUID)
+    .withParsedRecord(marcRecord)
     .withOrder(0)
+    .withMatchedId(FIRST_UUID)
+    .withState(Record.State.ACTUAL);
+  private static Record record_2 = new Record()
+    .withId(SECOND_UUID)
+    .withSnapshotId(snapshot.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecord)
+    .withOrder(0)
+    .withMatchedId(SECOND_UUID)
+    .withState(Record.State.ACTUAL);
+  private static Record record_3 = new Record()
+    .withId(THIRD_UUID)
+    .withSnapshotId(snapshot.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecord)
+    .withOrder(0)
+    .withMatchedId(THIRD_UUID)
     .withState(Record.State.ACTUAL);
 
   @Before
@@ -94,32 +88,38 @@ public class BulkSourceRecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnSpecificSourceRecord(TestContext testContext) {
     Async async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot_1)
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
     async.complete();
 
     async = testContext.async();
+    Arrays.asList(record_1, record_2, record_3).forEach(record -> {
       RestAssured.given()
         .spec(spec)
-        .body(record_1)
+        .body(record)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
+    });
     async.complete();
 
     async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .when()
-        .post()
-        .then()
-        .statusCode(HttpStatus.SC_OK);
+    String response = RestAssured.given()
+      .spec(spec)
+      .body(new JsonObject().put("searchExpression", "snapshotId=" + snapshot.getJobExecutionId()).encode())
+      .when()
+      .post("/source-storage/record-bulk")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().asString();
+    System.out.println(response);
     async.complete();
   }
+
 }

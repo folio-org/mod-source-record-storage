@@ -9,7 +9,5 @@ import org.jooq.Cursor;
 
 public interface BulkRecordDao {
 
-  Future<Cursor> searchRecords(Condition condition, String tenantId);
-
-  Future<RowStream<Row>> dummySearchRecords(String sqlQuery, Tuple bindParams);
+  Future<RowStream<Row>> searchRecords(String sqlQuery, Tuple bindParams, String tenantId);
 }

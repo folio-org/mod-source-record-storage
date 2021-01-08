@@ -39,6 +39,7 @@ public class BulkRecordDaoImpl implements BulkRecordDao {
           RowStream<Row> rowStream = preparedStatement.createStream(1, bindParams);
 
           rowStream.exceptionHandler(err -> {
+            transaction.close();
             System.out.println("Error: " + err.getMessage());
           });
           rowStream.endHandler(v -> {

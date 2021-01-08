@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.streams.WriteStream;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Tuple;
@@ -27,8 +28,10 @@ public class BulkRecordServiceImpl implements BulkRecordService {
 
     bulkRecordDao.searchRecords(query, params, okapiParams.getTenantId()).onComplete(ar -> {
       RowStream<Row> rowStream = ar.result();
-      rowStream.pipeTo(new WriteStreamRowToResponseWrapper(response), completionEvent -> {
+      WriteStream<Row> writeStream = new WriteStreamRowToResponseWrapper(response);
+      rowStream.pipeTo(writeStream, completionEvent -> {
         rowStream.close();
+        writeStream.end();
       });
     });
   }

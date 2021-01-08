@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Schema for search records request",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "searchExpression": {
+      "id": "searchExpression",
+      "description": "Search expression",
+      "type": "string"
+    }
+  },
+  "required": [
+    "searchExpression"
+  ]
+}

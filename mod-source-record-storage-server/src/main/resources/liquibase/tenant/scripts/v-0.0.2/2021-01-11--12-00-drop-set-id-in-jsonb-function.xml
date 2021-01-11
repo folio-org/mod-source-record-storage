@@ -1,0 +1,5 @@
+<changeSet id="2021-01-11--12-00-drop-set_id_in_jsonb" author="VolodymyrRohach">
+  <sql>
+    DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb();
+  </sql>
+</changeSet>

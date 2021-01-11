@@ -1,7 +1,6 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -10,7 +9,6 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.DataImportEventPayload;
@@ -19,6 +17,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
@@ -29,7 +28,6 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -83,7 +81,9 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
-      setInstanceIdToRecord(record, new JsonObject(instanceAsString));
+      JsonObject instance = new JsonObject(instanceAsString);
+      setInstanceIdToRecord(record, instance);
+      setSuppressFormDiscovery(record, instance.getBoolean("discoverySuppress", false));
       insertOrUpdateRecordWithExternalIdsHolder(record, tenantId)
         .compose(updatedRecord -> updatePreviousRecords(updatedRecord.getExternalIdsHolder().getInstanceId(), updatedRecord.getSnapshotId(), tenantId)
           .map(updatedRecord))
@@ -108,6 +108,15 @@ public class InstancePostProcessingEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private void setSuppressFormDiscovery(Record record, boolean suppressFromDiscovery) {
+    AdditionalInfo info = record.getAdditionalInfo();
+    if (info != null) {
+      info.setSuppressDiscovery(suppressFromDiscovery);
+    } else {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(suppressFromDiscovery));
+    }
   }
 
   private OkapiConnectionParams getConnectionParams(DataImportEventPayload dataImportEventPayload) {
@@ -168,7 +177,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
   /**
    * Updates specific record. If it doesn't exist - then just save it.
-   * @param record - target record
+   *
+   * @param record   - target record
    * @param tenantId - tenantId
    * @return - Future with Record result
    */

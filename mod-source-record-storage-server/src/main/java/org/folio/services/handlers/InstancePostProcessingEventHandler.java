@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -17,17 +18,23 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
+import org.marc4j.MarcJsonReader;
+import org.marc4j.MarcReader;
+import org.marc4j.marc.ControlField;
+import org.marc4j.marc.VariableField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayInputStream;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +42,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
@@ -52,6 +60,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
   private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
+  private static final String ANY_STRING = "*";
 
   private final RecordDao recordDao;
   private final Vertx vertx;
@@ -81,6 +90,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
+      updateLatestTransactionDate(record, dataImportEventPayload.getContext());
+
       JsonObject instance = new JsonObject(instanceAsString);
       setInstanceIdToRecord(record, instance);
       setSuppressFormDiscovery(record, instance.getBoolean("discoverySuppress", false));
@@ -173,6 +184,47 @@ public class InstancePostProcessingEventHandler implements EventHandler {
       throw new PostProcessingException(format("Failed to add instance id '%s' to record with id '%s'", instanceId, record.getId()));
     }
     record.getExternalIdsHolder().setInstanceId(instanceId);
+  }
+
+  private void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+    if (isField005NeedToUpdate(record, context)) {
+      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
+      if (!isLatestTransactionDateUpdated) {
+        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", record.getId()));
+      }
+    }
+  }
+
+  private boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+    boolean needToUpdate = true;
+    List<MarcFieldProtectionSetting> fieldProtectionSettings = getFieldProtectionSettings(context);
+    if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
+      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes()));
+      if (reader.hasNext()) {
+        org.marc4j.marc.Record marcRecord = reader.next();
+        for (VariableField field : marcRecord.getVariableFields(AdditionalFieldsUtil.TAG_005)) {
+          needToUpdate = isNotProtected(fieldProtectionSettings, (ControlField) field);
+          break;
+        }
+      }
+    }
+    return needToUpdate;
+  }
+
+  private List<MarcFieldProtectionSetting> getFieldProtectionSettings(HashMap<String, String> context) throws JsonProcessingException {
+    List<MarcFieldProtectionSetting> fieldProtectionSettings = new ArrayList<>();
+    if (isNotBlank(context.get("MAPPING_PARAMS"))) {
+      MappingParameters mappingParameters = (new ObjectMapper()).readValue(context.get("MAPPING_PARAMS"), MappingParameters.class);
+      fieldProtectionSettings = mappingParameters.getMarcFieldProtectionSettings();
+    }
+    return fieldProtectionSettings;
+  }
+
+  private boolean isNotProtected(List<MarcFieldProtectionSetting> fieldProtectionSettings, ControlField field) {
+    return fieldProtectionSettings.stream()
+      .filter(setting -> setting.getField().equals(ANY_STRING) || setting.getField().equals(field.getTag()))
+      .noneMatch(setting -> setting.getData().equals(ANY_STRING) || setting.getData().equals(field.getData()));
   }
 
   /**

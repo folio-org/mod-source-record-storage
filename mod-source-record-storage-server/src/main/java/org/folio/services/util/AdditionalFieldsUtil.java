@@ -22,6 +22,7 @@ import org.marc4j.marc.VariableField;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,7 @@ import static org.apache.commons.lang3.StringUtils.isNotEmpty;
  */
 public final class AdditionalFieldsUtil {
 
+  public static final String TAG_005 = "005";
   public static final String TAG_999 = "999";
 
   public static final String HR_ID_FROM_FIELD = "001";
@@ -41,6 +43,8 @@ public final class AdditionalFieldsUtil {
   private static final String HR_ID_FIELD = "hrid";
   private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
+
+  public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
   private static final char INDICATOR = 'f';

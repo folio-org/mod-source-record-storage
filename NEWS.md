@@ -2,6 +2,7 @@
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.
 * [MODSOURCE-217](https://issues.folio.org/browse/MODSOURCE-217) If incoming MARC bib lacks 001, sometimes it is added and sometimes not.[BUGFIX].
 * [MODSOURCE-218](https://issues.folio.org/browse/MODSOURCE-218) Performance issues with SRS requests when instance ID is not found
+* [MODSOURCE-232](https://issues.folio.org/browse/MODSOURCE-232) Making Instance Records Suppress from Discovery with the Batch Import is not reflected in the SRS
 * [MODSOURCE-220](https://issues.folio.org/browse/MODSOURCE-220) Migration script between Goldenrod-hotfix-5 and Honeysuckle.
 
 ## 2020-11-20 v4.1.3

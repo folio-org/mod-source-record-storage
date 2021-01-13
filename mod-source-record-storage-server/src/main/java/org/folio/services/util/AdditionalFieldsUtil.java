@@ -1,13 +1,17 @@
 package org.folio.services.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.exceptions.PostProcessingException;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
@@ -22,11 +26,18 @@ import org.marc4j.marc.VariableField;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
@@ -43,6 +54,7 @@ public final class AdditionalFieldsUtil {
   private static final String HR_ID_FIELD = "hrid";
   private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
+  private static final String ANY_STRING = "*";
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
 
@@ -323,5 +335,76 @@ public final class AdditionalFieldsUtil {
       .filter(f -> ((DataField) f).getIndicator1() == ind1 && ((DataField) f).getIndicator2() == ind2)
       .findFirst()
       .orElse(null);
+  }
+
+  /**
+   * Updates field 005 for case when this field is not protected.
+   *
+   * @param record record to update
+   * @param context module context
+   * @throws JsonProcessingException
+   */
+  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+    if (isField005NeedToUpdate(record, context)) {
+      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
+      if (!isLatestTransactionDateUpdated) {
+        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", record.getId()));
+      }
+    }
+  }
+
+  /**
+   * Checks whether field 005 needs to be updated or this field is protected.
+   *
+   * @param record record to check
+   * @param context module context
+   * @return true for case when field 005 have to updated
+   * @throws JsonProcessingException
+   */
+  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+    boolean needToUpdate = true;
+    List<MarcFieldProtectionSetting> fieldProtectionSettings = getFieldsProtectionSettings(context);
+    if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
+      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes()));
+      if (reader.hasNext()) {
+        org.marc4j.marc.Record marcRecord = reader.next();
+        for (VariableField field : marcRecord.getVariableFields(AdditionalFieldsUtil.TAG_005)) {
+          needToUpdate = isNotProtected(fieldProtectionSettings, (ControlField) field);
+          break;
+        }
+      }
+    }
+    return needToUpdate;
+  }
+
+  /**
+   * Prepares the list of MarcFieldProtectionSettings.
+   *
+   * @param context module context
+   * @return List of MarcFieldProtectionSettings or empty list
+   * @throws JsonProcessingException
+   */
+  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws JsonProcessingException {
+    List<MarcFieldProtectionSetting> fieldProtectionSettings = new ArrayList<>();
+    if (isNotBlank(context.get("MAPPING_PARAMS"))) {
+      MappingParameters mappingParameters = (new ObjectMapper()).readValue(context.get("MAPPING_PARAMS"), MappingParameters.class);
+      fieldProtectionSettings = mappingParameters.getMarcFieldProtectionSettings();
+    }
+    return fieldProtectionSettings;
+  }
+
+  /**
+   * Checks is the control field is protected or not.
+   *
+   * @param fieldProtectionSettings List of MarcFieldProtectionSettings
+   * @param field Control field that is being checked
+   *
+   * @return true for case when control field isn't protected
+   */
+  private static boolean isNotProtected(List<MarcFieldProtectionSetting> fieldProtectionSettings, ControlField field) {
+    return fieldProtectionSettings.stream()
+      .filter(setting -> setting.getField().equals(ANY_STRING) || setting.getField().equals(field.getTag()))
+      .noneMatch(setting -> setting.getData().equals(ANY_STRING) || setting.getData().equals(field.getData()));
   }
 }

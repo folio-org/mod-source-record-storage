@@ -399,7 +399,6 @@ public final class AdditionalFieldsUtil {
    *
    * @param fieldProtectionSettings List of MarcFieldProtectionSettings
    * @param field Control field that is being checked
-   *
    * @return true for case when control field isn't protected
    */
   private static boolean isNotProtected(List<MarcFieldProtectionSetting> fieldProtectionSettings, ControlField field) {

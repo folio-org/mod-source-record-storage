@@ -1,0 +1,48 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2021-01-13--09-00-create-marc-indexers-tables" author="IgorGorchakov">
+    <sql>
+      create table ${database.defaultSchemaName}.marc_indexers
+      (
+          field_no    varchar(3) constraint nn_marc_indexers_field_no not null,
+          ind1        varchar(1) constraint nn_marc_indexers_ind1 not null,
+          ind2        varchar(1) constraint nn_marc_indexers_ind2 not null,
+          subfield_no varchar(1) constraint nn_marc_indexers_subfield_no not null,
+          value       text,
+          marc_id     uuid constraint nn_marc_indexers_marc_id not null
+      ) partition by list (field_no);
+    </sql>
+  </changeSet>
+
+  <changeSet id="2021-01-13--09-00-marc_indexers_leader" author="IgorGorchakov">
+    <sql>
+      create table ${database.defaultSchemaName}.marc_indexers_leader
+      (
+          p_00_04 varchar(5) constraint nn_marc_indexers_leader_p_00_04 not null,
+          p_05    varchar(1) constraint nn_marc_indexers_leader_p_05 not null,
+          p_06    varchar(1) constraint nn_marc_indexers_leader_p_06 not null,
+          p_07    varchar(1) constraint nn_marc_indexers_leader_p_07 not null,
+          p_08    varchar(1) constraint nn_marc_indexers_leader_p_08 not null,
+          p_09    varchar(1) constraint nn_marc_indexers_leader_p_09 not null,
+          p_10    varchar(1) constraint nn_marc_indexers_leader_p_10 not null,
+          p_11    varchar(1) constraint nn_marc_indexers_leader_p_11 not null,
+          p_12_16 varchar(5) constraint nn_marc_indexers_leader_p_12_16 not null,
+          p_17    varchar(1) constraint nn_marc_indexers_leader_p_17 not null,
+          p_18    varchar(1) constraint nn_marc_indexers_leader_p_18 not null,
+          p_19    varchar(1) constraint nn_marc_indexers_leader_p_19 not null,
+          p_20    varchar(1) constraint nn_marc_indexers_leader_p_20 not null,
+          p_21    varchar(1) constraint nn_marc_indexers_leader_p_21 not null,
+          p_22    varchar(1) constraint nn_marc_indexers_leader_p_22 not null,
+          marc_id uuid       constraint nn_marc_indexers_marc_id not null
+      );
+    </sql>
+  </changeSet>
+
+
+
+
+</databaseChangeLog>

@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2021-02-13--13-00-create-indexes.xml" author="IgorGorchakov">
+    <sql>
+      create index ${database.defaultSchemaName}.idx_marc_indexers_marc_id on ${database.defaultSchemaName}.marc_indexers(marc_id);
+      create index ${database.defaultSchemaName}.idx_marc_indexers_leader_marc_id on ${database.defaultSchemaName}.marc_indexers_leader(marc_id);
+    </sql>
+  </changeSet>
+</databaseChangeLog>

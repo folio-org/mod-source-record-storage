@@ -40,4 +40,10 @@
   <include file="scripts/v-0.0.2/2020-09-09--15-00-fill-instance-hrid.xml" relativeToChangelogFile="true"/>
 
   <include file="scripts/v-0.0.2/2020-10-28--15-00-update-parsed-record-data.xml" relativeToChangelogFile="true"/>
+
+  <include file="scripts/v-0.0.2/2021-01-13--09-00-create-indexers-tables.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2021-02-13--10-00-create-partitions.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2021-02-13--11-00-fill-marc-indexers.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2021-02-13--12-00-create-fill-in-trigger.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.2/2021-02-13--13-00-create-indexes.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

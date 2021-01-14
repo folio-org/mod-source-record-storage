@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2021-01-14--15-00-alter-record-type" author="JeremyHuff">
+    <sql>
+      ALTER TYPE ${database.defaultSchemaName}.record_type ADD VALUE 'EDIFACT' AFTER 'MARC';
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,5 +1,10 @@
 package org.folio.dao;
 
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.jooq.impl.DSL.field;
@@ -8,6 +13,7 @@ import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -29,6 +35,7 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -37,6 +44,7 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -59,7 +67,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String CTE1 = "cte1";
   private static final String CTE2 = "cte2";
   private static final String ID = "id";
+  private static final String CONTENT = "content";
   private static final String COUNT = "count";
+  private static final String FIELD_TEMPLATE = "{0}";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private final PostgresClientFactory postgresClientFactory;
@@ -76,19 +86,51 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      RecordCollection recordCollection = new RecordCollection();
-      recordCollection.withRecords(new ArrayList<>());
-      return CompositeFuture.all(
-        RecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
-          .compose(stream -> CompositeFuture.all(stream
-            .map(pr -> lookupAssociatedRecords(txQE, pr, true)
-            .map(r -> addToList(recordCollection.getRecords(), r)))
-            .collect(Collectors.toList()))),
-        RecordDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> addTotalRecords(recordCollection, totalRecords))
-      ).map(res -> recordCollection);
-    });
+    RecordType recordType = RecordType.MARC;
+    Name id = name(ID);
+    Name content = name(CONTENT);
+    Name cte1 = name(CTE1);
+    Name cte2 = name(CTE2);
+    Name prt = name(recordType.getTableName());
+    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
+    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
+    Field<JSONB> parsedRecordContentField = field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, content);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte1.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition)))
+      .with(cte2.as(dsl.select()
+        .from(RECORDS_LB)
+        .where(condition)
+        .orderBy(orderFields)
+        .offset(offset)
+        .limit(limit)))
+      .select(recordIdField,
+              field(FIELD_TEMPLATE, Integer.class, name(COUNT)),
+              field(FIELD_TEMPLATE, UUID.class, name("snapshot_id")),
+              field(FIELD_TEMPLATE, UUID.class, name("matched_id")),
+              field(FIELD_TEMPLATE, Integer.class, name("generation")),
+              field(FIELD_TEMPLATE, org.folio.rest.jooq.enums.RecordType.class, name("record_type")),
+              field(FIELD_TEMPLATE, UUID.class, name("instance_id")),
+              field(FIELD_TEMPLATE, org.folio.rest.jooq.enums.RecordState.class, name("state")),
+              field(FIELD_TEMPLATE, String.class, name("leader_record_status")),
+              field(FIELD_TEMPLATE, Integer.class, name("order")),
+              field(FIELD_TEMPLATE, Boolean.class, name("suppress_discovery")),
+              field(FIELD_TEMPLATE, UUID.class, name("created_by_user_id")),
+              field(FIELD_TEMPLATE, OffsetDateTime.class, name("created_date")),
+              field(FIELD_TEMPLATE, UUID.class, name("updated_by_user_id")),
+              field(FIELD_TEMPLATE, OffsetDateTime.class, name("updated_date")),
+              field(FIELD_TEMPLATE, String.class, name("instance_hrid")),
+              parsedRecordContentField.as(PARSED_RECORD_CONTENT),
+              RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
+              ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
+              ERROR_RECORDS_LB.DESCRIPTION)
+        .from(table(cte2))
+        .leftJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
+        .leftJoin(RAW_RECORDS_LB).on(recordIdField.eq(RAW_RECORDS_LB.ID))
+        .leftJoin(ERROR_RECORDS_LB).on(recordIdField.eq(ERROR_RECORDS_LB.ID))
+        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+    )).map(this::toRecordCollection);
   }
 
   @Override
@@ -147,14 +189,6 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    // NOTE: currently only record type available is MARC
-    // having a dedicated table per record type has some complications
-    // if a new record type is added, will have two options to continue using single query to fetch source records
-    // 1. add record type query parameter to endpoint and join with table for that record type
-    //    - this will not afford source record request returning heterogeneous record types
-    // 2. join on every record type table
-    //    - this could present performance issues
-
     RecordType recordType = RecordType.MARC;
     Name id = name(ID);
     Name cte1 = name(CTE1);
@@ -320,15 +354,6 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private Record addToList(List<Record> records, Record record) {
-    records.add(record);
-    return record;
-  }
-
-  private RecordCollection addTotalRecords(RecordCollection recordCollection, Integer totalRecords) {
-    return recordCollection.withTotalRecords(totalRecords);
-  }
-
   private Row asRow(Row row) {
     return row;
   }
@@ -433,17 +458,42 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
+  private RecordCollection toRecordCollection(QueryResult result) {
+    RecordCollection recordCollection = new RecordCollection();
+    List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      recordCollection.setTotalRecords(row.getInteger(COUNT));
+      Record record = RecordDaoUtil.toRecord(row);
+      RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(row);
+      if (Objects.nonNull(rawRecord.getContent())) {
+        record.setRawRecord(rawRecord);
+      }
+      ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
+      if (Objects.nonNull(parsedRecord.getContent())) {
+        record.setParsedRecord(parsedRecord);
+      }
+      ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
+      if (Objects.nonNull(errorRecord.getContent())) {
+        record.setErrorRecord(errorRecord);
+      }
+      return record;
+    }).collect(Collectors.toList());
+    if (Objects.nonNull(records.get(0).getId())) {
+      recordCollection.withRecords(records);
+    }
+    return recordCollection;
+  }
+
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
     SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
-      List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
-        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
-          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
-      }).collect(Collectors.toList());
-      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
-        sourceRecordCollection.withSourceRecords(sourceRecords);
-      }
-      return sourceRecordCollection;
+    List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
+      return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
+        .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
+    }).collect(Collectors.toList());
+    if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+      sourceRecordCollection.withSourceRecords(sourceRecords);
+    }
+    return sourceRecordCollection;
   }
 
 }

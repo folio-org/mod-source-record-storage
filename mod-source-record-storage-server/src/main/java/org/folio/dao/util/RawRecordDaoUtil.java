@@ -22,6 +22,10 @@ import io.vertx.sqlclient.RowSet;
  */
 public final class RawRecordDaoUtil {
 
+  private static final String ID = "id";
+
+  public static final String RAW_RECORD_CONTENT = "raw_record_content";
+
   private RawRecordDaoUtil() { }
 
   /**
@@ -65,6 +69,22 @@ public final class RawRecordDaoUtil {
     return new RawRecord()
       .withId(pojo.getId().toString())
       .withContent(pojo.getContent());
+  }
+
+  /**
+   * Convert database query result {@link Row} to {@link RawRecord}
+   * 
+   * @param row query result row
+   * @return RawRecord
+   */
+  public static RawRecord toJoinedRawRecord(Row row) {
+    RawRecord rawRecord = new RawRecord();
+    UUID id = row.getUUID(ID);
+    if (Objects.nonNull(id)) {
+      rawRecord.withId(id.toString());
+    }
+    return rawRecord
+      .withContent(row.getString(RAW_RECORD_CONTENT));
   }
 
   /**

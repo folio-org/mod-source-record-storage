@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -74,20 +75,22 @@ public interface RecordService {
    * @param offset         starting index in a list of results
    * @param limit          limit of records for pagination
    * @param tenantId       tenant id
+   * @param recordType     recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, RecordType recordType, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *
-   * @param ids      list of ids
-   * @param idType   id type
-   * @param deleted  filter by state DELETED or leader record status d, s, or x
-   * @param tenantId tenant id
+   * @param ids        list of ids
+   * @param idType     id type
+   * @param deleted    filter by state DELETED or leader record status d, s, or x
+   * @param tenantId   tenant id
+   * @param recordType recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, RecordType recordType, String tenantId);
 
   /**
    * Searches for source record by id via specific id type

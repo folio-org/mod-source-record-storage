@@ -146,16 +146,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    // NOTE: currently only record type available is MARC
-    // having a dedicated table per record type has some complications
-    // if a new record type is added, will have two options to continue using single query to fetch source records
-    // 1. add record type query parameter to endpoint and join with table for that record type
-    //    - this will not afford source record request returning heterogeneous record types
-    // 2. join on every record type table
-    //    - this could present performance issues
-
-    RecordType recordType = RecordType.MARC;
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, RecordType recordType, String tenantId) {
     Name id = name(ID);
     Name cte1 = name(CTE1);
     Name cte2 = name(CTE2);
@@ -180,10 +171,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, RecordType recordType, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
-    RecordType recordType = RecordType.MARC;
     Name id = name(ID);
     Name cte1 = name(CTE1);
     Name cte2 = name(CTE2);

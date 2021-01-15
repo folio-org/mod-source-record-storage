@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -30,6 +31,7 @@ public interface RecordDao {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
+   * @param recordType  recordType
    * @return future with {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
@@ -172,9 +174,10 @@ public interface RecordDao {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
+   * @param recordType  recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, RecordType recordType, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
@@ -183,9 +186,10 @@ public interface RecordDao {
    * @param externalIdType external id type on which source record will be searched
    * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
+   * @param tenantId       recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, Boolean deleted, RecordType recordType,  String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}

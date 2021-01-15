@@ -18,6 +18,7 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
+import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.resource.SourceStorageSourceRecords;
@@ -71,7 +72,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
           .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
-        recordService.getSourceRecords(condition, orderFields, offset, limit, tenantId)
+        recordService.getSourceRecords(condition, orderFields, offset, limit, RecordType.valueOf(recordType), tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -84,11 +85,11 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void postSourceStorageSourceRecords(String idType, Boolean deleted, List<String> entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageSourceRecords(String idType, Boolean deleted, String recordType, List<String> entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(entity, idType, deleted, tenantId)
+        recordService.getSourceRecords(entity, idType, deleted, RecordType.valueOf(recordType), tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

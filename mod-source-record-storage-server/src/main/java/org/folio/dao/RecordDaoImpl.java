@@ -13,7 +13,6 @@ import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -43,7 +42,6 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
-import org.jooq.Field;
 import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
@@ -64,12 +62,11 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String CTE1 = "cte1";
-  private static final String CTE2 = "cte2";
+  private static final String CTE = "cte";
+
   private static final String ID = "id";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
-  private static final String FIELD_TEMPLATE = "{0}";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private final PostgresClientFactory postgresClientFactory;
@@ -87,49 +84,41 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID);
-    Name content = name(CONTENT);
-    Name cte1 = name(CTE1);
-    Name cte2 = name(CTE2);
+    Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
-    Field<JSONB> parsedRecordContentField = field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, content);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte1.as(dsl.select()
+      .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition)))
-      .with(cte2.as(dsl.select()
+      .select(RECORDS_LB.ID,
+              RECORDS_LB.SNAPSHOT_ID,
+              RECORDS_LB.MATCHED_ID,
+              RECORDS_LB.GENERATION,
+              RECORDS_LB.RECORD_TYPE,
+              RECORDS_LB.INSTANCE_ID,
+              RECORDS_LB.STATE,
+              RECORDS_LB.LEADER_RECORD_STATUS,
+              RECORDS_LB.ORDER,
+              RECORDS_LB.SUPPRESS_DISCOVERY,
+              RECORDS_LB.CREATED_BY_USER_ID,
+              RECORDS_LB.CREATED_DATE,
+              RECORDS_LB.UPDATED_BY_USER_ID,
+              RECORDS_LB.UPDATED_DATE,
+              RECORDS_LB.INSTANCE_HRID,
+              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
+              RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
+              ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
+              ERROR_RECORDS_LB.DESCRIPTION,
+              field(name(COUNT), Integer.class))
         .from(RECORDS_LB)
+        .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+        .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+        .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
         .where(condition)
         .orderBy(orderFields)
         .offset(offset)
-        .limit(limit)))
-      .select(recordIdField,
-              field(FIELD_TEMPLATE, Integer.class, name(COUNT)),
-              field(FIELD_TEMPLATE, UUID.class, name("snapshot_id")),
-              field(FIELD_TEMPLATE, UUID.class, name("matched_id")),
-              field(FIELD_TEMPLATE, Integer.class, name("generation")),
-              field(FIELD_TEMPLATE, org.folio.rest.jooq.enums.RecordType.class, name("record_type")),
-              field(FIELD_TEMPLATE, UUID.class, name("instance_id")),
-              field(FIELD_TEMPLATE, org.folio.rest.jooq.enums.RecordState.class, name("state")),
-              field(FIELD_TEMPLATE, String.class, name("leader_record_status")),
-              field(FIELD_TEMPLATE, Integer.class, name("order")),
-              field(FIELD_TEMPLATE, Boolean.class, name("suppress_discovery")),
-              field(FIELD_TEMPLATE, UUID.class, name("created_by_user_id")),
-              field(FIELD_TEMPLATE, OffsetDateTime.class, name("created_date")),
-              field(FIELD_TEMPLATE, UUID.class, name("updated_by_user_id")),
-              field(FIELD_TEMPLATE, OffsetDateTime.class, name("updated_date")),
-              field(FIELD_TEMPLATE, String.class, name("instance_hrid")),
-              parsedRecordContentField.as(PARSED_RECORD_CONTENT),
-              RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
-              ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
-              ERROR_RECORDS_LB.DESCRIPTION)
-        .from(table(cte2))
-        .leftJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .leftJoin(RAW_RECORDS_LB).on(recordIdField.eq(RAW_RECORDS_LB.ID))
-        .leftJoin(ERROR_RECORDS_LB).on(recordIdField.eq(ERROR_RECORDS_LB.ID))
-        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+        .limit(limit)
     )).map(this::toRecordCollection);
   }
 
@@ -156,7 +145,6 @@ public class RecordDaoImpl implements RecordDao {
         .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
     return getRecordByCondition(txQE, condition);
   }
-
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
@@ -190,51 +178,71 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID);
-    Name cte1 = name(CTE1);
-    Name cte2 = name(CTE2);
+    Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte1.as(dsl.select()
+      .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .with(cte2.as(dsl.select()
-        .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
-        .orderBy(orderFields)
-        .offset(offset)
-        .limit(limit)))
-      .select()
-        .from(table(cte2))
-        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+      .select(RECORDS_LB.ID,
+              RECORDS_LB.SNAPSHOT_ID,
+              RECORDS_LB.MATCHED_ID,
+              RECORDS_LB.GENERATION,
+              RECORDS_LB.RECORD_TYPE,
+              RECORDS_LB.INSTANCE_ID,
+              RECORDS_LB.STATE,
+              RECORDS_LB.LEADER_RECORD_STATUS,
+              RECORDS_LB.ORDER,
+              RECORDS_LB.SUPPRESS_DISCOVERY,
+              RECORDS_LB.CREATED_BY_USER_ID,
+              RECORDS_LB.CREATED_DATE,
+              RECORDS_LB.UPDATED_BY_USER_ID,
+              RECORDS_LB.UPDATED_DATE,
+              RECORDS_LB.INSTANCE_HRID,
+              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
+              field(name(COUNT), Integer.class))
+      .from(RECORDS_LB)
+      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
     )).map(this::toSourceRecordCollection);
   }
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType)
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID);
-    Name cte1 = name(CTE1);
-    Name cte2 = name(CTE2);
+    Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte1.as(dsl.select()
+      .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition)))
-      .with(cte2.as(dsl.select()
-        .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .select()
-        .from(table(cte2))
-        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+      .select(RECORDS_LB.ID,
+              RECORDS_LB.SNAPSHOT_ID,
+              RECORDS_LB.MATCHED_ID,
+              RECORDS_LB.GENERATION,
+              RECORDS_LB.RECORD_TYPE,
+              RECORDS_LB.INSTANCE_ID,
+              RECORDS_LB.STATE,
+              RECORDS_LB.LEADER_RECORD_STATUS,
+              RECORDS_LB.ORDER,
+              RECORDS_LB.SUPPRESS_DISCOVERY,
+              RECORDS_LB.CREATED_BY_USER_ID,
+              RECORDS_LB.CREATED_DATE,
+              RECORDS_LB.UPDATED_BY_USER_ID,
+              RECORDS_LB.UPDATED_DATE,
+              RECORDS_LB.INSTANCE_HRID,
+              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
+              field(name(COUNT), Integer.class))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
     )).map(this::toSourceRecordCollection);
   }
 
@@ -459,7 +467,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private RecordCollection toRecordCollection(QueryResult result) {
-    RecordCollection recordCollection = new RecordCollection();
+    RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
     List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
       Record record = RecordDaoUtil.toRecord(row);
@@ -477,20 +485,20 @@ public class RecordDaoImpl implements RecordDao {
       }
       return record;
     }).collect(Collectors.toList());
-    if (Objects.nonNull(records.get(0).getId())) {
+    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
     }
     return recordCollection;
   }
 
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
-    SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
+    SourceRecordCollection sourceRecordCollection = new SourceRecordCollection().withTotalRecords(0);
     List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
       return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
         .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
     }).collect(Collectors.toList());
-    if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+    if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.get(0).getRecordId())) {
       sourceRecordCollection.withSourceRecords(sourceRecords);
     }
     return sourceRecordCollection;

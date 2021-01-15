@@ -69,7 +69,7 @@ public final class RecordDaoUtil {
    * @param externalIdType external id type
    * @return condition
    */
-  public static Condition getExternalIdCondition(List<String> externalIds, ExternalIdType externalIdType) {
+  public static Condition getExternalIdsCondition(List<String> externalIds, ExternalIdType externalIdType) {
     return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).in(toUUIDs(externalIds));
   }
 
@@ -490,8 +490,8 @@ public final class RecordDaoUtil {
       .map(order -> order.split(COMMA))
       .map(order -> {
         try {
-          return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0])).sort(order.length > 1
-          ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
+          return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0]))
+            .sort(order.length > 1 ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
         } catch (Exception e) {
           throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
         }

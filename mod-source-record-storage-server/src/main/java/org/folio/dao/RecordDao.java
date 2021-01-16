@@ -197,15 +197,6 @@ public interface RecordDao {
   Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by id (searches via "matchedId").
-   *
-   * @param id       id
-   * @param tenantId tenant id
-   * @return return future with optional {@link SourceRecord}
-   */
-  Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId);
-
-  /**
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
    *
    * @param id             id

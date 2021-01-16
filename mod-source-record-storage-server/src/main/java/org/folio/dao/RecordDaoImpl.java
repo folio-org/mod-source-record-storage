@@ -276,11 +276,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Integer> calculateGeneration(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> calculateGeneration(txQE, record));
-  }
-
-  @Override
   public Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return txQE.query(dsl -> dsl.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
       .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))

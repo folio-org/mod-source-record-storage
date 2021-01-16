@@ -119,16 +119,6 @@ public interface RecordDao {
    * Increments generation in case a record with the same matchedId exists
    * and the snapshot it is linked to is COMMITTED before the processing of the current one started
    *
-   * @param record   Record
-   * @param tenantId tenant id
-   * @return future with generation
-   */
-  Future<Integer> calculateGeneration(Record record, String tenantId);
-
-  /**
-   * Increments generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing of the current one started
-   *
    * @param txQE   query execution
    * @param record Record
    * @return future with generation

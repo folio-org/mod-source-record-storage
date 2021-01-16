@@ -89,7 +89,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition)))
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
       .select(RECORDS_LB.ID,
               RECORDS_LB.SNAPSHOT_ID,
               RECORDS_LB.MATCHED_ID,
@@ -115,7 +115,7 @@ public class RecordDaoImpl implements RecordDao {
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
         .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition)
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)
@@ -221,7 +221,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition)))
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
       .select(RECORDS_LB.ID,
               RECORDS_LB.SNAPSHOT_ID,
               RECORDS_LB.MATCHED_ID,

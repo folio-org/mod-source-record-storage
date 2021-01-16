@@ -321,11 +321,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> saveUpdatedRecord(txQE, newRecord, oldRecord));
-  }
-
-  @Override
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }

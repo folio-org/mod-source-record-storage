@@ -207,17 +207,6 @@ public interface RecordDao {
 
   /**
    * Creates new Record and updates status of the "old" one,
-   * no data is overwritten as a result of update
-   *
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param tenantId  tenant id
-   * @return future with new "updated" Record
-   */
-  Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId);
-
-  /**
-   * Creates new Record and updates status of the "old" one,
    * no data is overwritten as a result of update. Creates
    * new snapshot.
    *

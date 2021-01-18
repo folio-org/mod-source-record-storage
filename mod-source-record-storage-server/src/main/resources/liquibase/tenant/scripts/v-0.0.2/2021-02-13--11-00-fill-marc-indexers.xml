@@ -8,7 +8,6 @@
     <sql>
       do
       $$
-          <<fill_marc_indexers_simple_block>>
           declare
             rec record;
           begin
@@ -73,7 +72,7 @@
                                  From jsonb_each(rec.content) x
                                  where key = 'leader') y);
                   end loop;
-          end fill_marc_indexers_simple_block
+          end;
        $$;
     </sql>
   </changeSet>

@@ -16,6 +16,16 @@
           marc_id     uuid constraint nn_marc_indexers_marc_id not null
       ) partition by list (field_no);
     </sql>
+<!--    -->
+<!--    <createTable tableName="marc_indexers">-->
+<!--      <column name="field_no" type="varchar(3)"><constraints nullable="false"/></column>-->
+<!--      <column name="ind1" type="varchar(1)"><constraints nullable="false"/></column>-->
+<!--      <column name="ind2" type="varchar(1)"><constraints nullable="false"/></column>-->
+<!--      <column name="subfield_no" type="varchar(1)"><constraints nullable="false"/></column>-->
+<!--      <column name="value" type="text"/>-->
+<!--      <column name="marc_id" type="uuid"><constraints nullable="false"/></column>-->
+<!--    </createTable>-->
+<!--    <modifySql dbms="postgresql"><append value=" partition by list(field_no)"/></modifySql>-->
   </changeSet>
 
   <changeSet id="2021-01-13--09-00-marc_indexers_leader" author="IgorGorchakov">
@@ -41,8 +51,4 @@
       );
     </sql>
   </changeSet>
-
-
-
-
 </databaseChangeLog>

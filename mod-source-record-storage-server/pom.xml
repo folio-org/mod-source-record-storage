@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>mod-source-record-storage-server</artifactId>
   <parent>
@@ -12,9 +11,12 @@
   <properties>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
+    <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
+    <jooq.version>3.13.6</jooq.version>
+    <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <jackson.jaxb.version>2.10.2</jackson.jaxb.version>
-    <jooq.version>3.13.2</jooq.version>
-    <vertx-jooq.version>5.1.2</vertx-jooq.version>
+    <jooq.version>3.13.6</jooq.version>
+    <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.16</postgres.version>
     <lombok.version>1.18.12</lombok.version>
   </properties>

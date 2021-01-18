@@ -6,12 +6,14 @@ import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+@Ignore
 @RunWith(VertxUnitRunner.class)
 public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
 

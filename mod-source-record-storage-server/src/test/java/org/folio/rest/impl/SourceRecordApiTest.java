@@ -47,6 +47,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
+@Ignore
 @RunWith(VertxUnitRunner.class)
 public class SourceRecordApiTest extends AbstractRestVerticleTest {
 

@@ -4,11 +4,13 @@ import io.restassured.RestAssured;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.UUID;
 
+@Ignore
 @RunWith(VertxUnitRunner.class)
 public class EventHandlersApiTest extends AbstractRestVerticleTest {
 

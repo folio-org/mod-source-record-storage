@@ -481,11 +481,15 @@ public final class RecordDaoUtil {
    * Relies on strong convention between dto property name and database column name.
    * Property name being lower camel case and column name being lower snake case of the property name.
    *
-   * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
+   * @param orderBy   list of order strings i.e. 'order,ASC' or 'state'
+   * @param forOffset flag to ensure an order is applied
    * @return list of sort fields
    */
   @SuppressWarnings("squid:S1452")
-  public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy) {
+  public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy, Boolean forOffset) {
+    if (forOffset && orderBy.isEmpty()) {
+      return Arrays.asList(new OrderField<?>[] { RECORDS_LB.ID.asc() });
+    }
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

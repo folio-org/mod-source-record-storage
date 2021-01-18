@@ -67,7 +67,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterSnapshotByStatus(status);
-        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy);
+        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy, true);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

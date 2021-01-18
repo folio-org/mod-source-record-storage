@@ -41,6 +41,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
@@ -69,14 +70,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
   private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
   private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-  private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
   public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
 
   private RecordDao recordDao;
 
@@ -104,7 +98,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
     HashMap<String, String> headers = new HashMap<>();
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
+    headers.put(OKAPI_URL_HEADER, "http://localhost:" + NetworkUtils.nextFreePort());
     headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
     headers.put(OKAPI_TOKEN_HEADER, "token");
     recordDao = new RecordDaoImpl(postgresClientFactory);
@@ -179,9 +173,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   public void shouldMatchByMatchedIdField(TestContext context) {
     Async async = context.async();
 
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
-
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
@@ -238,9 +229,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   public void shouldMatchByInstanceIdField(TestContext context) {
     Async async = context.async();
 
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
-
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
@@ -289,9 +277,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   @Test
   public void shouldMatchByInstanceHridField(TestContext context) {
     Async async = context.async();
-
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
@@ -342,9 +327,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   public void shouldNotMatchByMatchedIdField(TestContext context) {
     Async async = context.async();
 
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
-
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
@@ -392,9 +374,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   @Test
   public void shouldNotMatchByMatchedIdFieldIfNotMatch(TestContext context) {
     Async async = context.async();
-
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));

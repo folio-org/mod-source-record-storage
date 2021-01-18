@@ -32,8 +32,8 @@ public class InitAPIImpl implements InitAPI {
   @Value("${srs.kafka.ParsedMarcChunkConsumer.instancesNumber:1}")
   private int parsedMarcChunkConsumerInstancesNumber;
 
-  @Value("${srs.kafka.InstanceCreatedConsumer.instancesNumber:1}")
-  private int instanceCreatedConsumerInstancesNumber;
+  @Value("${srs.kafka.DataImportConsumer.instancesNumber:1}")
+  private int dataImportConsumerInstancesNumber;
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
@@ -71,8 +71,8 @@ public class InitAPIImpl implements InitAPI {
     vertx.deployVerticle("org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle",
       new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
 
-    vertx.deployVerticle("org.folio.verticle.consumers.InstanceCreatedConsumersVerticle",
-      new DeploymentOptions().setWorker(true).setInstances(instanceCreatedConsumerInstancesNumber), deployConsumer2);
+    vertx.deployVerticle("org.folio.verticle.consumers.DataImportConsumersVerticle",
+      new DeploymentOptions().setWorker(true).setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
 
     return CompositeFuture.all(deployConsumer1.future(), deployConsumer2.future());
   }

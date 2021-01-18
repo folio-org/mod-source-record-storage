@@ -18,14 +18,6 @@ types:
   data: !include raml-storage/schemas/mod-data-import-converter-storage/mapping-profile-detail/marcData.json
 
 /source-storage/handlers:
-  /data-import:
-    description: "Handler for data import process events"
-    post:
-      body:
-        application/json:
-          type: string
-      responses:
-        204:
   /updated-record:
     description: "Handler for QM_RECORD_UPDATED event"
     post:

@@ -43,9 +43,8 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
   @Autowired
   private KafkaConfig kafkaConfig;
 
-  @Value("${srs.kafka.InstanceCreatedConsumer.loadLimit:5}")
+  @Value("${srs.kafka.DataImportConsumer.loadLimit:5}")
   private int loadLimit;
-
 
   private List<KafkaConsumerWrapper<String, String>> consumerWrappersList = new ArrayList<>(events.size());
 

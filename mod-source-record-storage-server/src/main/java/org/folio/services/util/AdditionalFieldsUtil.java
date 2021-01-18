@@ -25,6 +25,7 @@ import org.marc4j.marc.VariableField;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -344,7 +345,7 @@ public final class AdditionalFieldsUtil {
    * @param context module context
    * @throws JsonProcessingException
    */
-  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws IOException {
     if (isField005NeedToUpdate(record, context)) {
       String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
       boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
@@ -362,7 +363,7 @@ public final class AdditionalFieldsUtil {
    * @return true for case when field 005 have to updated
    * @throws JsonProcessingException
    */
-  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws IOException {
     boolean needToUpdate = true;
     List<MarcFieldProtectionSetting> fieldProtectionSettings = getFieldsProtectionSettings(context);
     if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
@@ -385,7 +386,7 @@ public final class AdditionalFieldsUtil {
    * @return List of MarcFieldProtectionSettings or empty list
    * @throws JsonProcessingException
    */
-  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws JsonProcessingException {
+  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws IOException {
     List<MarcFieldProtectionSetting> fieldProtectionSettings = new ArrayList<>();
     if (isNotBlank(context.get("MAPPING_PARAMS"))) {
       MappingParameters mappingParameters = (new ObjectMapper()).readValue(context.get("MAPPING_PARAMS"), MappingParameters.class);

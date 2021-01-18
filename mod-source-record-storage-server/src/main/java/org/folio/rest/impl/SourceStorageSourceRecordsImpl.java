@@ -72,7 +72,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
           .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
-        recordService.getSourceRecords(condition, orderFields, offset, limit, RecordType.valueOf(recordType), tenantId)
+        recordService.getSourceRecords(condition, RecordType.valueOf(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -85,11 +85,11 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void postSourceStorageSourceRecords(String idType, Boolean deleted, String recordType, List<String> entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageSourceRecords(String idType, String recordType, Boolean deleted, List<String> entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(entity, idType, deleted, RecordType.valueOf(recordType), tenantId)
+        recordService.getSourceRecords(entity, idType, RecordType.valueOf(recordType), deleted, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

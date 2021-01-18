@@ -31,7 +31,6 @@ public interface RecordDao {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @param recordType  recordType
    * @return future with {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
@@ -39,7 +38,7 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by id
    *
-   * @param id       Record id
+   * @param id       record id
    * @param tenantId tenant id
    * @return future with optional {@link Record}
    */
@@ -160,26 +159,26 @@ public interface RecordDao {
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    *
    * @param condition   query where condition
+   * @param recordType  record type
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @param recordType  recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, RecordType recordType, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids
    * @param externalIdType external id type on which source record will be searched
+   * @param recordType     record type
    * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
-   * @param tenantId       recordType
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, Boolean deleted, RecordType recordType,  String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}

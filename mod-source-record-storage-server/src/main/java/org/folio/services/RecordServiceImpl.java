@@ -139,15 +139,15 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
-      int offset, int limit, RecordType recordType,String tenantId) {
-    return recordDao.getSourceRecords(condition, orderFields, offset, limit, recordType, tenantId);
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields,
+      int offset, int limit, String tenantId) {
+    return recordDao.getSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, RecordType recordType, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, RecordType recordType, Boolean deleted, String tenantId) {
     ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getSourceRecords(ids, externalIdType, deleted, recordType, tenantId);
+    return recordDao.getSourceRecords(ids, externalIdType, recordType, deleted, tenantId);
   }
 
   @Override

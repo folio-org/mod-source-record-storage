@@ -297,7 +297,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
-      recordService.getSourceRecords(condition, orderFields, 0, 10, org.folio.dao.util.RecordType.MARC, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -327,7 +327,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), false, org.folio.dao.util.RecordType.MARC, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), org.folio.dao.util.RecordType.MARC, false, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -380,7 +380,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), true, org.folio.dao.util.RecordType.MARC, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), org.folio.dao.util.RecordType.MARC, true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

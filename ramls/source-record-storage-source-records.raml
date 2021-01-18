@@ -127,6 +127,11 @@ resourceTypes:
         example: INSTANCE
         required: false
         default: RECORD
+      recordType:
+        description: Filter by Record Type
+        type: string
+        default: "MARC"
+        example: "MARC"
       deleted:
         description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
         type: boolean
@@ -135,11 +140,6 @@ resourceTypes:
             - name: core.box
         example: true
         default: false
-      recordType:
-        description: Filter by Record Type
-        type: string
-        default: "MARC"
-        example: "MARC"
     responses:
       200:
         body:

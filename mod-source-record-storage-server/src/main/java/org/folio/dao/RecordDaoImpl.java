@@ -176,7 +176,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, RecordType recordType, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
@@ -211,7 +211,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, RecordType recordType, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     Name cte = name(CTE);

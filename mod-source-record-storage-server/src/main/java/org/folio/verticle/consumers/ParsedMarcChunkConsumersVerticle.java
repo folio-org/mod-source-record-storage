@@ -67,7 +67,6 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
     consumerWrapper.stop().onComplete(ar -> stopPromise.complete());
   }
 
-  //TODO: get rid of this workaround with global spring context
   @Deprecated
   public static void setSpringGlobalContext(AbstractApplicationContext springGlobalContext) {
     ParsedMarcChunkConsumersVerticle.springGlobalContext = springGlobalContext;

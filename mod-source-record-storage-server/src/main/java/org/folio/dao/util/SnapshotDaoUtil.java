@@ -83,19 +83,6 @@ public final class SnapshotDaoUtil {
   }
 
   /**
-   * Searches for {@link Snapshot} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @return future with optional Snapshot
-   */
-  public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
-      .where(condition))
-        .map(SnapshotDaoUtil::toOptionalSnapshot);
-  }
-
-  /**
    * Searches for {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
    * 
    * @param queryExecutor query executor

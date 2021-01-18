@@ -12,8 +12,8 @@
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
-    <jooq.version>3.13.2</jooq.version>
-    <vertx-jooq.version>5.1.2</vertx-jooq.version>
+    <jooq.version>3.13.6</jooq.version>
+    <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.16</postgres.version>
   </properties>
 

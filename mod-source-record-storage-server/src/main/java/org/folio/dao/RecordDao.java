@@ -121,16 +121,6 @@ public interface RecordDao {
    * Increments generation in case a record with the same matchedId exists
    * and the snapshot it is linked to is COMMITTED before the processing of the current one started
    *
-   * @param record   Record
-   * @param tenantId tenant id
-   * @return future with generation
-   */
-  Future<Integer> calculateGeneration(Record record, String tenantId);
-
-  /**
-   * Increments generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing of the current one started
-   *
    * @param txQE   query execution
    * @param record Record
    * @return future with generation
@@ -201,15 +191,6 @@ public interface RecordDao {
   Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by id (searches via "matchedId").
-   *
-   * @param id       id
-   * @param tenantId tenant id
-   * @return return future with optional {@link SourceRecord}
-   */
-  Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId);
-
-  /**
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
    *
    * @param id             id
@@ -227,17 +208,6 @@ public interface RecordDao {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
-
-  /**
-   * Creates new Record and updates status of the "old" one,
-   * no data is overwritten as a result of update
-   *
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param tenantId  tenant id
-   * @return future with new "updated" Record
-   */
-  Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId);
 
   /**
    * Creates new Record and updates status of the "old" one,

@@ -353,6 +353,43 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldStreamSourceRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+
+      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, orderFields, 0, 10, TENANT_ID);
+
+      List<SourceRecord> expected = records.stream()
+        .map(RecordDaoUtil::toSourceRecord)
+        .collect(Collectors.toList());
+      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<SourceRecord> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), actual.size());
+        compareSourceRecords(context, expected, actual);
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+    });
+  }
+
+  @Test
   public void shouldGetSourceRecordsByListOfIds(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();

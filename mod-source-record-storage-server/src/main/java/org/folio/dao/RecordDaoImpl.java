@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.MarcUtil;
@@ -42,19 +43,24 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
+import org.jooq.Field;
 import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
+import org.jooq.conf.ParamType;
+import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
+import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 
 @Component
@@ -68,6 +74,26 @@ public class RecordDaoImpl implements RecordDao {
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
+
+  private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
+
+  private static final Field<?>[] RECORD_FIELDS = new Field<?>[] {
+    RECORDS_LB.ID,
+    RECORDS_LB.SNAPSHOT_ID,
+    RECORDS_LB.MATCHED_ID,
+    RECORDS_LB.GENERATION,
+    RECORDS_LB.RECORD_TYPE,
+    RECORDS_LB.INSTANCE_ID,
+    RECORDS_LB.STATE,
+    RECORDS_LB.LEADER_RECORD_STATUS,
+    RECORDS_LB.ORDER,
+    RECORDS_LB.SUPPRESS_DISCOVERY,
+    RECORDS_LB.CREATED_BY_USER_ID,
+    RECORDS_LB.CREATED_DATE,
+    RECORDS_LB.UPDATED_BY_USER_ID,
+    RECORDS_LB.UPDATED_DATE,
+    RECORDS_LB.INSTANCE_HRID
+  };
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -90,26 +116,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.ID.isNotNull()))))
-      .select(RECORDS_LB.ID,
-              RECORDS_LB.SNAPSHOT_ID,
-              RECORDS_LB.MATCHED_ID,
-              RECORDS_LB.GENERATION,
-              RECORDS_LB.RECORD_TYPE,
-              RECORDS_LB.INSTANCE_ID,
-              RECORDS_LB.STATE,
-              RECORDS_LB.LEADER_RECORD_STATUS,
-              RECORDS_LB.ORDER,
-              RECORDS_LB.SUPPRESS_DISCOVERY,
-              RECORDS_LB.CREATED_BY_USER_ID,
-              RECORDS_LB.CREATED_DATE,
-              RECORDS_LB.UPDATED_BY_USER_ID,
-              RECORDS_LB.UPDATED_DATE,
-              RECORDS_LB.INSTANCE_HRID,
-              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
-              RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
-              ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
-              ERROR_RECORDS_LB.DESCRIPTION,
-              field(name(COUNT), Integer.class))
+      .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
@@ -120,6 +127,29 @@ public class RecordDaoImpl implements RecordDao {
         .offset(offset)
         .limit(limit)
     )).map(this::toRecordCollection);
+  }
+
+  @Override
+  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    RecordType recordType = RecordType.MARC;
+    Name prt = name(recordType.getTableName());
+    String sql = DSL.select(getAllRecordFields(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+      .where(condition.and(RECORDS_LB.ID.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
+      .getSQL(ParamType.INLINED);
+    return getCachecPool(tenantId).rxBegin()
+      .flatMapPublisher(tx -> tx.rxPrepare(sql)
+        .flatMapPublisher(pq -> pq.createStream(1)
+          .toFlowable()
+          .map(this::toRow)
+          .map(this::toRecord))
+        .doAfterTerminate(tx::commit));
   }
 
   @Override
@@ -184,23 +214,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .select(RECORDS_LB.ID,
-              RECORDS_LB.SNAPSHOT_ID,
-              RECORDS_LB.MATCHED_ID,
-              RECORDS_LB.GENERATION,
-              RECORDS_LB.RECORD_TYPE,
-              RECORDS_LB.INSTANCE_ID,
-              RECORDS_LB.STATE,
-              RECORDS_LB.LEADER_RECORD_STATUS,
-              RECORDS_LB.ORDER,
-              RECORDS_LB.SUPPRESS_DISCOVERY,
-              RECORDS_LB.CREATED_BY_USER_ID,
-              RECORDS_LB.CREATED_DATE,
-              RECORDS_LB.UPDATED_BY_USER_ID,
-              RECORDS_LB.UPDATED_DATE,
-              RECORDS_LB.INSTANCE_HRID,
-              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
-              field(name(COUNT), Integer.class))
+      .select(getRecordFields(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
@@ -222,23 +236,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.ID.isNotNull()))))
-      .select(RECORDS_LB.ID,
-              RECORDS_LB.SNAPSHOT_ID,
-              RECORDS_LB.MATCHED_ID,
-              RECORDS_LB.GENERATION,
-              RECORDS_LB.RECORD_TYPE,
-              RECORDS_LB.INSTANCE_ID,
-              RECORDS_LB.STATE,
-              RECORDS_LB.LEADER_RECORD_STATUS,
-              RECORDS_LB.ORDER,
-              RECORDS_LB.SUPPRESS_DISCOVERY,
-              RECORDS_LB.CREATED_BY_USER_ID,
-              RECORDS_LB.CREATED_DATE,
-              RECORDS_LB.UPDATED_BY_USER_ID,
-              RECORDS_LB.UPDATED_DATE,
-              RECORDS_LB.INSTANCE_HRID,
-              field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
-              field(name(COUNT), Integer.class))
+      .select(getRecordFields(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
@@ -342,6 +340,14 @@ public class RecordDaoImpl implements RecordDao {
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
+  }
+
+  private PgPool getCachecPool(String tenantId) {
+    return postgresClientFactory.getCachedPool(tenantId);
+  }
+
+  private Row toRow(io.vertx.reactivex.sqlclient.Row row) {
+    return row.getDelegate();
   }
 
   private Row asRow(Row row) {
@@ -448,24 +454,33 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
+  private Field<?>[] getRecordFields(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
+      COUNT_FIELD
+    });
+  }
+
+  private Field<?>[] getAllRecordFields(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
+      RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
+      ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
+      ERROR_RECORDS_LB.DESCRIPTION
+    });
+  }
+
+  private Field<?>[] getAllRecordFieldsWithCount(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(getAllRecordFields(prt), new Field<?>[] {
+      COUNT_FIELD
+    });
+  }
+
   private RecordCollection toRecordCollection(QueryResult result) {
     RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
     List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
-      Record record = RecordDaoUtil.toRecord(row);
-      RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(row);
-      if (Objects.nonNull(rawRecord.getContent())) {
-        record.setRawRecord(rawRecord);
-      }
-      ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
-      if (Objects.nonNull(parsedRecord.getContent())) {
-        record.setParsedRecord(parsedRecord);
-      }
-      ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
-      if (Objects.nonNull(errorRecord.getContent())) {
-        record.setErrorRecord(errorRecord);
-      }
-      return record;
+      return toRecord(row);
     }).collect(Collectors.toList());
     if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
@@ -484,6 +499,23 @@ public class RecordDaoImpl implements RecordDao {
       sourceRecordCollection.withSourceRecords(sourceRecords);
     }
     return sourceRecordCollection;
+  }
+
+  private Record toRecord(Row row) {
+    Record record = RecordDaoUtil.toRecord(row);
+    RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(row);
+    if (Objects.nonNull(rawRecord.getContent())) {
+      record.setRawRecord(rawRecord);
+    }
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      record.setParsedRecord(parsedRecord);
+    }
+    ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
+    if (Objects.nonNull(errorRecord.getContent())) {
+      record.setErrorRecord(errorRecord);
+    }
+    return record;
   }
 
 }

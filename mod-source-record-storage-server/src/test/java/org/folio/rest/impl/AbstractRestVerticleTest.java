@@ -26,10 +26,10 @@ import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.reactivex.core.Vertx;
 
 public abstract class AbstractRestVerticleTest {
 
@@ -78,7 +78,7 @@ public abstract class AbstractRestVerticleTest {
         break;
       case "embedded":
         PostgresClient.setIsEmbedded(true);
-        PostgresClient.getInstance(vertx).startEmbeddedPostgres();
+        PostgresClient.getInstance(vertx.getDelegate()).startEmbeddedPostgres();
         break;
       default:
         String message = "No understood database choice made." +

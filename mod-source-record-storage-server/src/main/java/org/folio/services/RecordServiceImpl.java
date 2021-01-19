@@ -37,6 +37,7 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -59,6 +60,11 @@ public class RecordServiceImpl implements RecordService {
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
     return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override

@@ -15,6 +15,7 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.reactivex.Flowable;
 import io.vertx.core.Future;
 
 /**
@@ -30,9 +31,21 @@ public interface RecordDao {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @return future with {@link RecordCollection}
+   * @return {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link Record}
+   */
+  Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id

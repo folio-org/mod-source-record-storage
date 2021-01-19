@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
+import io.reactivex.Flowable;
 import io.vertx.core.Future;
 
 public interface RecordService {
@@ -26,9 +27,21 @@ public interface RecordService {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @return future with {@link RecordCollection}
+   * @return {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Stream {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link Record}
+   */
+  Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for record by id

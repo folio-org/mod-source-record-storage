@@ -180,6 +180,18 @@ public interface RecordDao {
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * Stream {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link SourceRecord}
+   */
+  Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids

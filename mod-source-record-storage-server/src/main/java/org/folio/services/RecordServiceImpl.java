@@ -150,6 +150,11 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamSourceRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, String tenantId) {
     ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
     return recordDao.getSourceRecords(ids, externalIdType, deleted, tenantId);

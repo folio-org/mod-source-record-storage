@@ -226,6 +226,28 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    RecordType recordType = RecordType.MARC;
+    Name prt = name(recordType.getTableName());
+    String sql = DSL.select(getRecordFields(prt))
+      .from(RECORDS_LB)
+      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
+      .getSQL(ParamType.INLINED);
+    return getCachecPool(tenantId).rxBegin()
+      .flatMapPublisher(tx -> tx.rxPrepare(sql)
+        .flatMapPublisher(pq -> pq.createStream(1)
+          .toFlowable()
+          .map(this::toRow)
+          .map(RecordDaoUtil::toRecord)
+          .map(RecordDaoUtil::toSourceRecord))
+        .doAfterTerminate(tx::commit));
+  }
+
+  @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));

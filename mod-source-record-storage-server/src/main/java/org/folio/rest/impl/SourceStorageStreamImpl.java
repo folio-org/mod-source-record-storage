@@ -5,12 +5,24 @@ import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
+import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.Pattern;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
@@ -56,27 +68,71 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   public void getSourceStorageStreamRecords(String snapshotId, String state, List<String> orderBy,
       @Min(0) @Max(2147483647) int offset, @Min(0) @Max(2147483647) int limit, RoutingContext routingContext,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    HttpServerResponse response = routingContext.response();
-    response.setStatusCode(200);
-    response.setChunked(true);
-    response.putHeader(CONTENT_TYPE, "application/stream+json");
-    response.putHeader(CONNECTION, "keep-alive");
+    HttpServerResponse response = prepareStreamResponse(routingContext);
     Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
     List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
     Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
-    Pump.pump(FlowableHelper.toReadStream(flowable).exceptionHandler(throwable -> {
-      LOG.error(throwable.getMessage(), throwable);
-      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
-    }).endHandler(end -> {
-      response.end();
-      response.close();
-    }), response).start();
+    Pump.pump(FlowableHelper.toReadStream(flowable)
+      .exceptionHandler(throwable -> {
+        LOG.error(throwable.getMessage(), throwable);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
+      })
+      .endHandler(end -> {
+        response.end();
+        response.close();
+      }), response)
+      .start();
     flowable.doOnError(cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
+  }
+
+  @Override
+  public void getSourceStorageStreamSourceRecords(String recordId, String snapshotId, String instanceId,
+      String instanceHrid, String recordType, Boolean suppressFromDiscovery, Boolean deleted,
+      @Pattern(regexp = "^[a|c|d|n|p|o|s|x]{1}$") String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
+      List<String> orderBy, @Min(0) @Max(2147483647) int offset, @Min(0) @Max(2147483647) int limit,
+      RoutingContext routingContext, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    HttpServerResponse response = prepareStreamResponse(routingContext);
+    Condition condition = filterRecordByRecordId(recordId)
+      .and(filterRecordBySnapshotId(snapshotId))
+      .and(filterRecordByInstanceId(instanceId))
+      .and(filterRecordByInstanceHrid(instanceHrid))
+      .and(filterRecordByType(recordType))
+      .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
+      .and(filterRecordByDeleted(deleted))
+      .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
+      .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
+    List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
+    Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
+      .map(Json::encodeToBuffer)
+      .map(buffer -> buffer.appendString(StringUtils.LF));
+    Pump.pump(FlowableHelper.toReadStream(flowable)
+      .exceptionHandler(throwable -> {
+        LOG.error(throwable.getMessage(), throwable);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
+      })
+      .endHandler(end -> {
+        response.end();
+        response.close();
+      }), response)
+      .start();
+    flowable.doOnError(cause -> {
+      LOG.error(cause.getMessage(), cause);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+    });
+  }
+
+  private HttpServerResponse prepareStreamResponse(RoutingContext routingContext) {
+    return routingContext.response()
+      .setStatusCode(200)
+      .setChunked(true)
+      .putHeader(CONTENT_TYPE, "application/stream+json")
+      .putHeader(CONNECTION, "keep-alive");
   }
 
 }

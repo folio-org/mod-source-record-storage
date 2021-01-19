@@ -214,7 +214,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .select(getRecordFields(prt))
+      .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())

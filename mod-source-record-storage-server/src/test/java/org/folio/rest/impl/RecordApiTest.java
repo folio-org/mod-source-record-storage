@@ -50,10 +50,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
+  private static RawRecord rawEdifactRecord;
   private static ParsedRecord marcRecord;
 
   static {
     try {
+      rawEdifactRecord = new RawRecord()
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
       rawRecord = new RawRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
@@ -795,6 +798,42 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .put(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "/suppress-from-discovery?idType=INSTANCE&suppress=true")
       .then().log().all()
       .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+  }
+
+  @Test
+  public void shouldCreateEdifactRecordOnPost(TestContext testContext) {
+
+    Record edifactRecord = new Record()
+    .withId(FOURTH_UUID)
+    .withSnapshotId(snapshot_1.getJobExecutionId())
+    .withRecordType(Record.RecordType.EDIFACT)
+    .withRawRecord(rawEdifactRecord)
+    .withMatchedId(FOURTH_UUID)
+    .withOrder(1);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(edifactRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("snapshotId", is(edifactRecord.getSnapshotId()))
+      .body("recordType", is(edifactRecord.getRecordType().name()))
+      .body("rawRecord.content", is(rawEdifactRecord.getContent()))
+      .body("additionalInfo.suppressDiscovery", is(false));
     async.complete();
   }
 

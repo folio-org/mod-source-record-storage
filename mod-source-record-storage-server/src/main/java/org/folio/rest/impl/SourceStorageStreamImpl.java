@@ -66,7 +66,10 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
-    Pump.pump(FlowableHelper.toReadStream(flowable).endHandler(end -> {
+    Pump.pump(FlowableHelper.toReadStream(flowable).exceptionHandler(throwable -> {
+      LOG.error(throwable.getMessage(), throwable);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
+    }).endHandler(end -> {
       response.end();
       response.close();
     }), response).start();

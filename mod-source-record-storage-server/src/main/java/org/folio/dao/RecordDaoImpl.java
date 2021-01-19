@@ -258,7 +258,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.ID.isNotNull()))))
-      .select(getRecordFields(prt))
+      .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
@@ -478,7 +478,12 @@ public class RecordDaoImpl implements RecordDao {
 
   private Field<?>[] getRecordFields(Name prt) {
     return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
-      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)),
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT))
+    });
+  }
+
+  private Field<?>[] getRecordFieldsWithCount(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(getRecordFields(prt), new Field<?>[] {
       COUNT_FIELD
     });
   }

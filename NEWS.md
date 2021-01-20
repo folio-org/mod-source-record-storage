@@ -6,6 +6,7 @@
 * [MODSOURCE-220](https://issues.folio.org/browse/MODSOURCE-220) Migration script between Goldenrod-hotfix-5 and Honeysuckle.
 * [MODSOURCE-216](https://issues.folio.org/browse/MODSOURCE-216) Update MARC 005 field when MARC record has changes
 * [MODSOURCE-204](https://issues.folio.org/browse/MODSOURCE-204) Join query for get records. Add records_lb index for order column.
+* [MODSOURCE-203](https://issues.folio.org/browse/MODSOURCE-203) Ensure queries with offset include order. Add records_lb order index to liquibase change log.
 * [MODSOURCE-202](https://issues.folio.org/browse/MODSOURCE-202) Records stream API using reactivex.
 * [MODSOURCE-201](https://issues.folio.org/browse/MODSOURCE-201) Source Records stream API using reactivex.
 

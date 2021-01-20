@@ -2,15 +2,13 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
@@ -70,7 +68,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
     Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
-    List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
+    List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
     Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
@@ -97,7 +95,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       .and(filterRecordByDeleted(deleted))
       .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
       .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
-    List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
+    List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
     Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));

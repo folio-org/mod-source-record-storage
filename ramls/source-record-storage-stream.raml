@@ -1,0 +1,117 @@
+#%RAML 1.0
+
+title: Source Record Storage Stream API
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Stream API
+    content: Streaming API for searching records
+
+uses:
+  ramltojaxrs: raml-storage/raml-util/library/ramltojaxrs.raml
+
+types:
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+
+/source-storage/stream:
+  /records:
+    displayName: Records Stream
+    description: Stream collection of records
+    get:
+      description: Stream collection of records; including raw record, parsed record, and error record if applicable
+      is: [
+        pageable,
+        validate
+      ]
+      queryParameters:
+        snapshotId:
+          description: Filter by Snapshot Id
+          type: string
+          example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
+          required: false
+        state:
+          description: Filter by State
+          type: string
+          example: "ACTUAL"
+          required: false
+        orderBy:
+          description: Sort Records
+          type: string[]
+          example: ["order,ASC"]
+          required: false
+  /source-records:
+    displayName: Source Records Stream
+    description: Stream collection of source records
+    get:
+      description: Stream collection of source records; including only latest generation and parsed record
+      is: [
+        pageable,
+        validate
+      ]
+      queryParameters:
+        recordId:
+          description: Filter by Record Id
+          type: string
+          example: "876270bc-fbb4-409d-b8b0-3f59b1cb61f2"
+          required: false
+        snapshotId:
+          description: Filter by Snapshot Id
+          type: string
+          example: "7a8fbd77-5b2a-496c-93e7-cd04478f4fcc"
+          required: false
+        instanceId:
+          description: Filter by Instance Id
+          type: string
+          example: "8b07da70-8ea7-4acd-83a0-44d83979c73b"
+          required: false
+        instanceHrid:
+          description: Filter by Instance Hrid
+          type: string
+          example: "12345"
+          required: false
+        recordType:
+          description: Filter by Record Type
+          type: string
+          example: "MARC"
+          required: false
+        suppressFromDiscovery:
+          description: Filter by suppress from discovery
+          type: boolean
+          (ramltojaxrs.types):
+            plugins:
+              - name: core.box
+          example: true
+          required: false
+        deleted:
+          description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
+          type: boolean
+          (ramltojaxrs.types):
+            plugins:
+              - name: core.box
+          example: true
+          default: false
+        leaderRecordStatus:
+          description: Filter by MARC leader 05 status
+          type: string
+          example: "n"
+          required: false
+          "pattern": "^[a|c|d|n|p|o|s|x]{1}$"
+        updatedAfter:
+          description: Start date to filter after, inclusive
+          type: datetime
+          required: false
+        updatedBefore:
+          description: End date to filter before, inclusive
+          type: datetime
+          required: false
+        orderBy:
+          description: Sort records
+          type: string[]
+          example: ["order,ASC"]
+          required: false

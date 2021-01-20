@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
+import io.reactivex.Flowable;
 import io.vertx.core.Future;
 
 public interface RecordService {
@@ -26,9 +27,21 @@ public interface RecordService {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @return future with {@link RecordCollection}
+   * @return {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Stream {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link Record}
+   */
+  Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for record by id
@@ -69,14 +82,26 @@ public interface RecordService {
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    *
-   * @param condition      query where condition
-   * @param orderFields    fields to order by
-   * @param offset         starting index in a list of results
-   * @param limit          limit of records for pagination
-   * @param tenantId       tenant id
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
    * @return future with {@link SourceRecordCollection}
    */
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Stream {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link SourceRecord}
+   */
+  Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
@@ -148,15 +173,5 @@ public interface RecordService {
    * @return future with updated Record
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
-
-  /**
-   * Searches for {@link Record} by id of external entity which was created from desired record
-   *
-   * @param externalId external relation id
-   * @param idType     id type
-   * @param tenantId   tenant id
-   * @return future with optional {@link Record}
-   */
-  Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId);
 
 }

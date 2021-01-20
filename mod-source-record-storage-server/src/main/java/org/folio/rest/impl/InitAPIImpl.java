@@ -19,8 +19,10 @@ public class InitAPIImpl implements InitAPI {
 
   @Autowired
   private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
+
   @Autowired
   private ModifyRecordEventHandler modifyRecordEventHandler;
+
   @Autowired
   private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
 

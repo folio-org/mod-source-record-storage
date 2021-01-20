@@ -37,6 +37,7 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -62,14 +63,13 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    return recordDao.getRecordById(id, tenantId);
+  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return recordDao.getRecordById(id, tenantId);
   }
 
   @Override
@@ -141,6 +141,11 @@ public class RecordServiceImpl implements RecordService {
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamSourceRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override

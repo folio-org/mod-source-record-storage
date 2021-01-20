@@ -1,12 +1,14 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
+import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
+
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -19,13 +21,13 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
-import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
 
@@ -67,7 +69,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterSnapshotByStatus(status);
-        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy);
+        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy, true);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

@@ -136,7 +136,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+  public void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -834,6 +834,76 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("recordType", is(edifactRecord.getRecordType().name()))
       .body("rawRecord.content", is(rawEdifactRecord.getContent()))
       .body("additionalInfo.suppressDiscovery", is(false));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnAllEdifactRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+
+    Record record_4 = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1)
+      .withState(Record.State.OLD);
+
+    Record edifactRecord = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.EDIFACT)
+      .withRawRecord(rawEdifactRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1);
+
+    List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4, edifactRecord);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(4))
+      .body("records*.state", notNullValue());
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?recordType=EDIFACT")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("records*.state", notNullValue());
     async.complete();
   }
 

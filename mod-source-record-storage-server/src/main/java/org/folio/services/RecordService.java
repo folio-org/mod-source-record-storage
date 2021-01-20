@@ -24,25 +24,27 @@ public interface RecordService {
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    *
    * @param condition   query where condition
+   * @param recordType  record type
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
    * @return {@link Future} of {@link RecordCollection}
    */
-  Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Stream {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    *
    * @param condition   query where condition
+   * @param recordType  record type
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
    * @return {@link Flowable} of {@link Record}
    */
-  Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for record by id
@@ -97,13 +99,14 @@ public interface RecordService {
    * Stream {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    *
    * @param condition   query where condition
+   * @param recordType  record type
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
    * @return {@link Flowable} of {@link SourceRecord}
    */
-  Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+  Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD

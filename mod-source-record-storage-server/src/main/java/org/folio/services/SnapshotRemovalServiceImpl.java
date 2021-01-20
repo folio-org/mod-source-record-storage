@@ -1,13 +1,16 @@
 package org.folio.services;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.Record;
@@ -15,13 +18,12 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 @Service
 public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
@@ -55,9 +57,11 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();
 
+        // TODO: this delete should be done without require knowlegde of record type
+        RecordType recordType = RecordType.MARC;
         while (totalRequestedRecords < totalRecords) {
           int offset = totalRequestedRecords;
-          future = future.compose(ar -> recordService.getRecords(condition, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
+          future = future.compose(ar -> recordService.getRecords(condition, recordType, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
             .compose(recordCollection -> deleteInstances(recordCollection.getRecords(), params));
           totalRequestedRecords += RECORDS_LIMIT;
         }

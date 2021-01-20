@@ -108,8 +108,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
@@ -130,8 +129,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name prt = name(recordType.getTableName());
     String sql = DSL.select(getAllRecordFields(prt))
       .from(RECORDS_LB)
@@ -225,8 +223,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name prt = name(recordType.getTableName());
     String sql = DSL.select(getRecordFields(prt))
       .from(RECORDS_LB)

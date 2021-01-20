@@ -58,14 +58,14 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
-    return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
+    return recordDao.getRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    return recordDao.streamRecords(condition, orderFields, offset, limit, tenantId);
+  public Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
@@ -145,8 +145,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    return recordDao.streamSourceRecords(condition, orderFields, offset, limit, tenantId);
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override

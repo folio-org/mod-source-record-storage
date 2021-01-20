@@ -24,6 +24,7 @@ import javax.validation.constraints.Pattern;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -63,13 +64,13 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   }
 
   @Override
-  public void getSourceStorageStreamRecords(String snapshotId, String state, List<String> orderBy,
+  public void getSourceStorageStreamRecords(String snapshotId, String recordType, String state, List<String> orderBy,
       @Min(0) @Max(2147483647) int offset, @Min(0) @Max(2147483647) int limit, RoutingContext routingContext,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
     Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
     List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-    Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
+    Flowable<Buffer> flowable = recordService.streamRecords(condition, RecordType.valueOf(recordType), orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
     processStream(response, flowable, cause -> {
@@ -96,7 +97,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
       .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
     List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-    Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, orderFields, offset, limit, tenantId)
+    Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, RecordType.valueOf(recordType), orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
     processStream(response, flowable, cause -> {

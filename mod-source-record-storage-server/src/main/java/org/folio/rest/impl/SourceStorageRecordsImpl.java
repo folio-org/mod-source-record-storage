@@ -10,6 +10,7 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
+import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -61,14 +62,14 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void getSourceStorageRecords(String snapshotId, String state, List<String> orderBy, int offset, int limit,
+  public void getSourceStorageRecords(String snapshotId, String recordType, String state, List<String> orderBy, int offset, int limit,
       String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-        recordService.getRecords(condition, orderFields, offset, limit, tenantId)
+        recordService.getRecords(condition, RecordType.valueOf(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {

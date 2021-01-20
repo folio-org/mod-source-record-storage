@@ -73,12 +73,6 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
-  }
-
-  @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
     if (Objects.isNull(record.getId())) {
       record.setId(UUID.randomUUID().toString());

@@ -174,14 +174,4 @@ public interface RecordService {
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
-  /**
-   * Searches for {@link Record} by id of external entity which was created from desired record
-   *
-   * @param externalId external relation id
-   * @param idType     id type
-   * @param tenantId   tenant id
-   * @return future with optional {@link Record}
-   */
-  Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId);
-
 }

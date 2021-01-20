@@ -5,6 +5,7 @@ import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -79,19 +80,6 @@ public final class SnapshotDaoUtil {
       .from(SNAPSHOTS_LB)
       .where(condition))
         .map(row -> row.getInteger(0));
-  }
-
-  /**
-   * Searches for {@link Snapshot} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @return future with optional Snapshot
-   */
-  public static Future<Optional<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
-      .where(condition))
-        .map(SnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -285,11 +273,15 @@ public final class SnapshotDaoUtil {
    * Relies on strong convention between dto property name and database column name.
    * Property name being lower camel case and column name being lower snake case of the property name.
    * 
-   * @param orderBy list of order strings i.e. 'order,ASC' or 'state'
+   * @param orderBy   list of order strings i.e. 'order,ASC' or 'state'
+   * @param forOffset flag to ensure an order is applied
    * @return list of order fields
    */
   @SuppressWarnings("squid:S1452")
-  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy) {
+  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy, Boolean forOffset) {
+    if (forOffset && orderBy.isEmpty()) {
+      return Arrays.asList(new OrderField<?>[] { SNAPSHOTS_LB.ID.asc() });
+    }
     return orderBy.stream()
       .map(order -> order.split(COMMA))
       .map(order -> {

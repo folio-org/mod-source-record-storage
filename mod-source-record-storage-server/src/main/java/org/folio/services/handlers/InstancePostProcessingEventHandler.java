@@ -81,6 +81,8 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
       String tenantId = dataImportEventPayload.getTenant();
       Record record = new ObjectMapper().readValue(recordAsString, Record.class);
+      AdditionalFieldsUtil.updateLatestTransactionDate(record, dataImportEventPayload.getContext());
+
       JsonObject instance = new JsonObject(instanceAsString);
       setInstanceIdToRecord(record, instance);
       setSuppressFormDiscovery(record, instance.getBoolean("discoverySuppress", false));

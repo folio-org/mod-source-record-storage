@@ -1,5 +1,10 @@
 package org.folio.dao;
 
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.jooq.impl.DSL.field;
@@ -19,6 +24,7 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.MarcUtil;
@@ -29,6 +35,7 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -37,18 +44,23 @@ import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
+import org.jooq.conf.ParamType;
+import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
+import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 
 @Component
@@ -56,11 +68,32 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
 
-  private static final String CTE1 = "cte1";
-  private static final String CTE2 = "cte2";
+  private static final String CTE = "cte";
+
   private static final String ID = "id";
+  private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
+
+  private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
+
+  private static final Field<?>[] RECORD_FIELDS = new Field<?>[] {
+    RECORDS_LB.ID,
+    RECORDS_LB.SNAPSHOT_ID,
+    RECORDS_LB.MATCHED_ID,
+    RECORDS_LB.GENERATION,
+    RECORDS_LB.RECORD_TYPE,
+    RECORDS_LB.INSTANCE_ID,
+    RECORDS_LB.STATE,
+    RECORDS_LB.LEADER_RECORD_STATUS,
+    RECORDS_LB.ORDER,
+    RECORDS_LB.SUPPRESS_DISCOVERY,
+    RECORDS_LB.CREATED_BY_USER_ID,
+    RECORDS_LB.CREATED_DATE,
+    RECORDS_LB.UPDATED_BY_USER_ID,
+    RECORDS_LB.UPDATED_DATE,
+    RECORDS_LB.INSTANCE_HRID
+  };
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -76,19 +109,47 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
-      RecordCollection recordCollection = new RecordCollection();
-      recordCollection.withRecords(new ArrayList<>());
-      return CompositeFuture.all(
-        RecordDaoUtil.streamByCondition(txQE, condition, orderFields, offset, limit)
-          .compose(stream -> CompositeFuture.all(stream
-            .map(pr -> lookupAssociatedRecords(txQE, pr, true)
-            .map(r -> addToList(recordCollection.getRecords(), r)))
-            .collect(Collectors.toList()))),
-        RecordDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> addTotalRecords(recordCollection, totalRecords))
-      ).map(res -> recordCollection);
-    });
+    RecordType recordType = RecordType.MARC;
+    Name cte = name(CTE);
+    Name prt = name(recordType.getTableName());
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.selectCount()
+        .from(RECORDS_LB)
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+      .select(getAllRecordFieldsWithCount(prt))
+        .from(RECORDS_LB)
+        .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+        .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+        .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))
+        .orderBy(orderFields)
+        .offset(offset)
+        .limit(limit)
+    )).map(this::toRecordCollection);
+  }
+
+  @Override
+  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    RecordType recordType = RecordType.MARC;
+    Name prt = name(recordType.getTableName());
+    String sql = DSL.select(getAllRecordFields(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+      .where(condition.and(RECORDS_LB.ID.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
+      .getSQL(ParamType.INLINED);
+    return getCachecPool(tenantId).rxBegin()
+      .flatMapPublisher(tx -> tx.rxPrepare(sql)
+        .flatMapPublisher(pq -> pq.createStream(1)
+          .toFlowable()
+          .map(this::toRow)
+          .map(this::toRecord))
+        .doAfterTerminate(tx::commit));
   }
 
   @Override
@@ -114,7 +175,6 @@ public class RecordDaoImpl implements RecordDao {
         .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
     return getRecordByCondition(txQE, condition);
   }
-
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
@@ -147,69 +207,62 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    // NOTE: currently only record type available is MARC
-    // having a dedicated table per record type has some complications
-    // if a new record type is added, will have two options to continue using single query to fetch source records
-    // 1. add record type query parameter to endpoint and join with table for that record type
-    //    - this will not afford source record request returning heterogeneous record types
-    // 2. join on every record type table
-    //    - this could present performance issues
-
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID);
-    Name cte1 = name(CTE1);
-    Name cte2 = name(CTE2);
+    Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte1.as(dsl.select()
+      .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .with(cte2.as(dsl.select()
-        .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
-        .orderBy(orderFields)
-        .offset(offset)
-        .limit(limit)))
-      .select()
-        .from(table(cte2))
-        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+      .select(getRecordFieldsWithCount(prt))
+      .from(RECORDS_LB)
+      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
     )).map(this::toSourceRecordCollection);
+  }
+
+  @Override
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    RecordType recordType = RecordType.MARC;
+    Name prt = name(recordType.getTableName());
+    String sql = DSL.select(getRecordFields(prt))
+      .from(RECORDS_LB)
+      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .orderBy(orderFields)
+      .offset(offset)
+      .limit(limit)
+      .getSQL(ParamType.INLINED);
+    return getCachecPool(tenantId).rxBegin()
+      .flatMapPublisher(tx -> tx.rxPrepare(sql)
+        .flatMapPublisher(pq -> pq.createStream(1)
+          .toFlowable()
+          .map(this::toRow)
+          .map(this::toSourceRecord))
+        .doAfterTerminate(tx::commit));
   }
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalIds, externalIdType)
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     RecordType recordType = RecordType.MARC;
-    Name id = name(ID);
-    Name cte1 = name(CTE1);
-    Name cte2 = name(CTE2);
+    Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Field<UUID> recordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, cte2, id);
-    Field<UUID> parsedRecordIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, prt, id);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte1.as(dsl.select()
+      .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition)))
-      .with(cte2.as(dsl.select()
-        .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
-      .select()
-        .from(table(cte2))
-        .innerJoin(table(prt)).on(recordIdField.eq(parsedRecordIdField))
-        .rightJoin(dsl.selectCount().from(table(cte1))).on(trueCondition())
+        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+      .select(getRecordFieldsWithCount(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
     )).map(this::toSourceRecordCollection);
-  }
-
-  @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId) {
-    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
-      .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
-    return getSourceRecordByCondition(condition, tenantId);
   }
 
   @Override
@@ -239,11 +292,6 @@ public class RecordDaoImpl implements RecordDao {
         }
         return Future.succeededFuture(Optional.empty());
       }));
-  }
-
-  @Override
-  public Future<Integer> calculateGeneration(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> calculateGeneration(txQE, record));
   }
 
   @Override
@@ -292,11 +340,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> saveUpdatedRecord(txQE, newRecord, oldRecord));
-  }
-
-  @Override
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
@@ -320,13 +363,12 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private Record addToList(List<Record> records, Record record) {
-    records.add(record);
-    return record;
+  private PgPool getCachecPool(String tenantId) {
+    return postgresClientFactory.getCachedPool(tenantId);
   }
 
-  private RecordCollection addTotalRecords(RecordCollection recordCollection, Integer totalRecords) {
-    return recordCollection.withTotalRecords(totalRecords);
+  private Row toRow(io.vertx.reactivex.sqlclient.Row row) {
+    return row.getDelegate();
   }
 
   private Row asRow(Row row) {
@@ -433,17 +475,82 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
+  private Field<?>[] getRecordFields(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT))
+    });
+  }
+
+  private Field<?>[] getRecordFieldsWithCount(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(getRecordFields(prt), new Field<?>[] {
+      COUNT_FIELD
+    });
+  }
+
+  private Field<?>[] getAllRecordFields(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
+      RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
+      ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
+      ERROR_RECORDS_LB.DESCRIPTION
+    });
+  }
+
+  private Field<?>[] getAllRecordFieldsWithCount(Name prt) {
+    return (Field<?>[]) ArrayUtils.addAll(getAllRecordFields(prt), new Field<?>[] {
+      COUNT_FIELD
+    });
+  }
+
+  private RecordCollection toRecordCollection(QueryResult result) {
+    RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
+    List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      recordCollection.setTotalRecords(row.getInteger(COUNT));
+      return toRecord(row);
+    }).collect(Collectors.toList());
+    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
+      recordCollection.withRecords(records);
+    }
+    return recordCollection;
+  }
+
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
-    SourceRecordCollection sourceRecordCollection = new SourceRecordCollection();
-      List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
-        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
-        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
-          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
-      }).collect(Collectors.toList());
-      if (Objects.nonNull(sourceRecords.get(0).getRecordId())) {
-        sourceRecordCollection.withSourceRecords(sourceRecords);
-      }
-      return sourceRecordCollection;
+    SourceRecordCollection sourceRecordCollection = new SourceRecordCollection().withTotalRecords(0);
+    List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
+      return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
+        .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
+    }).collect(Collectors.toList());
+    if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+      sourceRecordCollection.withSourceRecords(sourceRecords);
+    }
+    return sourceRecordCollection;
+  }
+
+  private SourceRecord toSourceRecord(Row row) {
+    SourceRecord sourceRecord = RecordDaoUtil.toSourceRecord(row);
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      sourceRecord.setParsedRecord(parsedRecord);
+    }
+    return sourceRecord;
+  }
+
+  private Record toRecord(Row row) {
+    Record record = RecordDaoUtil.toRecord(row);
+    RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(row);
+    if (Objects.nonNull(rawRecord.getContent())) {
+      record.setRawRecord(rawRecord);
+    }
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      record.setParsedRecord(parsedRecord);
+    }
+    ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
+    if (Objects.nonNull(errorRecord.getContent())) {
+      record.setErrorRecord(errorRecord);
+    }
+    return record;
   }
 
 }

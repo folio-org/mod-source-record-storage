@@ -74,17 +74,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
-    Pump.pump(FlowableHelper.toReadStream(flowable)
-      .exceptionHandler(throwable -> {
-        LOG.error(throwable.getMessage(), throwable);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
-      })
-      .endHandler(end -> {
-        response.end();
-        response.close();
-      }), response)
-      .start();
-    flowable.doOnError(cause -> {
+    processStream(response, flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
@@ -111,19 +101,22 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
+    processStream(response, flowable, cause -> {
+      LOG.error(cause.getMessage(), cause);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+    });
+  }
+
+  private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {
     Pump.pump(FlowableHelper.toReadStream(flowable)
-      .exceptionHandler(throwable -> {
-        LOG.error(throwable.getMessage(), throwable);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(throwable)));
-      })
+      .exceptionHandler(errorHandler)
       .endHandler(end -> {
         response.end();
         response.close();
       }), response)
       .start();
     flowable.doOnError(cause -> {
-      LOG.error(cause.getMessage(), cause);
-      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+      errorHandler.handle(cause);
     });
   }
 

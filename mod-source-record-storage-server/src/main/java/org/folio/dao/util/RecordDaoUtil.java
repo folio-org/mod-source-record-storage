@@ -74,28 +74,6 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
-   * using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @param orderFields   fields to order by
-   * @param offset        offset
-   * @param limit         limit
-   * @return future with {@link List} of {@link Record}
-   */
-  public static Future<Stream<Record>> streamByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.query(dsl ->  dsl.selectFrom(RECORDS_LB)
-      .where(condition)
-      .orderBy(orderFields)
-      .offset(offset)
-      .limit(limit))
-        .map(res -> res.stream()
-          .map(r -> RecordDaoUtil.toRecord(r.unwrap())));
-  }
-
-  /**
    * Count query by {@link Condition}
    *
    * @param queryExecutor query executor

@@ -177,6 +177,56 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Convert database query result {@link Row} to {@link SourceRecord}
+   *
+   * @param row query result row
+   * @return SourceRecord
+   */
+  public static SourceRecord toSourceRecord(Row row) {
+    RecordsLb pojo = RowMappers.getRecordsLbMapper().apply(row);
+    SourceRecord sourceRecord = new SourceRecord();
+    if (Objects.nonNull(pojo.getId())) {
+      sourceRecord.withRecordId(pojo.getId().toString());
+    }
+    if (Objects.nonNull(pojo.getSnapshotId())) {
+      sourceRecord.withSnapshotId(pojo.getSnapshotId().toString());
+    }
+    if (Objects.nonNull(pojo.getRecordType())) {
+      sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(pojo.getRecordType().toString()));
+    }
+    sourceRecord.withOrder(pojo.getOrder());
+    sourceRecord.withDeleted(DELETED_LEADER_RECORD_STATUS.contains(pojo.getLeaderRecordStatus()));
+    AdditionalInfo additionalInfo = new AdditionalInfo();
+    if (Objects.nonNull(pojo.getSuppressDiscovery())) {
+      additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
+    }
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
+    if (Objects.nonNull(pojo.getInstanceId())) {
+      externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
+    }
+    if (Objects.nonNull(pojo.getInstanceHrid())) {
+      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid().toString());
+    }
+    Metadata metadata = new Metadata();
+    if (Objects.nonNull(pojo.getCreatedByUserId())) {
+      metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
+    }
+    if (Objects.nonNull(pojo.getCreatedDate())) {
+      metadata.withCreatedDate(Date.from(pojo.getCreatedDate().toInstant()));
+    }
+    if (Objects.nonNull(pojo.getUpdatedByUserId())) {
+      metadata.withUpdatedByUserId(pojo.getUpdatedByUserId().toString());
+    }
+    if (Objects.nonNull(pojo.getUpdatedDate())) {
+      metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
+    }
+    return sourceRecord
+      .withAdditionalInfo(additionalInfo)
+      .withExternalIdsHolder(externalIdsHolder)
+      .withMetadata(metadata);
+  }
+
+  /**
    * Convert {@link Record} to {@link SourceRecord}
    *
    * @param record Record
@@ -229,8 +279,7 @@ public final class RecordDaoUtil {
       .withOrder(pojo.getOrder())
       .withGeneration(pojo.getGeneration())
       .withLeaderRecordStatus(pojo.getLeaderRecordStatus());
-    record.withDeleted(record.getState().equals(State.DELETED)
-      || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
+    record.withDeleted(DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (Objects.nonNull(pojo.getSuppressDiscovery())) {
       additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());

@@ -242,8 +242,7 @@ public class RecordDaoImpl implements RecordDao {
         .flatMapPublisher(pq -> pq.createStream(1)
           .toFlowable()
           .map(this::toRow)
-          .map(RecordDaoUtil::toRecord)
-          .map(RecordDaoUtil::toSourceRecord))
+          .map(this::toSourceRecord))
         .doAfterTerminate(tx::commit));
   }
 
@@ -526,6 +525,15 @@ public class RecordDaoImpl implements RecordDao {
       sourceRecordCollection.withSourceRecords(sourceRecords);
     }
     return sourceRecordCollection;
+  }
+
+  private SourceRecord toSourceRecord(Row row) {
+    SourceRecord sourceRecord = RecordDaoUtil.toSourceRecord(row);
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      sourceRecord.setParsedRecord(parsedRecord);
+    }
+    return sourceRecord;
   }
 
   private Record toRecord(Row row) {

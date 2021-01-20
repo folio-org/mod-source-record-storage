@@ -195,7 +195,8 @@ public final class RecordDaoUtil {
       sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(pojo.getRecordType().toString()));
     }
     sourceRecord.withOrder(pojo.getOrder());
-    sourceRecord.withDeleted(DELETED_LEADER_RECORD_STATUS.contains(pojo.getLeaderRecordStatus()));
+    sourceRecord.withDeleted((Objects.nonNull(pojo.getState()) && State.valueOf(pojo.getState().toString()).equals(State.DELETED))
+      || DELETED_LEADER_RECORD_STATUS.contains(pojo.getLeaderRecordStatus()));
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (Objects.nonNull(pojo.getSuppressDiscovery())) {
       additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
@@ -237,7 +238,7 @@ public final class RecordDaoUtil {
       .withRecordId(record.getMatchedId())
       .withSnapshotId(record.getSnapshotId());
     if (Objects.nonNull(record.getRecordType())) {
-      sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
+      sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }
     if (Objects.nonNull(record.getState())) {
       sourceRecord.withDeleted(record.getState().equals(State.DELETED));
@@ -270,16 +271,17 @@ public final class RecordDaoUtil {
       record.withMatchedId(pojo.getMatchedId().toString());
     }
     if (Objects.nonNull(pojo.getRecordType())) {
-      record.withRecordType(org.folio.rest.jaxrs.model.Record.RecordType.valueOf(pojo.getRecordType().toString()));
+      record.withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()));
     }
     if (Objects.nonNull(pojo.getState())) {
-      record.withState(org.folio.rest.jaxrs.model.Record.State.valueOf(pojo.getState().toString()));
+      record.withState(State.valueOf(pojo.getState().toString()));
     }
     record
       .withOrder(pojo.getOrder())
       .withGeneration(pojo.getGeneration())
       .withLeaderRecordStatus(pojo.getLeaderRecordStatus());
-    record.withDeleted(DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
+    record.withDeleted(record.getState().equals(State.DELETED)
+      || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
     AdditionalInfo additionalInfo = new AdditionalInfo();
     if (Objects.nonNull(pojo.getSuppressDiscovery())) {
       additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());

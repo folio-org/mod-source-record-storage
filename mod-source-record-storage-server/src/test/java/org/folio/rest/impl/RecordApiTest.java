@@ -48,6 +48,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
+  private static final String SIXTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static RawRecord rawEdifactRecord;
@@ -75,6 +76,9 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_2 = new Snapshot()
+    .withJobExecutionId(UUID.randomUUID().toString())
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_3 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Record record_1 = new Record()
@@ -803,19 +807,18 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldCreateEdifactRecordOnPost(TestContext testContext) {
-
     Record edifactRecord = new Record()
-    .withId(FOURTH_UUID)
-    .withSnapshotId(snapshot_1.getJobExecutionId())
-    .withRecordType(Record.RecordType.EDIFACT)
-    .withRawRecord(rawEdifactRecord)
-    .withMatchedId(FOURTH_UUID)
-    .withOrder(1);
+      .withId(SIXTH_UUID)
+      .withSnapshotId(snapshot_3.getJobExecutionId())
+      .withRecordType(Record.RecordType.EDIFACT)
+      .withRawRecord(rawEdifactRecord)
+      .withMatchedId(SIXTH_UUID)
+      .withOrder(0);
 
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_1)
+      .body(snapshot_3)
       .when()
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
@@ -840,7 +843,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnAllEdifactRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
     Async async = testContext.async();
-    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
     for (Snapshot snapshot : snapshotsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -865,12 +868,12 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.OLD);
 
     Record edifactRecord = new Record()
-      .withId(FOURTH_UUID)
-      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withId(SIXTH_UUID)
+      .withSnapshotId(snapshot_3.getJobExecutionId())
       .withRecordType(Record.RecordType.EDIFACT)
       .withRawRecord(rawEdifactRecord)
-      .withMatchedId(FOURTH_UUID)
-      .withOrder(1);
+      .withMatchedId(SIXTH_UUID)
+      .withOrder(0);
 
     List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3, record_4, edifactRecord);
     for (Record record : recordsToPost) {

@@ -6,14 +6,12 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -71,28 +69,6 @@ public final class RecordDaoUtil {
    */
   public static Condition getExternalIdsCondition(List<String> externalIds, ExternalIdType externalIdType) {
     return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).in(toUUIDs(externalIds));
-  }
-
-  /**
-   * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
-   * using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @param orderFields   fields to order by
-   * @param offset        offset
-   * @param limit         limit
-   * @return future with {@link List} of {@link Record}
-   */
-  public static Future<Stream<Record>> streamByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.query(dsl ->  dsl.selectFrom(RECORDS_LB)
-      .where(condition)
-      .orderBy(orderFields)
-      .offset(offset)
-      .limit(limit))
-        .map(res -> res.stream()
-          .map(r -> RecordDaoUtil.toRecord(r.unwrap())));
   }
 
   /**
@@ -177,6 +153,35 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Convert database query result {@link Row} to {@link SourceRecord}
+   *
+   * @param row query result row
+   * @return SourceRecord
+   */
+  public static SourceRecord toSourceRecord(Row row) {
+    RecordsLb pojo = RowMappers.getRecordsLbMapper().apply(row);
+    SourceRecord sourceRecord = new SourceRecord();
+    if (Objects.nonNull(pojo.getId())) {
+      sourceRecord.withRecordId(pojo.getId().toString());
+    }
+    if (Objects.nonNull(pojo.getSnapshotId())) {
+      sourceRecord.withSnapshotId(pojo.getSnapshotId().toString());
+    }
+    if (Objects.nonNull(pojo.getRecordType())) {
+      sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(pojo.getRecordType().toString()));
+    }
+
+    sourceRecord.withOrder(pojo.getOrder())
+      .withDeleted((Objects.nonNull(pojo.getState()) && State.valueOf(pojo.getState().toString()).equals(State.DELETED))
+        || DELETED_LEADER_RECORD_STATUS.contains(pojo.getLeaderRecordStatus()));
+
+    return sourceRecord
+      .withAdditionalInfo(toAdditionalInfo(pojo))
+      .withExternalIdsHolder(toExternalIdsHolder(pojo))
+      .withMetadata(toMetadata(pojo));
+  }
+
+  /**
    * Convert {@link Record} to {@link SourceRecord}
    *
    * @param record Record
@@ -187,7 +192,7 @@ public final class RecordDaoUtil {
       .withRecordId(record.getMatchedId())
       .withSnapshotId(record.getSnapshotId());
     if (Objects.nonNull(record.getRecordType())) {
-      sourceRecord.withRecordType(org.folio.rest.jaxrs.model.SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
+      sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }
     if (Objects.nonNull(record.getState())) {
       sourceRecord.withDeleted(record.getState().equals(State.DELETED));
@@ -220,45 +225,23 @@ public final class RecordDaoUtil {
       record.withMatchedId(pojo.getMatchedId().toString());
     }
     if (Objects.nonNull(pojo.getRecordType())) {
-      record.withRecordType(org.folio.rest.jaxrs.model.Record.RecordType.valueOf(pojo.getRecordType().toString()));
+      record.withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()));
     }
     if (Objects.nonNull(pojo.getState())) {
-      record.withState(org.folio.rest.jaxrs.model.Record.State.valueOf(pojo.getState().toString()));
+      record.withState(State.valueOf(pojo.getState().toString()));
     }
+
     record
       .withOrder(pojo.getOrder())
       .withGeneration(pojo.getGeneration())
-      .withLeaderRecordStatus(pojo.getLeaderRecordStatus());
-    record.withDeleted(record.getState().equals(State.DELETED)
-      || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
-    AdditionalInfo additionalInfo = new AdditionalInfo();
-    if (Objects.nonNull(pojo.getSuppressDiscovery())) {
-      additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
-    }
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
-    if (Objects.nonNull(pojo.getInstanceId())) {
-      externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
-    }
-    if (Objects.nonNull(pojo.getInstanceHrid())) {
-      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid().toString());
-    }
-    Metadata metadata = new Metadata();
-    if (Objects.nonNull(pojo.getCreatedByUserId())) {
-      metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
-    }
-    if (Objects.nonNull(pojo.getCreatedDate())) {
-      metadata.withCreatedDate(Date.from(pojo.getCreatedDate().toInstant()));
-    }
-    if (Objects.nonNull(pojo.getUpdatedByUserId())) {
-      metadata.withUpdatedByUserId(pojo.getUpdatedByUserId().toString());
-    }
-    if (Objects.nonNull(pojo.getUpdatedDate())) {
-      metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
-    }
+      .withLeaderRecordStatus(pojo.getLeaderRecordStatus())
+      .withDeleted(record.getState().equals(State.DELETED)
+        || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
+
     return record
-      .withAdditionalInfo(additionalInfo)
-      .withExternalIdsHolder(externalIdsHolder)
-      .withMetadata(metadata);
+      .withAdditionalInfo(toAdditionalInfo(pojo))
+      .withExternalIdsHolder(toExternalIdsHolder(pojo))
+      .withMetadata(toMetadata(pojo));
   }
 
   /**
@@ -547,6 +530,42 @@ public final class RecordDaoUtil {
     } catch (Exception e) {
       throw new BadRequestException(String.format("Unknown record state %s", state));
     }
+  }
+
+  private static AdditionalInfo toAdditionalInfo(RecordsLb pojo) {
+    AdditionalInfo additionalInfo = new AdditionalInfo();
+    if (Objects.nonNull(pojo.getSuppressDiscovery())) {
+      additionalInfo.withSuppressDiscovery(pojo.getSuppressDiscovery());
+    }
+    return additionalInfo;
+  }
+
+  private static ExternalIdsHolder toExternalIdsHolder(RecordsLb pojo) {
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
+    if (Objects.nonNull(pojo.getInstanceId())) {
+      externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
+    }
+    if (Objects.nonNull(pojo.getInstanceHrid())) {
+      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid().toString());
+    }
+    return externalIdsHolder;
+  }
+
+  private static Metadata toMetadata(RecordsLb pojo) {
+    Metadata metadata = new Metadata();
+    if (Objects.nonNull(pojo.getCreatedByUserId())) {
+      metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
+    }
+    if (Objects.nonNull(pojo.getCreatedDate())) {
+      metadata.withCreatedDate(Date.from(pojo.getCreatedDate().toInstant()));
+    }
+    if (Objects.nonNull(pojo.getUpdatedByUserId())) {
+      metadata.withUpdatedByUserId(pojo.getUpdatedByUserId().toString());
+    }
+    if (Objects.nonNull(pojo.getUpdatedDate())) {
+      metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
+    }
+    return metadata;
   }
 
 }

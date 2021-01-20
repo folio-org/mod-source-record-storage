@@ -15,6 +15,7 @@
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.16</postgres.version>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
 
   <dependencies>
@@ -59,8 +60,12 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-pg-client</artifactId>
+      <artifactId>vertx-reactive-streams</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-rx-java2</artifactId>
+     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>

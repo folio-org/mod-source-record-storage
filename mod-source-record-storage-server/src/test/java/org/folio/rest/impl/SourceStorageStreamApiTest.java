@@ -1,9 +1,17 @@
 package org.folio.rest.impl;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 import java.util.UUID;
@@ -13,12 +21,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -26,6 +37,7 @@ import org.junit.runner.RunWith;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
 import io.restassured.RestAssured;
+import io.restassured.response.Response;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -36,11 +48,14 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_STREAM_RECORDS_PATH = "/source-storage/stream/records";
+  private static final String SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH = "/source-storage/stream/source-records";
 
   private static final String FIRST_UUID = UUID.randomUUID().toString();
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
+  private static final String FIFTH_UUID = UUID.randomUUID().toString();
+  private static final String SIXTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -56,6 +71,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     }
   }
 
+  private static ParsedRecord invalidParsedRecord = new ParsedRecord()
+    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
@@ -81,7 +98,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(marcRecord)
     .withMatchedId(SECOND_UUID)
     .withOrder(11)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
   private static Record record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -90,6 +110,39 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withErrorRecord(errorRecord)
     .withMatchedId(THIRD_UUID)
     .withState(Record.State.ACTUAL);
+  private static Record record_4 = new Record()
+    .withId(FOURTH_UUID)
+    .withSnapshotId(snapshot_1.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecord)
+    .withMatchedId(FOURTH_UUID)
+    .withOrder(1)
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
+  private static Record record_5 = new Record()
+    .withId(FIFTH_UUID)
+    .withSnapshotId(snapshot_2.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord)
+    .withMatchedId(FIFTH_UUID)
+    .withParsedRecord(invalidParsedRecord)
+    .withOrder(101)
+    .withState(Record.State.ACTUAL);
+  private static Record record_6 = new Record()
+    .withId(SIXTH_UUID)
+    .withSnapshotId(snapshot_2.getJobExecutionId())
+    .withRecordType(Record.RecordType.MARC)
+    .withRawRecord(rawRecord)
+    .withMatchedId(SIXTH_UUID)
+    .withParsedRecord(marcRecord)
+    .withOrder(101)
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
 
   @Before
   public void setUp(TestContext context) {
@@ -297,6 +350,633 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         testContext.assertEquals(2, actual.size());
         finalAsync.complete();
       }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnSpecificNumberOfSourceRecordsOnGetByInstanceExternalHrid(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+
+    String firstHrid = "123";
+    String secondHrid = "1234";
+    String thirdHrid = "1235";
+
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(firstHrid));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(secondHrid));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    Record recordWithOldState = new Record().withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(11)
+      .withState(Record.State.OLD)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(thirdHrid));
+
+    Record record = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(THIRD_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(secondHrid));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(record)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordWithOldState)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?instanceHrid=" + secondHrid)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(2, actual.size());
+        testContext.assertEquals(secondHrid, actual.get(0).getExternalIdsHolder().getInstanceHrid());
+        testContext.assertEquals(secondHrid, actual.get(1).getExternalIdsHolder().getInstanceHrid());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnSpecificSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_3);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    Record createdRecord =
+      RestAssured.given()
+        .spec(spec)
+        .body(record_2)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    String leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?leaderRecordStatus=" + leaderStatus + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(1, actual.size());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsNull(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_3);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    Record createdRecord =
+      RestAssured.given()
+        .spec(spec)
+        .body(record_3)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?recordId=" + createdRecord.getId() + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(0, actual.size());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnEmptyCollectionOnGetByRecordIdIfThereIsNoSuchRecord(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_2, record_3);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?recordId=" + UUID.randomUUID().toString() + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(0, actual.size());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnEmptyCollectionOnGetByRecordIdAndRecordStateActualIfRecordWasDeleted(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsed = createParsed.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?recordId=" + parsed.getId() + "&recordState=ACTUAL&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(0, actual.size());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnErrorOnGetByRecordIdIfInvalidUUID(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    List<Record> recordsToPost = Arrays.asList(record_1, record_2);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+
+    Record createdRecord =
+      RestAssured.given()
+        .spec(spec)
+        .body(record_3)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?recordId=" + createdRecord.getId().substring(1).replace("-", "") + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSortedSourceRecordsOnGetWhenSortByIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+
+    String firstMatchedId = UUID.randomUUID().toString();
+
+    Record record_4_tmp = new Record()
+      .withId(firstMatchedId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(firstMatchedId)
+      .withOrder(1)
+      .withState(Record.State.ACTUAL);
+
+    String secondMathcedId = UUID.randomUUID().toString();
+
+    Record record_2_tmp = new Record()
+      .withId(secondMathcedId)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(secondMathcedId)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+
+    List<Record> recordsToPost = Arrays.asList(record_2, record_2_tmp, record_4, record_4_tmp);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?recordType=MARC&orderBy=createdDate,DESC")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(4, actual.size());
+        testContext.assertEquals(false, actual.get(0).getDeleted());
+        testContext.assertEquals(false, actual.get(1).getDeleted());
+        testContext.assertEquals(false, actual.get(2).getDeleted());
+        testContext.assertEquals(false, actual.get(3).getDeleted());
+        testContext.assertTrue(actual.get(0).getMetadata().getCreatedDate().after(actual.get(1).getMetadata().getCreatedDate()));
+        testContext.assertTrue(actual.get(1).getMetadata().getCreatedDate().after(actual.get(2).getMetadata().getCreatedDate()));
+        testContext.assertTrue(actual.get(2).getMetadata().getCreatedDate().after(actual.get(3).getMetadata().getCreatedDate()));
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnSortedSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    async = testContext.async();
+    // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
+    List<Record> recordsToPost = Arrays.asList(record_2, record_3, record_5, record_6);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?snapshotId=" + snapshot_2.getJobExecutionId() + "&orderBy=order")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> actual = new ArrayList<>();
+    flowableInputStreamScanner(response)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertEquals(2, actual.size());
+        testContext.assertEquals(false, actual.get(0).getDeleted());
+        testContext.assertEquals(false, actual.get(1).getDeleted());
+        testContext.assertEquals(11, actual.get(0).getOrder().intValue());
+        testContext.assertEquals(101, actual.get(1).getOrder().intValue());
+        finalAsync.complete();
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+  }
+
+  @Test
+  public void shouldReturnSourceRecordsForPeriod(TestContext testContext) {
+    Async async = testContext.async();
+    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
+    for (Snapshot snapshot : snapshotsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+        .spec(spec)
+        .body(record_1)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+    Date fromDate = new Date();
+    String from = dateTimeFormatter.format(ZonedDateTime.ofInstant(fromDate.toInstant(), ZoneId.systemDefault()));
+
+    async = testContext.async();
+    // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
+    List<Record> recordsToPost = Arrays.asList(record_2, record_3, record_4, record_5);
+    for (Record record : recordsToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+
+    Date toDate = new Date();
+    String to = dateTimeFormatter.format(ZonedDateTime.ofInstant(toDate.toInstant(), ZoneId.systemDefault()));
+
+    async = testContext.async();
+    RestAssured.given()
+        .spec(spec)
+        .body(record_6)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    async.complete();
+
+    final Async finalAsync = testContext.async();
+    // NOTE: we do not expect record_3 or record_5 as they do not have a parsed record
+    InputStream result = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?updatedAfter=" + from + "&updatedBefore=" + to)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    List<SourceRecord> sourceRecordList = new ArrayList<>();
+    flowableInputStreamScanner(result)
+      .map(r -> Json.decodeValue(r, SourceRecord.class))
+      .doFinally(() -> {
+        testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().after(fromDate));
+        testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().after(fromDate));
+        testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().before(toDate));
+        testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().before(toDate));
+
+        Async innerAsync = testContext.async();
+        RestAssured.given()
+          .spec(spec)
+          .when()
+          .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from)
+          .then()
+          .statusCode(HttpStatus.SC_OK)
+          .body("sourceRecords.size()", is(3))
+          .body("totalRecords", is(3))
+          .body("sourceRecords*.deleted", everyItem(is(false)));
+        innerAsync.complete();
+
+        innerAsync = testContext.async();
+        RestAssured.given()
+          .spec(spec)
+          .when()
+          .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + to)
+          .then()
+          .statusCode(HttpStatus.SC_OK)
+          .body("sourceRecords.size()", is(1))
+          .body("totalRecords", is(1))
+          .body("sourceRecords*.deleted", everyItem(is(false)));
+        innerAsync.complete();
+
+        // NOTE: we do not expect record_1 id does not have a parsed record
+        innerAsync = testContext.async();
+        RestAssured.given()
+          .spec(spec)
+          .when()
+          .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + to)
+          .then()
+          .statusCode(HttpStatus.SC_OK)
+          .body("sourceRecords.size()", is(2))
+          .body("totalRecords", is(2))
+          .body("sourceRecords*.deleted", everyItem(is(false)));
+        innerAsync.complete();
+
+        InputStream response = RestAssured.given()
+          .spec(spec)
+          .when()
+          .get(SOURCE_STORAGE_STREAM_SOURCE_RECORDS_PATH + "?updatedBefore=" + from)
+          .then()
+          .statusCode(HttpStatus.SC_OK)
+          .extract().response().asInputStream();
+
+        List<SourceRecord> actual = new ArrayList<>();
+        flowableInputStreamScanner(response)
+          .map(r -> Json.decodeValue(r, SourceRecord.class))
+          .doFinally(() -> {
+            testContext.assertEquals(0, actual.size());
+            finalAsync.complete();
+          }).collect(() -> actual, (a, r) -> a.add(r))
+            .subscribe();
+      }).collect(() -> sourceRecordList, (a, r) -> a.add(r))
         .subscribe();
   }
 

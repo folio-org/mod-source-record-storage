@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -457,6 +458,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, SourceRecord.class))
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
+        testContext.assertTrue(Objects.nonNull(actual.get(0).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.get(1).getParsedRecord()));
         testContext.assertEquals(secondHrid, actual.get(0).getExternalIdsHolder().getInstanceHrid());
         testContext.assertEquals(secondHrid, actual.get(1).getExternalIdsHolder().getInstanceHrid());
         finalAsync.complete();
@@ -516,6 +519,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, SourceRecord.class))
       .doFinally(() -> {
         testContext.assertEquals(1, actual.size());
+        testContext.assertTrue(Objects.nonNull(actual.get(0).getParsedRecord()));
         finalAsync.complete();
       }).collect(() -> actual, (a, r) -> a.add(r))
         .subscribe();
@@ -786,6 +790,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, SourceRecord.class))
       .doFinally(() -> {
         testContext.assertEquals(4, actual.size());
+        testContext.assertTrue(Objects.nonNull(actual.get(0).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.get(1).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.get(2).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.get(3).getParsedRecord()));
         testContext.assertEquals(false, actual.get(0).getDeleted());
         testContext.assertEquals(false, actual.get(1).getDeleted());
         testContext.assertEquals(false, actual.get(2).getDeleted());
@@ -838,6 +846,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, SourceRecord.class))
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
+        testContext.assertTrue(Objects.nonNull(actual.get(0).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.get(1).getParsedRecord()));
         testContext.assertEquals(false, actual.get(0).getDeleted());
         testContext.assertEquals(false, actual.get(1).getDeleted());
         testContext.assertEquals(11, actual.get(0).getOrder().intValue());

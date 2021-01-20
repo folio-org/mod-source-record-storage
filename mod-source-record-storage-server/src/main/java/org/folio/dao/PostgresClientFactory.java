@@ -14,12 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
+import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 
 @Component
@@ -42,11 +42,11 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
   @Autowired
-  public PostgresClientFactory(Vertx vertx) {
-    this.vertx = vertx;
+  public PostgresClientFactory(io.vertx.core.Vertx vertx) {
+    this.vertx = Vertx.newInstance(vertx);
   }
 
   @PreDestroy
@@ -61,7 +61,17 @@ public class PostgresClientFactory {
    * @return reactive query executor
    */
   public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
-    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(this.vertx, tenantId));
+    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
+  }
+
+  /**
+   * Get {@link PgPool}
+   *
+   * @param tenantId tenant id
+   * @return 
+   */
+  public PgPool getCachedPool(String tenantId) {
+    return getCachedPool(this.vertx, tenantId);
   }
 
   /**
@@ -72,7 +82,7 @@ public class PostgresClientFactory {
    * @return reactive query executor
    */
   public static ReactiveClassicGenericQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
-    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId));
+    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId).getDelegate());
   }
 
   public static void closeAll() {
@@ -87,7 +97,7 @@ public class PostgresClientFactory {
       return POOL_CACHE.get(tenantId);
     }
     LOG.info("Creating new database connection pool for tenant {}", tenantId);
-    PgConnectOptions connectOptions = getConnectOptions(vertx, tenantId);
+    PgConnectOptions connectOptions = getConnectOptions(vertx.getDelegate(), tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     POOL_CACHE.put(tenantId, client);
@@ -97,7 +107,7 @@ public class PostgresClientFactory {
   // NOTE: This should be able to get database configuration without PostgresClient.
   // Additionally, with knowledge of tenant at this time, we are not confined to
   // schema isolation and can provide database isolation.
-  private static PgConnectOptions getConnectOptions(Vertx vertx, String tenantId) {
+  private static PgConnectOptions getConnectOptions(io.vertx.core.Vertx vertx, String tenantId) {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenantId);
     JsonObject postgreSQLClientConfig = postgresClient.getConnectionConfig();
     postgresClient.closeClient(closed -> {

@@ -179,6 +179,30 @@
       ]
     },
     {
+      "id": "source-storage-stream",
+      "version": "0.1",
+      "handlers": [
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/stream/records",
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/stream/source-records",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
+        }
+      ]
+    },
+    {
       "id": "source-storage-batch",
       "version": "0.1",
       "handlers": [

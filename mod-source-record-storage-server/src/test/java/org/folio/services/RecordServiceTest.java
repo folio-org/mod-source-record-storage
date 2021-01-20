@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
@@ -89,7 +88,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      recordService.getRecords(condition, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
+      recordService.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -120,7 +119,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      Flowable<Record> flowable = recordService.streamRecords(condition, orderFields, 0, 10, TENANT_ID);
+      Flowable<Record> flowable = recordService.streamRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID);
 
       List<Record> expected = records.stream()
         .filter(r -> r.getSnapshotId().equals(snapshotId))
@@ -367,7 +366,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
 
-      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, orderFields, 0, 10, TENANT_ID);
+      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID);
 
       List<SourceRecord> expected = records.stream()
         .map(RecordDaoUtil::toSourceRecord)
@@ -618,7 +617,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
-      recordDao.getRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
+      recordDao.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
         if (getBefore.failed()) {
           context.fail(getBefore.cause());
         }
@@ -631,7 +630,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             context.fail(delete.cause());
           }
           context.assertTrue(delete.result());
-          recordDao.getRecords(condition, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
+          recordDao.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
             if (getAfter.failed()) {
               context.fail(getAfter.cause());
             }

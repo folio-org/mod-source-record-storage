@@ -108,7 +108,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
       .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
     List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
-    Flowable<Buffer> flowable = recordService.streamRecords(condition, orderFields, offset, limit, tenantId)
+    Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
     Pump.pump(FlowableHelper.toReadStream(flowable)

@@ -14,7 +14,7 @@
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
-    <postgres.version>42.2.16</postgres.version>
+    <postgres.version>42.2.18</postgres.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
 
@@ -294,21 +294,22 @@
           <images>
             <image>
               <alias>db</alias>
-              <name>postgres:10</name>
+              <name>postgres:12-alpine</name>
               <run>
+                <privileged>true</privileged>
+                <containerNamePattern>%n-%t</containerNamePattern>
                 <env>
+                  <POSTGRES_DB>postgres</POSTGRES_DB>
                   <POSTGRES_USER>postgres</POSTGRES_USER>
                   <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
                 </env>
                 <ports>
                   <port>${db.port}:5432</port>
-                  <port>127.0.0.1:${db.port}:5432</port>
-                  <port>localhost:${db.port}:5432</port>
                   <port>+docker.host.address:${db.port}:5432</port>
                 </ports>
                 <wait>
-                  <log>database system is ready to accept connections</log>
-                  <time>20000</time>
+                  <log>(?s)ready to accept connections.*ready to accept connections</log>
+                  <time>90000</time>
                 </wait>
               </run>
             </image>
@@ -336,11 +337,11 @@
       <plugin>
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>
-        <version>4.0.0</version>
+        <version>4.2.2</version>
         <configuration>
           <changeLogFile>src/main/resources/liquibase/tenant/changelog.xml</changeLogFile>
           <driver>org.postgresql.Driver</driver>
-          <url>jdbc:postgresql://${docker.host.address}:${db.port}/postgres</url>
+          <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
           <username>postgres</username>
           <password>postgres</password>
           <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
@@ -396,7 +397,7 @@
         <configuration>
           <jdbc>
             <driver>org.postgresql.Driver</driver>
-            <url>jdbc:postgresql://${docker.host.address}:${db.port}/postgres</url>
+            <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
             <user>postgres</user>
             <password>postgres</password>
           </jdbc>

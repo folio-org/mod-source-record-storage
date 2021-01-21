@@ -10,6 +10,7 @@
 * [MODSOURCE-203](https://issues.folio.org/browse/MODSOURCE-203) Ensure queries with offset include order. Add records_lb order index to liquibase change log.
 * [MODSOURCE-202](https://issues.folio.org/browse/MODSOURCE-202) Records stream API using reactivex.
 * [MODSOURCE-201](https://issues.folio.org/browse/MODSOURCE-201) Source Records stream API using reactivex.
+* [MODSOURCE-238](https://issues.folio.org/browse/MODSOURCE-238) Use docker-maven-plugin to support build with newer versions of postgres.
 
 ### Stream Records API
  | METHOD |             URL                                      | DESCRIPTION                                                               |

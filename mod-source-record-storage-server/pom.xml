@@ -294,7 +294,7 @@
                         <port>15432:5432</port>
                       </ports>
                       <wait>
-                        <log>Ready to accept connections</log>
+                        <log>Embedded postgres is ready to accept connections</log>
                         <time>90000</time>
                       </wait>
                     </run>

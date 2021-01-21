@@ -251,13 +251,13 @@ public interface RecordDao {
   /**
    * Change suppress from discovery flag for record by external relation id
    *
-   * @param id       id
-   * @param idType   external id type
-   * @param suppress suppress from discovery
-   * @param tenantId tenant id
+   * @param id             id
+   * @param externalIdType external id type
+   * @param suppress       suppress from discovery
+   * @param tenantId       tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId);
 
   /**
    * Execute action within transaction.

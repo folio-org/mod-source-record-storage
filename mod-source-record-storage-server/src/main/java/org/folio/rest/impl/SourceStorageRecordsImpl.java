@@ -4,12 +4,16 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 
+import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
+import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
@@ -67,9 +71,10 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
+        Condition condition = filterRecordBySnapshotId(snapshotId)
+          .and(filterRecordByState(state));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-        recordService.getRecords(condition, RecordType.valueOf(recordType), orderFields, offset, limit, tenantId)
+        recordService.getRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -135,7 +140,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getFormattedRecord(id, idType, tenantId)
+        recordService.getFormattedRecord(id, toExternalIdType(idType), tenantId)
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -150,7 +155,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId)
+        recordService.updateSuppressFromDiscoveryForRecord(id, toExternalIdType(idType), suppress, tenantId)
           .map(PutSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

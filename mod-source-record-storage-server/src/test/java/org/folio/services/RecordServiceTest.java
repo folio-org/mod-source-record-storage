@@ -403,7 +403,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), org.folio.dao.util.RecordType.MARC, false, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, org.folio.dao.util.RecordType.MARC, false, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -456,7 +456,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE.name(), org.folio.dao.util.RecordType.MARC, true, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, org.folio.dao.util.RecordType.MARC, true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -482,7 +482,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE.name(), TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -501,7 +501,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldNotGetSourceRecordById(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getRecord(0);
-    recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE.name(), TENANT_ID).onComplete(get -> {
+    recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
       if (get.failed()) {
         context.fail(get.cause());
       }
@@ -561,7 +561,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE.name(), TENANT_ID).onComplete(get -> {
+      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -581,9 +581,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       String instanceId = expected.getExternalIdsHolder().getInstanceId();
-      String idType = ExternalIdType.INSTANCE.toString();
       Boolean suppress = true;
-      recordService.updateSuppressFromDiscoveryForRecord(instanceId, idType, suppress, TENANT_ID).onComplete(update -> {
+      recordService.updateSuppressFromDiscoveryForRecord(instanceId, ExternalIdType.INSTANCE, suppress, TENANT_ID).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }

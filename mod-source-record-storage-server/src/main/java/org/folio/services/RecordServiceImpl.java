@@ -19,7 +19,6 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -150,14 +149,12 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, RecordType recordType, Boolean deleted, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId) {
     return recordDao.getSourceRecords(ids, externalIdType, recordType, deleted, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, ExternalIdType externalIdType, String tenantId) {
     return recordDao.getSourceRecordByExternalId(id, externalIdType, tenantId);
   }
 
@@ -185,16 +182,15 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> getFormattedRecord(String id, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<Record> getFormattedRecord(String id, ExternalIdType externalIdType, String tenantId) {
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
-        new NotFoundException(format("Couldn't find Record with %s id %s", idType, id)))));
+        new NotFoundException(format("Couldn't find Record with %s id %s", externalIdType, id)))));
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, externalIdType, suppress, tenantId);
   }
 
   @Override

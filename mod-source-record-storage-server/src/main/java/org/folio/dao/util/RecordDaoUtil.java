@@ -486,20 +486,6 @@ public final class RecordDaoUtil {
       .collect(Collectors.toList());
   }
 
-  /**
-   * Tries to convert string to {@link ExternalIdType}, else returns default RECORD
-   *
-   * @param externalIdType external id type as string
-   * @return external id type
-   */
-  public static ExternalIdType toExternalIdType(String externalIdType) {
-    try {
-      return ExternalIdType.valueOf(externalIdType);
-    } catch(Exception e) {
-      return ExternalIdType.RECORD;
-    }
-  }
-
   private static Record toSingleRecord(RowSet<Row> rows) {
     return toRecord(rows.iterator().next());
   }

@@ -12,6 +12,7 @@ import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -114,14 +115,14 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+        .where(condition.and(filterRecordByType(recordType.name())))))
       .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
         .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))
+        .where(condition.and(filterRecordByType(recordType.name())))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)
@@ -136,7 +137,7 @@ public class RecordDaoImpl implements RecordDao {
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .where(condition.and(RECORDS_LB.ID.isNotNull()))
+      .where(condition.and(filterRecordByType(recordType.name())))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -210,12 +211,14 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
+        .where(condition.and(filterRecordByType(recordType.name()))
+          .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(filterRecordByType(recordType.name()))
+        .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -228,7 +231,8 @@ public class RecordDaoImpl implements RecordDao {
     String sql = DSL.select(getRecordFields(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(filterRecordByType(recordType.name()))
+        .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -251,12 +255,12 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+        .where(condition.and(filterRecordByType(recordType.name())))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(filterRecordByType(recordType.name())).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
     )).map(this::toSourceRecordCollection);
   }
 
@@ -340,12 +344,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id))))))
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, id))))))
         .map(u -> true);
   }
 

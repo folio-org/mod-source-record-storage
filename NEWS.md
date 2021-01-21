@@ -4,12 +4,13 @@
 * [MODSOURCE-218](https://issues.folio.org/browse/MODSOURCE-218) Performance issues with SRS requests when instance ID is not found
 * [MODSOURCE-232](https://issues.folio.org/browse/MODSOURCE-232) Making Instance Records Suppress from Discovery with the Batch Import is not reflected in the SRS
 * [MODSOURCE-220](https://issues.folio.org/browse/MODSOURCE-220) Migration script between Goldenrod-hotfix-5 and Honeysuckle.
-* [MODSOURMAN-233](https://issues.folio.org/browse/MODSOURCE-233) Support for storing EDIFACT records in the database
+* [MODSOURCE-233](https://issues.folio.org/browse/MODSOURCE-233) Support for storing EDIFACT records in the database
 * [MODSOURCE-216](https://issues.folio.org/browse/MODSOURCE-216) Update MARC 005 field when MARC record has changes
 * [MODSOURCE-204](https://issues.folio.org/browse/MODSOURCE-204) Join query for get records. Add records_lb index for order column.
 * [MODSOURCE-203](https://issues.folio.org/browse/MODSOURCE-203) Ensure queries with offset include order. Add records_lb order index to liquibase change log.
 * [MODSOURCE-202](https://issues.folio.org/browse/MODSOURCE-202) Records stream API using reactivex.
 * [MODSOURCE-201](https://issues.folio.org/browse/MODSOURCE-201) Source Records stream API using reactivex.
+* [MODSOURCE-234](https://issues.folio.org/browse/MODSOURCE-234) Add `recordType` query parameter to Records and Source Records APIs. Update join queries to condition on `record_type`. Add database index for `record_type` column of `records_lb` table.
 
 ### Stream Records API
  | METHOD |             URL                                      | DESCRIPTION                                                               |

@@ -8,6 +8,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.config.ApplicationConfig;
 import org.folio.processing.events.EventManager;
 import org.folio.rest.resource.interfaces.InitAPI;
@@ -21,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 public class InitAPIImpl implements InitAPI {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InitAPIImpl.class);
 
   @Autowired
   private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
@@ -41,7 +45,7 @@ public class InitAPIImpl implements InitAPI {
       SpringContextUtil.init(vertx, context, ApplicationConfig.class);
       SpringContextUtil.autowireDependencies(this, context);
       registerEventHandlers();
-      deployParsedMarcChunkConsumersVerticles(vertx).onComplete(ar -> {
+      deployConsumerVerticles(vertx).onComplete(ar -> {
         if (ar.succeeded()) {
           handler.handle(Future.succeededFuture(true));
         } else {
@@ -49,7 +53,7 @@ public class InitAPIImpl implements InitAPI {
         }
       });
     } catch (Throwable th) {
-      th.printStackTrace();
+      LOGGER.error("Failed to init module", th);
       handler.handle(Future.failedFuture(th));
     }
   }
@@ -60,7 +64,7 @@ public class InitAPIImpl implements InitAPI {
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
   }
 
-  private Future<?> deployParsedMarcChunkConsumersVerticles(Vertx vertx) {
+  private Future<?> deployConsumerVerticles(Vertx vertx) {
     //TODO: get rid of this workaround with global spring context
     ParsedMarcChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
     DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));

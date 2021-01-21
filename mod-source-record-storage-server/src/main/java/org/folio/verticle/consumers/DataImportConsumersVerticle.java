@@ -8,6 +8,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
+import org.folio.processing.events.EventManager;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,9 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
   @Value("${srs.kafka.DataImportConsumer.loadLimit:5}")
   private int loadLimit;
 
+  @Value("${srs.kafka.DataImportConsumerVerticle.maxDistributionNum:100}")
+  private int maxDistributionNumber;
+
   private List<KafkaConsumerWrapper<String, String>> consumerWrappersList = new ArrayList<>(events.size());
 
   @Override
@@ -53,6 +57,8 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
     context.put("springContext", springGlobalContext);
 
     SpringContextUtil.autowireDependencies(this, context);
+
+    EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
     events.forEach(event -> {
       SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper

@@ -408,8 +408,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     assertThat(updatedRecord.getId(), is(createdRecord.getId()));
     assertThat(updatedRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = updatedRecord.getParsedRecord();
-    // TODO
-//    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(updatedRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
@@ -494,8 +493,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     assertThat(getRecord.getId(), is(createdRecord.getId()));
     assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = getRecord.getParsedRecord();
-    // TODO
-    //    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
@@ -732,8 +730,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     assertThat(getRecord.getId(), is(createdRecord.getId()));
     assertThat(getRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     ParsedRecord parsedRecord = getRecord.getParsedRecord();
-    // TODO
-    //    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(newRecord.getAdditionalInfo().getSuppressDiscovery()));
     async.complete();
   }

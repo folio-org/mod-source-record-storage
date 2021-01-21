@@ -611,7 +611,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_RECORDS_PATH + "?snapshotId=" + snapshot_2.getJobExecutionId() + "&orderBy=order")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("records.size()", is(3))
       .body("totalRecords", is(3))
@@ -784,7 +784,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .put(SOURCE_STORAGE_RECORDS_PATH + "/" + instanceId + "/suppress-from-discovery?idType=INSTANCE&suppress=true")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK);
     async.complete();
   }
@@ -796,7 +796,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .put(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "/suppress-from-discovery?idType=INSTANCE&suppress=true")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
   }

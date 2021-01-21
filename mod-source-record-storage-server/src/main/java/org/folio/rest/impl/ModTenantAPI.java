@@ -9,7 +9,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.liquibase.LiquibaseUtil;
-import org.folio.processing.events.EventManager;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -17,11 +16,7 @@ import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.util.OkapiConnectionParams;
-import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
-import org.folio.services.handlers.InstancePostProcessingEventHandler;
-import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
-import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,9 +40,6 @@ public class ModTenantAPI extends TenantAPI {
     .withJobExecutionId("00000000-0000-0000-0000-000000000000")
     .withStatus(Status.COMMITTED)
     .withProcessingStartedDate(new Date(1546351314000L));
-
-  @Autowired
-  private RecordService recordService;
 
   @Autowired
   private SnapshotService snapshotService;

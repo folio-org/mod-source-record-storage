@@ -1,10 +1,18 @@
 package org.folio.services;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static java.lang.String.format;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
@@ -40,6 +48,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import io.reactivex.Flowable;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -60,14 +74,13 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    return recordDao.getRecordById(id, tenantId);
+  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
+  public Future<Optional<Record>> getRecordById(String id, String tenantId) {
+    return recordDao.getRecordById(id, tenantId);
   }
 
   @Override
@@ -139,6 +152,11 @@ public class RecordServiceImpl implements RecordService {
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
                                                          int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamSourceRecords(condition, orderFields, offset, limit, tenantId);
   }
 
   @Override

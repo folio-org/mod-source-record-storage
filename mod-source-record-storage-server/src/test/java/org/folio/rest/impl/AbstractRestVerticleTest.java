@@ -35,6 +35,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import io.vertx.reactivex.core.Vertx;
 
 public abstract class AbstractRestVerticleTest {
 
@@ -96,7 +97,7 @@ public abstract class AbstractRestVerticleTest {
         break;
       case "embedded":
         PostgresClient.setIsEmbedded(true);
-        PostgresClient.getInstance(vertx).startEmbeddedPostgres();
+        PostgresClient.getInstance(vertx.getDelegate()).startEmbeddedPostgres();
         break;
       default:
         String message = "No understood database choice made." +

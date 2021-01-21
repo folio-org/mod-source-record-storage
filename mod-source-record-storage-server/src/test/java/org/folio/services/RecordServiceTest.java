@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.folio.TestMocks;
@@ -36,6 +37,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -100,6 +102,44 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         compareRecords(context, expected.get(2), get.result().getRecords().get(1));
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldStreamRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      Flowable<Record> flowable = recordService.streamRecords(condition, orderFields, 0, 10, TENANT_ID);
+
+      List<Record> expected = records.stream()
+        .filter(r -> r.getSnapshotId().equals(snapshotId))
+        .collect(Collectors.toList());
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<Record> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        context.assertEquals(expected.size(), actual.size());
+        compareRecords(context, expected.get(0), actual.get(0));
+        compareRecords(context, expected.get(1), actual.get(1));
+        compareRecords(context, expected.get(2), actual.get(2));
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
     });
   }
 
@@ -309,6 +349,43 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldStreamSourceRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+
+      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, orderFields, 0, 10, TENANT_ID);
+
+      List<SourceRecord> expected = records.stream()
+        .map(RecordDaoUtil::toSourceRecord)
+        .collect(Collectors.toList());
+      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<SourceRecord> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), actual.size());
+        compareSourceRecords(context, expected, actual);
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
     });
   }
 

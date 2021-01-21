@@ -16,6 +16,7 @@
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.16</postgres.version>
     <lombok.version>1.18.12</lombok.version>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
 
   <dependencyManagement>
@@ -88,6 +89,10 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-pg-client</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-rx-java2</artifactId>
+     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
@@ -522,6 +527,18 @@
                   <name>log4j.configurationFile</name>
                   <value>${project.baseUri}src/main/resources/log4j2.properties</value>
                 </property>
+                <property>
+                  <name>LC_ALL</name>
+                  <value>en_US.UTF-8</value>
+                </property>
+                <property>
+                  <name>LC_CTYPE</name>
+                  <value>en_US.UTF-8</value>
+                </property>
+                <property>
+                  <name>LANG</name>
+                  <value>en_US</value>
+                </property>
               </properties>
             </configuration>
           </execution>
@@ -588,7 +605,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet/>
+              <artifactSet />
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
               <filters>
                 <filter>
@@ -627,6 +644,11 @@
               io.vertx.core.logging.Log4j2LogDelegateFactory
             </vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
+          <environmentVariables>
+            <LC_ALL>en_US.UTF-8</LC_ALL>
+            <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
+            <LANG>en_US</LANG>
+          </environmentVariables>
         </configuration>
       </plugin>
 

@@ -1,11 +1,11 @@
 package org.folio.rest.impl;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -830,7 +830,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnEmptyCollectionOnGetByRecordIdIfThereISNoSuchRecord(TestContext testContext) {
+  public void shouldReturnEmptyCollectionOnGetByRecordIdIfThereIsNoSuchRecord(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -1016,7 +1016,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordType=MARC&orderBy=createdDate,DESC")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
@@ -1061,7 +1061,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?snapshotId=" + snapshot_2.getJobExecutionId() + "&orderBy=order")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
       .body("totalRecords", is(2))
@@ -1136,7 +1136,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from + "&updatedBefore=" + to)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
       .body("totalRecords", is(2))
@@ -1154,7 +1154,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(3))
       .body("totalRecords", is(3))
@@ -1166,7 +1166,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + to)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1))
@@ -1179,7 +1179,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + to)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
       .body("totalRecords", is(2))
@@ -1191,11 +1191,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + from)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
-      .body("totalRecords", is(0))
-      .body("sourceRecords*.deleted", everyItem(is(false)));
+      .body("totalRecords", is(0));
     async.complete();
   }
 
@@ -1274,7 +1273,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body(ids)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=false")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(3))
       .body("totalRecords", is(4))
@@ -1287,7 +1286,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body(ids)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=true")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(5));
@@ -1304,7 +1303,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body(externalIds)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=false")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(3))
       .body("totalRecords", is(4))
@@ -1317,7 +1316,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body(externalIds)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=true")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(5));
@@ -1329,7 +1328,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body(ids)
       .when()
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(3))
       .body("totalRecords", is(4));
@@ -1545,7 +1544,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?limit=1")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", greaterThanOrEqualTo(1))
@@ -1620,7 +1619,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?deleted=true")
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(2))
       .body("sourceRecords*.deleted", everyItem(is(true)));
@@ -1673,7 +1672,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(1))
       .body("sourceRecords*.deleted", everyItem(is(false)));

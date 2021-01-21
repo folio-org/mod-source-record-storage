@@ -67,7 +67,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
-        List<OrderField<?>> orderFields = toRecordOrderFields(orderBy);
+        List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
         recordService.getRecords(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);

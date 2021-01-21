@@ -1,26 +1,26 @@
 stages:
-- name: Build
-  steps:
-  - runScriptConfig:
-      image: grizzlysoftware/maven-non-root:3.6.2-11.0.4-jdk-stretch
-      shellScript: mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
-- name: Build Docker with DIND
-  steps:
-  - publishImageConfig:
-      dockerfilePath: ./Dockerfile
-      buildContext: .
-      tag: docker.dev.folio.org/mod-source-record-storage:folijet-latest
-      pushRemote: true
-      registry: docker.dev.folio.org
-- name: Deploy
-  steps:
-  - applyAppConfig:
-      catalogTemplate: p-mf42h:folijet-helmcharts-mod-source-record-storage
-      version: 0.1.26
-      answers:
-        image.repository: docker.dev.folio.org/mod-source-record-storage
-        image.tag: folijet-latest
-      targetNamespace: folijet
-      name: mod-source-record-storage
+  - name: Build
+    steps:
+      - runScriptConfig:
+          image: grizzlysoftware/maven-non-root:3.6.2-11.0.4-jdk-stretch
+          shellScript: mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+  - name: Build Docker with DIND
+    steps:
+      - publishImageConfig:
+          dockerfilePath: ./Dockerfile
+          buildContext: .
+          tag: docker.dev.folio.org/mod-source-record-storage:folijet-${CICD_EXECUTION_SEQUENCE}
+          pushRemote: true
+          registry: docker.dev.folio.org
+  - name: Deploy
+    steps:
+      - applyAppConfig:
+          catalogTemplate: p-gh7sb:folijet-helmcharts-mod-source-record-storage
+          version: 0.1.32
+          answers:
+            image.repository: docker.dev.folio.org/mod-source-record-storage
+            image.tag: folijet-${CICD_EXECUTION_SEQUENCE}
+          targetNamespace: folijet
+          name: mod-source-record-storage
 timeout: 60
 notification: {}

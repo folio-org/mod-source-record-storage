@@ -17,6 +17,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
@@ -137,6 +138,15 @@ public class InstancePostProcessingEventHandler implements EventHandler {
       });
   }
 
+  private void setSuppressFormDiscovery(Record record, boolean suppressFromDiscovery) {
+    AdditionalInfo info = record.getAdditionalInfo();
+    if (info != null) {
+      info.setSuppressDiscovery(suppressFromDiscovery);
+    } else {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(suppressFromDiscovery));
+    }
+  }
+
   /**
    * Adds specified instanceId and instanceHrid to record and additional custom field with instanceId to parsed record.
    * Updates changed record in database.
@@ -159,6 +169,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     record.getExternalIdsHolder().setInstanceHrid(instanceHrid);
     boolean isAddedField = AdditionalFieldsUtil.addFieldToMarcRecord(record, TAG_999, 'i', instanceId);
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(Pair.of(record, instance));
+    setSuppressFormDiscovery(record, instance.getBoolean("discoverySuppress", false));
     if (isAddedField) {
       record.getExternalIdsHolder().setInstanceId(instanceId);
       return recordDao.updateParsedRecord(record, tenantId).map(record);

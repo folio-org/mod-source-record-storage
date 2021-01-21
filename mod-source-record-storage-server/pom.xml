@@ -294,7 +294,7 @@
                         <port>15432:5432</port>
                       </ports>
                       <wait>
-                        <log>(?s)ready to accept connections.*ready to accept connections</log>
+                        <log>Ready to accept connections</log>
                         <time>90000</time>
                       </wait>
                     </run>

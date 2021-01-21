@@ -65,7 +65,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java2</artifactId>
-     </dependency>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
@@ -267,14 +267,52 @@
       </plugin>
 
       <plugin>
-        <groupId>com.gitlab.janecekpetr</groupId>
-        <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.10</version>
+        <executions>
+          <execution>
+            <id>reserve-db-port</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <configuration>
+              <portNames>
+                <portName>db.port</portName>
+              </portNames>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.34.1</version>
         <configuration>
-          <pgServerPort>15432</pgServerPort>
-          <dbName>postgres</dbName>
-          <userName>postgres</userName>
-          <password>postgres</password>
+          <images>
+            <image>
+              <alias>db</alias>
+              <name>postgres:10</name>
+              <run>
+                <env>
+                  <POSTGRES_USER>postgres</POSTGRES_USER>
+                  <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
+                </env>
+                <ports>
+                  <port>${db.port}:5432</port>
+                  <port>127.0.0.1:${db.port}:5432</port>
+                  <port>localhost:${db.port}:5432</port>
+                  <port>+docker.host.address:${db.port}:5432</port>
+                </ports>
+                <wait>
+                  <log>database system is ready to accept connections</log>
+                  <time>20000</time>
+                </wait>
+              </run>
+            </image>
+          </images>
         </configuration>
         <executions>
           <execution>
@@ -289,6 +327,7 @@
             <phase>compile</phase>
             <goals>
               <goal>stop</goal>
+              <goal>remove</goal>
             </goals>
           </execution>
         </executions>
@@ -301,9 +340,10 @@
         <configuration>
           <changeLogFile>src/main/resources/liquibase/tenant/changelog.xml</changeLogFile>
           <driver>org.postgresql.Driver</driver>
-          <url>jdbc:postgresql://localhost:15432/postgres</url>
+          <url>jdbc:postgresql://${docker.host.address}:${db.port}/postgres</url>
           <username>postgres</username>
           <password>postgres</password>
+          <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
         </configuration>
         <dependencies>
           <dependency>
@@ -356,7 +396,7 @@
         <configuration>
           <jdbc>
             <driver>org.postgresql.Driver</driver>
-            <url>jdbc:postgresql://localhost:15432/postgres</url>
+            <url>jdbc:postgresql://${docker.host.address}:${db.port}/postgres</url>
             <user>postgres</user>
             <password>postgres</password>
           </jdbc>

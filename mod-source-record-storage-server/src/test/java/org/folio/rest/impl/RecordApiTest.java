@@ -673,6 +673,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?recordType=select * from table")
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
       .get(SOURCE_STORAGE_RECORDS_PATH + "?state=error!")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);

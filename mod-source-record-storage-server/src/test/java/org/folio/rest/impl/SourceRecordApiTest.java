@@ -617,7 +617,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSpecificSourceRecordOnGetIfInvalidExternalIdType(TestContext testContext) {
+  public void shouldReturnBadRequestOnGetIfInvalidExternalIdType(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -692,9 +692,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + SECOND_UUID + "?idType=invalidrecordtype")
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("recordId", is(SECOND_UUID))
-      .body("externalIdsHolder.instanceId", is(FIRST_UUID));
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
   }
 
@@ -910,7 +908,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnErrorOnGetByRecordIdIfInvalidUUID(TestContext testContext) {
+  public void shouldReturnBadRequestOnGetByRecordIdIfInvalidUUID(TestContext testContext) {
     Async async = testContext.async();
     List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2);
     for (Snapshot snapshot : snapshotsToPost) {
@@ -1677,7 +1675,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnErrorOnGet() {
+  public void shouldReturnBadRequestOnInvalidQueryParameters() {
     RestAssured.given()
       .spec(spec)
       .when()

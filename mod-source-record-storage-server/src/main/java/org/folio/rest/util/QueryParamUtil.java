@@ -6,7 +6,7 @@ import org.codehaus.plexus.util.StringUtils;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 
-public class QueryParamUtil {
+public final class QueryParamUtil {
 
   private QueryParamUtil() { }
 

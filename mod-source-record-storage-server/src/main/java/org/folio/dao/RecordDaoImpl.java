@@ -260,7 +260,8 @@ public class RecordDaoImpl implements RecordDao {
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(filterRecordByType(recordType.name())).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(filterRecordByType(recordType.name()))
+        .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
     )).map(this::toSourceRecordCollection);
   }
 

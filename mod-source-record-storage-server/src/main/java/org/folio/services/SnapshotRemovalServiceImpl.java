@@ -57,7 +57,6 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();
 
-        // TODO: this delete should be done without require knowlegde of record type
         RecordType recordType = RecordType.MARC;
         while (totalRequestedRecords < totalRecords) {
           int offset = totalRequestedRecords;

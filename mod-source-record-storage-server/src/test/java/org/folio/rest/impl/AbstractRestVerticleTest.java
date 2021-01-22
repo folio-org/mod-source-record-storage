@@ -10,10 +10,13 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
+import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Envs;
@@ -24,6 +27,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
@@ -149,6 +153,34 @@ public abstract class AbstractRestVerticleTest {
       }
       async.complete();
     }));
+  }
+
+  protected void postSnapshots(TestContext testContext, Snapshot... snapshots) {
+    Async async = testContext.async();
+    for (Snapshot snapshot : snapshots) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+  }
+
+  protected void postRecords(TestContext testContext, Record... records) {
+    Async async = testContext.async();
+    for (Record record : records) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
   }
 
 }

@@ -74,7 +74,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetRecords(TestContext context) {
+  public void shouldGetMarcRecordsBySnapshotId(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -106,7 +106,38 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldStreamRecords(TestContext context) {
+  public void shouldGetEdifactRecordsBySnapshotId(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = "dcd898af-03bb-4b12-b8a6-f6a02e86459b";
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      recordService.getRecords(condition, RecordType.EDIFACT, orderFields, 0, 1, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
+          .filter(r -> r.getSnapshotId().equals(snapshotId))
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldStreamMarcRecordsBySnapshotId(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -136,6 +167,43 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         compareRecords(context, expected.get(0), actual.get(0));
         compareRecords(context, expected.get(1), actual.get(1));
         compareRecords(context, expected.get(2), actual.get(2));
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+    });
+  }
+
+  @Test
+  public void shouldStreamEdifactRecordsBySnapshotId(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = "dcd898af-03bb-4b12-b8a6-f6a02e86459b";
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      Flowable<Record> flowable = recordService.streamRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID);
+
+      List<Record> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
+        .filter(r -> r.getSnapshotId().equals(snapshotId))
+        .collect(Collectors.toList());
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<Record> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        context.assertEquals(expected.size(), actual.size());
+        compareRecords(context, expected.get(0), actual.get(0));
 
         async.complete();
 
@@ -183,7 +251,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSaveRecord(TestContext context) {
+  public void shouldSaveMarcRecord(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getRecord(0);
     recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
@@ -200,6 +268,32 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(Record.RecordType.MARC, get.result().get().getRecordType());
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveEdifactRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getRecord(8);
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, expected, save.result());
+      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(Record.RecordType.EDIFACT, get.result().get().getRecordType());
         compareRecords(context, expected, get.result().get());
         async.complete();
       });
@@ -261,9 +355,53 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   // TODO: test save records with expected errors
 
   @Test
-  public void shouldUpdateRecord(TestContext context) {
+  public void shouldUpdateMarcRecord(TestContext context) {
     Async async = context.async();
     Record original = TestMocks.getRecord(0);
+    recordDao.saveRecord(original, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      Record expected = new Record()
+        .withId(original.getId())
+        .withSnapshotId(original.getSnapshotId())
+        .withMatchedId(original.getMatchedId())
+        .withRecordType(original.getRecordType())
+        .withState(State.OLD)
+        .withGeneration(original.getGeneration())
+        .withOrder(original.getOrder())
+        .withRawRecord(original.getRawRecord())
+        .withParsedRecord(original.getParsedRecord())
+        .withAdditionalInfo(original.getAdditionalInfo())
+        .withExternalIdsHolder(original.getExternalIdsHolder())
+        .withMetadata(original.getMetadata());
+      recordService.updateRecord(expected, TENANT_ID).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        context.assertTrue(update.result().getMetadata().getUpdatedDate()
+          .after(update.result().getMetadata().getCreatedDate()));
+        context.assertNotNull(update.result().getRawRecord());
+        context.assertNotNull(update.result().getParsedRecord());
+        context.assertNull(update.result().getErrorRecord());
+        compareRecords(context, expected, update.result());
+        Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(expected.getMatchedId()))
+          .and(RECORDS_LB.STATE.eq(RecordState.OLD));
+        recordDao.getRecordByCondition(condition, TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isPresent());
+          async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
+  public void shouldUpdateEdifactRecord(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getRecord(8);
     recordDao.saveRecord(original, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -325,7 +463,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetSourceRecords(TestContext context) {
+  public void shouldGetMarcSourceRecords(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -356,7 +494,38 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldStreamSourceRecords(TestContext context) {
+  public void shouldGetEdifactSourceRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordService.getSourceRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
+          .map(RecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldStreamMarcSourceRecords(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -373,6 +542,44 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
       List<SourceRecord> expected = records.stream()
         .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
+        .map(RecordDaoUtil::toSourceRecord)
+        .collect(Collectors.toList());
+      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<SourceRecord> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), actual.size());
+        compareSourceRecords(context, expected, actual);
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+    });
+  }
+
+  @Test
+  public void shouldStreamEdifactSourceRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+
+      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID);
+
+      List<SourceRecord> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
         .map(RecordDaoUtil::toSourceRecord)
         .collect(Collectors.toList());
       Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));

@@ -252,12 +252,12 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(filterRecordByType(recordType.name())))))
+        .where(condition.and(getSourceRecordImplicitCondition(recordType)))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(filterRecordByType(recordType.name()))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType))
         .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
     )).map(this::toSourceRecordCollection);
   }

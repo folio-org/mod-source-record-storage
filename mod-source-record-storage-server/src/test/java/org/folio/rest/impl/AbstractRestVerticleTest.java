@@ -62,8 +62,6 @@ public abstract class AbstractRestVerticleTest {
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
 
-  
-
   @Rule
   public WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()

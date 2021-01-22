@@ -1,11 +1,18 @@
 {
   "segments": [
     {
-      "tag": "UNA",
-      "dataElements": []
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": " "
+            }
+          ]
+        }
+      ],
+      "tag": "UNA"
     },
     {
-      "tag": "UNB",
       "dataElements": [
         {
           "components": [
@@ -44,16 +51,20 @@
             },
             {
               "data": "1943"
-            },
+            }
+          ]
+        },
+        {
+          "components": [
             {
               "data": "10"
             }
           ]
         }
-      ]
+      ],
+      "tag": "UNB"
     },
     {
-      "tag": "UNH",
       "dataElements": [
         {
           "components": [
@@ -81,10 +92,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "UNH"
     },
     {
-      "tag": "BGM",
       "dataElements": [
         {
           "components": [
@@ -100,10 +111,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "BGM"
     },
     {
-      "tag": "DTM",
       "dataElements": [
         {
           "components": [
@@ -118,10 +129,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "DTM"
     },
     {
-      "tag": "CUX",
       "dataElements": [
         {
           "components": [
@@ -136,10 +147,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "CUX"
     },
     {
-      "tag": "ALC",
       "dataElements": [
         {
           "components": [
@@ -168,11 +179,27 @@
               "data": ""
             }
           ]
+        },
+        {
+          "components": [
+            {
+              "data": "TX"
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "28"
+            },
+            {
+              "data": "TAX"
+            }
+          ]
         }
-      ]
+      ],
+      "tag": "ALC"
     },
     {
-      "tag": "MOA",
       "dataElements": [
         {
           "components": [
@@ -184,10 +211,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "MOA"
     },
     {
-      "tag": "LIN",
       "dataElements": [
         {
           "components": [
@@ -213,10 +240,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "LIN"
     },
     {
-      "tag": "IMD",
       "dataElements": [
         {
           "components": [
@@ -248,10 +275,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "IMD"
     },
     {
-      "tag": "IMD",
       "dataElements": [
         {
           "components": [
@@ -283,10 +310,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "IMD"
     },
     {
-      "tag": "IMD",
       "dataElements": [
         {
           "components": [
@@ -318,41 +345,25 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "IMD"
     },
     {
-      "tag": "QTY",
       "dataElements": [
         {
           "components": [
             {
               "data": "47"
-            }
-          ]
-        },
-        {
-          "components": [
+            },
             {
               "data": "1"
             }
           ]
         }
-      ]
+      ],
+      "tag": "QTY"
     },
     {
-      "tag": "MOA",
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": ""
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "tag": "PRI",
       "dataElements": [
         {
           "components": [
@@ -364,10 +375,25 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "MOA"
     },
     {
-      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "125"
+            }
+          ]
+        }
+      ],
+      "tag": "PRI"
+    },
+    {
       "dataElements": [
         {
           "components": [
@@ -379,10 +405,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "PRI"
     },
     {
-      "tag": "RFF",
       "dataElements": [
         {
           "components": [
@@ -394,10 +420,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "RFF"
     },
     {
-      "tag": "RFF",
       "dataElements": [
         {
           "components": [
@@ -409,10 +435,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "RFF"
     },
     {
-      "tag": "UNS",
       "dataElements": [
         {
           "components": [
@@ -421,10 +447,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "UNS"
     },
     {
-      "tag": "CNT",
       "dataElements": [
         {
           "components": [
@@ -436,10 +462,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "CNT"
     },
     {
-      "tag": "CNT",
       "dataElements": [
         {
           "components": [
@@ -451,10 +477,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "CNT"
     },
     {
-      "tag": "MOA",
       "dataElements": [
         {
           "components": [
@@ -466,10 +492,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "MOA"
     },
     {
-      "tag": "MOA",
       "dataElements": [
         {
           "components": [
@@ -481,10 +507,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "MOA"
     },
     {
-      "tag": "UNT",
       "dataElements": [
         {
           "components": [
@@ -500,10 +526,10 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "UNT"
     },
     {
-      "tag": "UNZ",
       "dataElements": [
         {
           "components": [
@@ -519,7 +545,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tag": "UNZ"
     }
   ]
 }

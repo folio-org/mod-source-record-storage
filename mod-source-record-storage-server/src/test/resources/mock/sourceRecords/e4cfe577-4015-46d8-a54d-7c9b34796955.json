@@ -1,21 +1,28 @@
 {
-  "recordId" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
+  "recordId": "e4cfe577-4015-46d8-a54d-7c9b34796955",
   "snapshotId": "dcd898af-03bb-4b12-b8a6-f6a02e86459b",
-  "recordType" : "EDIFACT",
-  "rawRecord" : {
-    "id" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
-    "content" : "UNA:+.? 'UNB+UNOC:2+1694510:31B+3640086:31B+130920:1943+10'UNH+30+INVOIC:D:96A:UN:EAN008'BGM+380+475463'DTM+137:20130919:102'CUX+2:USD:4'ALC+C++++TX::28:TAX'MOA+8:69.09'LIN+1++9780199588459:EN'IMD+L+050+:::BLACK MARKET BRITAIN, 1939-1955.'IMD+L+010+:::ROODHOUSE, MARK'IMD+L+110+:::OXFORD'QTY+47:1'MOA+203:103.13'PRI+AAB:125'PRI+AAA:103.13'RFF+LI:POL-17653'RFF+SLI:99954761992'UNS+S'CNT+1:19'CNT+2:19'MOA+9:1818.28'MOA+79:1818.28'UNT+217+33'UNZ+4+10'"
+  "recordType": "EDIFACT",
+  "rawRecord": {
+    "id": "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content": "UNA:+.? 'UNB+UNOC:2+1694510:31B+3640086:31B+130920:1943+10'UNH+30+INVOIC:D:96A:UN:EAN008'BGM+380+475463'DTM+137:20130919:102'CUX+2:USD:4'ALC+C++++TX::28:TAX'MOA+8:69.09'LIN+1++9780199588459:EN'IMD+L+050+:::BLACK MARKET BRITAIN, 1939-1955.'IMD+L+010+:::ROODHOUSE, MARK'IMD+L+110+:::OXFORD'QTY+47:1'MOA+203:103.13'PRI+AAB:125'PRI+AAA:103.13'RFF+LI:POL-17653'RFF+SLI:99954761992'UNS+S'CNT+1:19'CNT+2:19'MOA+9:1818.28'MOA+79:1818.28'UNT+217+33'UNZ+4+10'"
   },
-  "parsedRecord" : {
-    "id" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
-    "content" : {
+  "parsedRecord": {
+    "id": "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content": {
       "segments": [
         {
-          "tag": "UNA",
-          "dataElements": []
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": " "
+                }
+              ]
+            }
+          ],
+          "tag": "UNA"
         },
         {
-          "tag": "UNB",
           "dataElements": [
             {
               "components": [
@@ -54,16 +61,20 @@
                 },
                 {
                   "data": "1943"
-                },
+                }
+              ]
+            },
+            {
+              "components": [
                 {
                   "data": "10"
                 }
               ]
             }
-          ]
+          ],
+          "tag": "UNB"
         },
         {
-          "tag": "UNH",
           "dataElements": [
             {
               "components": [
@@ -91,10 +102,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "UNH"
         },
         {
-          "tag": "BGM",
           "dataElements": [
             {
               "components": [
@@ -110,10 +121,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "BGM"
         },
         {
-          "tag": "DTM",
           "dataElements": [
             {
               "components": [
@@ -128,10 +139,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "DTM"
         },
         {
-          "tag": "CUX",
           "dataElements": [
             {
               "components": [
@@ -146,10 +157,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "CUX"
         },
         {
-          "tag": "ALC",
           "dataElements": [
             {
               "components": [
@@ -178,11 +189,27 @@
                   "data": ""
                 }
               ]
+            },
+            {
+              "components": [
+                {
+                  "data": "TX"
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "28"
+                },
+                {
+                  "data": "TAX"
+                }
+              ]
             }
-          ]
+          ],
+          "tag": "ALC"
         },
         {
-          "tag": "MOA",
           "dataElements": [
             {
               "components": [
@@ -194,10 +221,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "MOA"
         },
         {
-          "tag": "LIN",
           "dataElements": [
             {
               "components": [
@@ -223,10 +250,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "LIN"
         },
         {
-          "tag": "IMD",
           "dataElements": [
             {
               "components": [
@@ -258,10 +285,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "IMD"
         },
         {
-          "tag": "IMD",
           "dataElements": [
             {
               "components": [
@@ -293,10 +320,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "IMD"
         },
         {
-          "tag": "IMD",
           "dataElements": [
             {
               "components": [
@@ -328,41 +355,25 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "IMD"
         },
         {
-          "tag": "QTY",
           "dataElements": [
             {
               "components": [
                 {
                   "data": "47"
-                }
-              ]
-            },
-            {
-              "components": [
+                },
                 {
                   "data": "1"
                 }
               ]
             }
-          ]
+          ],
+          "tag": "QTY"
         },
         {
-          "tag": "MOA",
-          "dataElements": [
-            {
-              "components": [
-                {
-                  "data": ""
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "tag": "PRI",
           "dataElements": [
             {
               "components": [
@@ -374,10 +385,25 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "MOA"
         },
         {
-          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "AAB"
+                },
+                {
+                  "data": "125"
+                }
+              ]
+            }
+          ],
+          "tag": "PRI"
+        },
+        {
           "dataElements": [
             {
               "components": [
@@ -389,10 +415,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "PRI"
         },
         {
-          "tag": "RFF",
           "dataElements": [
             {
               "components": [
@@ -404,10 +430,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "RFF"
         },
         {
-          "tag": "RFF",
           "dataElements": [
             {
               "components": [
@@ -419,10 +445,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "RFF"
         },
         {
-          "tag": "UNS",
           "dataElements": [
             {
               "components": [
@@ -431,10 +457,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "UNS"
         },
         {
-          "tag": "CNT",
           "dataElements": [
             {
               "components": [
@@ -446,10 +472,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "CNT"
         },
         {
-          "tag": "CNT",
           "dataElements": [
             {
               "components": [
@@ -461,10 +487,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "CNT"
         },
         {
-          "tag": "MOA",
           "dataElements": [
             {
               "components": [
@@ -476,10 +502,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "MOA"
         },
         {
-          "tag": "MOA",
           "dataElements": [
             {
               "components": [
@@ -491,10 +517,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "MOA"
         },
         {
-          "tag": "UNT",
           "dataElements": [
             {
               "components": [
@@ -510,10 +536,10 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "UNT"
         },
         {
-          "tag": "UNZ",
           "dataElements": [
             {
               "components": [
@@ -529,22 +555,22 @@
                 }
               ]
             }
-          ]
+          ],
+          "tag": "UNZ"
         }
       ]
-    }
-    ,
-    "formattedContent" : ""
+    },
+    "formattedContent": ""
   },
-  "deleted" : false,
-  "externalIdsHolder" : {},
-  "additionalInfo" : {
-    "suppressDiscovery" : false
+  "deleted": false,
+  "externalIdsHolder": {},
+  "additionalInfo": {
+    "suppressDiscovery": false
   },
-  "metadata" : {
-    "createdDate" : "2020-03-19T16:43:00.436+0000",
-    "createdByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a",
-    "updatedDate" : "2020-03-19T16:43:01.442+0000",
-    "updatedByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a"
+  "metadata": {
+    "createdDate": "2020-03-19T16:43:00.436+0000",
+    "createdByUserId": "4547e8af-638a-4595-8af8-4d396d6a9f7a",
+    "updatedDate": "2020-03-19T16:43:01.442+0000",
+    "updatedByUserId": "4547e8af-638a-4595-8af8-4d396d6a9f7a"
   }
 }

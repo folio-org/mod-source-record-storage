@@ -2,9 +2,9 @@ package org.folio.dao;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.folio.rest.persist.LoadConfs;
@@ -48,25 +48,26 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
-  // check environment variables for postgres config
-  private static JsonObject postgresConfig = Envs.allDBConfs();
+  
+  private static JsonObject postgresConfig;
 
-  // Still need to retrieve config file path from RMB PostgresClient. It is statically
-  // set from RMB RestVerticle if command parameter `db_connection` is set.
-  private static String postgresConfigFilePath = PostgresClient.getConfigFilePath();
+  
+  private static String postgresConfigFilePath;
 
   private final Vertx vertx;
 
   @Autowired
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
     this.vertx = Vertx.newInstance(vertx);
-  }
-
-  @PostConstruct
-  public void setup() {
-    if (postgresConfig.size() > 0) {
+    // check environment variables for postgres config
+    if (Envs.allDBConfs().size() > 0) {
       LOG.info("DB config read from environment variables");
+      postgresConfig = Envs.allDBConfs();
     } else {
+      if (Objects.isNull(postgresConfigFilePath)) {
+        // need to retrieve config file path from RMB PostgresClient
+        postgresConfigFilePath = PostgresClient.getConfigFilePath();
+      }
       // no env variables passed in, read for module's config file
       postgresConfig = LoadConfs.loadConfig(postgresConfigFilePath);
     }
@@ -123,6 +124,15 @@ public class PostgresClientFactory {
   public static void closeAll() {
     POOL_CACHE.values().forEach(PostgresClientFactory::close);
     POOL_CACHE.clear();
+  }
+
+  /**
+   * Getter used for testing.
+   * 
+   * @return postgres config
+   */
+  static JsonObject getConfig() {
+    return postgresConfig;
   }
 
   /**

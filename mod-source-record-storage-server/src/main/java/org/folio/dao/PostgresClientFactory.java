@@ -48,8 +48,11 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
+  // check environment variables for postgres config
   private static JsonObject postgresConfig = Envs.allDBConfs();
 
+  // Still need to retrieve config file path from RMB PostgresClient. It is statically
+  // set from RMB RestVerticle if command parameter `db_connection` is set.
   private static String postgresConfigFilePath = PostgresClient.getConfigFilePath();
 
   private final Vertx vertx;
@@ -61,14 +64,9 @@ public class PostgresClientFactory {
 
   @PostConstruct
   public void setup() {
-    // check environment variables for postgres config
-    postgresConfig = Envs.allDBConfs();
     if (postgresConfig.size() > 0) {
       LOG.info("DB config read from environment variables");
     } else {
-      // Still need to retrieve config file path from RMB PostgresClient. It is statically
-      // set from RMB RestVerticle if command parameter `db_connection` is set.
-      postgresConfigFilePath = PostgresClient.getConfigFilePath();
       // no env variables passed in, read for module's config file
       postgresConfig = LoadConfs.loadConfig(postgresConfigFilePath);
     }
@@ -119,9 +117,21 @@ public class PostgresClientFactory {
     return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId).getDelegate());
   }
 
+  /**
+   * Close all cached connections.
+   */
   public static void closeAll() {
     POOL_CACHE.values().forEach(PostgresClientFactory::close);
     POOL_CACHE.clear();
+  }
+
+  /**
+   * Getter used for testing.
+   * 
+   * @return postgres config path
+   */
+  static String getConfigFilePath() {
+    return postgresConfigFilePath;
   }
 
   private static PgPool getCachedPool(Vertx vertx, String tenantId) {

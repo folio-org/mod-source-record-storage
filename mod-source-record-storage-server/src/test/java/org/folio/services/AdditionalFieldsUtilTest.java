@@ -7,6 +7,7 @@ import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.util.AdditionalFieldsUtil;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -214,7 +215,7 @@ public class AdditionalFieldsUtilTest {
         existsNewField = true;
         String currentTag = fields.getJsonObject(i).stream().map(Map.Entry::getKey).findFirst().get();
         String nextTag = fields.getJsonObject(i + 1).stream().map(Map.Entry::getKey).findFirst().get();
-        Assert.assertThat(currentTag, lessThanOrEqualTo(nextTag));
+        MatcherAssert.assertThat(currentTag, lessThanOrEqualTo(nextTag));
       }
     }
     Assert.assertTrue(existsNewField);

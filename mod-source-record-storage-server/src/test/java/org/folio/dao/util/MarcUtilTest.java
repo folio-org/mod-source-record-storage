@@ -15,11 +15,10 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.BlockJUnit4ClassRunner;
 import org.marc4j.MarcException;
 
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-@RunWith(VertxUnitRunner.class)
+@RunWith(BlockJUnit4ClassRunner.class)
 public class MarcUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";

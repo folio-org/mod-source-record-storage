@@ -48,10 +48,8 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
-  
   private static JsonObject postgresConfig;
 
-  
   private static String postgresConfigFilePath;
 
   private final Vertx vertx;

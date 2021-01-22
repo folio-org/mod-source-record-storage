@@ -104,9 +104,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
 
     if (condition != null) {
-      // TODO: update to avoid hard coding record type
-      RecordType recordType = RecordType.MARC;
-      recordDao.getRecords(condition, recordType, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
+      recordDao.getRecords(condition, RecordType.MARC, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
         .onComplete(ar -> {
           if (ar.succeeded()) {
             processSucceededResult(dataImportEventPayload, future, context, ar);

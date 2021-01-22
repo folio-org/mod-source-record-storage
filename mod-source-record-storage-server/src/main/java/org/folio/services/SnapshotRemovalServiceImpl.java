@@ -57,10 +57,9 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();
 
-        RecordType recordType = RecordType.MARC;
         while (totalRequestedRecords < totalRecords) {
           int offset = totalRequestedRecords;
-          future = future.compose(ar -> recordService.getRecords(condition, recordType, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
+          future = future.compose(ar -> recordService.getRecords(condition, RecordType.MARC, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
             .compose(recordCollection -> deleteInstances(recordCollection.getRecords(), params));
           totalRequestedRecords += RECORDS_LIMIT;
         }

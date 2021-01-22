@@ -137,9 +137,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     Condition condition = filterRecordByNotSnapshotId(snapshotId)
       .and(filterRecordByInstanceId(instanceId));
 
-    // TODO: update to avoid hard coding record type
-    RecordType recordType = RecordType.MARC;
-    return recordDao.getRecords(condition, recordType, new ArrayList<>(), 0, 999, tenantId)
+    return recordDao.getRecords(condition, RecordType.MARC, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")

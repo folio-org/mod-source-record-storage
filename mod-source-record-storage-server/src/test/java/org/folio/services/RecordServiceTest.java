@@ -14,13 +14,13 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
-import org.folio.rest.jaxrs.model.ParsedRecordDto.RecordType;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
@@ -88,11 +88,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      recordService.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
+      recordService.getRecords(condition, RecordType.MARC, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
@@ -119,9 +120,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      Flowable<Record> flowable = recordService.streamRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID);
+      Flowable<Record> flowable = recordService.streamRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID);
 
       List<Record> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .collect(Collectors.toList());
 
@@ -336,11 +338,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
-      recordService.getSourceRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
           .map(RecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -366,9 +369,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
 
-      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID);
+      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID);
 
       List<SourceRecord> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .map(RecordDaoUtil::toSourceRecord)
         .collect(Collectors.toList());
       Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -403,11 +407,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, org.folio.dao.util.RecordType.MARC, false, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, false, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
           .map(RecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -456,11 +461,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, org.folio.dao.util.RecordType.MARC, true, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
           .map(RecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
@@ -616,12 +622,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
-      recordDao.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
+      recordDao.getRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
         if (getBefore.failed()) {
           context.fail(getBefore.cause());
         }
         Integer expected = (int) original.stream()
-          .filter(record -> record.getSnapshotId().equals(snapshotId)).count();
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
+          .filter(record -> record.getSnapshotId().equals(snapshotId))
+          .count();
         context.assertTrue(expected > 0);
         context.assertEquals(expected, getBefore.result().getTotalRecords());
         recordService.deleteRecordsBySnapshotId(snapshotId, TENANT_ID).onComplete(delete -> {
@@ -629,7 +637,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             context.fail(delete.cause());
           }
           context.assertTrue(delete.result());
-          recordDao.getRecords(condition, org.folio.dao.util.RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
+          recordDao.getRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
             if (getAfter.failed()) {
               context.fail(getAfter.cause());
             }
@@ -658,7 +666,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       String snapshotId = UUID.randomUUID().toString();
       ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
         .withId(expected.getId())
-        .withRecordType(RecordType.fromValue(expected.getRecordType().toString()))
+        .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
         .withParsedRecord(expected.getParsedRecord())
         .withAdditionalInfo(expected.getAdditionalInfo())
         .withExternalIdsHolder(expected.getExternalIdsHolder())

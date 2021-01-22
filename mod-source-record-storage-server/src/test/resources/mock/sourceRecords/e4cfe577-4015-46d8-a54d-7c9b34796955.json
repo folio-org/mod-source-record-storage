@@ -1,0 +1,550 @@
+{
+  "recordId" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
+  "snapshotId": "dcd898af-03bb-4b12-b8a6-f6a02e86459b",
+  "recordType" : "EDIFACT",
+  "rawRecord" : {
+    "id" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content" : "UNA:+.? 'UNB+UNOC:2+1694510:31B+3640086:31B+130920:1943+10'UNH+30+INVOIC:D:96A:UN:EAN008'BGM+380+475463'DTM+137:20130919:102'CUX+2:USD:4'ALC+C++++TX::28:TAX'MOA+8:69.09'LIN+1++9780199588459:EN'IMD+L+050+:::BLACK MARKET BRITAIN, 1939-1955.'IMD+L+010+:::ROODHOUSE, MARK'IMD+L+110+:::OXFORD'QTY+47:1'MOA+203:103.13'PRI+AAB:125'PRI+AAA:103.13'RFF+LI:POL-17653'RFF+SLI:99954761992'UNS+S'CNT+1:19'CNT+2:19'MOA+9:1818.28'MOA+79:1818.28'UNT+217+33'UNZ+4+10'"
+  },
+  "parsedRecord" : {
+    "id" : "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content" : {
+      "segments": [
+        {
+          "tag": "UNA",
+          "dataElements": []
+        },
+        {
+          "tag": "UNB",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "UNOC"
+                },
+                {
+                  "data": "2"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "1694510"
+                },
+                {
+                  "data": "31B"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "3640086"
+                },
+                {
+                  "data": "31B"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "130920"
+                },
+                {
+                  "data": "1943"
+                },
+                {
+                  "data": "10"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNH",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "30"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "INVOIC"
+                },
+                {
+                  "data": "D"
+                },
+                {
+                  "data": "96A"
+                },
+                {
+                  "data": "UN"
+                },
+                {
+                  "data": "EAN008"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "BGM",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "380"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "475463"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "DTM",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "137"
+                },
+                {
+                  "data": "20130919"
+                },
+                {
+                  "data": "102"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "CUX",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "2"
+                },
+                {
+                  "data": "USD"
+                },
+                {
+                  "data": "4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "ALC",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "C"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "8"
+                },
+                {
+                  "data": "69.09"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "LIN",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "1"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "9780199588459"
+                },
+                {
+                  "data": "EN"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "L"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "050"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "BLACK MARKET BRITAIN, 1939-1955."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "L"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "010"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "ROODHOUSE, MARK"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "L"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "110"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "OXFORD"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "QTY",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "47"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "203"
+                },
+                {
+                  "data": "103.13"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "AAA"
+                },
+                {
+                  "data": "103.13"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "RFF",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "LI"
+                },
+                {
+                  "data": "POL-17653"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "RFF",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "SLI"
+                },
+                {
+                  "data": "99954761992"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNS",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "S"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "CNT",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "1"
+                },
+                {
+                  "data": "19"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "CNT",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "2"
+                },
+                {
+                  "data": "19"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "9"
+                },
+                {
+                  "data": "1818.28"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "79"
+                },
+                {
+                  "data": "1818.28"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNT",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "217"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "33"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNZ",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "4"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "10"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    ,
+    "formattedContent" : ""
+  },
+  "deleted" : false,
+  "externalIdsHolder" : {},
+  "additionalInfo" : {
+    "suppressDiscovery" : false
+  },
+  "metadata" : {
+    "createdDate" : "2020-03-19T16:43:00.436+0000",
+    "createdByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a",
+    "updatedDate" : "2020-03-19T16:43:01.442+0000",
+    "updatedByUserId" : "4547e8af-638a-4595-8af8-4d396d6a9f7a"
+  }
+}

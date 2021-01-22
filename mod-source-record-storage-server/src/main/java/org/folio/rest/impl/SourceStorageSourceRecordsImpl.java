@@ -15,7 +15,6 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -69,7 +68,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .and(filterRecordByDeleted(deleted))
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
           .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
-          List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
+        List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
         recordService.getSourceRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

@@ -32,6 +32,7 @@ public class PostgresClientFactoryTest {
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     assertEquals("/postgres-conf.json", PostgresClientFactory.getConfigFilePath());
     postgresClientFactory.close();
+    PostgresClientFactory.setConfigFilePath(null);
   }
 
   @Test
@@ -46,10 +47,8 @@ public class PostgresClientFactoryTest {
     assertEquals("test.password", config.getString("password"));
     assertEquals("test.database", config.getString("database"));
     postgresClientFactory.close();
-    // reset env
     Envs.setEnv(new HashMap<>());
-    // set back to default
-    PostgresClientFactory.setConfigFilePath(PostgresClient.getConfigFilePath());
+    PostgresClientFactory.setConfigFilePath(null);
   }
 
   @Test
@@ -63,16 +62,15 @@ public class PostgresClientFactoryTest {
     assertEquals("password", config.getString("password"));
     assertEquals("database", config.getString("database"));
     postgresClientFactory.close();
-    // reset env
     Envs.setEnv(new HashMap<>());
+    PostgresClientFactory.setConfigFilePath(null);
   }
 
   @Test
   public void shouldSetConfigFilePath() {
     PostgresClientFactory.setConfigFilePath("/postgres-conf-local.json");
     assertEquals("/postgres-conf-local.json", PostgresClientFactory.getConfigFilePath());
-    // set back to default
-    PostgresClientFactory.setConfigFilePath(PostgresClient.getConfigFilePath());
+    PostgresClientFactory.setConfigFilePath(null);
   }
 
   @AfterClass

@@ -22,6 +22,9 @@ Provides PostgreSQL based storage to complement the data import module. Written 
 
 ## Compiling
 
+> [Docker](https://www.docker.com/) is now required to build mod-source-record-storage. [docker-maven-plugin](https://dmp.fabric8.io/) is used to create a Postgres Container
+for running [Liquibase](https://www.liquibase.org/) scripts and generating [jOOQ](https://www.jooq.org/) schema DAOs for type safe SQL query building.
+
 ```
    mvn install
 ```

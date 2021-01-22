@@ -1,0 +1,33 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2021-01-14--15-00-create-edifact-records-table" author="JeremyHuff">
+    <createTable tableName="edifact_records_lb">
+      <column name="id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="content" type="jsonb">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="2020-06-11--15-01-add-edifact-records-records-foreign-key" author="JeremyHuff">
+    <addForeignKeyConstraint
+        baseColumnNames="id"
+        baseTableName="edifact_records_lb"
+        baseTableSchemaName="${database.defaultSchemaName}"
+        constraintName="fk_edifact_records_records"
+        deferrable="true"
+        initiallyDeferred="true"
+        onDelete="CASCADE"
+        onUpdate="RESTRICT"
+        referencedColumnNames="id"
+        referencedTableName="records_lb"
+        referencedTableSchemaName="${database.defaultSchemaName}"/>
+  </changeSet>
+
+</databaseChangeLog>

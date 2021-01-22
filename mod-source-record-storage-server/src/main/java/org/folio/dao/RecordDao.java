@@ -15,6 +15,7 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.reactivex.Flowable;
 import io.vertx.core.Future;
 
 /**
@@ -30,9 +31,21 @@ public interface RecordDao {
    * @param offset      starting index in a list of results
    * @param limit       limit of records for pagination
    * @param tenantId    tenant id
-   * @return future with {@link RecordCollection}
+   * @return {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link Record}
+   */
+  Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id
@@ -119,16 +132,6 @@ public interface RecordDao {
    * Increments generation in case a record with the same matchedId exists
    * and the snapshot it is linked to is COMMITTED before the processing of the current one started
    *
-   * @param record   Record
-   * @param tenantId tenant id
-   * @return future with generation
-   */
-  Future<Integer> calculateGeneration(Record record, String tenantId);
-
-  /**
-   * Increments generation in case a record with the same matchedId exists
-   * and the snapshot it is linked to is COMMITTED before the processing of the current one started
-   *
    * @param txQE   query execution
    * @param record Record
    * @return future with generation
@@ -177,6 +180,18 @@ public interface RecordDao {
   Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * Stream {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
+   *
+   * @param condition   query where condition
+   * @param orderFields fields to order by
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link SourceRecord}
+   */
+  Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids
@@ -197,15 +212,6 @@ public interface RecordDao {
   Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   /**
-   * Searches for {@link SourceRecord} by id (searches via "matchedId").
-   *
-   * @param id       id
-   * @param tenantId tenant id
-   * @return return future with optional {@link SourceRecord}
-   */
-  Future<Optional<SourceRecord>> getSourceRecordById(String id, String tenantId);
-
-  /**
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
    *
    * @param id             id
@@ -223,17 +229,6 @@ public interface RecordDao {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
-
-  /**
-   * Creates new Record and updates status of the "old" one,
-   * no data is overwritten as a result of update
-   *
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param tenantId  tenant id
-   * @return future with new "updated" Record
-   */
-  Future<Record> saveUpdatedRecord(Record newRecord, Record oldRecord, String tenantId);
 
   /**
    * Creates new Record and updates status of the "old" one,

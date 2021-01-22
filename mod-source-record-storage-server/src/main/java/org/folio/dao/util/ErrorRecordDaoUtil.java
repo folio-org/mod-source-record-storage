@@ -23,6 +23,11 @@ import io.vertx.sqlclient.RowSet;
  */
 public final class ErrorRecordDaoUtil {
 
+  private static final String ID = "id";
+  private static final String DESCRIPTION = "description";
+
+  public static final String ERROR_RECORD_CONTENT = "error_record_content";
+
   private ErrorRecordDaoUtil() { }
 
   /**
@@ -67,6 +72,23 @@ public final class ErrorRecordDaoUtil {
       .withId(pojo.getId().toString())
       .withContent(pojo.getContent())
       .withDescription(pojo.getDescription());
+  }
+
+  /**
+   * Convert database query result {@link Row} to {@link ErrorRecord}
+   * 
+   * @param row query result row
+   * @return ErrorRecord
+   */
+  public static ErrorRecord toJoinedErrorRecord(Row row) {
+    ErrorRecord errorRecord = new ErrorRecord();
+    UUID id = row.getUUID(ID);
+    if (Objects.nonNull(id)) {
+      errorRecord.withId(id.toString());
+    }
+    return errorRecord
+      .withContent(row.getString(ERROR_RECORD_CONTENT))
+      .withDescription(row.getString(DESCRIPTION));
   }
 
   /**

@@ -3,6 +3,7 @@ package org.folio.dao;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
@@ -12,7 +13,6 @@ import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -115,14 +115,14 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(filterRecordByType(recordType.name())))))
+        .where(condition.and(getRecordImplicitCondition(recordType)))))
       .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
         .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(filterRecordByType(recordType.name())))
+        .where(condition.and(getRecordImplicitCondition(recordType)))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)
@@ -137,7 +137,7 @@ public class RecordDaoImpl implements RecordDao {
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .where(condition.and(filterRecordByType(recordType.name())))
+      .where(condition.and(getRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -211,12 +211,12 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(filterRecordByType(recordType.name())))))
+        .where(condition.and(getSourceRecordImplicitCondition(recordType)))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(filterRecordByType(recordType.name())))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -228,8 +228,8 @@ public class RecordDaoImpl implements RecordDao {
     Name prt = name(recordType.getTableName());
     String sql = DSL.select(getRecordFields(prt))
       .from(RECORDS_LB)
-      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .where(condition.and(filterRecordByType(recordType.name())))
+      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -369,6 +369,26 @@ public class RecordDaoImpl implements RecordDao {
 
   private Row asRow(Row row) {
     return row;
+  }
+
+  private Condition getRecordImplicitCondition(RecordType recordType) {
+    switch (recordType) {
+      case MARC:
+      case EDIFACT:
+      default:
+        return filterRecordByType(recordType.name());
+    }
+  }
+
+  private Condition getSourceRecordImplicitCondition(RecordType recordType) {
+    switch (recordType) {
+      case MARC:
+        return filterRecordByType(recordType.name())
+          .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+      case EDIFACT:
+      default:
+        return filterRecordByType(recordType.name());
+    }
   }
 
   private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {

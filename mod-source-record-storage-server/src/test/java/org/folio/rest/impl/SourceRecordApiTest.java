@@ -34,6 +34,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -814,7 +815,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnSortedSourceRecordsOnGetWhenSortByIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
     String firstMatchedId = UUID.randomUUID().toString();
 
@@ -840,7 +841,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(11)
       .withState(Record.State.ACTUAL);
 
-    postRecords(testContext, record_2, record_2_tmp, record_4, record_4_tmp);
+    postRecords(testContext, record_2, record_2_tmp, record_4, record_4_tmp, record_7);
 
     Async async = testContext.async();
     List<SourceRecord> sourceRecordList = RestAssured.given()
@@ -851,6 +852,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
+      .body("sourceRecords*.recordType", everyItem(is(RecordType.MARC.name())))
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
@@ -861,10 +863,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSortedSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  public void shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
+    postSnapshots(testContext, snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_2, record_3, record_5, record_6);
+    postRecords(testContext, record_2, record_3, record_5, record_6, record_7);
 
     Async async = testContext.async();
     // NOTE: get source records will not return if there is no associated parsed record
@@ -876,11 +878,36 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
       .body("totalRecords", is(2))
+      .body("sourceRecords*.recordType", everyItem(is(RecordType.MARC.name())))
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
     testContext.assertEquals(11, sourceRecordList.get(0).getOrder().intValue());
     testContext.assertEquals(101, sourceRecordList.get(1).getOrder().intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSortedEdifactSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
+    postSnapshots(testContext, snapshot_2, snapshot_3);
+
+    postRecords(testContext, record_2, record_3, record_5, record_6, record_7);
+
+    Async async = testContext.async();
+    // NOTE: get source records will not return if there is no associated parsed record
+    List<SourceRecord> sourceRecordList = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordType=EDIFACT&snapshotId=" + snapshot_3.getJobExecutionId() + "&orderBy=order")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1))
+      .body("sourceRecords*.recordType", everyItem(is(RecordType.EDIFACT.name())))
+      .body("sourceRecords*.deleted", everyItem(is(false)))
+      .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
+
+    testContext.assertEquals(0, sourceRecordList.get(0).getOrder().intValue());
     async.complete();
   }
 
@@ -1100,10 +1127,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  public void shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4);
+    postRecords(testContext, record_1, record_2, record_3, record_4, record_7);
 
     Async async = testContext.async();
     RestAssured.given()
@@ -1113,6 +1140,27 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
+      .body("sourceRecords*.recordType", everyItem(is(RecordType.MARC.name())))
+      .body("sourceRecords*.parsedRecord", notNullValue())
+      .body("sourceRecords*.deleted", everyItem(is(false)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEdifactParsedResultsOnGetWhenReturnTypeQueryIsSpecified(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+
+    postRecords(testContext, record_1, record_2, record_3, record_4, record_7);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordType=EDIFACT")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("sourceRecords*.recordType", everyItem(is(RecordType.EDIFACT.name())))
       .body("sourceRecords*.parsedRecord", notNullValue())
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();

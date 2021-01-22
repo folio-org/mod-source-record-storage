@@ -13,7 +13,6 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.mockito.ArgumentMatchers.any;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -83,7 +82,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
 
   private static RawRecord rawRecord;
-  private static ParsedRecord parsedRecord;
 
   private static String recordId = "acf4f6e2-115c-4509-9d4c-536c758ef917";
 

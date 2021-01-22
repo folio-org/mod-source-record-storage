@@ -14,7 +14,8 @@
     <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
-    <postgres.version>42.2.16</postgres.version>
+    <postgres.version>42.2.18</postgres.version>
+    <postgres.image>postgres:12-alpine</postgres.image>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
 
@@ -41,6 +42,12 @@
       <version>${raml-module-builder.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>1.15.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
@@ -65,7 +72,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java2</artifactId>
-     </dependency>
+    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
@@ -74,7 +81,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.6.0</version>
+      <version>1.7.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -90,7 +97,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.1.0</version>
+      <version>1.2.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -181,6 +188,18 @@
               </sources>
             </configuration>
           </execution>
+          <execution>
+            <id>reserve-db-port</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <configuration>
+              <portNames>
+                <portName>db.port</portName>
+              </portNames>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
@@ -267,14 +286,33 @@
       </plugin>
 
       <plugin>
-        <groupId>com.gitlab.janecekpetr</groupId>
-        <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.34.1</version>
         <configuration>
-          <pgServerPort>15432</pgServerPort>
-          <dbName>postgres</dbName>
-          <userName>postgres</userName>
-          <password>postgres</password>
+          <images>
+            <image>
+              <alias>db</alias>
+              <name>${postgres.image}</name>
+              <run>
+                <privileged>true</privileged>
+                <containerNamePattern>%n-%t</containerNamePattern>
+                <env>
+                  <POSTGRES_DB>postgres</POSTGRES_DB>
+                  <POSTGRES_USER>postgres</POSTGRES_USER>
+                  <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
+                </env>
+                <ports>
+                  <port>${db.port}:5432</port>
+                  <port>+docker.host.address:${db.port}:5432</port>
+                </ports>
+                <wait>
+                  <log>(?s)ready to accept connections.*ready to accept connections</log>
+                  <time>90000</time>
+                </wait>
+              </run>
+            </image>
+          </images>
         </configuration>
         <executions>
           <execution>
@@ -289,6 +327,7 @@
             <phase>compile</phase>
             <goals>
               <goal>stop</goal>
+              <goal>remove</goal>
             </goals>
           </execution>
         </executions>
@@ -297,13 +336,14 @@
       <plugin>
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>
-        <version>4.0.0</version>
+        <version>4.2.2</version>
         <configuration>
           <changeLogFile>src/main/resources/liquibase/tenant/changelog.xml</changeLogFile>
           <driver>org.postgresql.Driver</driver>
-          <url>jdbc:postgresql://localhost:15432/postgres</url>
+          <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
           <username>postgres</username>
           <password>postgres</password>
+          <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
         </configuration>
         <dependencies>
           <dependency>
@@ -356,7 +396,7 @@
         <configuration>
           <jdbc>
             <driver>org.postgresql.Driver</driver>
-            <url>jdbc:postgresql://localhost:15432/postgres</url>
+            <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
             <user>postgres</user>
             <password>postgres</password>
           </jdbc>
@@ -415,12 +455,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.9.5</version>
+            <version>1.9.6</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.9.5</version>
+            <version>1.9.6</version>
           </dependency>
         </dependencies>
       </plugin>

@@ -5,10 +5,12 @@ import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -17,6 +19,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 
 public abstract class AbstractLBServiceTest {
+
+  private static PostgreSQLContainer<?> postgresSQLContainer;
 
   static final String TENANT_ID = "diku";
 
@@ -29,11 +33,17 @@ public abstract class AbstractLBServiceTest {
     Async async = context.async();
     vertx = Vertx.vertx();
 
-    PostgresClient.setIsEmbedded(true);
+    String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
+    postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
+    postgresSQLContainer.start();
 
-    PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-
-    postgresClientFactory = new PostgresClientFactory(vertx);
+    Envs.setEnv(
+      postgresSQLContainer.getHost(),
+      postgresSQLContainer.getFirstMappedPort(),
+      postgresSQLContainer.getUsername(),
+      postgresSQLContainer.getPassword(),
+      postgresSQLContainer.getDatabaseName()
+    );
 
     int port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
@@ -43,6 +53,7 @@ public abstract class AbstractLBServiceTest {
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, deployResponse -> {
       try {
         tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), postTenantResponse -> {
+          postgresClientFactory = new PostgresClientFactory(vertx);
           async.complete();
         });
       } catch (Exception e) {
@@ -56,7 +67,7 @@ public abstract class AbstractLBServiceTest {
     Async async = context.async();
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
-      PostgresClient.stopEmbeddedPostgres();
+      postgresSQLContainer.stop();
       async.complete();
     }));
   }

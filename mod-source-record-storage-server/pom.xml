@@ -15,6 +15,7 @@
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.18</postgres.version>
+    <postgres.image>postgres:12-alpine</postgres.image>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
 
@@ -39,6 +40,12 @@
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>1.15.1</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -181,6 +188,18 @@
               </sources>
             </configuration>
           </execution>
+          <execution>
+            <id>reserve-db-port</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <configuration>
+              <portNames>
+                <portName>db.port</portName>
+              </portNames>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
@@ -267,26 +286,6 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.10</version>
-        <executions>
-          <execution>
-            <id>reserve-db-port</id>
-            <phase>initialize</phase>
-            <goals>
-              <goal>reserve-network-port</goal>
-            </goals>
-            <configuration>
-              <portNames>
-                <portName>db.port</portName>
-              </portNames>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
         <version>0.34.1</version>
@@ -294,7 +293,7 @@
           <images>
             <image>
               <alias>db</alias>
-              <name>postgres:12-alpine</name>
+              <name>${postgres.image}</name>
               <run>
                 <privileged>true</privileged>
                 <containerNamePattern>%n-%t</containerNamePattern>

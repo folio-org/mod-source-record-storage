@@ -1,14 +1,6 @@
 package org.folio;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.io.FileUtils;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.SourceRecord;
+import static java.lang.String.format;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +11,18 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Record.RecordType;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
+
+import io.vertx.core.json.JsonObject;
 
 public class TestMocks {
 
@@ -62,6 +65,10 @@ public class TestMocks {
 
   public static Record getRecord(int index) {
     return records.get(index);
+  }
+
+  public static Record getEdifactRecord() {
+    return records.stream().filter(s -> s.getRecordType().equals(RecordType.EDIFACT)).findFirst().get();
   }
 
   public static List<ErrorRecord> getErrorRecords() {
@@ -118,7 +125,7 @@ public class TestMocks {
 
   private static List<SourceRecord> readSourceRecords() {
     File sourceRecordsDirectory = new File(SOURCE_RECORDS_FOLDER_PATH);
-    String[] extensions = new String[]{"json"};
+    String[] extensions = new String[]{ "json" };
     return FileUtils.listFiles(sourceRecordsDirectory, extensions, false).stream()
       .map(TestMocks::readSourceRecord)
       .filter(sr -> sr.isPresent())

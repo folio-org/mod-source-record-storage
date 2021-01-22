@@ -55,9 +55,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
+  private static final String SEVENTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
+
+  private static RawRecord rawEdifactRecord;
+  private static ParsedRecord parsedEdifactRecord;
 
   static {
     try {
@@ -65,6 +69,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      rawEdifactRecord = new RawRecord()
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      parsedEdifactRecord = new ParsedRecord()
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -80,6 +88,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_2 = new Snapshot()
+    .withJobExecutionId(UUID.randomUUID().toString())
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_3 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
@@ -144,6 +155,15 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid("12345"));
+  private static Record record_7 = new Record()
+    .withId(SEVENTH_UUID)
+    .withSnapshotId(snapshot_3.getJobExecutionId())
+    .withRecordType(Record.RecordType.EDIFACT)
+    .withRawRecord(rawEdifactRecord)
+    .withParsedRecord(parsedEdifactRecord)
+    .withMatchedId(SEVENTH_UUID)
+    .withOrder(0)
+    .withState(Record.State.ACTUAL);
 
   @Before
   public void setUp(TestContext context) {
@@ -157,10 +177,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSpecificSourceRecordOnGetByRecordId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  public void shouldReturnSpecificMarcSourceRecordOnGetByRecordId(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(testContext, record_1, record_3, record_7);
 
     Record createdRecord = RestAssured.given()
         .spec(spec)
@@ -174,6 +194,31 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordId=" + createdRecord.getId() + "&limit=1&offset=0")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnSpecificEdifactSourceRecordOnGetByRecordId(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+
+    postRecords(testContext, record_1, record_3);
+
+    Record createdRecord = RestAssured.given()
+        .spec(spec)
+        .body(record_7)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .body().as(Record.class);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordType=EDIFACT&recordId=" + createdRecord.getId() + "&limit=1&offset=0")
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))

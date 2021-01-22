@@ -278,7 +278,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveEdifactRecord(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(8);
+    Record expected = TestMocks.getEdifactRecord();
     recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -401,7 +401,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateEdifactRecord(TestContext context) {
     Async async = context.async();
-    Record original = TestMocks.getRecord(8);
+    Record original = TestMocks.getEdifactRecord();
     recordDao.saveRecord(original, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());

@@ -59,7 +59,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
   }
 
   @Before

@@ -22,6 +22,9 @@ public abstract class AbstractLBServiceTest {
 
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
+  static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
+  static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
+
   static final String TENANT_ID = "diku";
 
   static PostgresClientFactory postgresClientFactory;

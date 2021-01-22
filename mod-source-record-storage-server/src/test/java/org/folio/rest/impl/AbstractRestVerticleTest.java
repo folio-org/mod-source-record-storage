@@ -41,23 +41,28 @@ public abstract class AbstractRestVerticleTest {
 
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
+  private static String useExternalDatabase;
+  private static int okapiPort;
+
   static final String TENANT_ID = "diku";
 
   static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/source-records";
 
-  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  static final String RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEDIFACTRecord.sample";
-  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
+  static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
+  static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
+
+  static final String RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEdifactRecordContent.sample";
+  static final String PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEdifactRecordContent.sample";
+
   static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
 
   static Vertx vertx;
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
 
-  private static String useExternalDatabase;
-  private static int okapiPort;
+  
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(

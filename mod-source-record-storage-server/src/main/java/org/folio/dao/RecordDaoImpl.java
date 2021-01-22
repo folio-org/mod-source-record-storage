@@ -469,6 +469,7 @@ public class RecordDaoImpl implements RecordDao {
       .map(Optional::get)
       .compose(persistedRecord -> {
         persistedRecord.withExternalIdsHolder(record.getExternalIdsHolder())
+          .withAdditionalInfo(record.getAdditionalInfo())
           .withMetadata(record.getMetadata());
         return RecordDaoUtil.update(txQE, persistedRecord)
           .map(update -> true);

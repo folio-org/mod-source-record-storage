@@ -144,9 +144,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("records.size()", is(10))
+      .body("records.size()", is(expected.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(expected.size()));
     async.complete();
   }
 
@@ -285,9 +285,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("records.size()", is(10))
+      .body("records.size()", is(original.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(original.size()));
     async.complete();
 
     async = testContext.async();
@@ -304,9 +304,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .put(SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("parsedRecords.size()", is(10))
+      .body("parsedRecords.size()", is(updated.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(updated.size()));
     async.complete();
   }
 

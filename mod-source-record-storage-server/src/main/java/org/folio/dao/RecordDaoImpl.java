@@ -28,7 +28,6 @@ import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang.ArrayUtils;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
@@ -453,15 +452,15 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
-      String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+      // attempt to format record to validate
+      RecordDaoUtil.formatRecord(record);
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {
           record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
           return parsedRecord;
         });
     } catch (Exception e) {
-      LOG.error("Couldn't format MARC record", e);
+      LOG.error("Couldn't format {} record", e, record.getRecordType());
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())

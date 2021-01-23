@@ -767,7 +767,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetFormattedRecord(TestContext context) {
+  public void shouldGetFormattedMarcRecord(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getRecord(0);
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
@@ -775,6 +775,25 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertNotNull(get.result().getParsedRecord());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetFormattedEdifactRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getEdifactRecord();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getFormattedRecord(expected.getId(), ExternalIdType.RECORD, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

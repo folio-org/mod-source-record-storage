@@ -153,6 +153,38 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Format record content if has record type and content.
+   * 
+   * NOTE: MARC formats parsed record and EDIFACT formats raw record.
+   * 
+   * @param record record
+   * @return record
+   * @throws Exception
+   */
+  public static Record formatRecord(Record record) throws Exception {
+    String content;
+    if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())) {
+      switch (record.getRecordType()) {
+        case EDIFACT:
+          if (Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
+            content = record.getRawRecord().getContent();
+            record.getParsedRecord().setFormattedContent(content.replaceAll("'", "'/n"));
+          }
+          break;
+        case MARC:
+          if (Objects.nonNull(record.getParsedRecord().getContent())) {
+            content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+            record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    return record;
+  }
+
+  /**
    * Convert database query result {@link Row} to {@link SourceRecord}
    *
    * @param row query result row

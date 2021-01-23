@@ -17,8 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.MarcUtil;
-import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -185,7 +184,7 @@ public class RecordServiceImpl implements RecordService {
   public Future<Record> getFormattedRecord(String id, ExternalIdType externalIdType, String tenantId) {
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
-        new NotFoundException(format("Couldn't find Record with %s id %s", externalIdType, id)))));
+        new NotFoundException(format("Couldn't find record with id type %s and id %s", externalIdType, id)))));
   }
 
   @Override
@@ -245,10 +244,9 @@ public class RecordServiceImpl implements RecordService {
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
-    } catch (IOException e) {
-      LOG.error("Couldn't format MARC record", e);
+      RecordDaoUtil.formatRecord(record);
+    } catch (Exception e) {
+      LOG.error("Couldn't format {} record", e, record.getRecordType());
     }
     return record;
   }

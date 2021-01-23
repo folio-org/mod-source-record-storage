@@ -1,6 +1,7 @@
 {
   "segments": [
     {
+      "tag": "UNA",
       "dataElements": [
         {
           "components": [
@@ -9,15 +10,15 @@
             }
           ]
         }
-      ],
-      "tag": "UNA"
+      ]
     },
     {
+      "tag": "UNB",
       "dataElements": [
         {
           "components": [
             {
-              "data": "UNOC"
+              "data": "UNOA"
             },
             {
               "data": "2"
@@ -27,49 +28,43 @@
         {
           "components": [
             {
-              "data": "1694510"
-            },
-            {
-              "data": "31B"
+              "data": "FHPEDAL"
             }
           ]
         },
         {
           "components": [
             {
-              "data": "3640086"
-            },
-            {
-              "data": "31B"
+              "data": "HUBERGMBH"
             }
           ]
         },
         {
           "components": [
             {
-              "data": "130920"
+              "data": "990802"
             },
             {
-              "data": "1943"
+              "data": "1557"
             }
           ]
         },
         {
           "components": [
             {
-              "data": "10"
+              "data": "9908021557"
             }
           ]
         }
-      ],
-      "tag": "UNB"
+      ]
     },
     {
+      "tag": "UNH",
       "dataElements": [
         {
           "components": [
             {
-              "data": "30"
+              "data": "INVOIC0001"
             }
           ]
         },
@@ -82,20 +77,17 @@
               "data": "D"
             },
             {
-              "data": "96A"
+              "data": "93A"
             },
             {
               "data": "UN"
-            },
-            {
-              "data": "EAN008"
             }
           ]
         }
-      ],
-      "tag": "UNH"
+      ]
     },
     {
+      "tag": "BGM",
       "dataElements": [
         {
           "components": [
@@ -107,55 +99,77 @@
         {
           "components": [
             {
-              "data": "475463"
+              "data": "9908001"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "9"
             }
           ]
         }
-      ],
-      "tag": "BGM"
+      ]
     },
     {
+      "tag": "DTM",
       "dataElements": [
         {
           "components": [
             {
-              "data": "137"
+              "data": "3"
             },
             {
-              "data": "20130919"
+              "data": "19990802"
             },
             {
               "data": "102"
             }
           ]
         }
-      ],
-      "tag": "DTM"
+      ]
     },
     {
+      "tag": "RFF",
       "dataElements": [
         {
           "components": [
             {
-              "data": "2"
+              "data": "ON"
             },
             {
-              "data": "USD"
-            },
+              "data": "O0010001"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DTM",
+      "dataElements": [
+        {
+          "components": [
             {
               "data": "4"
+            },
+            {
+              "data": "19999715"
+            },
+            {
+              "data": "102"
             }
           ]
         }
-      ],
-      "tag": "CUX"
+      ]
     },
     {
+      "tag": "NAD",
       "dataElements": [
         {
           "components": [
             {
-              "data": "C"
+              "data": "SE"
             }
           ]
         },
@@ -169,7 +183,7 @@
         {
           "components": [
             {
-              "data": ""
+              "data": "Fahrradhandel Pedal"
             }
           ]
         },
@@ -183,38 +197,96 @@
         {
           "components": [
             {
-              "data": "TX"
-            },
+              "data": "Wagingerstr. 5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "München"
+            }
+          ]
+        },
+        {
+          "components": [
             {
               "data": ""
-            },
+            }
+          ]
+        },
+        {
+          "components": [
             {
-              "data": "28"
-            },
-            {
-              "data": "TAX"
+              "data": "81549"
             }
           ]
         }
-      ],
-      "tag": "ALC"
+      ]
     },
     {
+      "tag": "NAD",
       "dataElements": [
         {
           "components": [
             {
-              "data": "8"
-            },
+              "data": "BY"
+            }
+          ]
+        },
+        {
+          "components": [
             {
-              "data": "69.09"
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "Huber GmbH"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "Obstgasse 2"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "München"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "81549"
             }
           ]
         }
-      ],
-      "tag": "MOA"
+      ]
     },
     {
+      "tag": "LIN",
       "dataElements": [
         {
           "components": [
@@ -233,29 +305,19 @@
         {
           "components": [
             {
-              "data": "9780199588459"
-            },
-            {
-              "data": "EN"
+              "data": "4711.001"
             }
           ]
         }
-      ],
-      "tag": "LIN"
+      ]
     },
     {
+      "tag": "IMD",
       "dataElements": [
         {
           "components": [
             {
-              "data": "L"
-            }
-          ]
-        },
-        {
-          "components": [
-            {
-              "data": "050"
+              "data": "F"
             }
           ]
         },
@@ -263,7 +325,11 @@
           "components": [
             {
               "data": ""
-            },
+            }
+          ]
+        },
+        {
+          "components": [
             {
               "data": ""
             },
@@ -271,84 +337,17 @@
               "data": ""
             },
             {
-              "data": "BLACK MARKET BRITAIN, 1939-1955."
+              "data": ""
+            },
+            {
+              "data": "Fahrrad, Damen"
             }
           ]
         }
-      ],
-      "tag": "IMD"
+      ]
     },
     {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "L"
-            }
-          ]
-        },
-        {
-          "components": [
-            {
-              "data": "010"
-            }
-          ]
-        },
-        {
-          "components": [
-            {
-              "data": ""
-            },
-            {
-              "data": ""
-            },
-            {
-              "data": ""
-            },
-            {
-              "data": "ROODHOUSE, MARK"
-            }
-          ]
-        }
-      ],
-      "tag": "IMD"
-    },
-    {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "L"
-            }
-          ]
-        },
-        {
-          "components": [
-            {
-              "data": "110"
-            }
-          ]
-        },
-        {
-          "components": [
-            {
-              "data": ""
-            },
-            {
-              "data": ""
-            },
-            {
-              "data": ""
-            },
-            {
-              "data": "OXFORD"
-            }
-          ]
-        }
-      ],
-      "tag": "IMD"
-    },
-    {
+      "tag": "QTY",
       "dataElements": [
         {
           "components": [
@@ -357,43 +356,31 @@
             },
             {
               "data": "1"
+            },
+            {
+              "data": "PCE"
             }
           ]
         }
-      ],
-      "tag": "QTY"
+      ]
     },
     {
+      "tag": "MOA",
       "dataElements": [
         {
           "components": [
             {
-              "data": "203"
+              "data": "66"
             },
             {
-              "data": "103.13"
+              "data": "750"
             }
           ]
         }
-      ],
-      "tag": "MOA"
+      ]
     },
     {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "AAB"
-            },
-            {
-              "data": "125"
-            }
-          ]
-        }
-      ],
-      "tag": "PRI"
-    },
-    {
+      "tag": "PRI",
       "dataElements": [
         {
           "components": [
@@ -401,44 +388,232 @@
               "data": "AAA"
             },
             {
-              "data": "103.13"
+              "data": "750"
             }
           ]
         }
-      ],
-      "tag": "PRI"
+      ]
     },
     {
+      "tag": "LIN",
       "dataElements": [
         {
           "components": [
             {
-              "data": "LI"
-            },
+              "data": "2"
+            }
+          ]
+        },
+        {
+          "components": [
             {
-              "data": "POL-17653"
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "4711.002"
             }
           ]
         }
-      ],
-      "tag": "RFF"
+      ]
     },
     {
+      "tag": "IMD",
       "dataElements": [
         {
           "components": [
             {
-              "data": "SLI"
+              "data": "F"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
             },
             {
-              "data": "99954761992"
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "Luftpumpe, Stand-"
             }
           ]
         }
-      ],
-      "tag": "RFF"
+      ]
     },
     {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            },
+            {
+              "data": "PCE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "66"
+            },
+            {
+              "data": "19,9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "19,9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "3"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "4711.003"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "F"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "Ersatzventil"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "3"
+            },
+            {
+              "data": "PCE"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "66"
+            },
+            {
+              "data": "7,5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "2,5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNS",
       "dataElements": [
         {
           "components": [
@@ -447,55 +622,10 @@
             }
           ]
         }
-      ],
-      "tag": "UNS"
+      ]
     },
     {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "1"
-            },
-            {
-              "data": "19"
-            }
-          ]
-        }
-      ],
-      "tag": "CNT"
-    },
-    {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "2"
-            },
-            {
-              "data": "19"
-            }
-          ]
-        }
-      ],
-      "tag": "CNT"
-    },
-    {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "9"
-            },
-            {
-              "data": "1818.28"
-            }
-          ]
-        }
-      ],
-      "tag": "MOA"
-    },
-    {
+      "tag": "MOA",
       "dataElements": [
         {
           "components": [
@@ -503,50 +633,135 @@
               "data": "79"
             },
             {
-              "data": "1818.28"
+              "data": "777,4"
             }
           ]
         }
-      ],
-      "tag": "MOA"
+      ]
     },
     {
+      "tag": "MOA",
       "dataElements": [
         {
           "components": [
             {
-              "data": "217"
+              "data": "124"
+            },
+            {
+              "data": "124,38"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "128"
+            },
+            {
+              "data": "901,78"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "TAX",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "7"
             }
           ]
         },
         {
           "components": [
             {
-              "data": "33"
-            }
-          ]
-        }
-      ],
-      "tag": "UNT"
-    },
-    {
-      "dataElements": [
-        {
-          "components": [
-            {
-              "data": "4"
+              "data": "VAT"
             }
           ]
         },
         {
           "components": [
             {
-              "data": "10"
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "16"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "S"
             }
           ]
         }
-      ],
-      "tag": "UNZ"
+      ]
+    },
+    {
+      "tag": "UNT",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "28"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "INVOIC0001"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNZ",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "9908021557"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

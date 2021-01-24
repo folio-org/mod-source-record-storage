@@ -262,7 +262,6 @@ public class RecordDaoImpl implements RecordDao {
               .withDescription(e.getMessage())
               .withContent(content);
             errorMessages.add(String.format("record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
-            dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(errorRecord));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)
               .withLeaderRecordStatus(null);

@@ -958,8 +958,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getErrorRecord())) {
-      System.out.println("\n\n\nexpected: " + expected.getErrorRecord() + "\n\n\n");
-      System.out.println("\n\n\nactual: " + actual.getErrorRecord() + "\n\n\n");
       compareErrorRecords(context, expected.getErrorRecord(), actual.getErrorRecord());
     } else {
       context.assertNull(actual.getErrorRecord());

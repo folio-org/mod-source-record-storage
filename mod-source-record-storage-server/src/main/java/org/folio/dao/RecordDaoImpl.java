@@ -341,10 +341,6 @@ public class RecordDaoImpl implements RecordDao {
             .execute();
         }
 
-        System.out.println("\n\n");
-        errorMessages.stream().forEach(System.out::println);
-        System.out.println("\n\n");
-
         promise.complete(new RecordsBatchResponse()
           .withRecords(recordCollection.getRecords())
           .withTotalRecords(recordCollection.getRecords().size())

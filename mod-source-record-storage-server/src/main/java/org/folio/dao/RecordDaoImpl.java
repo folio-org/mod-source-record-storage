@@ -8,19 +8,20 @@ import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -212,47 +213,42 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
     Promise<RecordsBatchResponse> promise = Promise.promise();
 
-    if (recordCollection.getRecords().isEmpty()) {
-      promise.complete(new RecordsBatchResponse().withTotalRecords(0));
-    }
-
-    String recordTypeName = recordCollection.getRecords().get(0).getRecordType().name();
-    RecordType recordType = toRecordType(recordTypeName);
-
-    String snapshotId = recordCollection.getRecords().get(0).getSnapshotId();
-
-    // validate snapshot
+    List<String> snapshotIds = new ArrayList<>();
 
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-    List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+
+    Map<RecordType, List<Record2<UUID, JSONB>>> dbParsedRecords = new HashMap<>();
+
     List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
     List<String> errorMessages = new ArrayList<>();
 
-    List<Record> records = recordCollection.getRecords()
+    Map<RecordType, Table<org.jooq.Record>> parsedRecordTables = new HashMap<>();
+
+    recordCollection.getRecords()
       .stream()
-      // .filter(record -> {
-      //   boolean validSnapshot = record.getSnapshotId().equals(snapshotId);
-      //   errorMessages.add(String.format("record %s has invalid snapshot id %s; expected %s",
-      //     record.getId(), record.getSnapshotId(), snapshotId));
-      //   return validSnapshot;
-      // })
-      // .filter(record -> {
-      //   boolean validRecordType = record.getRecordType().name().equals(recordTypeName);
-      //   errorMessages.add(String.format("record %s has invalid record type %s; expected %s",
-      //     record.getId(), record.getRecordType().name(), recordTypeName));
-      //   return validRecordType;
-      // })
       .map(RecordDaoUtil::ensureRecordHasId)
       .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
       .map(RecordDaoUtil::ensureRecordForeignKeys)
-      .peek(record -> {
+      .forEach(record -> {
+        // collect snapshot ids to validate them
+        if (!snapshotIds.contains(record.getSnapshotId())) {
+          snapshotIds.add(record.getSnapshotId());
+        }
         // if record has parsed record, validate by attempting format
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
             RecordDaoUtil.formatRecord(record);
-            dbParsedRecords.add(ParsedRecordDaoUtil.toDatabaseRecord2(record.getParsedRecord(), recordType));
+            RecordType recordType = toRecordType(record.getRecordType().name());
+            Record2<UUID, JSONB> dbParsedRecord = ParsedRecordDaoUtil.toDatabaseRecord2(record.getParsedRecord(), recordType);
+            List<Record2<UUID, JSONB>> currentDbParsedRecords = dbParsedRecords.get(recordType);
+            if (Objects.isNull(currentDbParsedRecords)) {
+              currentDbParsedRecords = new ArrayList<>();
+              dbParsedRecords.put(recordType, currentDbParsedRecords);
+              parsedRecordTables.put(recordType, table(name(recordType.getTableName())));
+            }
+            currentDbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record
             Object content = Objects.nonNull(record.getParsedRecord())
@@ -273,9 +269,8 @@ public class RecordDaoImpl implements RecordDao {
           dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
         }
         dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
-    }).collect(Collectors.toList());
+    });
 
-    Table<org.jooq.Record> prt = table(name(recordType.getTableName()));
     Field<UUID> prtId = field(name(ID), UUID.class);
     Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
 
@@ -312,19 +307,25 @@ public class RecordDaoImpl implements RecordDao {
           // find record, detach raw record and add/update error
         });
 
-        Loader<org.jooq.Record> parsedRecordsLoader = DSL.using(ctx)
-          .loadInto(prt)
-          .onDuplicateKeyError()
-          .onErrorIgnore()
-          .batchAll()
-          .commitNone()
-          .loadRecords(dbParsedRecords)
-          .fields(prtId, prtContent)
-          .execute();
+        for (Map.Entry<RecordType, Table<org.jooq.Record>> entry : parsedRecordTables.entrySet()) {
+          RecordType recordType = entry.getKey();
+          Table<org.jooq.Record> prt = entry.getValue();
+          List<Record2<UUID, JSONB>> currentDbParsedRecords = dbParsedRecords.get(recordType);
 
-        parsedRecordsLoader.errors().forEach(error -> {
-          // find record, detach parsed record and add/update error
-        });
+          Loader<org.jooq.Record> parsedRecordsLoader = DSL.using(ctx)
+            .loadInto(prt)
+            .onDuplicateKeyError()
+            .onErrorIgnore()
+            .batchAll()
+            .commitNone()
+            .loadRecords(currentDbParsedRecords)
+            .fields(prtId, prtContent)
+            .execute();
+
+          parsedRecordsLoader.errors().forEach(error -> {
+            // find record, detach parsed record and add/update error
+          });
+        }
 
         if (!dbErrorRecords.isEmpty()) {
           DSL.using(ctx)
@@ -339,8 +340,8 @@ public class RecordDaoImpl implements RecordDao {
         }
 
         promise.complete(new RecordsBatchResponse()
-          .withRecords(records)
-          .withTotalRecords(records.size())
+          .withRecords(recordCollection.getRecords())
+          .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
     } catch (SQLException e) {

@@ -106,6 +106,11 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<RecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new RecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
     return recordDao.saveRecords(recordCollection, tenantId);
   }
 

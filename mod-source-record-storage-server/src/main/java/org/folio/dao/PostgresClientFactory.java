@@ -1,5 +1,7 @@
 package org.folio.dao;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +16,8 @@ import org.folio.rest.tools.utils.Envs;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
+import org.postgresql.PGProperty;
+import org.postgresql.ds.PGPoolingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -47,6 +51,8 @@ public class PostgresClientFactory {
   private static final int POOL_SIZE = 5;
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
+
+  private static final Map<String, PGPoolingDataSource> DATA_SOURCE_CACHE = new HashMap<>();
 
   private static JsonObject postgresConfig;
 
@@ -90,10 +96,21 @@ public class PostgresClientFactory {
    * Get {@link PgPool}
    *
    * @param tenantId tenant id
-   * @return
+   * @return pooled database client
    */
   public PgPool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
+  }
+
+  /**
+   * Get database {@link Connection}
+   *
+   * @param tenantId tenant id
+   * @return pooled database connection
+   * @throws SQLException
+   */
+  public Connection getConnection(String tenantId) throws SQLException {
+    return getDataSource(tenantId).getConnection();
   }
 
   /**
@@ -166,6 +183,26 @@ public class PostgresClientFactory {
       .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
       .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
+  }
+
+  public static PGPoolingDataSource getDataSource(String tenantId) {
+    if (DATA_SOURCE_CACHE.containsKey(tenantId)) {
+      LOG.debug("Using existing data source for tenant {}", tenantId);
+      return DATA_SOURCE_CACHE.get(tenantId);
+    }
+    LOG.info("Creating new data source for tenant {}", tenantId);
+    PGPoolingDataSource source = new PGPoolingDataSource();
+    source.setDataSourceName(String.format("%s-data-source", tenantId));
+    source.setMaxConnections(POOL_SIZE);
+    source.setServerName(postgresConfig.getString(HOST));
+    source.setPortNumber(postgresConfig.getInteger(PORT, 5432));
+    source.setDatabaseName(postgresConfig.getString(DATABASE));
+    source.setUser(postgresConfig.getString(USERNAME));
+    source.setPassword(postgresConfig.getString(PASSWORD));
+    source.setConnectTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000));
+    source.setProperty(PGProperty.CURRENT_SCHEMA, convertToPsqlStandard(tenantId));
+    DATA_SOURCE_CACHE.put(tenantId, source);
+    return source;
   }
 
   // using RMB convention driven tenant to schema name

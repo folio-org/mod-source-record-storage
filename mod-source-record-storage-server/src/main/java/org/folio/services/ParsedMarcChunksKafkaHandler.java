@@ -85,6 +85,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
   private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber) {
     Event event;
+    LOGGER.info("RecordsBatchResponse: {}", Json.encode(recordsBatchResponse));
     try {
       event = new Event()
         .withId(UUID.randomUUID().toString())
@@ -95,7 +96,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
           .withEventTTL(1)
           .withPublishedBy(PubSubClientUtils.constructModuleName()));
     } catch (IOException e) {
-      LOGGER.error("Error constracting event payload", e);
+      LOGGER.error("Error constructing event payload", e);
       return Future.failedFuture(e);
     }
 
@@ -103,6 +104,8 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED.value());
+
+    LOGGER.info("Sending event {}", Json.encode(event));
 
     KafkaProducerRecord<String, String> record =
       KafkaProducerRecord.create(topicName, key, Json.encode(event));

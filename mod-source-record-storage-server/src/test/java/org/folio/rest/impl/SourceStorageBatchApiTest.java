@@ -137,8 +137,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldPostSourceStorageBatchRecords(TestContext testContext) {
     Async async = testContext.async();
-    List<Record> expected = TestMocks.getRecords()
-      .stream()
+    List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -161,8 +160,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   public void shouldFailWithSnapshotNotFoundException(TestContext testContext) {
     Async async = testContext.async();
     String snapshotId = "c698cfde-14e1-4edf-8b54-d9d43895571e";
-    List<Record> expected = TestMocks.getRecords()
-      .stream()
+    List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
       .map(record -> record.withSnapshotId(snapshotId))
       .collect(Collectors.toList());
@@ -174,7 +172,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body(recordCollection)
       .when()
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
-      .then().log().all()
+      .then()
       .statusCode(HttpStatus.SC_NOT_FOUND)
       .body(is(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId)));
     async.complete();
@@ -186,28 +184,36 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.NEW);
-    SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), snapshot).onComplete(save -> {
-      if (save.failed()) {
-        testContext.fail(save.cause());
-      }
-      List<Record> expected = TestMocks.getRecords()
-        .stream()
-        .filter(record -> record.getRecordType().equals(RecordType.MARC))
-        .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
-        .collect(Collectors.toList());
-      RecordCollection recordCollection = new RecordCollection()
-        .withRecords(expected)
-        .withTotalRecords(expected.size());
-      RestAssured.given()
-        .spec(spec)
-        .body(recordCollection)
-        .when()
-        .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
-        .then().log().all()
-        .statusCode(HttpStatus.SC_BAD_REQUEST)
-        .body(is(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
-      async.complete();
-    });
+
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot)
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("jobExecutionId", is(snapshot.getJobExecutionId()))
+      .body("status", is(snapshot.getStatus().name()));
+    
+    async.complete();
+    async = testContext.async();
+
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(is(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
+    async.complete();
   }
 
   @Test
@@ -334,8 +340,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldPutSourceStorageBatchParsedRecords(TestContext testContext) {
     Async async = testContext.async();
-    List<Record> original = TestMocks.getRecords()
-      .stream()
+    List<Record> original = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()

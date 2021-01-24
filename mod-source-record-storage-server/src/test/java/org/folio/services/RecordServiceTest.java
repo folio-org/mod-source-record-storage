@@ -13,6 +13,7 @@ import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -612,6 +613,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(batch.cause());
       }
       List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
       recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, false, TENANT_ID).onComplete(get -> {
@@ -666,6 +668,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(batch.cause());
       }
       List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
       recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, true, TENANT_ID).onComplete(get -> {
@@ -955,6 +958,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getErrorRecord())) {
+      System.out.println("\n\n\nexpected: " + expected.getErrorRecord() + "\n\n\n");
+      System.out.println("\n\n\nactual: " + actual.getErrorRecord() + "\n\n\n");
       compareErrorRecords(context, expected.getErrorRecord(), actual.getErrorRecord());
     } else {
       context.assertNull(actual.getErrorRecord());
@@ -1032,13 +1037,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareParsedRecords(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
+    context.assertEquals(ParsedRecordDaoUtil.normalizeContent(expected), ParsedRecordDaoUtil.normalizeContent(actual));
   }
 
   private void compareErrorRecords(TestContext context, ErrorRecord expected, ErrorRecord actual) {
     context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
+    context.assertEquals((String) expected.getContent(), (String) actual.getContent());
     context.assertEquals(expected.getDescription(), actual.getDescription());
   }
 

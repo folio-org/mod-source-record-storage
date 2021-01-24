@@ -236,6 +236,9 @@ public class RecordDaoImpl implements RecordDao {
         if (!snapshotIds.contains(record.getSnapshotId())) {
           snapshotIds.add(record.getSnapshotId());
         }
+        if (Objects.nonNull(record.getRawRecord())) {
+          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+        }
         // if record has parsed record, validate by attempting format
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
@@ -260,13 +263,13 @@ public class RecordDaoImpl implements RecordDao {
               .withContent(content);
             errorMessages.add(String.format("record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
             dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(errorRecord));
-            record.withErrorRecord(errorRecord);
-            record.withParsedRecord(null)
+            record.withErrorRecord(errorRecord)
+              .withParsedRecord(null)
               .withLeaderRecordStatus(null);
           }
         }
-        if (Objects.nonNull(record.getRawRecord())) {
-          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+        if (Objects.nonNull(record.getErrorRecord())) {
+          dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
         }
         dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
     });
@@ -338,6 +341,10 @@ public class RecordDaoImpl implements RecordDao {
             .fieldsFromSource()
             .execute();
         }
+
+        System.out.println("\n\n");
+        errorMessages.stream().forEach(System.out::println);
+        System.out.println("\n\n");
 
         promise.complete(new RecordsBatchResponse()
           .withRecords(recordCollection.getRecords())

@@ -14,7 +14,10 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -251,31 +254,70 @@ public class TestMocks {
       .withOrder(record.getOrder())
       .withGeneration(record.getGeneration())
       .withLeaderRecordStatus(record.getLeaderRecordStatus())
-      .withRawRecord(record.getRawRecord())
-      .withParsedRecord(record.getParsedRecord())
-      .withErrorRecord(record.getErrorRecord())
-      .withExternalIdsHolder(record.getExternalIdsHolder())
-      .withAdditionalInfo(record.getAdditionalInfo())
-      .withMetadata(record.getMetadata());
+      .withRawRecord(clone(record.getRawRecord()))
+      .withParsedRecord(clone(record.getParsedRecord()))
+      .withErrorRecord(clone(record.getErrorRecord()))
+      .withExternalIdsHolder(clone(record.getExternalIdsHolder()))
+      .withAdditionalInfo(clone(record.getAdditionalInfo()))
+      .withMetadata(clone(record.getMetadata()));
   }
 
   private static RawRecord clone(RawRecord rawRecord) {
-    return new RawRecord()
-      .withId(rawRecord.getId())
-      .withContent(rawRecord.getContent());
+    if (Objects.nonNull(rawRecord)) {
+      return new RawRecord()
+        .withId(rawRecord.getId())
+        .withContent(rawRecord.getContent());
+    }
+    return null;
   }
 
   private static ParsedRecord clone(ParsedRecord parsedRecord) {
-    return new ParsedRecord()
-      .withId(parsedRecord.getId())
-      .withContent(parsedRecord.getContent());
+    if (Objects.nonNull(parsedRecord)) {
+      return new ParsedRecord()
+        .withId(parsedRecord.getId())
+        .withContent(parsedRecord.getContent());
+    }
+    return null;
   }
 
   private static ErrorRecord clone(ErrorRecord errorRecord) {
-    return new ErrorRecord()
-      .withId(errorRecord.getId())
-      .withDescription(errorRecord.getDescription())
-      .withContent(errorRecord.getContent());
+    if (Objects.nonNull(errorRecord)) {
+      return new ErrorRecord()
+        .withId(errorRecord.getId())
+        .withDescription(errorRecord.getDescription())
+        .withContent(errorRecord.getContent());
+    }
+    return null;
+  }
+
+  private static ExternalIdsHolder clone(ExternalIdsHolder externalIdsHolder) {
+    if (Objects.nonNull(externalIdsHolder)) {
+      return new ExternalIdsHolder()
+        .withInstanceId(externalIdsHolder.getInstanceId())
+        .withInstanceHrid(externalIdsHolder.getInstanceHrid());
+    }
+    return null;
+  }
+
+  private static AdditionalInfo clone(AdditionalInfo additionalInfo) {
+    if (Objects.nonNull(additionalInfo)) {
+      return new AdditionalInfo()
+        .withSuppressDiscovery(additionalInfo.getSuppressDiscovery());
+    }
+    return null;
+  }
+
+  private static Metadata clone(Metadata metadata) {
+    if (Objects.nonNull(metadata)) {
+      return new Metadata()
+        .withCreatedByUserId(metadata.getCreatedByUserId())
+        .withCreatedByUsername(metadata.getCreatedByUsername())
+        .withCreatedDate(metadata.getCreatedDate())
+        .withUpdatedByUserId(metadata.getUpdatedByUserId())
+        .withUpdatedByUsername(metadata.getUpdatedByUsername())
+        .withUpdatedDate(metadata.getUpdatedDate());
+    }
+    return null;
   }
 
 }

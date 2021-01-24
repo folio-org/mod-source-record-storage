@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -51,6 +52,7 @@ import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
+import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -280,6 +282,21 @@ public class RecordDaoImpl implements RecordDao {
       DSLContext dsl = DSL.using(connection);
 
       dsl.transaction(ctx -> {
+
+        for (String snapshotId : snapshotIds) {
+          Optional<SnapshotsLbRecord> snapshot = dsl.selectFrom(SNAPSHOTS_LB)
+            .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshotId)))
+            .fetchOptional();
+          if (snapshot.isPresent()) {
+            if (Objects.isNull(snapshot.get().getProcessingStartedDate())) {
+              String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
+              String message = String.format(msgTemplate, snapshot.get().getStatus());
+              throw new BadRequestException(message);
+            }
+          } else {
+            throw new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId));
+          }
+        }
 
         Loader<RecordsLbRecord> recordsLoader = DSL.using(ctx)
           .loadInto(RECORDS_LB)

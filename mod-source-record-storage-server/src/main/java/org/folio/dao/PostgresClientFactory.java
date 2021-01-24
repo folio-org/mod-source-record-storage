@@ -100,7 +100,7 @@ public class PostgresClientFactory {
    * @param tenantId tenant id
    * @return pooled database client
    */
-  public PgPool getCachedPool(String tenantId) {
+  PgPool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
   }
 
@@ -111,7 +111,7 @@ public class PostgresClientFactory {
    * @return pooled database connection
    * @throws SQLException
    */
-  public Connection getConnection(String tenantId) throws SQLException {
+  Connection getConnection(String tenantId) throws SQLException {
     return getDataSource(tenantId).getConnection();
   }
 

@@ -2,6 +2,7 @@ package org.folio.dao.util;
 
 import static com.google.common.base.CaseFormat.LOWER_CAMEL;
 import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
+import static java.lang.String.format;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
@@ -148,7 +149,7 @@ public final class RecordDaoUtil {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();
           }
-          throw new NotFoundException(String.format("Record with id '%s' was not found", record.getId()));
+          throw new NotFoundException(format("Record with id '%s' was not found", record.getId()));
         });
   }
 
@@ -557,7 +558,7 @@ public final class RecordDaoUtil {
           return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0]))
             .sort(order.length > 1 ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
         } catch (Exception e) {
-          throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
+          throw new BadRequestException(format("Invalid order by %s", String.join(",", order)));
         }
       })
       .collect(Collectors.toList());
@@ -575,7 +576,7 @@ public final class RecordDaoUtil {
     try {
       return UUID.fromString(uuid);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Invalid UUID %s", uuid));
+      throw new BadRequestException(format("Invalid UUID %s", uuid));
     }
   }
 
@@ -587,7 +588,7 @@ public final class RecordDaoUtil {
     try {
       return RecordType.valueOf(type);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Unknown record type %s", type));
+      throw new BadRequestException(format("Unknown record type %s", type));
     }
   }
 
@@ -595,7 +596,7 @@ public final class RecordDaoUtil {
     try {
       return RecordState.valueOf(state);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Unknown record state %s", state));
+      throw new BadRequestException(format("Unknown record state %s", state));
     }
   }
 

@@ -1,5 +1,7 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -192,7 +194,7 @@ public class PostgresClientFactory {
     }
     LOG.info("Creating new data source for tenant {}", tenantId);
     PGPoolingDataSource source = new PGPoolingDataSource();
-    source.setDataSourceName(String.format("%s-data-source", tenantId));
+    source.setDataSourceName(format("%s-data-source", tenantId));
     source.setMaxConnections(POOL_SIZE);
     source.setServerName(postgresConfig.getString(HOST));
     source.setPortNumber(postgresConfig.getInteger(PORT, 5432));
@@ -207,7 +209,7 @@ public class PostgresClientFactory {
 
   // using RMB convention driven tenant to schema name
   private static String convertToPsqlStandard(String tenantId){
-    return String.format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
+    return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 
   private static void close(PgPool client) {

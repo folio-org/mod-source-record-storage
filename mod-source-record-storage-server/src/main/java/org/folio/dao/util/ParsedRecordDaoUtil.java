@@ -1,5 +1,6 @@
 package org.folio.dao.util;
 
+import static java.lang.String.format;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -105,7 +106,7 @@ public final class ParsedRecordDaoUtil {
           return parsedRecord
             .withContent(content.getMap());
         }
-        String message = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+        String message = format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
         throw new NotFoundException(message);
       });
   }

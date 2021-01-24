@@ -1,11 +1,14 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,10 +30,10 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -152,6 +155,59 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("errorMessages.size()", is(0))
       .body("totalRecords", is(expected.size()));
     async.complete();
+  }
+
+  @Test
+  public void shouldFailWithSnapshotNotFoundException(TestContext testContext) {
+    Async async = testContext.async();
+    String snapshotId = "c698cfde-14e1-4edf-8b54-d9d43895571e";
+    List<Record> expected = TestMocks.getRecords()
+      .stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(snapshotId))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+      .body(is(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId)));
+    async.complete();
+  }
+
+  @Test
+  public void shouldFailWithInvalidSnapshotStatusBadRequest(TestContext testContext) {
+    Async async = testContext.async();
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.NEW);
+    SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), snapshot).onComplete(save -> {
+      if (save.failed()) {
+        testContext.fail(save.cause());
+      }
+      List<Record> expected = TestMocks.getRecords()
+        .stream()
+        .filter(record -> record.getRecordType().equals(RecordType.MARC))
+        .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
+        .collect(Collectors.toList());
+      RecordCollection recordCollection = new RecordCollection()
+        .withRecords(expected)
+        .withTotalRecords(expected.size());
+      RestAssured.given()
+        .spec(spec)
+        .body(recordCollection)
+        .when()
+        .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+        .then().log().all()
+        .statusCode(HttpStatus.SC_BAD_REQUEST)
+        .body(is(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
+      async.complete();
+    });
   }
 
   @Test

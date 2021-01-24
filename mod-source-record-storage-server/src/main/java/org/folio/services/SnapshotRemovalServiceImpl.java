@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import static java.lang.String.format;
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 
@@ -87,7 +88,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
   private Future<Boolean> deleteInstanceById(String id, OkapiConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
-    String instacesUrl = String.format(INVENTORY_INSTANCES_PATH, id);
+    String instacesUrl = format(INVENTORY_INSTANCES_PATH, id);
 
     RestUtil.doRequest(params, instacesUrl, HttpMethod.DELETE, null)
       .onComplete(responseAr -> {

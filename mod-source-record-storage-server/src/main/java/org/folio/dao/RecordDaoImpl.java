@@ -1,9 +1,12 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
@@ -263,7 +266,7 @@ public class RecordDaoImpl implements RecordDao {
               .withId(record.getId())
               .withDescription(e.getMessage())
               .withContent(content);
-            errorMessages.add(String.format("record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
+            errorMessages.add(format("record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)
               .withLeaderRecordStatus(null);
@@ -289,12 +292,10 @@ public class RecordDaoImpl implements RecordDao {
             .fetchOptional();
           if (snapshot.isPresent()) {
             if (Objects.isNull(snapshot.get().getProcessingStartedDate())) {
-              String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-              String message = String.format(msgTemplate, snapshot.get().getStatus());
-              throw new BadRequestException(message);
+              throw new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.get().getStatus()));
             }
           } else {
-            throw new NotFoundException(String.format("Couldn't find snapshot with id %s", snapshotId));
+            throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId));
           }
         }
 
@@ -376,7 +377,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
         .map(r -> saveRecord(txQE, record))
-        .orElse(Future.failedFuture(new NotFoundException(String.format("Record with id '%s' was not found", record.getId()))))));
+        .orElse(Future.failedFuture(new NotFoundException(format("Record with id '%s' was not found", record.getId()))))));
   }
 
   @Override
@@ -506,7 +507,7 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::toOptionalRecord)
         .compose(optionalRecord -> optionalRecord
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-          .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, externalId)))))
+          .orElse(Future.failedFuture(new NotFoundException(format("Record with %s id: %s was not found", externalIdType, externalId)))))
         .onFailure(v -> txQE.rollback());
   }
 
@@ -520,7 +521,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, id))))))
+      .orElse(Future.failedFuture(new NotFoundException(format("Record with %s id: %s was not found", externalIdType, id))))))
         .map(u -> true);
   }
 
@@ -657,7 +658,7 @@ public class RecordDaoImpl implements RecordDao {
         if (optionalRecord.isPresent()) {
           return optionalRecord;
         }
-        String rollBackMessage = String.format("Record with id %s was not found", record.getId());
+        String rollBackMessage = format("Record with id %s was not found", record.getId());
         throw new NotFoundException(rollBackMessage);
       })
       .map(Optional::get)

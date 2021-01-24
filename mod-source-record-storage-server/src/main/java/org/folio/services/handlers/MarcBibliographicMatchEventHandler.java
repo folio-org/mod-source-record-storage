@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
@@ -113,7 +114,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
           }
         });
     } else {
-      constructError(dataImportEventPayload, String.format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
+      constructError(dataImportEventPayload, format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
       future.complete(dataImportEventPayload);
     }
     return future;

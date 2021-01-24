@@ -4,6 +4,8 @@ import static java.lang.String.format;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 
 import java.util.Collection;
 import java.util.List;
@@ -77,12 +79,10 @@ public class RecordServiceImpl implements RecordService {
     ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
-        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+        .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
       .compose(snapshot -> {
         if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-          String message = String.format(msgTemplate, snapshot.getStatus());
-          return Future.failedFuture(new BadRequestException(message));
+          return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
         }
         return Future.succeededFuture();
       })
@@ -202,7 +202,7 @@ public class RecordServiceImpl implements RecordService {
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
+          format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
   }
 
   private Record validateParsedRecordId(Record record) {

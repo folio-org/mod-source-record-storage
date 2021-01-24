@@ -10,10 +10,15 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
 import org.jooq.Field;
+import org.jooq.JSONB;
+import org.jooq.Record2;
 import org.jooq.impl.SQLDataType;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -178,6 +183,54 @@ public final class ParsedRecordDaoUtil {
       }
     }
     return null;
+  }
+
+  /**
+   * Convert {@link ParsedRecord} to database record {@link MarcRecordsLbRecord}
+   * 
+   * @param parsedRecord parsed record
+   * @return MarcRecordsLbRecord
+   */
+  public static MarcRecordsLbRecord toDatabaseMarcRecord(ParsedRecord parsedRecord) {
+    MarcRecordsLbRecord dbRecord = new MarcRecordsLbRecord();
+    if (StringUtils.isNotEmpty(parsedRecord.getId())) {
+      dbRecord.setId(UUID.fromString(parsedRecord.getId()));
+    }
+    JsonObject jsonContent = normalize(parsedRecord.getContent());
+    dbRecord.setContent(JSONB.valueOf(jsonContent.encode()));
+    return dbRecord;
+  }
+
+  /**
+   * Convert {@link ParsedRecord} to database record {@link EdifactRecordsLbRecord}
+   * 
+   * @param parsedRecord parsed record
+   * @return EdifactRecordsLbRecord
+   */
+  public static EdifactRecordsLbRecord toDatabaseEdifactRecord(ParsedRecord parsedRecord) {
+    EdifactRecordsLbRecord dbRecord = new EdifactRecordsLbRecord();
+    if (StringUtils.isNotEmpty(parsedRecord.getId())) {
+      dbRecord.setId(UUID.fromString(parsedRecord.getId()));
+    }
+    JsonObject jsonContent = normalize(parsedRecord.getContent());
+    dbRecord.setContent(JSONB.valueOf(jsonContent.encode()));
+    return dbRecord;
+  }
+
+  /**
+   * Convert {@link ParsedRecord} to database record {@link Record2}
+   * 
+   * @param parsedRecord parsed record
+   * @return Record2
+   */
+  public static Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord, RecordType recordType) {
+    switch (recordType) {
+      case EDIFACT:
+        return toDatabaseEdifactRecord(parsedRecord);
+      case MARC:
+      default:
+        return toDatabaseMarcRecord(parsedRecord);
+    }
   }
 
   /**

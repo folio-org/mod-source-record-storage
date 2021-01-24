@@ -30,6 +30,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -133,7 +134,10 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldPostSourceStorageBatchRecords(TestContext testContext) {
     Async async = testContext.async();
-    List<Record> expected = TestMocks.getRecords();
+    List<Record> expected = TestMocks.getRecords()
+      .stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -151,7 +155,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldPostWithoutErrorsSourceStorageBatchRecordsWithInvalidRecord(TestContext testContext) {
+  public void shouldPostSourceStorageBatchRecordsWithInvalidRecord(TestContext testContext) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -161,7 +165,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("records.size()", is(1))
-      .body("errorMessages.size()", is(0))
+      .body("errorMessages.size()", is(1))
       .body("totalRecords", is(1));
     async.complete();
   }
@@ -274,7 +278,10 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldPutSourceStorageBatchParsedRecords(TestContext testContext) {
     Async async = testContext.async();
-    List<Record> original = TestMocks.getRecords();
+    List<Record> original = TestMocks.getRecords()
+      .stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());

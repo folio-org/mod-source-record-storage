@@ -14,6 +14,8 @@ import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -33,21 +35,31 @@ import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.RecordsLbRecord;
+import org.folio.rest.util.QueryParamUtil;
 import org.jooq.Condition;
+import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.Loader;
 import org.jooq.Name;
 import org.jooq.OrderField;
+import org.jooq.Record2;
 import org.jooq.SortOrder;
+import org.jooq.Table;
 import org.jooq.conf.ParamType;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +70,7 @@ import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.reactivex.pgclient.PgPool;
@@ -193,6 +206,123 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return insertOrUpdateRecord(txQE, record);
+  }
+
+  @Override
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    List<RecordsLbRecord> records = new ArrayList<>();
+    List<RawRecordsLbRecord> rawRecords = new ArrayList<>();
+    List<Record2<UUID, JSONB>> parsedRecords = new ArrayList<>();
+    List<ErrorRecordsLbRecord> errorRecords = new ArrayList<>();
+
+    List<String> errorMessages = new ArrayList<>();
+
+    recordCollection.getRecords().stream()
+      .map(RecordDaoUtil::prepareRecord)
+      .map(RecordDaoUtil::ensureRecordForeignKeys)
+      .forEach(record -> {
+
+      if (Objects.nonNull(record.getParsedRecord())) {
+        try {
+          RecordDaoUtil.formatRecord(record);
+          // parsedRecords.add(ParsedRecordDaoUtil.toDatabaseRecord2(record.getParsedRecord(), recordType));
+        } catch (Exception e) {
+          Object content = Objects.nonNull(record.getParsedRecord())
+            ? record.getParsedRecord().getContent()
+            : null;
+          ErrorRecord errorRecord = new ErrorRecord()
+            .withId(record.getId())
+            .withDescription(e.getMessage())
+            .withContent(content);
+          errorMessages.add(String.format("record %s has error: %s", record.getId(), e.getMessage()));
+          errorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(errorRecord));
+          record.withErrorRecord(errorRecord);
+          record.withParsedRecord(null)
+            .withLeaderRecordStatus(null);
+        }
+      }
+      if (Objects.nonNull(record.getRawRecord())) {
+        rawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+      }
+      records.add(RecordDaoUtil.toDatabaseRecord(record));
+    });
+
+    Promise<RecordsBatchResponse> promise = Promise.promise();
+
+    // Table<org.jooq.Record> prt = table(name(recordType.getTableName()));
+    // Field<UUID> prtId = field(name(ID), UUID.class);
+    // Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
+
+    try (Connection connection = getConnection(tenantId)) {
+      DSLContext dsl = DSL.using(connection);
+
+      dsl.transaction(ctx -> {
+
+        Loader<RecordsLbRecord> recordsLoader = DSL.using(ctx)
+          .loadInto(RECORDS_LB)
+          .onDuplicateKeyError()
+          .onErrorIgnore()
+          .batchAll()
+          .commitNone()
+          .loadRecords(records)
+          .fieldsFromSource()
+          .execute();
+
+        recordsLoader.errors().forEach(error -> {
+          // find record, remove from records and add/update error
+        });
+
+        Loader<RawRecordsLbRecord> rawRecordsLoader = DSL.using(ctx)
+          .loadInto(RAW_RECORDS_LB)
+          .onDuplicateKeyError()
+          .onErrorIgnore()
+          .batchAll()
+          .commitNone()
+          .loadRecords(rawRecords)
+          .fieldsFromSource()
+          .execute();
+
+        rawRecordsLoader.errors().forEach(error -> {
+          // find record, detach raw record and add/update error
+        });
+
+        // Loader<org.jooq.Record> parsedRecordsLoader = DSL.using(ctx)
+        //   .loadInto(prt)
+        //   .onDuplicateKeyError()
+        //   .onErrorIgnore()
+        //   .batchAll()
+        //   .commitNone()
+        //   .loadRecords(parsedRecords)
+        //   .fields(prtId, prtContent)
+        //   .execute();
+
+        // parsedRecordsLoader.errors().forEach(error -> {
+        //   // find record, detach parsed record and add/update error
+        // });
+
+        if (!errorRecords.isEmpty()) {
+          DSL.using(ctx)
+            .loadInto(ERROR_RECORDS_LB)
+            .onDuplicateKeyError()
+            .onErrorIgnore()
+            .batchAll()
+            .commitNone()
+            .loadRecords(errorRecords)
+            .fieldsFromSource()
+            .execute();
+        }
+
+        promise.complete(new RecordsBatchResponse()
+          .withRecords(recordCollection.getRecords())
+          .withTotalRecords(recordCollection.getRecords().size())
+          .withErrorMessages(errorMessages));
+      });
+    } catch (SQLException e) {
+      e.printStackTrace();
+      promise.fail(e);
+    }
+
+    return promise.future();
   }
 
   @Override
@@ -359,6 +489,10 @@ public class RecordDaoImpl implements RecordDao {
 
   private PgPool getCachecPool(String tenantId) {
     return postgresClientFactory.getCachedPool(tenantId);
+  }
+
+  private Connection getConnection(String tenantId) throws SQLException {
+    return postgresClientFactory.getConnection(tenantId);
   }
 
   private Row toRow(io.vertx.reactivex.sqlclient.Row row) {

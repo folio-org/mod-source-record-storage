@@ -153,6 +153,41 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Set generated and default values if not set.
+   * 
+   * @param record record
+   * @return record with id and suppress discovery additional info
+   */
+  public static Record prepareRecord(Record record) {
+    if (Objects.isNull(record.getId())) {
+      record.setId(UUID.randomUUID().toString());
+    }
+    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
+    }
+    return record;
+  }
+
+  /**
+   * Make sure all associated records have record id for foreign key.
+   * 
+   * @param record record
+   * @return record with all foreign keys set
+   */
+  public static Record ensureRecordForeignKeys(Record record) {
+    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
+      record.getRawRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+      record.getParsedRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+      record.getErrorRecord().setId(record.getId());
+    }
+    return record;
+  }
+
+  /**
    * Format record content if has record type and content.
    * 
    * NOTE: MARC formats parsed record and EDIFACT formats raw record.

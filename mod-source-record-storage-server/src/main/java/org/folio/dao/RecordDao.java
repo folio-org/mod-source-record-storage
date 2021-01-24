@@ -10,6 +10,7 @@ import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.jooq.Condition;
@@ -121,6 +122,15 @@ public interface RecordDao {
    * @return future with saved Record
    */
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+
+  /**
+   * Saves {@link RecordCollection} to the db
+   *
+   * @param record   Record collection to save
+   * @param tenantId tenant id
+   * @return future with saved {@link RecordsBatchResponse}
+   */
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
 
   /**
    * Updates {{@link Record} in the db

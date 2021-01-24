@@ -1,8 +1,9 @@
 package org.folio.services;
 
 import static java.lang.String.format;
-import static org.folio.dao.util.RecordDaoUtil.prepareRecord;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 
 import java.util.Collection;
 import java.util.List;
@@ -72,7 +73,8 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    prepareRecord(record);
+    ensureRecordHasId(record);
+    ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
         .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))

@@ -153,15 +153,25 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Set generated and default values if not set.
+   * Make sure record has id.
    * 
    * @param record record
-   * @return record with id and suppress discovery additional info
+   * @return record with id
    */
-  public static Record prepareRecord(Record record) {
+  public static Record ensureRecordHasId(Record record) {
     if (Objects.isNull(record.getId())) {
       record.setId(UUID.randomUUID().toString());
     }
+    return record;
+  }
+
+  /**
+   * Make sure record has additional info suppress discovery.
+   * 
+   * @param record record
+   * @return record with additional info suppress discovery
+   */
+  public static Record ensureRecordHasSuppressDiscovery(Record record) {
     if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
       record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
     }

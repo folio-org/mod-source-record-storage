@@ -328,10 +328,39 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSaveRecords(TestContext context) {
+  public void shouldSaveMarcRecords(TestContext context) {
     Async async = context.async();
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      context.assertEquals(0, batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      compareRecords(context, expected, batch.result().getRecords());
+      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
+        if (count.failed()) {
+          context.fail(count.cause());
+        }
+        context.assertEquals(expected.size(), count.result());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveEdifactRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.EDIFACT))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()

@@ -3,6 +3,7 @@ package org.folio.dao;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.toLoaderOptionsStep;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
@@ -23,15 +24,18 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotAcceptableException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -65,7 +69,6 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
 import org.jooq.SortOrder;
-import org.jooq.Table;
 import org.jooq.conf.ParamType;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -218,18 +221,16 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
     Promise<RecordsBatchResponse> promise = Promise.promise();
 
-    List<String> snapshotIds = new ArrayList<>();
+    Set<UUID> matchedIds = new HashSet<>();
+    Set<String> snapshotIds = new HashSet<>();
+    Set<String> recordTypes = new HashSet<>();
 
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-
-    Map<RecordType, List<Record2<UUID, JSONB>>> dbParsedRecords = new HashMap<>();
-
+    List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
     List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
     List<String> errorMessages = new ArrayList<>();
-
-    Map<RecordType, Table<org.jooq.Record>> parsedRecordTables = new HashMap<>();
 
     recordCollection.getRecords()
       .stream()
@@ -237,26 +238,28 @@ public class RecordDaoImpl implements RecordDao {
       .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
       .map(RecordDaoUtil::ensureRecordForeignKeys)
       .forEach(record -> {
-        // collect snapshot ids to validate them
-        if (!snapshotIds.contains(record.getSnapshotId())) {
-          snapshotIds.add(record.getSnapshotId());
+        // collect unique matched ids to query to determine generation
+        matchedIds.add(UUID.fromString(record.getMatchedId()));
+
+        // make sure only one snapshot id
+        snapshotIds.add(record.getSnapshotId());
+        if (snapshotIds.size() > 1) {
+          throw new BadRequestException("Batch record collection only supports single snapshot");
         }
-        if (Objects.nonNull(record.getRawRecord())) {
-          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+
+        // make sure only one record type
+        recordTypes.add(record.getRecordType().name());
+        if (recordTypes.size() > 1) {
+          throw new BadRequestException("Batch record collection only supports single record type");
         }
+
         // if record has parsed record, validate by attempting format
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
             RecordDaoUtil.formatRecord(record);
             RecordType recordType = toRecordType(record.getRecordType().name());
             Record2<UUID, JSONB> dbParsedRecord = ParsedRecordDaoUtil.toDatabaseRecord2(record.getParsedRecord(), recordType);
-            List<Record2<UUID, JSONB>> currentDbParsedRecords = dbParsedRecords.get(recordType);
-            if (Objects.isNull(currentDbParsedRecords)) {
-              currentDbParsedRecords = new ArrayList<>();
-              dbParsedRecords.put(recordType, currentDbParsedRecords);
-              parsedRecordTables.put(recordType, table(name(recordType.getTableName())));
-            }
-            currentDbParsedRecords.add(dbParsedRecord);
+            dbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record
             Object content = Objects.nonNull(record.getParsedRecord())
@@ -266,11 +269,14 @@ public class RecordDaoImpl implements RecordDao {
               .withId(record.getId())
               .withDescription(e.getMessage())
               .withContent(content);
-            errorMessages.add(format("record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
+            errorMessages.add(format("Record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)
               .withLeaderRecordStatus(null);
           }
+        }
+        if (Objects.nonNull(record.getRawRecord())) {
+          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
         }
         if (Objects.nonNull(record.getErrorRecord())) {
           dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
@@ -278,85 +284,120 @@ public class RecordDaoImpl implements RecordDao {
         dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
     });
 
-    Field<UUID> prtId = field(name(ID), UUID.class);
-    Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
+    UUID snapshotId = UUID.fromString(snapshotIds.stream().findFirst().orElseThrow());
+
+    RecordType recordType = toRecordType(recordTypes.stream().findFirst().orElseThrow());
 
     try (Connection connection = getConnection(tenantId)) {
-      DSLContext dsl = DSL.using(connection);
+      DSL.using(connection).transaction(ctx -> {
+        DSLContext dsl = DSL.using(ctx);
 
-      dsl.transaction(ctx -> {
-
-        for (String snapshotId : snapshotIds) {
-          Optional<SnapshotsLbRecord> snapshot = dsl.selectFrom(SNAPSHOTS_LB)
-            .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshotId)))
-            .fetchOptional();
-          if (snapshot.isPresent()) {
-            if (Objects.isNull(snapshot.get().getProcessingStartedDate())) {
-              throw new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.get().getStatus()));
-            }
-          } else {
-            throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId));
+        Optional<SnapshotsLbRecord> snapshot = DSL.using(ctx).selectFrom(SNAPSHOTS_LB)
+          .where(SNAPSHOTS_LB.ID.eq(snapshotId))
+          .fetchOptional();
+        if (snapshot.isPresent()) {
+          if (Objects.isNull(snapshot.get().getProcessingStartedDate())) {
+            throw new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.get().getStatus()));
           }
+        } else {
+          throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId));
         }
 
-        Loader<RecordsLbRecord> recordsLoader = DSL.using(ctx)
-          .loadInto(RECORDS_LB)
-          .onDuplicateKeyError()
+        List<UUID> ids = new ArrayList<>();
+        Map<UUID, Integer> matchedGenerations = new HashMap<>();
+
+        // lookup latest generation by matched id and committed snapshot updated before current snapshot
+        dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
+          .distinctOn(RECORDS_LB.MATCHED_ID)
+          .from(RECORDS_LB)
+          .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
+          .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
+            .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
+            .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
+              .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
+              .from(SNAPSHOTS_LB)
+              .where(SNAPSHOTS_LB.ID.eq(snapshotId)))))
+          .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
+          .fetchStream().forEach(r -> {
+            UUID id = r.get(RECORDS_LB.ID);
+            UUID matchedId = r.get(RECORDS_LB.MATCHED_ID);
+            int generation = r.get(RECORDS_LB.GENERATION);
+            ids.add(id);
+            matchedGenerations.put(matchedId, generation);
+          });
+
+        // update matching records state
+        dsl.update(RECORDS_LB)
+          .set(RECORDS_LB.STATE, RecordState.OLD)
+          .where(RECORDS_LB.ID.in(ids))
+          .execute();
+
+        // batch insert records updating generation if required
+        Loader<RecordsLbRecord> recordsLoader = dsl.loadInto(RECORDS_LB)
+          .batchAfter(500)
+          .bulkAfter(100)
+          .commitAfter(5000)
           .onErrorIgnore()
-          .batchAll()
-          .commitNone()
-          .loadRecords(dbRecords)
+          .loadRecords(dbRecords.stream().map(record -> {
+            Integer generation = matchedGenerations.get(record.getMatchedId());
+            if (Objects.nonNull(generation)) {
+              record.setGeneration(generation + 1);
+            }
+            return record;
+          }).collect(Collectors.toList()))
           .fieldsFromSource()
           .execute();
 
-        recordsLoader.errors().forEach(error -> {
-          // find record, remove from records and add/update error
-        });
+        if (!recordsLoader.errors().isEmpty()) {
+          // TODO: improve exception message
+          throw new NotAcceptableException(recordsLoader.errors().get(0).exception().getMessage());
+        }
 
-        Loader<RawRecordsLbRecord> rawRecordsLoader = DSL.using(ctx)
-          .loadInto(RAW_RECORDS_LB)
-          .onDuplicateKeyError()
+        // batch insert raw records
+        Loader<?> rawRecordsLoader = dsl.loadInto(RAW_RECORDS_LB)
+          .batchAfter(100)
+          .commitAfter(1000)
+          .onDuplicateKeyUpdate()
           .onErrorIgnore()
-          .batchAll()
-          .commitNone()
           .loadRecords(dbRawRecords)
           .fieldsFromSource()
           .execute();
 
-        rawRecordsLoader.errors().forEach(error -> {
-          // find record, detach raw record and add/update error
-        });
+        if (!rawRecordsLoader.errors().isEmpty()) {
+          // TODO: improve exception message
+          throw new NotAcceptableException(rawRecordsLoader.errors().get(0).exception().getMessage());
+        }
 
-        for (Map.Entry<RecordType, Table<org.jooq.Record>> entry : parsedRecordTables.entrySet()) {
-          RecordType recordType = entry.getKey();
-          Table<org.jooq.Record> prt = entry.getValue();
-          List<Record2<UUID, JSONB>> currentDbParsedRecords = dbParsedRecords.get(recordType);
+        // batch insert parsed records
+        Loader<?> parsedRecordsLoader = toLoaderOptionsStep(dsl, recordType)
+          .batchAfter(100)
+          .commitAfter(1000)
+          .onDuplicateKeyUpdate()
+          .onErrorIgnore()
+          .loadRecords(dbParsedRecords)
+          .fieldsFromSource()
+          .execute();
 
-          Loader<org.jooq.Record> parsedRecordsLoader = DSL.using(ctx)
-            .loadInto(prt)
-            .onDuplicateKeyError()
-            .onErrorIgnore()
-            .batchAll()
-            .commitNone()
-            .loadRecords(currentDbParsedRecords)
-            .fields(prtId, prtContent)
-            .execute();
-
-          parsedRecordsLoader.errors().forEach(error -> {
-            // find record, detach parsed record and add/update error
-          });
+        if (!parsedRecordsLoader.errors().isEmpty()) {
+          // TODO: improve exception message
+          throw new NotAcceptableException(parsedRecordsLoader.errors().get(0).exception().getMessage());
         }
 
         if (!dbErrorRecords.isEmpty()) {
-          DSL.using(ctx)
-            .loadInto(ERROR_RECORDS_LB)
-            .onDuplicateKeyError()
+          // batch insert error records if any
+          Loader<ErrorRecordsLbRecord> errorRecordsLoader = dsl.loadInto(ERROR_RECORDS_LB)
+            .batchAfter(100)
+            .commitAfter(1000)
+            .onDuplicateKeyUpdate()
             .onErrorIgnore()
-            .batchAll()
-            .commitNone()
             .loadRecords(dbErrorRecords)
             .fieldsFromSource()
             .execute();
+
+          if (!errorRecordsLoader.errors().isEmpty()) {
+            // TODO: improve exception message
+            throw new NotAcceptableException(errorRecordsLoader.errors().get(0).exception().getMessage());
+          }
         }
 
         promise.complete(new RecordsBatchResponse()

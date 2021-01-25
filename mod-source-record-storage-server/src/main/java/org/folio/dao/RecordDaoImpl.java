@@ -35,7 +35,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotAcceptableException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -64,7 +63,6 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
-import org.jooq.Loader;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
@@ -333,11 +331,11 @@ public class RecordDaoImpl implements RecordDao {
           .execute();
 
         // batch insert records updating generation if required
-        Loader<RecordsLbRecord> recordsLoader = dsl.loadInto(RECORDS_LB)
-          .batchAfter(500)
+        dsl.loadInto(RECORDS_LB)
+          .batchAfter(250)
           .bulkAfter(100)
-          .commitAfter(5000)
-          .onErrorIgnore()
+          .commitAfter(1000)
+          .onErrorAbort()
           .loadRecords(dbRecords.stream().map(record -> {
             Integer generation = matchedGenerations.get(record.getMatchedId());
             if (Objects.nonNull(generation)) {
@@ -350,28 +348,18 @@ public class RecordDaoImpl implements RecordDao {
           .fieldsFromSource()
           .execute();
 
-        if (!recordsLoader.errors().isEmpty()) {
-          // TODO: improve exception message
-          throw new NotAcceptableException(recordsLoader.errors().get(0).exception().getMessage());
-        }
-
         // batch insert raw records
-        Loader<?> rawRecordsLoader = dsl.loadInto(RAW_RECORDS_LB)
+        dsl.loadInto(RAW_RECORDS_LB)
           .batchAfter(100)
           .commitAfter(1000)
           .onDuplicateKeyUpdate()
-          .onErrorIgnore()
+          .onErrorAbort()
           .loadRecords(dbRawRecords)
           .fieldsFromSource()
           .execute();
 
-        if (!rawRecordsLoader.errors().isEmpty()) {
-          // TODO: improve exception message
-          throw new NotAcceptableException(rawRecordsLoader.errors().get(0).exception().getMessage());
-        }
-
         // batch insert parsed records
-        Loader<?> parsedRecordsLoader = toLoaderOptionsStep(dsl, recordType)
+        toLoaderOptionsStep(dsl, recordType)
           .batchAfter(100)
           .commitAfter(1000)
           .onDuplicateKeyUpdate()
@@ -380,26 +368,16 @@ public class RecordDaoImpl implements RecordDao {
           .fieldsFromSource()
           .execute();
 
-        if (!parsedRecordsLoader.errors().isEmpty()) {
-          // TODO: improve exception message
-          throw new NotAcceptableException(parsedRecordsLoader.errors().get(0).exception().getMessage());
-        }
-
         if (!dbErrorRecords.isEmpty()) {
-          // batch insert error records if any
-          Loader<ErrorRecordsLbRecord> errorRecordsLoader = dsl.loadInto(ERROR_RECORDS_LB)
+          // batch insert error records
+          dsl.loadInto(ERROR_RECORDS_LB)
             .batchAfter(100)
             .commitAfter(1000)
             .onDuplicateKeyUpdate()
-            .onErrorIgnore()
+            .onErrorAbort()
             .loadRecords(dbErrorRecords)
             .fieldsFromSource()
             .execute();
-
-          if (!errorRecordsLoader.errors().isEmpty()) {
-            // TODO: improve exception message
-            throw new NotAcceptableException(errorRecordsLoader.errors().get(0).exception().getMessage());
-          }
         }
 
         promise.complete(new RecordsBatchResponse()

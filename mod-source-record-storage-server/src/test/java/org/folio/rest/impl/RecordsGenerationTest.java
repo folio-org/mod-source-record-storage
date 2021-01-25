@@ -298,8 +298,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .body("generation", is(0));
       async.complete();
     }
-
-
   }
 
   @Test

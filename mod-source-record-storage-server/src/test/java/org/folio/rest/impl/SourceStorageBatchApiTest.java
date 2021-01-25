@@ -11,9 +11,11 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -76,6 +78,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
   private static Snapshot snapshot_2 = new Snapshot()
+    .withJobExecutionId(UUID.randomUUID().toString())
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_3 = new Snapshot()
+    .withJobExecutionId(UUID.randomUUID().toString())
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_4 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
@@ -155,6 +163,114 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("errorMessages.size()", is(0))
       .body("totalRecords", is(expected.size()));
     async.complete();
+  }
+
+  @Test
+  public void shouldPostSourceStorageBatchRecordsCalculateRecordsGeneration(TestContext testContext) {
+    List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
+
+    List<Record> records = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> {
+        RawRecord rawRecord = record.getRawRecord();
+        if (Objects.nonNull(rawRecord)) {
+          rawRecord.setId(null);
+        }
+        ParsedRecord parsedRecord = record.getParsedRecord();
+        if (Objects.nonNull(parsedRecord)) {
+          parsedRecord.setId(null);
+        }
+        ErrorRecord errorRecord = record.getErrorRecord();
+        if (Objects.nonNull(errorRecord)) {
+          errorRecord.setId(null);
+        }
+        return record
+          .withId(null)
+          .withRawRecord(rawRecord)
+          .withParsedRecord(parsedRecord)
+          .withErrorRecord(errorRecord);
+      })
+      .collect(Collectors.toList());
+
+    List<String> previousRecordIds = new ArrayList<>();
+
+    for (int i = 0; i < snapshots.size(); i++) {
+      final Snapshot snapshot = snapshots.get(i);
+      Async async = testContext.async();
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+      async.complete();
+
+      records = records.stream()
+        .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
+        .collect(Collectors.toList());
+      
+      RecordCollection recordCollection = new RecordCollection()
+        .withRecords(records)
+        .withTotalRecords(records.size());
+      RecordsBatchResponse response = RestAssured.given()
+        .spec(spec)
+        .body(recordCollection)
+        .when()
+        .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+        .body().as(RecordsBatchResponse.class);
+
+      testContext.assertEquals(records.size(), response.getRecords().size());
+      testContext.assertEquals(0, response.getErrorMessages().size());
+      testContext.assertEquals(records.size(), response.getTotalRecords());
+
+      async = testContext.async();
+
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot.withStatus(Snapshot.Status.COMMITTED))
+        .when()
+        .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot.getJobExecutionId())
+        .then()
+        .statusCode(HttpStatus.SC_OK);
+      async.complete();
+
+      if (!previousRecordIds.isEmpty()) {
+        // assert old records state and generation
+        for (String recordId : previousRecordIds) {
+          async = testContext.async();
+          RestAssured.given()
+            .spec(spec)
+            .when()
+            .get(SOURCE_STORAGE_RECORDS_PATH + "/" + recordId)
+            .then()
+            .statusCode(HttpStatus.SC_OK)
+            .body("id", is(recordId))
+            .body("state", is(Record.State.OLD.name()))
+            .body("generation", is(i - 1));
+          async.complete();
+        }
+        previousRecordIds.clear();
+      }
+
+      // assert new records state and generation
+      for (Record record : response.getRecords()) {
+        async = testContext.async();
+        RestAssured.given()
+          .spec(spec)
+          .when()
+          .get(SOURCE_STORAGE_RECORDS_PATH + "/" + record.getId())
+          .then()
+          .statusCode(HttpStatus.SC_OK)
+          .body("id", is(record.getId()))
+          .body("matchedId", is(record.getMatchedId()))
+          .body("state", is(Record.State.ACTUAL.name()))
+          .body("generation", is(i));
+
+        previousRecordIds.add(record.getId());
+        async.complete();
+      }
+    }
   }
 
   @Test

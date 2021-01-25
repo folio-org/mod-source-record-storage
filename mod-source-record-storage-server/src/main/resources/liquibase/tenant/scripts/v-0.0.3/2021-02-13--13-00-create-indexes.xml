@@ -5,9 +5,9 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
   <changeSet id="2021-02-13--13-00-create-indexes.xml" author="IgorGorchakov">
-    <sql>
-      create index ${database.defaultSchemaName}.idx_marc_indexers_marc_id on ${database.defaultSchemaName}.marc_indexers(marc_id);
-      create index ${database.defaultSchemaName}.idx_marc_indexers_leader_marc_id on ${database.defaultSchemaName}.marc_indexers_leader(marc_id);
+    <sql splitStatements="false">
+      create index idx_marc_indexers_marc_id on ${database.defaultSchemaName}.marc_indexers(marc_id);
+      create index idx_marc_indexers_leader_marc_id on ${database.defaultSchemaName}.marc_indexers_leader(marc_id);
     </sql>
   </changeSet>
 </databaseChangeLog>

@@ -80,12 +80,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Snapshot snapshot_2 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_3 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_4 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
@@ -167,7 +161,19 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldPostSourceStorageBatchRecordsCalculateRecordsGeneration(TestContext testContext) {
-    List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
+    Snapshot snapshot1 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    Snapshot snapshot2 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    Snapshot snapshot3 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    Snapshot snapshot4 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    List<Snapshot> snapshots = Arrays.asList(snapshot1, snapshot2, snapshot3, snapshot4);
 
     List<Record> records = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))

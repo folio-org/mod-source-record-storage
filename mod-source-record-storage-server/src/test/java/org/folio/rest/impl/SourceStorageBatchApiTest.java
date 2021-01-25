@@ -60,9 +60,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   static {
     try {
       rawRecord = new RawRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -144,9 +144,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("records.size()", is(10))
+      .body("records.size()", is(expected.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(expected.size()));
     async.complete();
   }
 
@@ -168,21 +168,13 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldCreateRecordsOnPostRecordCollection(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_1)
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
+    postSnapshots(testContext, snapshot_1);
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(Arrays.asList(record_1, record_4))
       .withTotalRecords(2);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -203,7 +195,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostWhenNoRecordsInRecordCollection() {
+  public void shouldReturnBadRequestOnPostWhenNoRecordsInRecordCollection(TestContext testContext) {
+    Async async = testContext.async();
     RecordCollection recordCollection = new RecordCollection();
     RestAssured.given()
       .spec(spec)
@@ -212,25 +205,18 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    async.complete();
   }
 
   @Test
   public void shouldCreateRawRecordAndErrorRecordOnPostInRecordCollection(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_2)
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
+    postSnapshots(testContext, snapshot_2);
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(Arrays.asList(record_2, record_3))
       .withTotalRecords(2);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RecordsBatchResponse createdRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -259,21 +245,13 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldCreateRecordsWithFilledMetadataWhenUserIdHeaderIsAbsent(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_1)
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
+    postSnapshots(testContext, snapshot_1);
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(Arrays.asList(record_1, record_4))
       .withTotalRecords(2);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RestAssured.given()
       .spec(specWithoutUserId)
       .body(recordCollection)
@@ -307,9 +285,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("records.size()", is(10))
+      .body("records.size()", is(original.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(original.size()));
     async.complete();
 
     async = testContext.async();
@@ -326,23 +304,15 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .put(SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("parsedRecords.size()", is(10))
+      .body("parsedRecords.size()", is(updated.size()))
       .body("errorMessages.size()", is(0))
-      .body("totalRecords", is(10));
+      .body("totalRecords", is(updated.size()));
     async.complete();
   }
 
   @Test
   public void shouldUpdateParsedRecords(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_2)
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
+    postSnapshots(testContext, snapshot_2);
 
     String matchedId = UUID.randomUUID().toString();
 
@@ -357,7 +327,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(false));
 
-    async = testContext.async();
+    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(newRecord)
@@ -436,15 +406,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldUpdateParsedRecordsWithJsonContent(TestContext testContext) {
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(snapshot_2)
-      .when()
-      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
+    postSnapshots(testContext, snapshot_2);
 
     Record newRecord = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -455,7 +417,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(false));
 
-    async = testContext.async();
+    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(newRecord)

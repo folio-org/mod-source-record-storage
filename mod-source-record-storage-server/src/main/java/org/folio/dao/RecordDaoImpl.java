@@ -3,6 +3,7 @@ package org.folio.dao;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
@@ -27,7 +28,6 @@ import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang.ArrayUtils;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
@@ -108,21 +108,20 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+        .where(condition.and(getRecordImplicitCondition(recordType)))))
       .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
         .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))
+        .where(condition.and(getRecordImplicitCondition(recordType)))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)
@@ -130,15 +129,14 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<Record> streamRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name prt = name(recordType.getTableName());
     String sql = DSL.select(getAllRecordFields(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .where(condition.and(RECORDS_LB.ID.isNotNull()))
+      .where(condition.and(getRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -206,19 +204,18 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))))
+        .where(condition.and(getSourceRecordImplicitCondition(recordType)))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
-      .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -226,13 +223,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<SourceRecord> streamSourceRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
-    RecordType recordType = RecordType.MARC;
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name prt = name(recordType.getTableName());
     String sql = DSL.select(getRecordFields(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -247,21 +243,20 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, Boolean deleted, String tenantId) {
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
-    RecordType recordType = RecordType.MARC;
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(RECORDS_LB.ID.isNotNull()))))
+        .where(condition.and(getRecordImplicitCondition(recordType)))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull()))
+      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
     )).map(this::toSourceRecordCollection);
   }
 
@@ -345,12 +340,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", idType, id))))))
+      .orElse(Future.failedFuture(new NotFoundException(String.format("Record with %s id: %s was not found", externalIdType, id))))))
         .map(u -> true);
   }
 
@@ -373,6 +367,26 @@ public class RecordDaoImpl implements RecordDao {
 
   private Row asRow(Row row) {
     return row;
+  }
+
+  private Condition getRecordImplicitCondition(RecordType recordType) {
+    switch (recordType) {
+      case MARC:
+      case EDIFACT:
+      default:
+        return filterRecordByType(recordType.name());
+    }
+  }
+
+  private Condition getSourceRecordImplicitCondition(RecordType recordType) {
+    switch (recordType) {
+      case MARC:
+        return filterRecordByType(recordType.name())
+          .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+      case EDIFACT:
+      default:
+        return filterRecordByType(recordType.name());
+    }
   }
 
   private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {
@@ -438,15 +452,15 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
-      String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+      // attempt to format record to validate
+      RecordDaoUtil.formatRecord(record);
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {
           record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
           return parsedRecord;
         });
     } catch (Exception e) {
-      LOG.error("Couldn't format MARC record", e);
+      LOG.error("Couldn't format {} record", e, record.getRecordType());
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())

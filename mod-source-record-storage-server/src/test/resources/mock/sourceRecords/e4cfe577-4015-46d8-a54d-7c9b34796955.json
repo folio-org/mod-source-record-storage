@@ -1,0 +1,791 @@
+{
+  "recordId": "e4cfe577-4015-46d8-a54d-7c9b34796955",
+  "snapshotId": "dcd898af-03bb-4b12-b8a6-f6a02e86459b",
+  "recordType": "EDIFACT",
+  "rawRecord": {
+    "id": "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content": "UNA:+,? 'UNB+UNOA:2+FHPEDAL+HUBERGMBH+990802:1557+9908021557'UNH+INVOIC0001+INVOIC:D:93A:UN'BGM+380+9908001+9'DTM+3:19990802:102'RFF+ON:O0010001'DTM+4:19999715:102'NAD+SE++Fahrradhandel Pedal++Wagingerstr. 5+München++81549'NAD+BY++Huber GmbH++Obstgasse 2+München++81549'LIN+1++4711.001'IMD+F++:::Fahrrad, Damen'QTY+47:1:PCE'MOA+66:750'PRI+AAA:750'LIN+2++4711.002'IMD+F++:::Luftpumpe, Stand-'QTY+47:1:PCE'MOA+66:19,9'PRI+AAA:19,9'LIN+3++4711.003'IMD+F++:::Ersatzventil'QTY+47:3:PCE'MOA+66:7,5'PRI+AAA:2,5'UNS+S'MOA+79:777,4'MOA+124:124,38'MOA+128:901,78'TAX+7+VAT+++:::16+S'UNT+28+INVOIC0001'UNZ+1+9908021557'"
+  },
+  "parsedRecord": {
+    "id": "e4cfe577-4015-46d8-a54d-7c9b34796955",
+    "content": {
+      "segments": [
+        {
+          "tag": "UNA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": " "
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNB",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "UNOA"
+                },
+                {
+                  "data": "2"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "FHPEDAL"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "HUBERGMBH"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "990802"
+                },
+                {
+                  "data": "1557"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "9908021557"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNH",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "INVOIC0001"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "INVOIC"
+                },
+                {
+                  "data": "D"
+                },
+                {
+                  "data": "93A"
+                },
+                {
+                  "data": "UN"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "BGM",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "380"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "9908001"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "9"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "DTM",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "3"
+                },
+                {
+                  "data": "19990802"
+                },
+                {
+                  "data": "102"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "RFF",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "ON"
+                },
+                {
+                  "data": "O0010001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "DTM",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "4"
+                },
+                {
+                  "data": "19999715"
+                },
+                {
+                  "data": "102"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "NAD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "SE"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "Fahrradhandel Pedal"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "Wagingerstr. 5"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "München"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "81549"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "NAD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "BY"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "Huber GmbH"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "Obstgasse 2"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "München"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "81549"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "LIN",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "1"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "4711.001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "F"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "Fahrrad, Damen"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "QTY",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "47"
+                },
+                {
+                  "data": "1"
+                },
+                {
+                  "data": "PCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "66"
+                },
+                {
+                  "data": "750"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "AAA"
+                },
+                {
+                  "data": "750"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "LIN",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "2"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "4711.002"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "F"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "Luftpumpe, Stand-"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "QTY",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "47"
+                },
+                {
+                  "data": "1"
+                },
+                {
+                  "data": "PCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "66"
+                },
+                {
+                  "data": "19,9"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "AAA"
+                },
+                {
+                  "data": "19,9"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "LIN",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "3"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "4711.003"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "IMD",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "F"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "Ersatzventil"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "QTY",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "47"
+                },
+                {
+                  "data": "3"
+                },
+                {
+                  "data": "PCE"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "66"
+                },
+                {
+                  "data": "7,5"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "PRI",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "AAA"
+                },
+                {
+                  "data": "2,5"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNS",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "S"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "79"
+                },
+                {
+                  "data": "777,4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "124"
+                },
+                {
+                  "data": "124,38"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "MOA",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "128"
+                },
+                {
+                  "data": "901,78"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "TAX",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "7"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "VAT"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": ""
+                },
+                {
+                  "data": "16"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "S"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNT",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "28"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "INVOIC0001"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "UNZ",
+          "dataElements": [
+            {
+              "components": [
+                {
+                  "data": "1"
+                }
+              ]
+            },
+            {
+              "components": [
+                {
+                  "data": "9908021557"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "formattedContent": "UNA:+,? '\nUNB+UNOA:2+FHPEDAL+HUBERGMBH+990802:1557+9908021557'\nUNH+INVOIC0001+INVOIC:D:93A:UN'\nBGM+380+9908001+9'\nDTM+3:19990802:102'\nRFF+ON:O0010001'\nDTM+4:19999715:102'\nNAD+SE++Fahrradhandel Pedal++Wagingerstr. 5+München++81549'\nNAD+BY++Huber GmbH++Obstgasse 2+München++81549'\nLIN+1++4711.001'\nIMD+F++:::Fahrrad, Damen'\nQTY+47:1:PCE'\nMOA+66:750'\nPRI+AAA:750'\nLIN+2++4711.002'\nIMD+F++:::Luftpumpe, Stand-'\nQTY+47:1:PCE'\nMOA+66:19,9'\nPRI+AAA:19,9'\nLIN+3++4711.003'\nIMD+F++:::Ersatzventil'\nQTY+47:3:PCE'\nMOA+66:7,5'\nPRI+AAA:2,5'\nUNS+S'\nMOA+79:777,4'\nMOA+124:124,38'\nMOA+128:901,78'\nTAX+7+VAT+++:::16+S'\nUNT+28+INVOIC0001'\nUNZ+1+9908021557'\n"
+  },
+  "deleted": false,
+  "externalIdsHolder": {},
+  "additionalInfo": {
+    "suppressDiscovery": false
+  },
+  "metadata": {
+    "createdDate": "2020-03-19T16:43:00.436+0000",
+    "createdByUserId": "4547e8af-638a-4595-8af8-4d396d6a9f7a",
+    "updatedDate": "2020-03-19T16:43:01.442+0000",
+    "updatedByUserId": "4547e8af-638a-4595-8af8-4d396d6a9f7a"
+  }
+}

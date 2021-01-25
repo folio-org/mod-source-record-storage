@@ -46,4 +46,5 @@
   <include file="scripts/v-0.0.3/2021-01-14--15-00-alter-record-type.xml" relativeToChangelogFile="true"/>
 
   <include file="scripts/v-0.0.3/2021-01-16--08-00-create-records-order-index.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-0.0.3/2021-01-20--18-00-create-records-record-type-index.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

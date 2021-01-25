@@ -13,6 +13,7 @@
 * [MODSOURCE-238](https://issues.folio.org/browse/MODSOURCE-238) Use docker-maven-plugin to support build with newer versions of postgres.
 * [MODSOURCE-242](https://issues.folio.org/browse/MODSOURCE-242) Use Testcontainers for tests.
 * [MODSOURCE-234](https://issues.folio.org/browse/MODSOURCE-234) Add `recordType` query parameter to Records and Source Records APIs. Update join queries to condition on `record_type`. Add database index for `record_type` column of `records_lb` table.
+* [MODSOURCE-205](https://issues.folio.org/browse/MODSOURCE-205) Batch save redesign.
 
 ### Stream Records API
  | METHOD |             URL                                      | DESCRIPTION                                                               |

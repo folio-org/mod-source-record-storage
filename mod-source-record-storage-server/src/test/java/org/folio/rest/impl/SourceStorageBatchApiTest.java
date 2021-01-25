@@ -160,6 +160,46 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldFailWhenPostSourceStorageBatchRecordsWithMultipleSnapshots(TestContext testContext) {
+    Async async = testContext.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(is("Batch record collection only supports single snapshot"));
+    async.complete();
+  }
+
+  @Test
+  public void shouldFailWhenPostSourceStorageBatchRecordsWithMultipleRecordTypes(TestContext testContext) {
+    Async async = testContext.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(is("Batch record collection only supports single record type"));
+    async.complete();
+  }
+
+  @Test
   public void shouldPostSourceStorageBatchRecordsCalculateRecordsGeneration(TestContext testContext) {
     Snapshot snapshot1 = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

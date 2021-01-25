@@ -290,6 +290,7 @@ public class RecordDaoImpl implements RecordDao {
       DSL.using(connection).transaction(ctx -> {
         DSLContext dsl = DSL.using(ctx);
 
+        // validate snapshot
         Optional<SnapshotsLbRecord> snapshot = DSL.using(ctx).selectFrom(SNAPSHOTS_LB)
           .where(SNAPSHOTS_LB.ID.eq(snapshotId))
           .fetchOptional();

@@ -333,8 +333,8 @@ public class RecordDaoImpl implements RecordDao {
 
         // batch insert records updating generation if required
         dsl.loadInto(RECORDS_LB)
-          .batchAfter(250)
-          .bulkAfter(100)
+          .batchAfter(1000)
+          .bulkAfter(500)
           .commitAfter(1000)
           .onErrorAbort()
           .loadRecords(dbRecords.stream().map(record -> {
@@ -351,7 +351,7 @@ public class RecordDaoImpl implements RecordDao {
 
         // batch insert raw records
         dsl.loadInto(RAW_RECORDS_LB)
-          .batchAfter(100)
+          .batchAfter(250)
           .commitAfter(1000)
           .onDuplicateKeyUpdate()
           .onErrorAbort()
@@ -361,10 +361,10 @@ public class RecordDaoImpl implements RecordDao {
 
         // batch insert parsed records
         toLoaderOptionsStep(dsl, recordType)
-          .batchAfter(100)
+          .batchAfter(250)
           .commitAfter(1000)
           .onDuplicateKeyUpdate()
-          .onErrorIgnore()
+          .onErrorAbort()
           .loadRecords(dbParsedRecords)
           .fieldsFromSource()
           .execute();
@@ -372,7 +372,7 @@ public class RecordDaoImpl implements RecordDao {
         if (!dbErrorRecords.isEmpty()) {
           // batch insert error records
           dsl.loadInto(ERROR_RECORDS_LB)
-            .batchAfter(100)
+            .batchAfter(250)
             .commitAfter(1000)
             .onDuplicateKeyUpdate()
             .onErrorAbort()

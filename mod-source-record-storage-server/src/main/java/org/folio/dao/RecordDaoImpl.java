@@ -342,6 +342,8 @@ public class RecordDaoImpl implements RecordDao {
             Integer generation = matchedGenerations.get(record.getMatchedId());
             if (Objects.nonNull(generation)) {
               record.setGeneration(generation + 1);
+            } else if (Objects.isNull(record.getGeneration())) {
+              record.setGeneration(0);
             }
             return record;
           }).collect(Collectors.toList()))

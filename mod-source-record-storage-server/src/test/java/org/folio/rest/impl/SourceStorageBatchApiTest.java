@@ -35,7 +35,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -47,8 +46,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-// TODO: update tests for new batch save
-@Ignore
 @RunWith(VertxUnitRunner.class)
 public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
@@ -142,6 +139,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -345,6 +343,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     List<Record> original = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)

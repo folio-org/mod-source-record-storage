@@ -222,6 +222,7 @@ public final class ParsedRecordDaoUtil {
    * Convert {@link ParsedRecord} to database record {@link Record2}
    * 
    * @param parsedRecord parsed record
+   * @param recordType   recurd type
    * @return Record2
    */
   public static Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord, RecordType recordType) {

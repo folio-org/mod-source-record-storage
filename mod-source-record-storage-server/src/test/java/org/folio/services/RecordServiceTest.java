@@ -34,7 +34,6 @@ import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -44,8 +43,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-// TODO: update tests for new batch save
-@Ignore
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
 
@@ -84,7 +81,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -116,7 +113,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -147,7 +144,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -186,7 +183,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -333,7 +330,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveRecords(TestContext context) {
     Async async = context.async();
-    List<Record> expected = TestMocks.getRecords();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -473,7 +473,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -504,7 +504,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -535,7 +535,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -573,7 +573,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -611,7 +611,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -666,7 +666,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -736,7 +736,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -847,7 +847,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -931,6 +931,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         });
       });
     });
+  }
+
+  private CompositeFuture saveRecords(List<Record> records, String tenantId) {
+    return CompositeFuture.all(records.stream().map(record -> {
+      return recordService.saveRecord(record, tenantId);
+    }).collect(Collectors.toList()));
   }
 
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {

@@ -137,10 +137,33 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldPostSourceStorageBatchRecords(TestContext testContext) {
+  public void shouldPostSourceStorageBatchMarcRecords(TestContext testContext) {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records.size()", is(expected.size()))
+      .body("errorMessages.size()", is(0))
+      .body("totalRecords", is(expected.size()));
+    async.complete();
+  }
+
+  @Test
+  public void shouldPostSourceStorageBatchEdifactRecords(TestContext testContext) {
+    Async async = testContext.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(RecordType.EDIFACT))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()

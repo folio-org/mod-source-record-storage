@@ -243,7 +243,7 @@ public final class ParsedRecordDaoUtil {
    * 
    * @param dsl        dsl context
    * @param recordType record type
-   * @return LoaderOptionsStep
+   * @return loader options step for bulk inserts
    */
   public static LoaderOptionsStep<?> toLoaderOptionsStep(DSLContext dsl, RecordType recordType) {
     switch (recordType) {

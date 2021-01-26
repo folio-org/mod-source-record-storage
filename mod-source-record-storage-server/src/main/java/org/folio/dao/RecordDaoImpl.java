@@ -443,7 +443,7 @@ public class RecordDaoImpl implements RecordDao {
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {
           record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
-          return parsedRecord;
+          return parsedRecord.withContent(content);
         });
     } catch (Exception e) {
       LOG.error("Couldn't format MARC record", e);

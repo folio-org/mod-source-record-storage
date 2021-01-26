@@ -21,6 +21,7 @@ import static org.jooq.impl.DSL.trueCondition;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -45,8 +47,12 @@ import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -67,6 +73,9 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
 import org.jooq.SortOrder;
+import org.jooq.UpdateConditionStep;
+import org.jooq.UpdateSetFirstStep;
+import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -512,6 +521,145 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
+
+    Set<String> recordTypes = new HashSet<>();
+
+    List<Record> records = new ArrayList<>();
+    List<String> errorMessages = new ArrayList<>();
+
+    List<UpdateConditionStep<RecordsLbRecord>> recordUpdates = new ArrayList<>();
+    List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates = new ArrayList<>();
+
+    Field<UUID> prtId = field(name(ID), UUID.class);
+    Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
+
+    List<ParsedRecord> parsedRecords = recordCollection.getRecords()
+      .stream()
+      .map(this::validateParsedRecordId)
+      .peek(record -> {
+
+        // make sure only one record type
+        recordTypes.add(record.getRecordType().name());
+        if (recordTypes.size() > 1) {
+          throw new BadRequestException("Batch record collection only supports single record type");
+        }
+
+        UpdateSetFirstStep<RecordsLbRecord> updateFirstStep = DSL.update(RECORDS_LB);
+        UpdateSetMoreStep<RecordsLbRecord> updateStep = null;
+
+        // check for external record properties to update
+        ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
+        AdditionalInfo additionalInfo = record.getAdditionalInfo();
+        Metadata metadata = record.getMetadata();
+
+        if (Objects.nonNull(externalIdsHolder)) {
+          if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceId())) {
+              updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                .set(RECORDS_LB.INSTANCE_ID, UUID.fromString(externalIdsHolder.getInstanceId()));
+          }
+          if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceHrid())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                .set(RECORDS_LB.INSTANCE_HRID, externalIdsHolder.getInstanceHrid());
+          }
+        }
+
+        if (Objects.nonNull(additionalInfo)) {
+          if (Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
+          }
+        }
+
+        if (Objects.nonNull(metadata)) {
+          if (StringUtils.isNotEmpty(metadata.getCreatedByUserId())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              .set(RECORDS_LB.CREATED_BY_USER_ID, UUID.fromString(metadata.getCreatedByUserId()));
+          }
+          if (Objects.nonNull(metadata.getCreatedDate())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              .set(RECORDS_LB.CREATED_DATE, metadata.getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
+          }
+          if (StringUtils.isNotEmpty(metadata.getUpdatedByUserId())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              .set(RECORDS_LB.UPDATED_BY_USER_ID, UUID.fromString(metadata.getUpdatedByUserId()));
+          }
+          if (Objects.nonNull(metadata.getUpdatedDate())) {
+            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              .set(RECORDS_LB.UPDATED_DATE, metadata.getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
+          }
+        }
+
+        // only attempt update if has id and external values to update
+        if (Objects.nonNull(updateStep) && Objects.nonNull(record.getId())) {
+          records.add(record);
+          recordUpdates.add(updateStep.where(RECORDS_LB.ID.eq(UUID.fromString(record.getId()))));
+        }
+
+        try {
+          RecordDaoUtil.formatRecord(record);
+          RecordType recordType = toRecordType(record.getRecordType().name());
+
+          parsedRecordUpdates.add(
+            DSL.update(table(name(recordType.getTableName())))
+              .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
+              .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
+          );
+
+        } catch (Exception e) {
+          errorMessages.add(format("Record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
+          record.getParsedRecord()
+            .setId(null);
+        }
+  
+      }).map(Record::getParsedRecord)
+        .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
+        .collect(Collectors.toList());
+
+    try (Connection connection = getConnection(tenantId)) {
+      DSL.using(connection).transaction(ctx -> {
+        DSLContext dsl = DSL.using(ctx);
+
+        // update records
+        int[] recordUpdateResults = dsl.batch(recordUpdates).execute();
+
+        // check record update results
+        for (int i = 0; i < recordUpdateResults.length; i++) {
+          int result = recordUpdateResults[i];
+          if (result == 0) {
+            errorMessages.add(format("Record with id %s was not updated", records.get(i).getId()));
+          }
+        }
+
+        // update parsed records
+        int[] parsedRecordUpdateResults = dsl.batch(parsedRecordUpdates).execute();
+
+        // check parsed record update results
+        List<ParsedRecord> parsedRecordsUpdated = new ArrayList<>();
+        for (int i = 0; i < parsedRecordUpdateResults.length; i++) {
+          int result = parsedRecordUpdateResults[i];
+          ParsedRecord parsedRecord = parsedRecords.get(i);
+          if (result == 0) {
+            errorMessages.add(format("ParsedRecord with id '%s' was not updated", parsedRecord.getId()));
+          } else {
+            parsedRecordsUpdated.add(parsedRecord);
+          }
+        }
+
+        promise.complete(new ParsedRecordsBatchResponse()
+          .withErrorMessages(errorMessages)
+          .withParsedRecords(parsedRecordsUpdated)
+          .withTotalRecords(parsedRecordsUpdated.size()));
+      });
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return promise.future();
+  }
+
+  @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
       String tenantId) {
     return getQueryExecutor(tenantId)
@@ -691,6 +839,13 @@ public class RecordDaoImpl implements RecordDao {
         return RecordDaoUtil.update(txQE, persistedRecord)
           .map(update -> true);
       });
+  }
+
+  private Record validateParsedRecordId(Record record) {
+    if (Objects.isNull(record.getParsedRecord()) || StringUtils.isEmpty(record.getParsedRecord().getId())) {
+      throw new BadRequestException("Each parsed record should contain an id");
+    }
+    return record;
   }
 
   private Field<?>[] getRecordFields(Name prt) {

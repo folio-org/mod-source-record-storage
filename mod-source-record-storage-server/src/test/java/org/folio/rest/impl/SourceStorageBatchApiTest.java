@@ -6,7 +6,6 @@ import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TE
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -706,41 +705,145 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnErrorMessagesOnUpdateParsedRecordsIfIdIsNotFound(TestContext testContext) {
+  public void shouldReturnErrorMessagesOnUpdateParsedRecordsIfRecordIdNotFound(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
     Async async = testContext.async();
 
     Record record1 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
-      .withMatchedId(UUID.randomUUID().toString())
       .withParsedRecord(new ParsedRecord()
-        .withContent(marcRecord.getContent())
-        .withId(UUID.randomUUID().toString()));
+        .withContent(marcRecord.getContent()));
 
     Record record2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC)
       .withRawRecord(rawRecord)
-      .withMatchedId(UUID.randomUUID().toString())
       .withParsedRecord(new ParsedRecord()
-        .withContent(marcRecord.getContent())
-        .withId(UUID.randomUUID().toString()));
+        .withContent(marcRecord.getContent()));
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(Arrays.asList(record1, record2))
       .withTotalRecords(2);
 
-    ParsedRecordsBatchResponse result = RestAssured.given()
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records.size()", is(recordCollection.getRecords().size()))
+      .body("totalRecords", is(recordCollection.getRecords().size()))
+      .body("errorMessages.size()", is(0));
+    async.complete();
+
+    async = testContext.async();
+
+    record1.setParsedRecord(new ParsedRecord()
+      .withContent(marcRecord.getContent())
+      .withId(record1.getId()));
+
+    record2.setParsedRecord(new ParsedRecord()
+      .withContent(marcRecord.getContent())
+      .withId(record2.getId()));
+
+    recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record1.withId(UUID.randomUUID().toString()), record2.withId(UUID.randomUUID().toString())))
+      .withTotalRecords(2);
+
+    ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .put(SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("parsedRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("errorMessages.size()", is(2))
+      .extract().response().body().as(ParsedRecordsBatchResponse.class);
+
+    testContext.assertEquals(marcRecord.getContent(), updatedParsedRecordCollection.getParsedRecords().get(0).getContent());
+    testContext.assertEquals(marcRecord.getContent(), updatedParsedRecordCollection.getParsedRecords().get(1).getContent());
+
+    testContext.assertEquals(format("Record with id %s was not updated", record1.getId()), updatedParsedRecordCollection.getErrorMessages().get(0));
+    testContext.assertEquals(format("Record with id %s was not updated", record2.getId()), updatedParsedRecordCollection.getErrorMessages().get(1));
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnErrorMessagesOnUpdateParsedRecordsIfParsedRecordIdNotFound(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+
+    Record record1 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withMatchedId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord);
+
+    Record record2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withMatchedId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(rawRecord);
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record1, record2))
+      .withTotalRecords(2);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("records.size()", is(recordCollection.getRecords().size()))
+      .body("errorMessages.size()", is(0))
+      .body("totalRecords", is(recordCollection.getRecords().size()));
+    async.complete();
+
+    async = testContext.async();
+
+    record1.setParsedRecord(new ParsedRecord()
+      .withContent(marcRecord.getContent())
+      .withId(UUID.randomUUID().toString()));
+
+    record2.setParsedRecord(new ParsedRecord()
+      .withContent(marcRecord.getContent())
+      .withId(UUID.randomUUID().toString()));
+
+    recordCollection = new RecordCollection()
+      .withRecords(Arrays.asList(record1, record2))
+      .withTotalRecords(2);
+
+    ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
       .when()
       .put(SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+      .body("errorMessages.size()", is(2))
+      .body("parsedRecords.size()", is(0))
+      .body("totalRecords", is(0))
       .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
-    assertThat(result.getErrorMessages(), hasSize(2));
+    testContext.assertEquals(format("ParsedRecord with id '%s' was not updated", record1.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(0));
+    testContext.assertEquals(format("ParsedRecord with id '%s' was not updated", record2.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(1));
+
     async.complete();
   }
 

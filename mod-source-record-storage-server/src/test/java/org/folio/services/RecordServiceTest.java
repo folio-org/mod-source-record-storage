@@ -331,7 +331,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldSaveMarcRecords(TestContext context) {
     Async async = context.async();
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -761,7 +761,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateParsedRecords(TestContext context) {
     Async async = context.async();
-    List<Record> original = TestMocks.getRecords();
+    List<Record> original = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());

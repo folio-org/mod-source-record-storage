@@ -12,12 +12,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordDaoUtil;
@@ -39,7 +37,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import io.reactivex.Flowable;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;
@@ -142,25 +139,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = recordCollection.getRecords().stream()
-      .map(this::validateParsedRecordId)
-      .map(record -> recordDao.updateParsedRecord(record, tenantId))
-      .collect(Collectors.toList());
-    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
-    CompositeFuture.join(futures).onComplete(ar -> {
-      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-      futures.forEach(update -> {
-        if (update.failed()) {
-          response.getErrorMessages().add(update.cause().getMessage());
-        } else {
-          response.getParsedRecords().add((ParsedRecord) update.result());
-        }
-      });
-      response.setTotalRecords(response.getParsedRecords().size());
-      promise.complete(response);
-    });
-    return promise.future();
+    return recordDao.updateParsedRecords(recordCollection, tenantId);
   }
 
   @Override
@@ -203,13 +182,6 @@ public class RecordServiceImpl implements RecordService {
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
           format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
-  }
-
-  private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) || Strings.isEmpty(record.getParsedRecord().getId())) {
-      throw new BadRequestException("Each parsed record should contain an id");
-    }
-    return record;
   }
 
   private Record formatMarcRecord(Record record) {

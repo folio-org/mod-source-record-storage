@@ -847,4 +847,18 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldReturnBadRequestOnPutWhenNoParsedRecordsInRecordCollection(TestContext testContext) {
+    Async async = testContext.async();
+    RecordCollection recordCollection = new RecordCollection();
+    RestAssured.given()
+      .spec(spec)
+      .body(recordCollection)
+      .when()
+      .put(SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+    async.complete();
+  }
+
 }

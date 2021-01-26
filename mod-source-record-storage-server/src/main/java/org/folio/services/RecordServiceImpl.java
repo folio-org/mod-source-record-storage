@@ -139,6 +139,11 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new ParsedRecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
     return recordDao.updateParsedRecords(recordCollection, tenantId);
   }
 

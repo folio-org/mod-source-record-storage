@@ -1,6 +1,5 @@
 package org.folio.services;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
@@ -13,7 +12,6 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.mockito.ArgumentMatchers.any;
 
 import java.io.IOException;
 import java.util.ArrayList;

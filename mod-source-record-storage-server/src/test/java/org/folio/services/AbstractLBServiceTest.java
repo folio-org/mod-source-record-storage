@@ -2,6 +2,7 @@ package org.folio.services;
 
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.kafka.KafkaConfig;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -34,6 +35,7 @@ public abstract class AbstractLBServiceTest {
   static PostgresClientFactory postgresClientFactory;
 
   static Vertx vertx;
+  static KafkaConfig kafkaConfig;
 
   @ClassRule
   public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
@@ -47,6 +49,11 @@ public abstract class AbstractLBServiceTest {
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
+
+    KafkaConfig kafkaConfig = KafkaConfig.builder()
+      .kafkaHost(hostAndPort[0])
+      .kafkaPort(hostAndPort[1])
+      .build();
 
     PostgresClient.setIsEmbedded(true);
 

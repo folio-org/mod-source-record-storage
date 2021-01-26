@@ -15,6 +15,8 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.kafka.KafkaConfig;
+import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -26,12 +28,14 @@ import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
@@ -41,25 +45,32 @@ import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
+import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.services.util.EventHandlingUtil.sendEventWithPayloadToPubSub;
 
 @Component
 public class InstancePostProcessingEventHandler implements EventHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(InstancePostProcessingEventHandler.class);
+  private static final AtomicInteger indexer = new AtomicInteger();
 
   private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
   private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
 
+  @Value("${srs.kafka.InstancePostProcessingHandler.maxDistributionNum:100}")
+  private int maxDistributionNum;
+
   private final RecordDao recordDao;
   private final Vertx vertx;
+  private final KafkaConfig kafkaConfig;
 
   @Autowired
-  public InstancePostProcessingEventHandler(final RecordDao recordDao, Vertx vertx) {
+  public InstancePostProcessingEventHandler(final RecordDao recordDao, Vertx vertx, KafkaConfig kafkaConfig) {
     this.recordDao = recordDao;
     this.vertx = vertx;
+    this.kafkaConfig = kafkaConfig;
   }
 
   /**
@@ -96,9 +107,10 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             context.put(Record.RecordType.MARC.value(), Json.encode(record));
             context.put(DATA_IMPORT_IDENTIFIER, "true");
             OkapiConnectionParams params = getConnectionParams(dataImportEventPayload);
-            sendEventWithPayload(Json.encode(context), RECORD_UPDATED_EVENT_TYPE, params);
-
+            String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
             context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+            sendEventToKafka(params.getTenantId(), Json.encode(context), RECORD_UPDATED_EVENT_TYPE,
+              KafkaHeaderUtils.kafkaHeadersFromMap(params.getHeaders()), kafkaConfig, key);
             future.complete(dataImportEventPayload);
           } else {
             LOG.error(FAIL_MSG, updateAr.cause());

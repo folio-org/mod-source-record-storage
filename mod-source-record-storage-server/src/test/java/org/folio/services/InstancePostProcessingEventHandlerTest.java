@@ -18,6 +18,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -71,7 +72,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   private static final String PARSED_CONTENT_WITHOUT_001_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
 
   private RecordDao recordDao;
-
   private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
 
   private static RawRecord rawRecord;
@@ -100,7 +100,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
     headers.put(OKAPI_TOKEN_HEADER, "token");
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx);
+    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()

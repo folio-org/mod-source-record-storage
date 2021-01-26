@@ -214,7 +214,7 @@ public final class RecordDaoUtil {
         case EDIFACT:
           if (Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
             content = record.getRawRecord().getContent();
-            record.getParsedRecord().setFormattedContent(content.replaceAll("'", "'/n"));
+            record.getParsedRecord().setFormattedContent(EdifactUtil.formatEdifact(content));
           }
           break;
         case MARC:

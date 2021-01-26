@@ -31,6 +31,7 @@ public abstract class AbstractLBServiceTest {
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
 
   static final String TENANT_ID = "diku";
+  static final String TOKEN = "dummy";
 
   static PostgresClientFactory postgresClientFactory;
 

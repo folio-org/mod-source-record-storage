@@ -9,6 +9,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.DataImportEventPayload;
@@ -28,7 +29,6 @@ import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -44,9 +44,11 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayloadToPubSub;
 
 @Component
 public class InstancePostProcessingEventHandler implements EventHandler {
@@ -58,9 +60,6 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
   private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
-
-  @Value("${srs.kafka.InstancePostProcessingHandler.maxDistributionNum:100}")
-  private int maxDistributionNum;
 
   private final RecordDao recordDao;
   private final Vertx vertx;
@@ -80,6 +79,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
    */
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
+    LOG.info("Handling POST PROCESSING event");
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
       String instanceAsString = dataImportEventPayload.getContext().get(INSTANCE.value());
@@ -106,11 +106,12 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             HashMap<String, String> context = dataImportEventPayload.getContext();
             context.put(Record.RecordType.MARC.value(), Json.encode(record));
             context.put(DATA_IMPORT_IDENTIFIER, "true");
-            OkapiConnectionParams params = getConnectionParams(dataImportEventPayload);
-            String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
+            List<KafkaHeader> kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
+            String key = String.valueOf(indexer.incrementAndGet() % 100);
             context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-            sendEventToKafka(params.getTenantId(), Json.encode(context), RECORD_UPDATED_EVENT_TYPE,
-              KafkaHeaderUtils.kafkaHeadersFromMap(params.getHeaders()), kafkaConfig, key);
+            LOG.info("Instance id is set for SRS record, sending event to kafka");
+            sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(context), RECORD_UPDATED_EVENT_TYPE,
+              kafkaHeaders, kafkaConfig, key);
             future.complete(dataImportEventPayload);
           } else {
             LOG.error(FAIL_MSG, updateAr.cause());
@@ -133,13 +134,11 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     }
   }
 
-  private OkapiConnectionParams getConnectionParams(DataImportEventPayload dataImportEventPayload) {
-    OkapiConnectionParams params = new OkapiConnectionParams();
-    params.setOkapiUrl(dataImportEventPayload.getOkapiUrl());
-    params.setTenantId(dataImportEventPayload.getTenant());
-    params.setToken(dataImportEventPayload.getToken());
-    params.setVertx(vertx);
-    return params;
+  private List<KafkaHeader> getKafkaHeaders(DataImportEventPayload eventPayload) {
+    return List.of(
+      KafkaHeader.header(OKAPI_URL_HEADER, eventPayload.getOkapiUrl()),
+      KafkaHeader.header(OKAPI_TENANT_HEADER, eventPayload.getTenant()),
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()));
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {

@@ -46,8 +46,7 @@ public final class ParsedRecordDaoUtil {
 
   public static final String PARSED_RECORD_CONTENT = "parsed_record_content";
 
-  private ParsedRecordDaoUtil() {
-  }
+  private ParsedRecordDaoUtil() { }
 
   /**
    * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -75,7 +74,7 @@ public final class ParsedRecordDaoUtil {
    * @return future with updated ParsedRecord
    */
   public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                          ParsedRecord parsedRecord, RecordType recordType) {
+      ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
@@ -99,7 +98,7 @@ public final class ParsedRecordDaoUtil {
    * @return future of updated ParsedRecord
    */
   public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                            ParsedRecord parsedRecord, RecordType recordType) {
+      ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.update(table(name(recordType.getTableName())))

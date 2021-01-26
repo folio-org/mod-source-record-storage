@@ -360,7 +360,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldSaveEdifactRecords(TestContext context) {
     Async async = context.async();
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.EDIFACT))
+      .filter(record -> record.getRecordType().equals(Record.RecordType.EDIFACT))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()

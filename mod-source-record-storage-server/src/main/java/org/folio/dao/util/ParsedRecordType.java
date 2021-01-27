@@ -23,6 +23,7 @@ public interface ParsedRecordType {
 
   Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord);
 
+  @SuppressWarnings("squid:S1452")
   LoaderOptionsStep<? extends Record2<UUID, JSONB>> toLoaderOptionsStep(DSLContext dsl);
 
 }

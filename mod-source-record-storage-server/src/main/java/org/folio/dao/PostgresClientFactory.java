@@ -187,7 +187,7 @@ public class PostgresClientFactory {
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
   }
 
-  public static PGPoolingDataSource getDataSource(String tenantId) {
+  private static PGPoolingDataSource getDataSource(String tenantId) {
     if (DATA_SOURCE_CACHE.containsKey(tenantId)) {
       LOG.debug("Using existing data source for tenant {}", tenantId);
       return DATA_SOURCE_CACHE.get(tenantId);

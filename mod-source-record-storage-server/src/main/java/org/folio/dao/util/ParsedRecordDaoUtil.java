@@ -1,7 +1,5 @@
 package org.folio.dao.util;
 
-import static org.folio.rest.jooq.Tables.EDIFACT_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static java.lang.String.format;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
@@ -19,11 +17,8 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
-import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
-import org.jooq.LoaderOptionsStep;
-import org.jooq.Record2;
 import org.jooq.impl.SQLDataType;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -44,6 +39,8 @@ public final class ParsedRecordDaoUtil {
   private static final Field<UUID> ID_FIELD = field(name(ID), UUID.class);
   private static final Field<JsonObject> CONTENT_FIELD = field(name(CONTENT), SQLDataType.JSONB.asConvertedDataType(new JSONBToJsonObjectConverter()));
 
+  public static final String PARSED_RECORD_NOT_FOUND_TEMPLATE = "Parsed Record with id '%s' was not found";
+
   public static final String PARSED_RECORD_CONTENT = "parsed_record_content";
 
   private ParsedRecordDaoUtil() { }
@@ -57,7 +54,7 @@ public final class ParsedRecordDaoUtil {
    * @return future with optional ParsedRecord
    */
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                                        String id, RecordType recordType) {
+      String id, RecordType recordType) {
     return queryExecutor.findOneRow(dsl -> dsl.select(ID_FIELD, CONTENT_FIELD)
       .from(table(name(recordType.getTableName())))
       .where(ID_FIELD.eq(UUID.fromString(id))))
@@ -109,7 +106,7 @@ public final class ParsedRecordDaoUtil {
           return parsedRecord
             .withContent(content.getMap());
         }
-        String message = format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+        String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
         throw new NotFoundException(message);
       });
   }
@@ -219,40 +216,6 @@ public final class ParsedRecordDaoUtil {
     JsonObject jsonContent = normalize(parsedRecord.getContent());
     dbRecord.setContent(JSONB.valueOf(jsonContent.encode()));
     return dbRecord;
-  }
-
-  /**
-   * Convert {@link ParsedRecord} to database record {@link Record2}
-   * 
-   * @param parsedRecord parsed record
-   * @param recordType   record type
-   * @return Record2
-   */
-  public static Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord, RecordType recordType) {
-    switch (recordType) {
-      case EDIFACT:
-        return toDatabaseEdifactRecord(parsedRecord);
-      case MARC:
-      default:
-        return toDatabaseMarcRecord(parsedRecord);
-    }
-  }
-
-  /**
-   * Create {@link LoaderOptionsStep} for given {@link RecordType}
-   * 
-   * @param dsl        dsl context
-   * @param recordType record type
-   * @return loader options step for bulk inserts
-   */
-  public static LoaderOptionsStep<?> toLoaderOptionsStep(DSLContext dsl, RecordType recordType) {
-    switch (recordType) {
-      case EDIFACT:
-        return dsl.loadInto(EDIFACT_RECORDS_LB);
-      case MARC:
-      default:
-        return dsl.loadInto(MARC_RECORDS_LB);
-    }
   }
 
   /**

@@ -48,6 +48,8 @@ public final class RecordDaoUtil {
 
   private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
 
+  public static final String RECORD_NOT_FOUND_TEMPLATE = "Record with id '%s' was not found";
+
   private RecordDaoUtil() { }
 
   /**
@@ -149,7 +151,7 @@ public final class RecordDaoUtil {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();
           }
-          throw new NotFoundException(format("Record with id '%s' was not found", record.getId()));
+          throw new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()));
         });
   }
 
@@ -194,38 +196,6 @@ public final class RecordDaoUtil {
     }
     if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
       record.getErrorRecord().setId(record.getId());
-    }
-    return record;
-  }
-
-  /**
-   * Format record content if has record type and content.
-   * 
-   * NOTE: MARC formats parsed record and EDIFACT formats raw record.
-   * 
-   * @param record record
-   * @return record
-   * @throws Exception
-   */
-  public static Record formatRecord(Record record) throws Exception {
-    String content;
-    if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())) {
-      switch (record.getRecordType()) {
-        case EDIFACT:
-          if (Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
-            content = record.getRawRecord().getContent();
-            record.getParsedRecord().setFormattedContent(EdifactUtil.formatEdifact(content));
-          }
-          break;
-        case MARC:
-          if (Objects.nonNull(record.getParsedRecord().getContent())) {
-            content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-            record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-          }
-          break;
-        default:
-          break;
-      }
     }
     return record;
   }

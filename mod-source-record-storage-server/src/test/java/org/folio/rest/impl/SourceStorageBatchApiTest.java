@@ -841,8 +841,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(0))
       .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
-    testContext.assertEquals(format("ParsedRecord with id '%s' was not updated", record1.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(0));
-    testContext.assertEquals(format("ParsedRecord with id '%s' was not updated", record2.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(1));
+    testContext.assertEquals(format("Parsed Record with id '%s' was not updated", record1.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(0));
+    testContext.assertEquals(format("Parsed Record with id '%s' was not updated", record2.getParsedRecord().getId()), updatedParsedRecordCollection.getErrorMessages().get(1));
 
     async.complete();
   }

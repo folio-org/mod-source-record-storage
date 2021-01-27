@@ -1,11 +1,13 @@
 package org.folio.services;
 
 import static java.lang.String.format;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +20,6 @@ import javax.ws.rs.NotFoundException;
 
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -186,12 +187,13 @@ public class RecordServiceImpl implements RecordService {
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
-          format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
   }
 
   private Record formatMarcRecord(Record record) {
     try {
-      RecordDaoUtil.formatRecord(record);
+      RecordType recordType = toRecordType(record.getRecordType().name());
+      recordType.formatRecord(record);
     } catch (Exception e) {
       LOG.error("Couldn't format {} record", e, record.getRecordType());
     }

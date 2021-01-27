@@ -310,7 +310,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record invalid = new Record()
       .withId(valid.getId())
       .withSnapshotId(valid.getSnapshotId())
-      .withMatchedId(valid.getMatchedId())
+      .withRecordType(valid.getRecordType())
       .withState(valid.getState())
       .withGeneration(valid.getGeneration())
       .withOrder(valid.getOrder())
@@ -321,7 +321,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
-      String expected = "null value in column \"record_type\" violates not-null constraint";
+      String expected = "null value in column \"matched_id\" violates not-null constraint";
       context.assertEquals(expected, save.cause().getMessage());
       async.complete();
     });

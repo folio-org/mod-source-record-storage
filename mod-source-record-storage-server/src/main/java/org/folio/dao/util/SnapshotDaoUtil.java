@@ -47,7 +47,7 @@ public final class SnapshotDaoUtil {
   private static final String COMMA = ",";
 
   public static final String SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-  public static final String SNAPSHOT_NOT_FOUND_TEMPLATE = "Couldn't find snapshot with id %s";
+  public static final String SNAPSHOT_NOT_FOUND_TEMPLATE = "Snapshot with id '%s' was not found";
 
   private SnapshotDaoUtil() { }
 
@@ -153,7 +153,7 @@ public final class SnapshotDaoUtil {
           if (optionalSnapshot.isPresent()) {
             return optionalSnapshot.get();
           }
-          throw new NotFoundException(format("Snapshot with id '%s' was not found", snapshot.getJobExecutionId()));
+          throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshot.getJobExecutionId()));
         });
   }
 

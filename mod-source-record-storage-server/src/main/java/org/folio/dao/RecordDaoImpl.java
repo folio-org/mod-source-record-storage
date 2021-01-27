@@ -3,9 +3,8 @@ package org.folio.dao;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.toLoaderOptionsStep;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
@@ -104,6 +103,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
+  private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
+  private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
+
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
   private static final Field<?>[] RECORD_FIELDS = new Field<?>[] {
@@ -143,14 +145,14 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(getRecordImplicitCondition(recordType)))))
+        .where(condition.and(recordType.getRecordImplicitCondition()))))
       .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
         .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(getRecordImplicitCondition(recordType)))
+        .where(condition.and(recordType.getRecordImplicitCondition()))
         .orderBy(orderFields)
         .offset(offset)
         .limit(limit)
@@ -165,7 +167,7 @@ public class RecordDaoImpl implements RecordDao {
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .where(condition.and(getRecordImplicitCondition(recordType)))
+      .where(condition.and(recordType.getRecordImplicitCondition()))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -263,9 +265,9 @@ public class RecordDaoImpl implements RecordDao {
         // if record has parsed record, validate by attempting format
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
-            RecordDaoUtil.formatRecord(record);
             RecordType recordType = toRecordType(record.getRecordType().name());
-            Record2<UUID, JSONB> dbParsedRecord = ParsedRecordDaoUtil.toDatabaseRecord2(record.getParsedRecord(), recordType);
+            recordType.formatRecord(record);
+            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
             dbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record
@@ -276,7 +278,7 @@ public class RecordDaoImpl implements RecordDao {
               .withId(record.getId())
               .withDescription(e.getMessage())
               .withContent(content);
-            errorMessages.add(format("Record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
+            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)
               .withLeaderRecordStatus(null);
@@ -369,7 +371,7 @@ public class RecordDaoImpl implements RecordDao {
           .execute();
 
         // batch insert parsed records
-        toLoaderOptionsStep(dsl, recordType)
+        recordType.toLoaderOptionsStep(dsl)
           .batchAfter(250)
           .commitAfter(1000)
           .onDuplicateKeyUpdate()
@@ -408,7 +410,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
         .map(r -> saveRecord(txQE, record))
-        .orElse(Future.failedFuture(new NotFoundException(format("Record with id '%s' was not found", record.getId()))))));
+        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
   }
 
   @Override
@@ -418,12 +420,12 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(getSourceRecordImplicitCondition(recordType)))))
+        .where(condition.and(recordType.getSourceRecordImplicitCondition()))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
+      .where(condition.and(recordType.getSourceRecordImplicitCondition()))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -436,7 +438,7 @@ public class RecordDaoImpl implements RecordDao {
     String sql = DSL.select(getRecordFields(prt))
       .from(RECORDS_LB)
       .innerJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
+      .where(condition.and(recordType.getSourceRecordImplicitCondition()))
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
@@ -459,12 +461,12 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(getRecordImplicitCondition(recordType)))))
+        .where(condition.and(recordType.getRecordImplicitCondition()))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(getSourceRecordImplicitCondition(recordType)))
+      .where(condition.and(recordType.getSourceRecordImplicitCondition()))
     )).map(this::toSourceRecordCollection);
   }
 
@@ -561,7 +563,7 @@ public class RecordDaoImpl implements RecordDao {
           }
           if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceHrid())) {
             updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-                .set(RECORDS_LB.INSTANCE_HRID, externalIdsHolder.getInstanceHrid());
+              .set(RECORDS_LB.INSTANCE_HRID, externalIdsHolder.getInstanceHrid());
           }
         }
 
@@ -598,8 +600,8 @@ public class RecordDaoImpl implements RecordDao {
         }
 
         try {
-          RecordDaoUtil.formatRecord(record);
           RecordType recordType = toRecordType(record.getRecordType().name());
+          recordType.formatRecord(record);
 
           parsedRecordUpdates.add(
             DSL.update(table(name(recordType.getTableName())))
@@ -608,7 +610,8 @@ public class RecordDaoImpl implements RecordDao {
           );
 
         } catch (Exception e) {
-          errorMessages.add(format("Record %s has invalid parsed record; %s", record.getId(), e.getMessage()));
+          errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
+          // if invalid parsed record, set id to null to filter out
           record.getParsedRecord()
             .setId(null);
         }
@@ -641,7 +644,7 @@ public class RecordDaoImpl implements RecordDao {
           int result = parsedRecordUpdateResults[i];
           ParsedRecord parsedRecord = parsedRecords.get(i);
           if (result == 0) {
-            errorMessages.add(format("ParsedRecord with id '%s' was not updated", parsedRecord.getId()));
+            errorMessages.add(format("Parsed Record with id '%s' was not updated", parsedRecord.getId()));
           } else {
             parsedRecordsUpdated.add(parsedRecord);
           }
@@ -677,7 +680,7 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::toOptionalRecord)
         .compose(optionalRecord -> optionalRecord
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-          .orElse(Future.failedFuture(new NotFoundException(format("Record with %s id: %s was not found", externalIdType, externalId)))))
+          .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, externalIdType, externalId)))))
         .onFailure(v -> txQE.rollback());
   }
 
@@ -691,7 +694,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(format("Record with %s id: %s was not found", externalIdType, id))))))
+      .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, externalIdType, id))))))
         .map(u -> true);
   }
 
@@ -718,26 +721,6 @@ public class RecordDaoImpl implements RecordDao {
 
   private Row asRow(Row row) {
     return row;
-  }
-
-  private Condition getRecordImplicitCondition(RecordType recordType) {
-    switch (recordType) {
-      case MARC:
-      case EDIFACT:
-      default:
-        return filterRecordByType(recordType.name());
-    }
-  }
-
-  private Condition getSourceRecordImplicitCondition(RecordType recordType) {
-    switch (recordType) {
-      case MARC:
-        return filterRecordByType(recordType.name())
-          .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
-      case EDIFACT:
-      default:
-        return filterRecordByType(recordType.name());
-    }
   }
 
   private Future<Optional<Record>> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Optional<Record> record, boolean includeErrorRecord) {
@@ -804,7 +787,8 @@ public class RecordDaoImpl implements RecordDao {
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
       // attempt to format record to validate
-      RecordDaoUtil.formatRecord(record);
+      RecordType recordType = toRecordType(record.getRecordType().name());
+      recordType.formatRecord(record);
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {
           record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
@@ -828,7 +812,7 @@ public class RecordDaoImpl implements RecordDao {
         if (optionalRecord.isPresent()) {
           return optionalRecord;
         }
-        String rollBackMessage = format("Record with id %s was not found", record.getId());
+        String rollBackMessage = format(RECORD_NOT_FOUND_TEMPLATE, record.getId());
         throw new NotFoundException(rollBackMessage);
       })
       .map(Optional::get)

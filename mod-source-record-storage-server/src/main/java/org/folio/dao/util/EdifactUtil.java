@@ -23,12 +23,8 @@ public class EdifactUtil {
   private EdifactUtil() { }
 
   public static String formatEdifact(String edifact) throws IOException, EDIStreamException {
-    if (edifact.contains("\n")) {
-      // already formattted
-      return edifact;
-    }
     String segmentDelimiter = inferSegmentDelimiter(edifact);
-    return edifact.replaceAll(segmentDelimiter, format("%s\n", segmentDelimiter));
+    return edifact.replaceAll(format("%s(?!\n)", segmentDelimiter), format("%s\n", segmentDelimiter));
   }
 
   private static String inferSegmentDelimiter(String edifact) throws IOException, EDIStreamException {

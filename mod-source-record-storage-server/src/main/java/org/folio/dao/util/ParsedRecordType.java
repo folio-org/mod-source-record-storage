@@ -10,6 +10,9 @@ import org.jooq.JSONB;
 import org.jooq.LoaderOptionsStep;
 import org.jooq.Record2;
 
+/**
+ * Interface for operations with separate parsed record tables.
+ */
 public interface ParsedRecordType {
 
   void formatRecord(Record record) throws FormatRecordException;

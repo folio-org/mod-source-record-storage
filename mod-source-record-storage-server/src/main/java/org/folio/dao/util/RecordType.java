@@ -22,8 +22,9 @@ import org.jooq.Record2;
 import io.xlate.edi.stream.EDIStreamException;
 
 /**
- * Enum used to distingush table for parsed record. Used to convert
- * {@link Record} type to parsed record database table.
+ * Enum used to distingush table for parsed record and provide implementation
+ * for specific funtionality per record type. Used to convert {@link Record} type
+ * to parsed record database table.
  * 
  * Enum string value must match those of
  * {@link org.folio.rest.jaxrs.model.Record.RecordType}.

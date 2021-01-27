@@ -12,7 +12,7 @@ import org.jooq.Record2;
 
 public interface ParsedRecordType {
 
-  void formatRecord(Record record) throws Exception;
+  void formatRecord(Record record) throws FormatRecordException;
 
   Condition getRecordImplicitCondition();
 
@@ -20,6 +20,6 @@ public interface ParsedRecordType {
 
   Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord);
 
-  LoaderOptionsStep<?> toLoaderOptionsStep(DSLContext dsl);
+  LoaderOptionsStep toLoaderOptionsStep(DSLContext dsl);
 
 }

@@ -20,6 +20,6 @@ public interface ParsedRecordType {
 
   Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord);
 
-  LoaderOptionsStep toLoaderOptionsStep(DSLContext dsl);
+  LoaderOptionsStep<? extends Record2<UUID, JSONB>> toLoaderOptionsStep(DSLContext dsl);
 
 }

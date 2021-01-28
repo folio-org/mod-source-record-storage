@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
@@ -105,7 +106,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
       try {
         recordService.getSourceRecordById(id, toExternalIdType(idType), tenantId)
           .map(optionalSourceRecord -> optionalSourceRecord.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
           .map(GetSourceStorageSourceRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

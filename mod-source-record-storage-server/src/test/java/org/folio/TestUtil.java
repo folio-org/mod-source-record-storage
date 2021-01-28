@@ -10,4 +10,5 @@ public final class TestUtil {
   public static String readFileFromPath(String path) throws IOException {
     return new String(FileUtils.readFileToByteArray(new File(path)));
   }
+
 }

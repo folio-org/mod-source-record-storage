@@ -1,9 +1,9 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
-
 import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
@@ -105,7 +105,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id, tenantId)
-          .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+          .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
             .compose(record -> record.getState().equals(State.DELETED) ? Future.succeededFuture(true)
               : recordService.updateRecord(record.withState(State.DELETED), tenantId).map(r -> true))
             .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204()).map(Response.class::cast)
@@ -123,7 +123,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id, tenantId)
-          .map(optionalRecord -> optionalRecord.orElseThrow(() -> new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+          .map(optionalRecord -> optionalRecord.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {

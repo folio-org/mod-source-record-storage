@@ -14,7 +14,10 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.io.FileUtils;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -52,67 +55,78 @@ public class TestMocks {
   }
 
   public static List<Snapshot> getSnapshots() {
-    return new ArrayList<>(snapshots);
+    return new ArrayList<>(snapshots.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
 
   public static Snapshot getSnapshot(int index) {
-    return snapshots.get(index);
+    return clone(snapshots.get(index));
   }
 
   public static List<Record> getRecords() {
-    return new ArrayList<>(records);
+    return new ArrayList<>(records.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
 
   public static Record getRecord(int index) {
-    return records.get(index);
+    return clone(records.get(index));
   }
 
   public static Record getEdifactRecord() {
-    return records.stream().filter(s -> s.getRecordType().equals(RecordType.EDIFACT)).findFirst().get();
+    return records.stream()
+      .filter(s -> s.getRecordType().equals(RecordType.EDIFACT))
+      .map(TestMocks::clone)
+      .findFirst()
+      .get();
   }
 
   public static List<ErrorRecord> getErrorRecords() {
-    return new ArrayList<>(errorRecords);
+    return new ArrayList<>(errorRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
 
   public static ErrorRecord getErrorRecord(int index) {
-    return errorRecords.get(index);
+    return clone(errorRecords.get(index));
   }
 
   public static List<RawRecord> getRawRecords() {
-    return new ArrayList<>(rawRecords);
+    return new ArrayList<>(rawRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
 
   public static RawRecord getRawRecord(int index) {
-    return rawRecords.get(index);
+    return clone(rawRecords.get(index));
   }
 
   public static List<ParsedRecord> getParsedRecords() {
-    return new ArrayList<>(parsedRecords);
+    return new ArrayList<>(parsedRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
 
   public static ParsedRecord getParsedRecord(int index) {
-    return parsedRecords.get(index);
+    return clone(parsedRecords.get(index));
   }
 
   public static Optional<Snapshot> getSnapshot(String id) {
-    return snapshots.stream().filter(s -> s.getJobExecutionId().equals(id)).findAny();
+    return snapshots.stream().map(TestMocks::clone).filter(s -> s.getJobExecutionId().equals(id)).findAny();
   }
 
   public static Optional<Record> getRecord(String id) {
-    return records.stream().filter(r -> r.getId().equals(id)).findAny();
+    return records.stream().map(TestMocks::clone).filter(r -> r.getId().equals(id)).findAny();
   }
 
   public static Optional<ErrorRecord> getErrorRecord(String id) {
-    return errorRecords.stream().filter(er -> er.getId().equals(id)).findAny();
+    return errorRecords.stream().map(TestMocks::clone).filter(er -> er.getId().equals(id)).findAny();
   }
 
   public static Optional<RawRecord> getRawRecord(String id) {
-    return rawRecords.stream().filter(rr -> rr.getId().equals(id)).findAny();
+    return rawRecords.stream().map(TestMocks::clone).filter(rr -> rr.getId().equals(id)).findAny();
   }
 
   public static Optional<ParsedRecord> getParsedRecord(String id) {
-    return parsedRecords.stream().filter(pr -> pr.getId().equals(id)).findAny();
+    return parsedRecords.stream().map(TestMocks::clone).filter(pr -> pr.getId().equals(id)).findAny();
+  }
+
+  public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
+    if (Objects.nonNull(parsedRecord.getContent()) && parsedRecord.getContent() instanceof LinkedHashMap) {
+      parsedRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
+    }
+    return parsedRecord;
   }
 
   private static RawRecord toRawRecord(SourceRecord sourceRecord) {
@@ -222,11 +236,88 @@ public class TestMocks {
     return Optional.empty();
   }
 
-  public static ParsedRecord normalizeContent(ParsedRecord parsedRecord) {
-    if (Objects.nonNull(parsedRecord.getContent()) && parsedRecord.getContent() instanceof LinkedHashMap) {
-      parsedRecord.setContent(JsonObject.mapFrom(parsedRecord.getContent()).encode());
+  private static Snapshot clone(Snapshot snapshot) {
+    return new Snapshot()
+      .withJobExecutionId(snapshot.getJobExecutionId())
+      .withStatus(snapshot.getStatus())
+      .withProcessingStartedDate(snapshot.getProcessingStartedDate())
+      .withMetadata(snapshot.getMetadata());
+  }
+
+  private static Record clone(Record record) {
+    return new Record()
+      .withId(record.getId())
+      .withSnapshotId(record.getSnapshotId())
+      .withMatchedId(record.getMatchedId())
+      .withState(record.getState())
+      .withRecordType(record.getRecordType())
+      .withOrder(record.getOrder())
+      .withGeneration(record.getGeneration())
+      .withLeaderRecordStatus(record.getLeaderRecordStatus())
+      .withRawRecord(clone(record.getRawRecord()))
+      .withParsedRecord(clone(record.getParsedRecord()))
+      .withErrorRecord(clone(record.getErrorRecord()))
+      .withExternalIdsHolder(clone(record.getExternalIdsHolder()))
+      .withAdditionalInfo(clone(record.getAdditionalInfo()))
+      .withMetadata(clone(record.getMetadata()));
+  }
+
+  private static RawRecord clone(RawRecord rawRecord) {
+    if (Objects.nonNull(rawRecord)) {
+      return new RawRecord()
+        .withId(rawRecord.getId())
+        .withContent(rawRecord.getContent());
     }
-    return parsedRecord;
+    return null;
+  }
+
+  private static ParsedRecord clone(ParsedRecord parsedRecord) {
+    if (Objects.nonNull(parsedRecord)) {
+      return new ParsedRecord()
+        .withId(parsedRecord.getId())
+        .withContent(parsedRecord.getContent());
+    }
+    return null;
+  }
+
+  private static ErrorRecord clone(ErrorRecord errorRecord) {
+    if (Objects.nonNull(errorRecord)) {
+      return new ErrorRecord()
+        .withId(errorRecord.getId())
+        .withDescription(errorRecord.getDescription())
+        .withContent(errorRecord.getContent());
+    }
+    return null;
+  }
+
+  private static ExternalIdsHolder clone(ExternalIdsHolder externalIdsHolder) {
+    if (Objects.nonNull(externalIdsHolder)) {
+      return new ExternalIdsHolder()
+        .withInstanceId(externalIdsHolder.getInstanceId())
+        .withInstanceHrid(externalIdsHolder.getInstanceHrid());
+    }
+    return null;
+  }
+
+  private static AdditionalInfo clone(AdditionalInfo additionalInfo) {
+    if (Objects.nonNull(additionalInfo)) {
+      return new AdditionalInfo()
+        .withSuppressDiscovery(additionalInfo.getSuppressDiscovery());
+    }
+    return null;
+  }
+
+  private static Metadata clone(Metadata metadata) {
+    if (Objects.nonNull(metadata)) {
+      return new Metadata()
+        .withCreatedByUserId(metadata.getCreatedByUserId())
+        .withCreatedByUsername(metadata.getCreatedByUsername())
+        .withCreatedDate(metadata.getCreatedDate())
+        .withUpdatedByUserId(metadata.getUpdatedByUserId())
+        .withUpdatedByUsername(metadata.getUpdatedByUsername())
+        .withUpdatedDate(metadata.getUpdatedDate());
+    }
+    return null;
   }
 
 }

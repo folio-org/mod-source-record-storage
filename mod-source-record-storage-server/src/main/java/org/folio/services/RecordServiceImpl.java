@@ -1,26 +1,27 @@
 package org.folio.services;
 
 import static java.lang.String.format;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -37,7 +38,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import io.reactivex.Flowable;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.logging.Logger;
@@ -73,20 +73,14 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    if (Objects.isNull(record.getId())) {
-      record.setId(UUID.randomUUID().toString());
-    }
-    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
-      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
-    }
+    ensureRecordHasId(record);
+    ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
-        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+        .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
       .compose(snapshot -> {
         if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-          String message = String.format(msgTemplate, snapshot.getStatus());
-          return Future.failedFuture(new BadRequestException(message));
+          return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
         }
         return Future.succeededFuture();
       })
@@ -105,30 +99,17 @@ public class RecordServiceImpl implements RecordService {
         } else {
           return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
         }
-      }),
-      tenantId);
+      }), tenantId);
   }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = recordCollection.getRecords().stream()
-      .map(record -> saveRecord(record, tenantId))
-      .collect(Collectors.toList());
-    Promise<RecordsBatchResponse> promise = Promise.promise();
-    CompositeFuture.join(futures).onComplete(ar -> {
-      RecordsBatchResponse response = new RecordsBatchResponse();
-      futures.forEach(save -> {
-        if (save.failed()) {
-          response.getErrorMessages().add(save.cause().getMessage());
-        } else {
-          response.getRecords().add((Record) save.result());
-        }
-      });
-      response.setTotalRecords(response.getRecords().size());
-      promise.complete(response);
-    });
-    return promise.future();
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<RecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new RecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
+    return recordDao.saveRecords(recordCollection, tenantId);
   }
 
   @Override
@@ -159,25 +140,12 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = recordCollection.getRecords().stream()
-      .map(this::validateParsedRecordId)
-      .map(record -> recordDao.updateParsedRecord(record, tenantId))
-      .collect(Collectors.toList());
-    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
-    CompositeFuture.join(futures).onComplete(ar -> {
-      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-      futures.forEach(update -> {
-        if (update.failed()) {
-          response.getErrorMessages().add(update.cause().getMessage());
-        } else {
-          response.getParsedRecords().add((ParsedRecord) update.result());
-        }
-      });
-      response.setTotalRecords(response.getParsedRecords().size());
-      promise.complete(response);
-    });
-    return promise.future();
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new ParsedRecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
+    return recordDao.updateParsedRecords(recordCollection, tenantId);
   }
 
   @Override
@@ -219,32 +187,13 @@ public class RecordServiceImpl implements RecordService {
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
-  }
-
-  private Record ensureRecordForeignKeys(Record record) {
-    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
-      record.getRawRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
-      record.getParsedRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
-      record.getErrorRecord().setId(record.getId());
-    }
-    return record;
-  }
-
-  private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) || Strings.isEmpty(record.getParsedRecord().getId())) {
-      throw new BadRequestException("Each parsed record should contain an id");
-    }
-    return record;
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
   }
 
   private Record formatMarcRecord(Record record) {
     try {
-      RecordDaoUtil.formatRecord(record);
+      RecordType recordType = toRecordType(record.getRecordType().name());
+      recordType.formatRecord(record);
     } catch (Exception e) {
       LOG.error("Couldn't format {} record", e, record.getRecordType());
     }

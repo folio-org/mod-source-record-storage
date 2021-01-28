@@ -2,6 +2,7 @@ package org.folio.dao.util;
 
 import static com.google.common.base.CaseFormat.LOWER_CAMEL;
 import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
+import static java.lang.String.format;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
@@ -46,6 +47,8 @@ public final class RecordDaoUtil {
   private static final String COMMA = ",";
 
   private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
+
+  public static final String RECORD_NOT_FOUND_TEMPLATE = "Record with id '%s' was not found";
 
   private RecordDaoUtil() { }
 
@@ -148,38 +151,51 @@ public final class RecordDaoUtil {
           if (optionalRecord.isPresent()) {
             return optionalRecord.get();
           }
-          throw new NotFoundException(String.format("Record with id '%s' was not found", record.getId()));
+          throw new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()));
         });
   }
 
   /**
-   * Format record content if has record type and content.
-   * 
-   * NOTE: MARC formats parsed record and EDIFACT formats raw record.
+   * Make sure record has id.
    * 
    * @param record record
-   * @return record
-   * @throws Exception
+   * @return record with id
    */
-  public static Record formatRecord(Record record) throws Exception {
-    String content;
-    if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())) {
-      switch (record.getRecordType()) {
-        case EDIFACT:
-          if (Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
-            content = record.getRawRecord().getContent();
-            record.getParsedRecord().setFormattedContent(content.replaceAll("'", "'/n"));
-          }
-          break;
-        case MARC:
-          if (Objects.nonNull(record.getParsedRecord().getContent())) {
-            content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-            record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-          }
-          break;
-        default:
-          break;
-      }
+  public static Record ensureRecordHasId(Record record) {
+    if (Objects.isNull(record.getId())) {
+      record.setId(UUID.randomUUID().toString());
+    }
+    return record;
+  }
+
+  /**
+   * Make sure record has additional info suppress discovery.
+   * 
+   * @param record record
+   * @return record with additional info suppress discovery
+   */
+  public static Record ensureRecordHasSuppressDiscovery(Record record) {
+    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
+      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
+    }
+    return record;
+  }
+
+  /**
+   * Make sure all associated records have record id for foreign key.
+   * 
+   * @param record record
+   * @return record with all foreign keys set
+   */
+  public static Record ensureRecordForeignKeys(Record record) {
+    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
+      record.getRawRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+      record.getParsedRecord().setId(record.getId());
+    }
+    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+      record.getErrorRecord().setId(record.getId());
     }
     return record;
   }
@@ -512,7 +528,7 @@ public final class RecordDaoUtil {
           return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, order[0]))
             .sort(order.length > 1 ? SortOrder.valueOf(order[1]) : SortOrder.DEFAULT);
         } catch (Exception e) {
-          throw new BadRequestException(String.format("Invalid order by %s", String.join(",", order)));
+          throw new BadRequestException(format("Invalid order by %s", String.join(",", order)));
         }
       })
       .collect(Collectors.toList());
@@ -530,7 +546,7 @@ public final class RecordDaoUtil {
     try {
       return UUID.fromString(uuid);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Invalid UUID %s", uuid));
+      throw new BadRequestException(format("Invalid UUID %s", uuid));
     }
   }
 
@@ -542,7 +558,7 @@ public final class RecordDaoUtil {
     try {
       return RecordType.valueOf(type);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Unknown record type %s", type));
+      throw new BadRequestException(format("Unknown record type %s", type));
     }
   }
 
@@ -550,7 +566,7 @@ public final class RecordDaoUtil {
     try {
       return RecordState.valueOf(state);
     } catch (Exception e) {
-      throw new BadRequestException(String.format("Unknown record state %s", state));
+      throw new BadRequestException(format("Unknown record state %s", state));
     }
   }
 

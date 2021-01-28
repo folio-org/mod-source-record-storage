@@ -13,6 +13,7 @@ import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -80,7 +81,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -112,7 +113,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -143,7 +144,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -182,7 +183,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -309,7 +310,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record invalid = new Record()
       .withId(valid.getId())
       .withSnapshotId(valid.getSnapshotId())
-      .withMatchedId(valid.getMatchedId())
+      .withRecordType(valid.getRecordType())
       .withState(valid.getState())
       .withGeneration(valid.getGeneration())
       .withOrder(valid.getOrder())
@@ -320,16 +321,48 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
-      String expected = "null value in column \"record_type\" violates not-null constraint";
+      String expected = "null value in column \"matched_id\" violates not-null constraint";
       context.assertEquals(expected, save.cause().getMessage());
       async.complete();
     });
   }
 
   @Test
-  public void shouldSaveRecords(TestContext context) {
+  public void shouldSaveMarcRecords(TestContext context) {
     Async async = context.async();
-    List<Record> expected = TestMocks.getRecords();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      context.assertEquals(0, batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      compareRecords(context, expected, batch.result().getRecords());
+      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
+        if (count.failed()) {
+          context.fail(count.cause());
+        }
+        context.assertEquals(expected.size(), count.result());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveEdifactRecords(TestContext context) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(Record.RecordType.EDIFACT))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -469,7 +502,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -500,7 +533,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -531,7 +564,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -569,7 +602,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -607,11 +640,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
       List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
       recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, false, TENANT_ID).onComplete(get -> {
@@ -661,11 +695,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
       List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
         .map(record -> record.getExternalIdsHolder().getInstanceId())
         .collect(Collectors.toList());
       recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, true, TENANT_ID).onComplete(get -> {
@@ -726,11 +761,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateParsedRecords(TestContext context) {
     Async async = context.async();
-    List<Record> original = TestMocks.getRecords();
+    List<Record> original = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
+      .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -841,7 +878,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -925,6 +962,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         });
       });
     });
+  }
+
+  private CompositeFuture saveRecords(List<Record> records, String tenantId) {
+    return CompositeFuture.all(records.stream().map(record -> {
+      return recordService.saveRecord(record, tenantId);
+    }).collect(Collectors.toList()));
   }
 
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
@@ -1032,13 +1075,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareParsedRecords(TestContext context, ParsedRecord expected, ParsedRecord actual) {
     context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
+    context.assertEquals(ParsedRecordDaoUtil.normalizeContent(expected), ParsedRecordDaoUtil.normalizeContent(actual));
   }
 
   private void compareErrorRecords(TestContext context, ErrorRecord expected, ErrorRecord actual) {
     context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
-    context.assertEquals(expected.getContent(), actual.getContent());
+    context.assertEquals((String) expected.getContent(), (String) actual.getContent());
     context.assertEquals(expected.getDescription(), actual.getDescription());
   }
 

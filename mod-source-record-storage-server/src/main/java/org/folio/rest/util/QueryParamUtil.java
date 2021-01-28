@@ -1,5 +1,7 @@
 package org.folio.rest.util;
 
+import static java.lang.String.format;
+
 import javax.ws.rs.BadRequestException;
 
 import org.codehaus.plexus.util.StringUtils;
@@ -21,7 +23,7 @@ public final class QueryParamUtil {
       try {
         return ExternalIdType.valueOf(externalIdType);
       } catch (Exception e) {
-        throw new BadRequestException(String.format("Unknown id type %s", externalIdType));
+        throw new BadRequestException(format("Unknown id type %s", externalIdType));
       }
     }
     return ExternalIdType.RECORD;
@@ -38,7 +40,7 @@ public final class QueryParamUtil {
       try {
         return RecordType.valueOf(recordType);
       } catch (Exception e) {
-        throw new BadRequestException(String.format("Unknown record type %s", recordType));
+        throw new BadRequestException(format("Unknown record type %s", recordType));
       }
     }
     return RecordType.MARC;

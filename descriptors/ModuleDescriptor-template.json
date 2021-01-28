@@ -236,7 +236,7 @@
           ],
           "pathPattern": "/source-storage/handlers/data-import",
           "permissionsRequired": [
-            "source-storage.events.post"
+            "pubsub.events.post"
           ],
           "modulePermissions": [
             "pubsub.publish.post"
@@ -248,7 +248,7 @@
           ],
           "pathPattern": "/source-storage/handlers/updated-record",
           "permissionsRequired": [
-            "source-storage.events.post"
+            "pubsub.events.post"
           ],
           "modulePermissions": [
             "pubsub.publish.post"

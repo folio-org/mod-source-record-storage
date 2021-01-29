@@ -615,7 +615,7 @@ public class RecordDaoImpl implements RecordDao {
           record.getParsedRecord()
             .setId(null);
         }
-  
+
       }).map(Record::getParsedRecord)
         .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
         .collect(Collectors.toList());
@@ -792,7 +792,7 @@ public class RecordDaoImpl implements RecordDao {
       return ParsedRecordDaoUtil.save(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
         .map(parsedRecord -> {
           record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
-          return parsedRecord.withContent(content);
+          return parsedRecord;
         });
     } catch (Exception e) {
       LOG.error("Couldn't format {} record", e, record.getRecordType());

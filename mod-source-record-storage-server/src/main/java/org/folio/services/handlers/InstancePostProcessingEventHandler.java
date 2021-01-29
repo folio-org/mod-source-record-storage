@@ -1,20 +1,5 @@
 package org.folio.services.handlers;
 
-import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -31,30 +16,20 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.dao.util.RecordType;
+import org.folio.kafka.KafkaConfig;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

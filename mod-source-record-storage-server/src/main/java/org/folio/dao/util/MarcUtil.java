@@ -1,5 +1,7 @@
 package org.folio.dao.util;
 
+import static java.lang.String.format;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -80,7 +82,7 @@ public class MarcUtil {
         return reader.next();
       }
     }
-    throw new MarcException(String.format("Unable to read: %s", rawMarc));
+    throw new MarcException(format("Unable to read: %s", rawMarc));
   }
 
   private static Record marcJsonToRecord(String marcJson) throws IOException {
@@ -94,7 +96,7 @@ public class MarcUtil {
         }
       }
     }
-    throw new MarcException(String.format("Unable to read: %s", marcJson));
+    throw new MarcException(format("Unable to read: %s", marcJson));
   }
 
   private static String recordToMarcJson(Record record) throws IOException {

@@ -51,10 +51,15 @@ resourceTypes:
         type: string
         example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
         required: false
+      recordType:
+        description: Filter by Record Type
+        type: string
+        example: MARC
+        default: MARC
       state:
         description: Filter by State
         type: string
-        example: "ACTUAL"
+        example: ACTUAL
         required: false
       orderBy:
         description: Sort Records
@@ -87,7 +92,6 @@ resourceTypes:
             description: Type of Id for Record lookup
             type: string
             example: INSTANCE
-            required: false
             default: RECORD
         responses:
           200:
@@ -118,13 +122,11 @@ resourceTypes:
             description: Type of Id for Record lookup
             type: string
             example: INSTANCE
-            required: false
             default: RECORD
           suppress:
             description: Whether to suppress or unsuppress from discovery
             example: false
             type: boolean
-            required: false
             default: true
         responses:
           200:

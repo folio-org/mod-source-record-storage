@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
 import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
 
@@ -109,7 +110,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .map(deleted -> Boolean.TRUE.equals(deleted)
             ? DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204()
             : DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
-                String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
+                format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
@@ -127,7 +128,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
       try {
         snapshotService.getSnapshotById(jobExecutionId, tenantId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotsByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

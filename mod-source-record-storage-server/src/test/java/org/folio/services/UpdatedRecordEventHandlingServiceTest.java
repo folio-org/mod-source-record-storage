@@ -20,10 +20,16 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.Tables;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
@@ -44,8 +50,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest {
 
-  private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static final String UPDATED_PARSED_RECORD_CONTENT = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
 
   private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
@@ -74,9 +78,9 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
   }
 
   @Before
@@ -153,7 +157,7 @@ public class UpdatedRecordEventHandlingServiceTest extends AbstractLBServiceTest
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getSourceRecordById(record.getMatchedId(), "RECORD", TENANT_ID).onComplete(getNew -> {
+      recordService.getSourceRecordById(record.getMatchedId(), ExternalIdType.RECORD, TENANT_ID).onComplete(getNew -> {
         if (getNew.failed()) {
           context.fail(getNew.cause());
         }

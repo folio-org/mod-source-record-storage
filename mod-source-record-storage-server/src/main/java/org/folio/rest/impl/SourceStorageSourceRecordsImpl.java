@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
@@ -7,9 +8,10 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.util.Date;
 import java.util.List;
@@ -57,21 +59,18 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
       Boolean suppressFromDiscovery, Boolean deleted, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
       List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    // NOTE: if and when a new record type is introduced and a parsed record table is added,
-    // will need to add a record type query parameter
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterRecordByRecordId(recordId)
           .and(filterRecordBySnapshotId(snapshotId))
           .and(filterRecordByInstanceId(instanceId))
           .and(filterRecordByInstanceHrid(instanceHrid))
-          .and(filterRecordByType(recordType))
           .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
           .and(filterRecordByDeleted(deleted))
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
           .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-        recordService.getSourceRecords(condition, orderFields, offset, limit, tenantId)
+        recordService.getSourceRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -84,11 +83,11 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void postSourceStorageSourceRecords(String idType, Boolean deleted, List<String> entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageSourceRecords(String idType, String recordType, Boolean deleted, List<String> entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(entity, idType, deleted, tenantId)
+        recordService.getSourceRecords(entity, toExternalIdType(idType), toRecordType(recordType), deleted, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -105,9 +104,9 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecordById(id, idType, tenantId)
+        recordService.getSourceRecordById(id, toExternalIdType(idType), tenantId)
           .map(optionalSourceRecord -> optionalSourceRecord.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
           .map(GetSourceStorageSourceRecordsByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

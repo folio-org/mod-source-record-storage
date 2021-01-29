@@ -1,27 +1,29 @@
 package org.folio.services;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.TestUtil;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.TestUtil;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.BlockJUnit4ClassRunner;
+
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 @RunWith(BlockJUnit4ClassRunner.class)
 public class AdditionalFieldsUtilTest {
 
-  private static final String PARSED_RECORD_PATH = "src/test/resources/parsedRecord.json";
+  private static final String PARSED_MARC_RECORD_PATH = "src/test/resources/parsedMarcRecord.json";
 
   @Test
   public void shouldAddInstanceIdSubfield() throws IOException {
@@ -29,7 +31,7 @@ public class AdditionalFieldsUtilTest {
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
 
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_RECORD_PATH);
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
@@ -143,7 +145,7 @@ public class AdditionalFieldsUtilTest {
   @Test
   public void shouldRemoveField() throws IOException {
     String recordId = UUID.randomUUID().toString();
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_RECORD_PATH);
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
@@ -166,7 +168,7 @@ public class AdditionalFieldsUtilTest {
   @Test
   public void shouldAddControlledFieldToMarcRecord() throws IOException {
     String recordId = UUID.randomUUID().toString();
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_RECORD_PATH);
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
@@ -193,7 +195,7 @@ public class AdditionalFieldsUtilTest {
   public void shouldAddFieldToMarcRecordInNumericalOrder() throws IOException {
     // given
     String instanceHrId = UUID.randomUUID().toString();
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_RECORD_PATH);
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
@@ -214,7 +216,7 @@ public class AdditionalFieldsUtilTest {
         existsNewField = true;
         String currentTag = fields.getJsonObject(i).stream().map(Map.Entry::getKey).findFirst().get();
         String nextTag = fields.getJsonObject(i + 1).stream().map(Map.Entry::getKey).findFirst().get();
-        Assert.assertThat(currentTag, lessThanOrEqualTo(nextTag));
+        MatcherAssert.assertThat(currentTag, lessThanOrEqualTo(nextTag));
       }
     }
     Assert.assertTrue(existsNewField);

@@ -10,21 +10,27 @@ import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
+import org.apache.http.HttpStatus;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.ClassRule;
+import org.testcontainers.containers.PostgreSQLContainer;
 
+import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
@@ -38,14 +44,23 @@ import io.vertx.reactivex.core.Vertx;
 
 public abstract class AbstractRestVerticleTest {
 
+  private static PostgreSQLContainer<?> postgresSQLContainer;
+
+  private static String useExternalDatabase;
+  private static int okapiPort;
+
   static final String TENANT_ID = "diku";
 
   static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/source-records";
 
-  static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
+  static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
+  static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
+
+  static final String RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEdifactRecordContent.sample";
+  static final String PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedEdifactRecordContent.sample";
+
   static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
 
   private static final String KAFKA_HOST = "FOLIO_KAFKA_HOST";
@@ -57,9 +72,6 @@ public abstract class AbstractRestVerticleTest {
   static Vertx vertx;
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
-
-  private static String useExternalDatabase;
-  private static int okapiPort;
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -92,11 +104,20 @@ public abstract class AbstractRestVerticleTest {
         String postgresConfigPath = System.getProperty(
           "org.folio.source.storage.test.config",
           "/postgres-conf-local.json");
-        PostgresClient.setConfigFilePath(postgresConfigPath);
+        PostgresClientFactory.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
-        PostgresClient.setIsEmbedded(true);
-        PostgresClient.getInstance(vertx.getDelegate()).startEmbeddedPostgres();
+        String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
+        postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
+        postgresSQLContainer.start();
+
+        Envs.setEnv(
+          postgresSQLContainer.getHost(),
+          postgresSQLContainer.getFirstMappedPort(),
+          postgresSQLContainer.getUsername(),
+          postgresSQLContainer.getPassword(),
+          postgresSQLContainer.getDatabaseName()
+        );
         break;
       default:
         String message = "No understood database choice made." +
@@ -149,10 +170,38 @@ public abstract class AbstractRestVerticleTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopEmbeddedPostgres();
+        postgresSQLContainer.stop();
       }
       async.complete();
     }));
+  }
+
+  protected void postSnapshots(TestContext testContext, Snapshot... snapshots) {
+    Async async = testContext.async();
+    for (Snapshot snapshot : snapshots) {
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
+  }
+
+  protected void postRecords(TestContext testContext, Record... records) {
+    Async async = testContext.async();
+    for (Record record : records) {
+      RestAssured.given()
+        .spec(spec)
+        .body(record)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+    async.complete();
   }
 
 }

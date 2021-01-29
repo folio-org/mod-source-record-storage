@@ -22,6 +22,9 @@ Provides PostgreSQL based storage to complement the data import module. Written 
 
 ## Compiling
 
+> [Docker](https://www.docker.com/) is now required to build mod-source-record-storage. [docker-maven-plugin](https://dmp.fabric8.io/) is used to create a Postgres Container
+for running [Liquibase](https://www.liquibase.org/) scripts and generating [jOOQ](https://www.jooq.org/) schema DAOs for type safe SQL query building.
+
 ```
    mvn install
 ```
@@ -126,7 +129,7 @@ To simplify the tracking of schemas changes, the tenant versioning is displayed 
 
 ### Database redesign
 
-The database has recently been redesigned to use standard relational table design with less usage of JSONB columns and more use of foreign key constraints and default B-tree indexes optimized for single value columns. The rational was to improve performance of data retrieval and data import. A significant change was the addition of `leader_record_status` column on the `records` table that is populated via a trigger on insert and update on the `marc_records` table. This not only provides ability to query on status of MARC record but also ability to condition on it presence to page results prior to join between `records` and `marc_records`.
+The database has recently been redesigned to use standard relational table design with less usage of JSONB columns and more use of foreign key constraints and default B-tree indexes optimized for single value columns. The rational was to improve performance of data retrieval and data import. A significant change was the addition of `leader_record_status` column on the `records` table that is populated via a trigger on insert and update on the `marc_records` table. This provides ability to query on status of MARC record quickly and also condition appropriate leader record status that indicate the record has been deleted.
 
 <img src="er-diagram.png" alt="Source Record Storage ER Diagram" style="display:block; float:none; margin-left:auto; margin-right:auto;" />
 

@@ -234,9 +234,21 @@
           "methods": [
             "POST"
           ],
+          "pathPattern": "/source-storage/handlers/data-import",
+          "permissionsRequired": [
+            "pubsub.events.post"
+          ],
+          "modulePermissions": [
+            "pubsub.publish.post"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
           "pathPattern": "/source-storage/handlers/updated-record",
           "permissionsRequired": [
-            "source-storage.events.post"
+            "pubsub.events.post"
           ],
           "modulePermissions": [
             "pubsub.publish.post"

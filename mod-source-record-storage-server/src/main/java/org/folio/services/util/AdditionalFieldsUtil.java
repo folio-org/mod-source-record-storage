@@ -1,10 +1,25 @@
 package org.folio.services.util;
 
+import static java.lang.String.format;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -23,23 +38,9 @@ import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-
-import static java.lang.String.format;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Util to work with additional fields
@@ -345,7 +346,7 @@ public final class AdditionalFieldsUtil {
    * @param context module context
    * @throws JsonProcessingException
    */
-  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws IOException {
+  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws JsonProcessingException {
     if (isField005NeedToUpdate(record, context)) {
       String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
       boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
@@ -363,7 +364,7 @@ public final class AdditionalFieldsUtil {
    * @return true for case when field 005 have to updated
    * @throws JsonProcessingException
    */
-  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws IOException {
+  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws JsonProcessingException {
     boolean needToUpdate = true;
     List<MarcFieldProtectionSetting> fieldProtectionSettings = getFieldsProtectionSettings(context);
     if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
@@ -386,7 +387,7 @@ public final class AdditionalFieldsUtil {
    * @return List of MarcFieldProtectionSettings or empty list
    * @throws JsonProcessingException
    */
-  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws IOException {
+  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws JsonProcessingException {
     List<MarcFieldProtectionSetting> fieldProtectionSettings = new ArrayList<>();
     if (isNotBlank(context.get("MAPPING_PARAMS"))) {
       MappingParameters mappingParameters = (new ObjectMapper()).readValue(context.get("MAPPING_PARAMS"), MappingParameters.class);

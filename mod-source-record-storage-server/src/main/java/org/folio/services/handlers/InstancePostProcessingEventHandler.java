@@ -40,6 +40,7 @@ import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
@@ -57,7 +58,6 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
   private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
-  private static final String RECORD_UPDATED_EVENT_TYPE = "DI_SRS_MARC_BIB_INSTANCE_HRID_SET";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
 
   private final RecordDao recordDao;
@@ -107,7 +107,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             List<KafkaHeader> kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
             String key = String.valueOf(indexer.incrementAndGet() % 100);
             context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-            sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(context), RECORD_UPDATED_EVENT_TYPE,
+            sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(context), DI_SRS_MARC_BIB_INSTANCE_HRID_SET.value(),
               kafkaHeaders, kafkaConfig, key);
             future.complete(dataImportEventPayload);
           } else {

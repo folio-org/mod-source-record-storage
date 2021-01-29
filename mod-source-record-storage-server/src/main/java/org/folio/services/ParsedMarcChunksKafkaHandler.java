@@ -60,7 +60,6 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     Event event = new JsonObject(record.value()).mapTo(Event.class);
-
     try {
       RecordCollection recordCollection = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(RecordCollection.class);
 
@@ -85,7 +84,6 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
   private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber) {
     Event event;
-    LOGGER.info("RecordsBatchResponse: {}", Json.encode(recordsBatchResponse));
     try {
       event = new Event()
         .withId(UUID.randomUUID().toString())

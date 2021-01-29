@@ -127,7 +127,7 @@ public interface RecordDao {
   /**
    * Saves {@link RecordCollection} to the db
    *
-   * @param record   Record collection to save
+   * @param recordCollection   Record collection to save
    * @param tenantId tenant id
    * @return future with saved {@link RecordsBatchResponse}
    */

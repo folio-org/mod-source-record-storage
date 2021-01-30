@@ -188,13 +188,13 @@ public final class RecordDaoUtil {
    * @return record with all foreign keys set
    */
   public static Record ensureRecordForeignKeys(Record record) {
-    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
+    if (Objects.nonNull(record.getRawRecord())) {
       record.getRawRecord().setId(record.getId());
     }
-    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
+    if (Objects.nonNull(record.getParsedRecord())) {
       record.getParsedRecord().setId(record.getId());
     }
-    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
+    if (Objects.nonNull(record.getErrorRecord())) {
       record.getErrorRecord().setId(record.getId());
     }
     return record;

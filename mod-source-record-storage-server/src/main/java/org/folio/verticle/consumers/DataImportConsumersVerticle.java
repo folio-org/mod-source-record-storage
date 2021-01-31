@@ -24,6 +24,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTA
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_BIB_FOR_UPDATE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -39,7 +40,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(), DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
     DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
     DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value(),
-    DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(), "DI_MARC_BIB_FOR_UPDATE_RECEIVED");
+    DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(), DI_MARC_BIB_FOR_UPDATE_RECEIVED.value());
 
   @Autowired
   @Qualifier("DataImportKafkaHandler")

@@ -1,8 +1,11 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.util.List;
 import java.util.Map;
@@ -61,14 +64,15 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void getSourceStorageRecords(String snapshotId, String state, List<String> orderBy, int offset, int limit,
+  public void getSourceStorageRecords(String snapshotId, String recordType, String state, List<String> orderBy, int offset, int limit,
       String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Condition condition = filterRecordBySnapshotId(snapshotId).and(filterRecordByState(state));
+        Condition condition = filterRecordBySnapshotId(snapshotId)
+          .and(filterRecordByState(state));
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, true);
-        recordService.getRecords(condition, orderFields, offset, limit, tenantId)
+        recordService.getRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -101,7 +105,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id, tenantId)
-          .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+          .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
             .compose(record -> record.getState().equals(State.DELETED) ? Future.succeededFuture(true)
               : recordService.updateRecord(record.withState(State.DELETED), tenantId).map(r -> true))
             .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204()).map(Response.class::cast)
@@ -119,7 +123,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getRecordById(id, tenantId)
-          .map(optionalRecord -> optionalRecord.orElseThrow(() -> new NotFoundException(String.format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+          .map(optionalRecord -> optionalRecord.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -134,7 +138,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getFormattedRecord(id, idType, tenantId)
+        recordService.getFormattedRecord(id, toExternalIdType(idType), tenantId)
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -149,7 +153,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId)
+        recordService.updateSuppressFromDiscoveryForRecord(id, toExternalIdType(idType), suppress, tenantId)
           .map(PutSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

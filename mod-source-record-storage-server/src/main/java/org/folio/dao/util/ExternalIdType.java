@@ -1,6 +1,6 @@
 package org.folio.dao.util;
 
-public enum  ExternalIdType {
+public enum ExternalIdType {
 
   INSTANCE("instanceId"),
   // NOTE: not really external id but is default from dto
@@ -15,4 +15,5 @@ public enum  ExternalIdType {
   public String getExternalIdField() {
     return externalIdField;
   }
+
 }

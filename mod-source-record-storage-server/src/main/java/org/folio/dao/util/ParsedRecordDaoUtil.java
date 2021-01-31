@@ -1,5 +1,6 @@
 package org.folio.dao.util;
 
+import static java.lang.String.format;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -10,10 +11,14 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
 import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.impl.SQLDataType;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -34,10 +39,11 @@ public final class ParsedRecordDaoUtil {
   private static final Field<UUID> ID_FIELD = field(name(ID), UUID.class);
   private static final Field<JsonObject> CONTENT_FIELD = field(name(CONTENT), SQLDataType.JSONB.asConvertedDataType(new JSONBToJsonObjectConverter()));
 
+  public static final String PARSED_RECORD_NOT_FOUND_TEMPLATE = "Parsed Record with id '%s' was not found";
+
   public static final String PARSED_RECORD_CONTENT = "parsed_record_content";
 
-  private ParsedRecordDaoUtil() {
-  }
+  private ParsedRecordDaoUtil() { }
 
   /**
    * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
@@ -48,7 +54,7 @@ public final class ParsedRecordDaoUtil {
    * @return future with optional ParsedRecord
    */
   public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                                        String id, RecordType recordType) {
+      String id, RecordType recordType) {
     return queryExecutor.findOneRow(dsl -> dsl.select(ID_FIELD, CONTENT_FIELD)
       .from(table(name(recordType.getTableName())))
       .where(ID_FIELD.eq(UUID.fromString(id))))
@@ -65,7 +71,7 @@ public final class ParsedRecordDaoUtil {
    * @return future with updated ParsedRecord
    */
   public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                          ParsedRecord parsedRecord, RecordType recordType) {
+      ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
@@ -89,7 +95,7 @@ public final class ParsedRecordDaoUtil {
    * @return future of updated ParsedRecord
    */
   public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                            ParsedRecord parsedRecord, RecordType recordType) {
+      ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.executeAny(dsl -> dsl.update(table(name(recordType.getTableName())))
@@ -100,7 +106,7 @@ public final class ParsedRecordDaoUtil {
           return parsedRecord
             .withContent(content.getMap());
         }
-        String message = String.format("ParsedRecord with id '%s' was not found", parsedRecord.getId());
+        String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
         throw new NotFoundException(message);
       });
   }
@@ -178,6 +184,38 @@ public final class ParsedRecordDaoUtil {
       }
     }
     return null;
+  }
+
+  /**
+   * Convert {@link ParsedRecord} to database record {@link MarcRecordsLbRecord}
+   * 
+   * @param parsedRecord parsed record
+   * @return MarcRecordsLbRecord
+   */
+  public static MarcRecordsLbRecord toDatabaseMarcRecord(ParsedRecord parsedRecord) {
+    MarcRecordsLbRecord dbRecord = new MarcRecordsLbRecord();
+    if (StringUtils.isNotEmpty(parsedRecord.getId())) {
+      dbRecord.setId(UUID.fromString(parsedRecord.getId()));
+    }
+    JsonObject jsonContent = normalize(parsedRecord.getContent());
+    dbRecord.setContent(JSONB.valueOf(jsonContent.encode()));
+    return dbRecord;
+  }
+
+  /**
+   * Convert {@link ParsedRecord} to database record {@link EdifactRecordsLbRecord}
+   * 
+   * @param parsedRecord parsed record
+   * @return EdifactRecordsLbRecord
+   */
+  public static EdifactRecordsLbRecord toDatabaseEdifactRecord(ParsedRecord parsedRecord) {
+    EdifactRecordsLbRecord dbRecord = new EdifactRecordsLbRecord();
+    if (StringUtils.isNotEmpty(parsedRecord.getId())) {
+      dbRecord.setId(UUID.fromString(parsedRecord.getId()));
+    }
+    JsonObject jsonContent = normalize(parsedRecord.getContent());
+    dbRecord.setContent(JSONB.valueOf(jsonContent.encode()));
+    return dbRecord;
   }
 
   /**

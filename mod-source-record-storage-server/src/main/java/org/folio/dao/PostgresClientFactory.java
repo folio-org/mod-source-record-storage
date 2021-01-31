@@ -1,15 +1,25 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
 
+import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.utils.Envs;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
+import org.postgresql.PGProperty;
+import org.postgresql.ds.PGPoolingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +39,8 @@ public class PostgresClientFactory {
 
   public static final Configuration configuration = new DefaultConfiguration().set(SQLDialect.POSTGRES);
 
+  private static final String MODULE_NAME = PomReader.INSTANCE.getModuleName();
+
   private static final String HOST = "host";
   private static final String PORT = "port";
   private static final String DATABASE = "database";
@@ -42,15 +54,33 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
+  private static final Map<String, PGPoolingDataSource> DATA_SOURCE_CACHE = new HashMap<>();
+
+  private static JsonObject postgresConfig;
+
+  private static String postgresConfigFilePath;
+
   private final Vertx vertx;
 
   @Autowired
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
     this.vertx = Vertx.newInstance(vertx);
+    // check environment variables for postgres config
+    if (Envs.allDBConfs().size() > 0) {
+      LOG.info("DB config read from environment variables");
+      postgresConfig = Envs.allDBConfs();
+    } else {
+      if (Objects.isNull(postgresConfigFilePath)) {
+        // need to retrieve config file path from RMB PostgresClient
+        postgresConfigFilePath = PostgresClient.getConfigFilePath();
+      }
+      // no env variables passed in, read for module's config file
+      postgresConfig = LoadConfs.loadConfig(postgresConfigFilePath);
+    }
   }
 
   @PreDestroy
-  public void preDestory() {
+  public void close() {
     closeAll();
   }
 
@@ -68,14 +98,34 @@ public class PostgresClientFactory {
    * Get {@link PgPool}
    *
    * @param tenantId tenant id
-   * @return 
+   * @return pooled database client
    */
-  public PgPool getCachedPool(String tenantId) {
+  PgPool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
   }
 
   /**
-   * Get {@link ReactiveClassicGenericQueryExecutor}
+   * Get database {@link Connection}
+   *
+   * @param tenantId tenant id
+   * @return pooled database connection
+   * @throws SQLException
+   */
+  Connection getConnection(String tenantId) throws SQLException {
+    return getDataSource(tenantId).getConnection();
+  }
+
+  /**
+   * If used, should be called before any instance of PostgresClientFactory is created.
+   * 
+   * @param configPath path to postgres config file
+   */
+  public static void setConfigFilePath(String configPath) {
+    postgresConfigFilePath = configPath;
+  }
+
+  /**
+   * Get {@link ReactiveClassicGenericQueryExecutor} for unit testing.
    *
    * @param vertx    current Vertx
    * @param tenantId tenant id
@@ -85,9 +135,30 @@ public class PostgresClientFactory {
     return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId).getDelegate());
   }
 
+  /**
+   * Close all cached connections.
+   */
   public static void closeAll() {
     POOL_CACHE.values().forEach(PostgresClientFactory::close);
     POOL_CACHE.clear();
+  }
+
+  /**
+   * Getter used for testing.
+   * 
+   * @return postgres config
+   */
+  static JsonObject getConfig() {
+    return postgresConfig;
+  }
+
+  /**
+   * Getter used for testing.
+   * 
+   * @return postgres config path
+   */
+  static String getConfigFilePath() {
+    return postgresConfigFilePath;
   }
 
   private static PgPool getCachedPool(Vertx vertx, String tenantId) {
@@ -97,34 +168,48 @@ public class PostgresClientFactory {
       return POOL_CACHE.get(tenantId);
     }
     LOG.info("Creating new database connection pool for tenant {}", tenantId);
-    PgConnectOptions connectOptions = getConnectOptions(vertx.getDelegate(), tenantId);
+    PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     POOL_CACHE.put(tenantId, client);
     return client;
   }
 
-  // NOTE: This should be able to get database configuration without PostgresClient.
-  // Additionally, with knowledge of tenant at this time, we are not confined to
-  // schema isolation and can provide database isolation.
-  private static PgConnectOptions getConnectOptions(io.vertx.core.Vertx vertx, String tenantId) {
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenantId);
-    JsonObject postgreSQLClientConfig = postgresClient.getConnectionConfig();
-    postgresClient.closeClient(closed -> {
-      if (closed.failed()) {
-        LOG.error("Unable to close PostgresClient", closed.cause());
-      }
-    });
+  private static PgConnectOptions getConnectOptions(String tenantId) {
     return new PgConnectOptions()
-      .setHost(postgreSQLClientConfig.getString(HOST))
-      .setPort(postgreSQLClientConfig.getInteger(PORT))
-      .setDatabase(postgreSQLClientConfig.getString(DATABASE))
-      .setUser(postgreSQLClientConfig.getString(USERNAME))
-      .setPassword(postgreSQLClientConfig.getString(PASSWORD))
-      .setIdleTimeout(postgreSQLClientConfig.getInteger(IDLE_TIMEOUT, 60000))
+      .setHost(postgresConfig.getString(HOST))
+      .setPort(postgresConfig.getInteger(PORT))
+      .setDatabase(postgresConfig.getString(DATABASE))
+      .setUser(postgresConfig.getString(USERNAME))
+      .setPassword(postgresConfig.getString(PASSWORD))
+      .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
       .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
-      // using RMB convention driven tenant to schema name
-      .addProperty(DEFAULT_SCHEMA_PROPERTY, PostgresClient.convertToPsqlStandard(tenantId));
+      .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
+  }
+
+  private static PGPoolingDataSource getDataSource(String tenantId) {
+    if (DATA_SOURCE_CACHE.containsKey(tenantId)) {
+      LOG.debug("Using existing data source for tenant {}", tenantId);
+      return DATA_SOURCE_CACHE.get(tenantId);
+    }
+    LOG.info("Creating new data source for tenant {}", tenantId);
+    PGPoolingDataSource source = new PGPoolingDataSource();
+    source.setDataSourceName(format("%s-data-source", tenantId));
+    source.setMaxConnections(POOL_SIZE);
+    source.setServerName(postgresConfig.getString(HOST));
+    source.setPortNumber(postgresConfig.getInteger(PORT, 5432));
+    source.setDatabaseName(postgresConfig.getString(DATABASE));
+    source.setUser(postgresConfig.getString(USERNAME));
+    source.setPassword(postgresConfig.getString(PASSWORD));
+    source.setConnectTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000));
+    source.setProperty(PGProperty.CURRENT_SCHEMA, convertToPsqlStandard(tenantId));
+    DATA_SOURCE_CACHE.put(tenantId, source);
+    return source;
+  }
+
+  // using RMB convention driven tenant to schema name
+  private static String convertToPsqlStandard(String tenantId){
+    return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 
   private static void close(PgPool client) {

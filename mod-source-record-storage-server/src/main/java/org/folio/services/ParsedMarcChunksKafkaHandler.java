@@ -11,6 +11,7 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
@@ -31,6 +32,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED;
 
@@ -60,6 +62,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     Event event = new JsonObject(record.value()).mapTo(Event.class);
+
     try {
       RecordCollection recordCollection = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(RecordCollection.class);
 
@@ -88,7 +91,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
       event = new Event()
         .withId(UUID.randomUUID().toString())
         .withEventType(DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED.value())
-        .withEventPayload(ZIPArchiver.zip(Json.encode(recordsBatchResponse)))
+        .withEventPayload(ZIPArchiver.zip(Json.encode(normalize(recordsBatchResponse))))
         .withEventMetadata(new EventMetadata()
           .withTenantId(tenantId)
           .withEventTTL(1)
@@ -102,8 +105,6 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED.value());
-
-    LOGGER.info("Sending event {}", Json.encode(event));
 
     KafkaProducerRecord<String, String> record =
       KafkaProducerRecord.create(topicName, key, Json.encode(event));
@@ -119,7 +120,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkNumber {}-{}",chunkNumber, record.key());
+        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkNumber {}-{}", chunkNumber, record.key());
         writePromise.complete(record.key());
       } else {
         Throwable cause = war.cause();
@@ -128,6 +129,14 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
       }
     });
     return writePromise.future();
+  }
+
+  private RecordsBatchResponse normalize(RecordsBatchResponse recordsBatchResponse) {
+    return recordsBatchResponse.withRecords(recordsBatchResponse.getRecords()
+      .stream().map(record -> {
+        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+        return record.withParsedRecord(record.getParsedRecord().withContent(content));
+      }).collect(Collectors.toList()));
   }
 
 }

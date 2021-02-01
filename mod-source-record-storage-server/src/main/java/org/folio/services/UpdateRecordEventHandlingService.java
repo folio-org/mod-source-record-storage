@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.UUID;
 
-import static org.folio.services.util.EventHandlingUtil.sendEventWithPayload;
+import static org.folio.services.util.EventHandlingUtil.sendEventWithPayloadToPubSub;
 
 @Component
 public class UpdateRecordEventHandlingService implements EventHandlingService {
@@ -56,9 +56,9 @@ public class UpdateRecordEventHandlingService implements EventHandlingService {
       return recordService.updateSourceRecord(record, snapshotId, params.getTenantId())
         .compose(updatedRecord -> {
           eventPayload.put(Record.RecordType.MARC.value(), Json.encode(updatedRecord));
-          return sendEventWithPayload(Json.encode(eventPayload), QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE, params);
+          return sendEventWithPayloadToPubSub(Json.encode(eventPayload), QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE, params);
         })
-        .onFailure(f -> sendEventWithPayload(Json.encode(eventPayload), QM_ERROR_EVENT_TYPE, params));
+        .onFailure(f -> sendEventWithPayloadToPubSub(Json.encode(eventPayload), QM_ERROR_EVENT_TYPE, params));
     } catch (Exception e) {
       LOG.error("Failed to handle QM_RECORD_UPDATED event", e);
       return Future.failedFuture(e);

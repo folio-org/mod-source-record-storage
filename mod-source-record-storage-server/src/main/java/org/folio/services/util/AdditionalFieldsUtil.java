@@ -7,6 +7,7 @@ import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -17,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.lang.StringUtils;
@@ -342,11 +342,11 @@ public final class AdditionalFieldsUtil {
   /**
    * Updates field 005 for case when this field is not protected.
    *
-   * @param record record to update
+   * @param record  record to update
    * @param context module context
-   * @throws JsonProcessingException
+   * @throws IOException
    */
-  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+  public static void updateLatestTransactionDate(Record record, HashMap<String, String> context) throws IOException {
     if (isField005NeedToUpdate(record, context)) {
       String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
       boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
@@ -359,12 +359,12 @@ public final class AdditionalFieldsUtil {
   /**
    * Checks whether field 005 needs to be updated or this field is protected.
    *
-   * @param record record to check
+   * @param record  record to check
    * @param context module context
    * @return true for case when field 005 have to updated
-   * @throws JsonProcessingException
+   * @throws IOException
    */
-  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws JsonProcessingException {
+  private static boolean isField005NeedToUpdate(Record record, HashMap<String, String> context) throws IOException {
     boolean needToUpdate = true;
     List<MarcFieldProtectionSetting> fieldProtectionSettings = getFieldsProtectionSettings(context);
     if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
@@ -385,9 +385,9 @@ public final class AdditionalFieldsUtil {
    *
    * @param context module context
    * @return List of MarcFieldProtectionSettings or empty list
-   * @throws JsonProcessingException
+   * @throws IOException
    */
-  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws JsonProcessingException {
+  private static List<MarcFieldProtectionSetting> getFieldsProtectionSettings(HashMap<String, String> context) throws IOException {
     List<MarcFieldProtectionSetting> fieldProtectionSettings = new ArrayList<>();
     if (isNotBlank(context.get("MAPPING_PARAMS"))) {
       MappingParameters mappingParameters = (new ObjectMapper()).readValue(context.get("MAPPING_PARAMS"), MappingParameters.class);
@@ -400,7 +400,7 @@ public final class AdditionalFieldsUtil {
    * Checks is the control field is protected or not.
    *
    * @param fieldProtectionSettings List of MarcFieldProtectionSettings
-   * @param field Control field that is being checked
+   * @param field                   Control field that is being checked
    * @return true for case when control field isn't protected
    */
   private static boolean isNotProtected(List<MarcFieldProtectionSetting> fieldProtectionSettings, ControlField field) {

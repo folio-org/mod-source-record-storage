@@ -67,6 +67,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @Ignore
+// TODO fix in scope of MODSOURCE-235
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTest {
 

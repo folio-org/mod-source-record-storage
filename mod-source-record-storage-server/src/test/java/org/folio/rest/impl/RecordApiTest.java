@@ -23,7 +23,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -39,7 +38,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-@Ignore
 @RunWith(VertxUnitRunner.class)
 public class RecordApiTest extends AbstractRestVerticleTest {
 
@@ -415,8 +413,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record updatedRecord = putResponse.body().as(Record.class);
     assertThat(updatedRecord.getId(), is(createdRecord.getId()));
     assertThat(updatedRecord.getRawRecord().getContent(), is(rawMarcRecord.getContent()));
-    ParsedRecord parsedRecord = updatedRecord.getParsedRecord();
-    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(updatedRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
@@ -456,8 +452,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record updatedRecord = putResponse.body().as(Record.class);
     assertThat(updatedRecord.getId(), is(createdRecord.getId()));
     assertThat(updatedRecord.getRawRecord().getContent(), is(rawEdifactRecord.getContent()));
-    ParsedRecord parsedRecord = updatedRecord.getParsedRecord();
-    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"tag\":\"UNA\""));
     assertThat(updatedRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
@@ -525,8 +519,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record getRecord = getResponse.body().as(Record.class);
     assertThat(getRecord.getId(), is(createdRecord.getId()));
     assertThat(getRecord.getRawRecord().getContent(), is(rawMarcRecord.getContent()));
-    ParsedRecord parsedRecord = getRecord.getParsedRecord();
-    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
     async.complete();
   }
@@ -760,8 +752,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Record getRecord = getResponse.body().as(Record.class);
     assertThat(getRecord.getId(), is(createdRecord.getId()));
     assertThat(getRecord.getRawRecord().getContent(), is(rawMarcRecord.getContent()));
-    ParsedRecord parsedRecord = getRecord.getParsedRecord();
-    assertThat(JsonObject.mapFrom(parsedRecord.getContent()).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     assertThat(getRecord.getAdditionalInfo().getSuppressDiscovery(), is(newRecord.getAdditionalInfo().getSuppressDiscovery()));
     async.complete();
   }

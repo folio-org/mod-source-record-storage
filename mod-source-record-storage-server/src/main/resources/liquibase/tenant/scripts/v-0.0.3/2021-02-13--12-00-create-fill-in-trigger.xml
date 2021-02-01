@@ -109,8 +109,8 @@
 
   <changeSet id="2021-02-13--12-30-drop-and-create-triggers" author="IgorGorchakov">
     <sql splitStatements="false">
-      create trigger process_marc_records_lb_delete_trigger before delete on ${database.defaultSchemaName}.marc_records_lb for each row execute function ${database.defaultSchemaName}.delete_marc_indexers();
-      create trigger process_marc_records_lb_insert_update_trigger after insert or update on ${database.defaultSchemaName}.marc_records_lb for each row execute function ${database.defaultSchemaName}.insert_marc_indexers();
+      create trigger process_marc_records_lb_delete_trigger before delete on ${database.defaultSchemaName}.marc_records_lb for each row execute procedure ${database.defaultSchemaName}.delete_marc_indexers();
+      create trigger process_marc_records_lb_insert_update_trigger after insert or update on ${database.defaultSchemaName}.marc_records_lb for each row execute procedure ${database.defaultSchemaName}.insert_marc_indexers();
     </sql>
   </changeSet>
 

@@ -26,8 +26,8 @@ import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 
 public abstract class AbstractLBServiceTest {
 
-  private static final String KAFKA_HOST = "FOLIO_KAFKA_HOST";
-  private static final String KAFKA_PORT = "FOLIO_KAFKA_PORT";
+  private static final String KAFKA_HOST = "KAFKA_HOST";
+  private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;

@@ -16,16 +16,15 @@ import org.folio.kafka.KafkaConfig;
 public class ApplicationConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationConfig.class);
 
-  //TODO: rewrite it in a correct way
-  @Value("${FOLIO_KAFKA_HOST:kafka}")
+  @Value("${KAFKA_HOST:kafka}")
   private String kafkaHost;
-  @Value("${FOLIO_KAFKA_PORT:9092}")
+  @Value("${KAFKA_PORT:9092}")
   private String kafkaPort;
   @Value("${OKAPI_URL:http://okapi:9130}")
   private String okapiUrl;
-  @Value("${FOLIO_KAFKA_REPLICATION_FACTOR:1}")
+  @Value("${REPLICATION_FACTOR:1}")
   private int replicationFactor;
-  @Value("${FOLIO_KAFKA_ENV:folio}")
+  @Value("${ENV:folio}")
   private String envId;
 
   @Bean(name = "newKafkaConfig")

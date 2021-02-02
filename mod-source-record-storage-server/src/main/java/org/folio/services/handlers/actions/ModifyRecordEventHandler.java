@@ -1,6 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -19,6 +18,7 @@ import org.folio.services.util.AdditionalFieldsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -92,7 +92,7 @@ public class ModifyRecordEventHandler implements EventHandler {
     return future;
   }
 
-  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws JsonProcessingException {
+  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws IOException {
     String recordAsString = marcMappingOption == MappingDetail.MarcMappingOption.UPDATE
       ? eventPayload.getContext().get(MATCHED_MARC_BIB_KEY) : eventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
 

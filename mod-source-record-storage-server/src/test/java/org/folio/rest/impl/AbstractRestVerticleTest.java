@@ -11,6 +11,8 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import org.apache.http.HttpStatus;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
@@ -25,6 +27,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.junit.ClassRule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.restassured.RestAssured;
@@ -35,6 +38,8 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import io.vertx.reactivex.core.Vertx;
 
 public abstract class AbstractRestVerticleTest {
@@ -58,6 +63,12 @@ public abstract class AbstractRestVerticleTest {
 
   static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
 
+  private static final String KAFKA_HOST = "KAFKA_HOST";
+  private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String OKAPI_URL_ENV = "OKAPI_URL";
+  private static final int PORT = NetworkUtils.nextFreePort();
+  protected static final String OKAPI_URL = "http://localhost:" + PORT;
+
   static Vertx vertx;
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
@@ -68,13 +79,19 @@ public abstract class AbstractRestVerticleTest {
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
+  @ClassRule
+  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
+    String[] hostAndPort = cluster.getBrokerList().split(":");
+    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
     okapiPort = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + okapiPort;
-
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");
@@ -93,7 +110,7 @@ public abstract class AbstractRestVerticleTest {
         String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
         postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
         postgresSQLContainer.start();
-    
+
         Envs.setEnv(
           postgresSQLContainer.getHost(),
           postgresSQLContainer.getFirstMappedPort(),
@@ -123,6 +140,7 @@ public abstract class AbstractRestVerticleTest {
         });
       } catch (Exception e) {
         e.printStackTrace();
+        async.complete();
       }
     });
   }

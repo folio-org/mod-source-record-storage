@@ -398,7 +398,7 @@ public class RecordDaoImpl implements RecordDao {
           .withErrorMessages(errorMessages));
       });
     } catch (SQLException e) {
-      e.printStackTrace();
+      LOG.error("Failed to save records", e);
       promise.fail(e);
     }
 
@@ -615,7 +615,7 @@ public class RecordDaoImpl implements RecordDao {
           record.getParsedRecord()
             .setId(null);
         }
-  
+
       }).map(Record::getParsedRecord)
         .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
         .collect(Collectors.toList());

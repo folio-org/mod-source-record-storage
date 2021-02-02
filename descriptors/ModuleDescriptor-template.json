@@ -234,18 +234,6 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/source-storage/handlers/data-import",
-          "permissionsRequired": [
-            "pubsub.events.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
-          ]
-        },
-        {
-          "methods": [
-            "POST"
-          ],
           "pathPattern": "/source-storage/handlers/updated-record",
           "permissionsRequired": [
             "pubsub.events.post"
@@ -407,6 +395,14 @@
       {
         "name": "test.mode",
         "value": "true"
+      },
+      {
+        "name": "KAFKA_HOST",
+        "value": "10.0.2.15"
+      },
+      {
+        "name": "KAFKA_PORT",
+        "value": "9092"
       }
     ]
   }

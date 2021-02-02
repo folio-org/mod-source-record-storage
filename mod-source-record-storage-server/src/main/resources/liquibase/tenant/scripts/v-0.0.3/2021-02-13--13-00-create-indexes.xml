@@ -4,9 +4,24 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
-  <changeSet id="2021-02-13--13-00-create-indexes.xml" author="IgorGorchakov">
+  <changeSet id="2021-02-13--13-00-create-index_on_marc_indexers.xml" author="IgorGorchakov">
     <sql splitStatements="false">
-      create index idx_marc_indexers_marc_id on ${database.defaultSchemaName}.marc_indexers(marc_id);
+      do $$ declare
+        index integer;
+        suffix text;
+      begin
+        for index in 0 .. 999
+          loop
+            suffix = lpad(index::text, 3, '0');
+            execute 'create index idx_marc_indexers_marc_id_' || suffix || ' on ${database.defaultSchemaName}.marc_indexers_' || suffix || '(marc_id);';
+          end loop;
+      end;
+      $$;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2021-02-13--13-00-create-index_on_marc_indexers_leader.xml" author="IgorGorchakov">
+    <sql splitStatements="false">
       create index idx_marc_indexers_leader_marc_id on ${database.defaultSchemaName}.marc_indexers_leader(marc_id);
     </sql>
   </changeSet>

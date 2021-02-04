@@ -25,8 +25,8 @@ import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
@@ -35,7 +35,7 @@ import io.vertx.sqlclient.PoolOptions;
 @Component
 public class PostgresClientFactory {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PostgresClientFactory.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   public static final Configuration configuration = new DefaultConfiguration().set(SQLDialect.POSTGRES);
 
@@ -117,7 +117,7 @@ public class PostgresClientFactory {
 
   /**
    * If used, should be called before any instance of PostgresClientFactory is created.
-   * 
+   *
    * @param configPath path to postgres config file
    */
   public static void setConfigFilePath(String configPath) {
@@ -145,7 +145,7 @@ public class PostgresClientFactory {
 
   /**
    * Getter used for testing.
-   * 
+   *
    * @return postgres config
    */
   static JsonObject getConfig() {
@@ -154,7 +154,7 @@ public class PostgresClientFactory {
 
   /**
    * Getter used for testing.
-   * 
+   *
    * @return postgres config path
    */
   static String getConfigFilePath() {

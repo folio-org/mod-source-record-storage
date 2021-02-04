@@ -4,9 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import org.folio.DataImportEventPayload;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.AsyncRecordHandler;
@@ -25,7 +24,7 @@ import static org.folio.DataImportEventTypes.DI_ERROR;
 @Qualifier("DataImportKafkaHandler")
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataImportKafkaHandler.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private Vertx vertx;
 

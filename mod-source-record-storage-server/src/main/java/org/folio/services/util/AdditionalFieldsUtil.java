@@ -39,8 +39,8 @@ import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Util to work with additional fields
@@ -60,7 +60,7 @@ public final class AdditionalFieldsUtil {
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalFieldsUtil.class);
+  private static final Logger LOGGER = LogManager.getLogger();
   private static final char INDICATOR = 'f';
 
   private AdditionalFieldsUtil() {

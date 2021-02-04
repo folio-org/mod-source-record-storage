@@ -4,8 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,7 +26,7 @@ public final class EventHandlingUtil {
 
   private EventHandlingUtil() { }
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EventHandlingUtil.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   /**
    * Prepares and sends event with zipped payload to the mod-pubsub

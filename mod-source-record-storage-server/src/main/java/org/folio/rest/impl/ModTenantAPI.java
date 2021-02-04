@@ -6,8 +6,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -30,7 +30,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 @SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String TEST_MODE_PARAMETER = "testMode";
 
@@ -54,7 +54,7 @@ public class ModTenantAPI extends TenantAPI {
   @Validate
   @Override
   public void postTenant(TenantAttributes entity, Map<String, String> headers, Handler<AsyncResult<Response>> handlers, Context context) {
-    super.postTenant(entity, headers, ar -> {
+    super.postTenantSync(entity, headers, ar -> {
       if (ar.failed()) {
         handlers.handle(ar);
       } else {

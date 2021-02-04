@@ -42,15 +42,15 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.core.streams.Pump;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.reactivex.FlowableHelper;
 
 public class SourceStorageStreamImpl implements SourceStorageStream {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceStorageStreamImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   @Autowired
   private RecordService recordService;

@@ -44,7 +44,7 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 @Service
 public class RecordServiceImpl implements RecordService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private final RecordDao recordDao;
 

@@ -1,14 +1,14 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -53,7 +53,7 @@ import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 @Component
 public class InstancePostProcessingEventHandler implements EventHandler {
 
-  private static final Logger LOG = LoggerFactory.getLogger(InstancePostProcessingEventHandler.class);
+  private static final Logger LOG = LogManager.getLogger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
   private static final String FAIL_MSG = "Failed to handle instance event {}";
@@ -146,10 +146,10 @@ public class InstancePostProcessingEventHandler implements EventHandler {
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")
-        List<Future> futures = new ArrayList<>();
+        List<Future<Record>> futures = new ArrayList<>();
         recordCollection.getRecords()
           .forEach(record -> futures.add(recordDao.updateRecord(record.withState(Record.State.OLD), tenantId)));
-        CompositeFuture.all(futures).onComplete(ar -> {
+        GenericCompositeFuture.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
           } else {

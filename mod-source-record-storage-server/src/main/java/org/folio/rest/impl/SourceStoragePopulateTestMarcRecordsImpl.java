@@ -21,17 +21,17 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePopulateTestMarcRecords {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceStoragePopulateTestMarcRecordsImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   @Autowired
   private RecordService recordService;
@@ -48,7 +48,6 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       if (vertxContext.get(LOAD_SAMPLE_PARAMETER) != null && (Boolean) vertxContext.get(LOAD_SAMPLE_PARAMETER)) {
-        @SuppressWarnings("squid:S3740")
         List<Future> futures = new ArrayList<>();
         entity.getRawRecords().stream()
           .map(rawRecord -> {
@@ -68,7 +67,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
           })
           .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
 
-        CompositeFuture.all(futures).onComplete(result -> {
+        GenericCompositeFuture.all(futures).onComplete(result -> {
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204()));
           } else {

@@ -5,8 +5,8 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -39,7 +39,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_MARC_BIB
 @Component
 @Qualifier("ParsedMarcChunksKafkaHandler")
 public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, String> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ParsedMarcChunksKafkaHandler.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();

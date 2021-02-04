@@ -1,15 +1,15 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
 import org.folio.processing.events.EventManager;
 import org.folio.rest.resource.interfaces.InitAPI;
@@ -26,7 +26,7 @@ import com.google.common.collect.Lists;
 
 public class InitAPIImpl implements InitAPI {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InitAPIImpl.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
   private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
@@ -77,12 +77,12 @@ public class InitAPIImpl implements InitAPI {
     Promise<String> deployConsumer2 = Promise.promise();
 
     vertx.deployVerticle("org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle",
-      new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
+      new DeploymentOptions().setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
 
     vertx.deployVerticle("org.folio.verticle.consumers.DataImportConsumersVerticle",
-      new DeploymentOptions().setWorker(true).setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
+      new DeploymentOptions().setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
 
-    return CompositeFuture.all(deployConsumer1.future(), deployConsumer2.future());
+    return GenericCompositeFuture.all(Lists.newArrayList(deployConsumer1.future(), deployConsumer2.future()));
   }
 
 }

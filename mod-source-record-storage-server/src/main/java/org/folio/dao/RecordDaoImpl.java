@@ -39,6 +39,8 @@ import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -83,18 +85,19 @@ import org.springframework.stereotype.Component;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.reactivex.Flowable;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
+
+import com.google.common.collect.Lists;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RecordDaoImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String CTE = "cte";
 
@@ -516,7 +519,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
+    return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
     )).map(res -> record.getParsedRecord()));
@@ -731,8 +734,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = new ArrayList<>();
+    List<Future<Record>> futures = new ArrayList<>();
     futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
       if (rr.isPresent()) {
         record.withRawRecord(rr.get());
@@ -753,7 +755,7 @@ public class RecordDaoImpl implements RecordDao {
         return record;
       }));
     }
-    return CompositeFuture.all(futures).map(res -> record);
+    return GenericCompositeFuture.all(futures).map(res -> record);
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {

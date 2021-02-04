@@ -38,6 +38,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.reactivex.Flowable;
+import org.folio.okapi.common.GenericCompositeFuture;
+
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -506,7 +508,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      
+
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordService.getSourceRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
@@ -537,7 +539,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      
+
       Condition condition = DSL.trueCondition();
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordService.getSourceRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
@@ -788,7 +790,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
         Collections.sort(update.result().getParsedRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
         compareParsedRecords(context, expected, update.result().getParsedRecords());
-        CompositeFuture.all(updated.stream().map(record -> recordDao.getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
+        GenericCompositeFuture.all(updated.stream().map(record -> recordDao.getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
           }

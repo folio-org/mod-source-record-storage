@@ -13,7 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
+
+import com.google.common.collect.Lists;
+
 import io.vertx.core.Future;
 
 @Component
@@ -31,7 +34,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
       int offset, int limit, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> {
       SnapshotCollection snapshotCollection = new SnapshotCollection();
-      return CompositeFuture.all(
+      return GenericCompositeFuture.all(Lists.newArrayList(
         SnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
           .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
         SnapshotDaoUtil.countByCondition(txQE, condition)

@@ -22,6 +22,8 @@ import org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
+import com.google.common.collect.Lists;
+
 public class InitAPIImpl implements InitAPI {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InitAPIImpl.class);

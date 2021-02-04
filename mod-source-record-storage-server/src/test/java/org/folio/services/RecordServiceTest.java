@@ -965,9 +965,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private CompositeFuture saveRecords(List<Record> records, String tenantId) {
-    return CompositeFuture.all(records.stream().map(record -> {
-      return recordService.saveRecord(record, tenantId);
-    }).collect(Collectors.toList()));
+    CompositeFuture all = GenericCompositeFuture.all(records.stream().map(record -> recordService.saveRecord(record, tenantId)).collect(Collectors.toList()));
+    return all;
   }
 
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {

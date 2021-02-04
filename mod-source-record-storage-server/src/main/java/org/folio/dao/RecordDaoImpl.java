@@ -519,7 +519,7 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> CompositeFuture.all(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-    ).map(res -> record.getParsedRecord()));
+    )).map(res -> record.getParsedRecord()));
   }
 
   @Override

@@ -36,7 +36,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
           .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
         SnapshotDaoUtil.countByCondition(txQE, condition)
           .map(totalRecords -> addTotalRecords(snapshotCollection,totalRecords))
-      ).map(res -> snapshotCollection);
+      )).map(res -> snapshotCollection);
     });
   }
 

@@ -154,7 +154,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             result.complete();
           } else {
             result.fail(ar.cause());
-            LOG.error(ar.cause(), "ERROR during update old records state for instance chane event");
+            LOG.error( "ERROR during update old records state for instance chane event", ar.cause());
           }
         });
         return result.future();

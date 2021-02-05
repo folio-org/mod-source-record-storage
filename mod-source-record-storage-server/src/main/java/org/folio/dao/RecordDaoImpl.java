@@ -446,6 +446,14 @@ public class RecordDaoImpl implements RecordDao {
       .offset(offset)
       .limit(limit)
       .getSQL(ParamType.INLINED);
+
+/*     getCachecPool(tenantId)
+      .getConnection(e ->e.result().rxPrepare(sql)
+      .flatMapPublisher(pq ->pq.createStream(1)
+      .toFlowable()
+      .map(this::toRow)
+      .map(this::toSourceRecord)));*/
+
     return getCachecPool(tenantId).rxBegin()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
         .flatMapPublisher(pq -> pq.createStream(1)

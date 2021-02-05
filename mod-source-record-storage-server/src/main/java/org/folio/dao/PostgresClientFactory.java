@@ -214,7 +214,7 @@ public class PostgresClientFactory {
   }
 
   private static void close(PgPool client) {
-    client.close(AsyncResult::result);
+    client.close();
   }
 
 }

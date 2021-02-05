@@ -13,7 +13,7 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
-    <vertx-jooq.version>5.2.1</vertx-jooq.version>
+    <vertx-jooq.version>6.1.1</vertx-jooq.version>
     <postgres.version>42.2.18</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.16</lombok.version>
@@ -109,7 +109,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.7.0</version>
+      <version>1.8.0</version>
       <type>jar</type>
     </dependency>
     <dependency>

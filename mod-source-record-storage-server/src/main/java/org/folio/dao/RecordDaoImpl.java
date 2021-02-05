@@ -175,13 +175,23 @@ public class RecordDaoImpl implements RecordDao {
       .offset(offset)
       .limit(limit)
       .getSQL(ParamType.INLINED);
-    return getCachecPool(tenantId).rxBegin()
+
+
+    return getCachecPool(tenantId)
+      .rxGetConnection()
+      .flatMapPublisher(tx -> tx.rxPrepare(sql)
+        .flatMapPublisher(pq -> pq.createStream(1)
+          .toFlowable()
+          .map(this::toRow)
+          .map(this::toRecord)));
+
+/*    return getCachecPool(tenantId).rxBegin()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
         .flatMapPublisher(pq -> pq.createStream(1)
           .toFlowable()
           .map(this::toRow)
           .map(this::toRecord))
-        .doAfterTerminate(tx::commit));
+        .doAfterTerminate(tx::commit));*/
   }
 
   @Override
@@ -447,12 +457,20 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-/*     getCachecPool(tenantId)
-      .getConnection(e ->e.result().rxPrepare(sql)
+     return getCachecPool(tenantId)
+       .rxGetConnection()
+       .flatMapPublisher(tx -> tx.rxPrepare(sql)
+         .flatMapPublisher(pq -> pq.createStream(1)
+           .toFlowable()
+           .map(this::toRow)
+           .map(this::toSourceRecord)));
+
+
+/*      .getConnection(e ->e.result().rxPrepare(sql)
       .flatMapPublisher(pq ->pq.createStream(1)
       .toFlowable()
       .map(this::toRow)
-      .map(this::toSourceRecord)));*/
+      .map(this::toSourceRecord)));
 
     return getCachecPool(tenantId).rxBegin()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
@@ -460,7 +478,7 @@ public class RecordDaoImpl implements RecordDao {
           .toFlowable()
           .map(this::toRow)
           .map(this::toSourceRecord))
-        .doAfterTerminate(tx::commit));
+        .doAfterTerminate(tx::commit));*/
   }
 
   @Override

@@ -193,7 +193,7 @@ public class RecordServiceImpl implements RecordService {
       RecordType recordType = toRecordType(record.getRecordType().name());
       recordType.formatRecord(record);
     } catch (Exception e) {
-      LOG.error("Couldn't format {} record", e, record.getRecordType());
+      LOG.error("Couldn't format {} record", record.getRecordType(), e );
     }
     return record;
   }

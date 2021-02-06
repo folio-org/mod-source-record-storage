@@ -146,7 +146,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Logic for retreiving MatchDetail from eventPayload.
+   * Logic for retrieving MatchDetail from eventPayload.
    *
    * @param dataImportEventPayload - payload
    * @return - resulted MatchDetail

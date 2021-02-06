@@ -61,7 +61,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
             if (rawRecord.getContent().startsWith("{")) {
               record.setParsedRecord(new ParsedRecord().withContent(rawRecord.getContent()));
             } else {
-              record = parseRecord(record);
+              parseRecord(record);
             }
             return record;
           })
@@ -82,14 +82,13 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
     });
   }
 
-  private Record parseRecord(Record record) {
+  private void parseRecord(Record record) {
     try {
       record.setParsedRecord(new ParsedRecord().withContent(MarcUtil.rawMarcToMarcJson(record.getRawRecord().getContent())));
     } catch (Exception e) {
       LOG.error("Error parsing MARC record", e);
       record.setErrorRecord(new ErrorRecord().withContent(record.getRawRecord().getContent()).withDescription("Error parsing marc record"));
     }
-    return record;
   }
 
 }

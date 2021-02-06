@@ -32,7 +32,7 @@ public class MarcUtil {
    *
    * @param rawMarc raw MARC
    * @return MARC json
-   * @throws IOException
+   * @throws IOException - throws while converting MARC raw to MARC json
    */
   public static String rawMarcToMarcJson(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
@@ -44,7 +44,7 @@ public class MarcUtil {
    *
    * @param rawMarc raw MARC
    * @return text formatted MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC raw to formatted MARC json
    */
   public static String rawMarcToTxtMarc(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
@@ -56,7 +56,7 @@ public class MarcUtil {
    *
    * @param marcJson MARC json
    * @return raw MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC json to MARC raw
    */
   public static String marcJsonToRawMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);
@@ -68,7 +68,7 @@ public class MarcUtil {
    *
    * @param marcJson MARC json
    * @return text formatted MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC json to MARC text formatted
    */
   public static String marcJsonToTxtMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);

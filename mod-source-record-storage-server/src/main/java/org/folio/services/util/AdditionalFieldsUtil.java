@@ -102,12 +102,12 @@ public final class AdditionalFieldsUtil {
           // use stream writer to recalculate leader
           streamWriter.write(marcRecord);
           jsonWriter.write(marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(new String(os.toByteArray())).encode()));
+          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(os.toString()).encode()));
           result = true;
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional subfield {} for field {} to record {}", e, subfield, field, record.getId());
+      LOGGER.error("Failed to add additional subfield {} for field {} to record {}", subfield, field, record.getId(), e);
     }
     return result;
   }
@@ -143,12 +143,12 @@ public final class AdditionalFieldsUtil {
           // use stream writer to recalculate leader
           streamWriter.write(marcRecord);
           jsonWriter.write(marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(new String(os.toByteArray())).encode()));
+          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(os.toString()).encode()));
           result = true;
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional controlled field {) to record {}", e, field, record.getId());
+      LOGGER.error("Failed to add additional controlled field {) to record {}", field, record.getId(), e);
     }
     return result;
   }
@@ -176,12 +176,12 @@ public final class AdditionalFieldsUtil {
           // use stream writer to recalculate leader
           marcStreamWriter.write(marcRecord);
           marcJsonWriter.write(marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(new String(baos.toByteArray())).encode()));
+          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(baos.toString()).encode()));
           result = true;
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to remove controlled field {) from record {}", e, field, record.getId());
+      LOGGER.error("Failed to remove controlled field {) from record {}", field, record.getId(), e);
     }
     return result;
   }
@@ -207,7 +207,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to read controlled field {) from record {}", e, tag, record.getId());
+      LOGGER.error("Failed to read controlled field {) from record {}", tag, record.getId(), e);
       return null;
     }
     return null;
@@ -237,7 +237,7 @@ public final class AdditionalFieldsUtil {
           // use stream writer to recalculate leader
           streamWriter.write(marcRecord);
           jsonWriter.write(marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(new String(os.toByteArray())).encode()));
+          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(os.toString()).encode()));
           result = true;
         }
       }

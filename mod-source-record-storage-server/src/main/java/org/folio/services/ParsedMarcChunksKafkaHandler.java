@@ -76,7 +76,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber),
           th -> {
-            LOGGER.error("RecordCollection processing has failed with errors... chunkNumber {}-{}", th, chunkNumber, key);
+            LOGGER.error("RecordCollection processing has failed with errors... chunkNumber {}-{}", chunkNumber, key, th);
             return Future.failedFuture(th);
           });
     } catch (IOException e) {
@@ -124,7 +124,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
         writePromise.complete(record.key());
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error:", cause, producerName);
+        LOGGER.error("{} write error {}", producerName, cause);
         writePromise.fail(cause);
       }
     });

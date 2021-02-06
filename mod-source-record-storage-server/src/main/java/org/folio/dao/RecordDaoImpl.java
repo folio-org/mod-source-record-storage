@@ -176,17 +176,7 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-
-
-/*    return getCachecPool(tenantId).rxBegin()
-      .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .flatMapPublisher(pq -> pq.createStream(1)
-          .toFlowable()
-          .map(this::toRow)
-          .map(this::toRecord))
-        .doAfterTerminate(tx::commit));*/
-
-    return getCachecPool(tenantId)
+    return getCachePool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
         .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
@@ -459,7 +449,7 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachecPool(tenantId)
+    return getCachePool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
         .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
@@ -574,7 +564,7 @@ public class RecordDaoImpl implements RecordDao {
 
         if (Objects.nonNull(externalIdsHolder)) {
           if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceId())) {
-              updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+              updateStep = updateFirstStep
                 .set(RECORDS_LB.INSTANCE_ID, UUID.fromString(externalIdsHolder.getInstanceId()));
           }
           if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceHrid())) {
@@ -723,7 +713,7 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private PgPool getCachecPool(String tenantId) {
+  private PgPool getCachePool(String tenantId) {
     return postgresClientFactory.getCachedPool(tenantId);
   }
 
@@ -810,7 +800,7 @@ public class RecordDaoImpl implements RecordDao {
           return parsedRecord;
         });
     } catch (Exception e) {
-      LOG.error("Couldn't format {} record", e, record.getRecordType());
+      LOG.error("Couldn't format {} record", record.getRecordType(), e);
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())

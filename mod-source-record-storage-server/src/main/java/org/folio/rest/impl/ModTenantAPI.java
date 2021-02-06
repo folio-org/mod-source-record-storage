@@ -107,7 +107,7 @@ public class ModTenantAPI extends TenantAPI {
       .filter(p -> p.getKey().equals(parameterName))
       .findFirst()
       .map(Parameter::getValue)
-      .orElseGet(() -> EMPTY);
+      .orElse(EMPTY);
   }
 
   private Future<Void> registerModuleToPubsub(TenantAttributes attributes, Map<String, String> headers, Vertx vertx) {

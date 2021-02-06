@@ -112,9 +112,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
         response.close();
       }), response)
       .start();
-    flowable.doOnError(cause -> {
-      errorHandler.handle(cause);
-    });
+    flowable.doOnError(errorHandler::handle);
   }
 
   private HttpServerResponse prepareStreamResponse(RoutingContext routingContext) {

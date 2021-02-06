@@ -51,7 +51,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       });
       return promise.future();
     } catch (IOException e) {
-      LOGGER.error("Failed to process data import kafka record from topic {}", e, record.topic());
+      LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);
       return Future.failedFuture(e);
     }
   }

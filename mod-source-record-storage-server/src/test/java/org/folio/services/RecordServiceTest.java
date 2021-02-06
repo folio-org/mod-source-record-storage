@@ -324,7 +324,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
       String expected = "null value in column \"matched_id\" violates not-null constraint";
-      context.assertEquals(expected, save.cause().getMessage());
+      context.assertTrue(save.cause().getMessage().contains(expected));
       async.complete();
     });
   }

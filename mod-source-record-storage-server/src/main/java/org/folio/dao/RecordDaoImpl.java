@@ -92,6 +92,7 @@ import com.google.common.collect.Lists;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.Row;
 
 @Component
@@ -176,13 +177,13 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId)
-      .rxGetConnection()
+    return getCachePool(tenantId).rxBegin()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
+        .flatMapPublisher(pq -> pq.createStream(1, Tuple.tuple())
           .toFlowable()
           .map(this::toRow)
-          .map(this::toRecord)));
+          .map(this::toRecord))
+        .doAfterTerminate(tx::commit));
 
   }
 
@@ -449,13 +450,13 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId)
-      .rxGetConnection()
+    return getCachePool(tenantId).rxBegin()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
+        .flatMapPublisher(pq -> pq.createStream(1, Tuple.tuple())
           .toFlowable()
           .map(this::toRow)
-          .map(this::toSourceRecord)));
+          .map(this::toSourceRecord))
+        .doAfterTerminate(tx::commit));
   }
 
   @Override

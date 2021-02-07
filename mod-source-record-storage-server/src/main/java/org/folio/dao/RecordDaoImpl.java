@@ -177,14 +177,13 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId).rxBegin()
+    return getCachePool(tenantId)
+      .rxGetConnection()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .flatMapPublisher(pq -> pq.createStream(1, Tuple.tuple())
+        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
           .toFlowable()
           .map(this::toRow)
-          .map(this::toRecord))
-        .doAfterTerminate(tx::commit));
-
+          .map(this::toRecord)));
   }
 
   @Override
@@ -450,13 +449,14 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId).rxBegin()
+    return getCachePool(tenantId)
+      .rxGetConnection()
       .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .flatMapPublisher(pq -> pq.createStream(1, Tuple.tuple())
+        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
           .toFlowable()
           .map(this::toRow)
-          .map(this::toSourceRecord))
-        .doAfterTerminate(tx::commit));
+          .map(this::toSourceRecord)));
+
   }
 
   @Override

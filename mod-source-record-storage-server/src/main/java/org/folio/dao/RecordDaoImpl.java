@@ -92,7 +92,6 @@ import com.google.common.collect.Lists;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.reactivex.pgclient.PgPool;
-import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.Row;
 
 @Component
@@ -177,14 +176,15 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId)
+    return getCachedPool(tenantId)
       .rxGetConnection()
-      .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .doFinally(tx::close)
-        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
-          .toFlowable()
-          .map(this::toRow)
-          .map(this::toRecord)));
+      .flatMapPublisher(conn -> conn.rxBegin()
+        .flatMapPublisher(tx -> conn.rxPrepare(sql)
+          .flatMapPublisher(pq -> pq.createStream(1)
+            .toFlowable()
+            .map(this::toRow)
+            .map(this::toRecord))
+          .doAfterTerminate(tx::commit)));
   }
 
   @Override
@@ -450,15 +450,15 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachePool(tenantId)
+    return getCachedPool(tenantId)
       .rxGetConnection()
-      .flatMapPublisher(tx -> tx.rxPrepare(sql)
-        .doFinally(tx::close)
-        .flatMapPublisher(pq -> pq.createStream(Integer.MAX_VALUE)
-          .toFlowable()
-          .map(this::toRow)
-          .map(this::toSourceRecord)));
-
+      .flatMapPublisher(conn -> conn.rxBegin()
+        .flatMapPublisher(tx -> conn.rxPrepare(sql)
+          .flatMapPublisher(pq -> pq.createStream(1)
+            .toFlowable()
+            .map(this::toRow)
+            .map(this::toSourceRecord))
+          .doAfterTerminate(tx::commit)));
   }
 
   @Override
@@ -716,7 +716,7 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private PgPool getCachePool(String tenantId) {
+  private PgPool getCachedPool(String tenantId) {
     return postgresClientFactory.getCachedPool(tenantId);
   }
 

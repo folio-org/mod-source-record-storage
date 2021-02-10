@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.RecordsSearchRequest;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -102,6 +103,11 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
+  }
+
+  @Override
+  public void postSourceStorageStreamSourceRecords(RecordsSearchRequest entity, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(Future.succeededFuture());
   }
 
   private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {

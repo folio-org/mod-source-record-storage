@@ -14,6 +14,8 @@ uses:
 
 types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
+  sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
+  recordsSearchRequest: !include raml-storage/schemas/dto/recordsSearchRequest.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -120,3 +122,25 @@ traits:
           type: string[]
           example: ["order,ASC"]
           required: false
+    post:
+      description: Get a list of Source Records using post method
+      is: [validate]
+      body:
+          application/json:
+            description: Search request
+            type: recordsSearchRequest
+      responses:
+        200:
+          body:
+            application/json:
+              type: sourceRecordCollection
+        400:
+          description: Bad request
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: Internal server error
+          body:
+            text/plain:
+              example: "Internal server error"

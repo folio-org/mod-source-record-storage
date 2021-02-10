@@ -15,7 +15,7 @@ uses:
 types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
   sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
-  recordsSearchRequest: !include raml-storage/schemas/dto/recordsSearchRequest.json
+  sourceRecordSearchRequest: !include raml-storage/schemas/dto/sourceRecordSearchRequest.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -127,8 +127,8 @@ traits:
       is: [validate]
       body:
           application/json:
-            description: Search request
-            type: recordsSearchRequest
+            description: Request to search source records
+            type: sourceRecordSearchRequest
       responses:
         200:
           body:

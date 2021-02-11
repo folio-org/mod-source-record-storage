@@ -204,9 +204,9 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/source-storage/stream/source-records",
+          "pathPattern": "/source-storage/stream/marc-records",
           "permissionsRequired": [
-            "source-storage.sourceRecords.post"
+            "source-storage.marcRecords.post"
           ]
         }
       ]
@@ -330,9 +330,9 @@
       "description": "Get Results"
     },
     {
-      "permissionName": "source-storage.sourceRecords.post",
-      "displayName": "Source Storage - get results using post method",
-      "description": "Get Results using post method"
+      "permissionName": "source-storage.marcRecords.post",
+      "displayName": "Source Storage - get marc records using post method",
+      "description": "Get marc records using post method"
     },
     {
       "permissionName": "source-storage.all",

@@ -180,7 +180,7 @@
     },
     {
       "id": "source-storage-stream",
-      "version": "0.1",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -204,7 +204,7 @@
     },
     {
       "id": "source-storage-batch",
-      "version": "0.1",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [

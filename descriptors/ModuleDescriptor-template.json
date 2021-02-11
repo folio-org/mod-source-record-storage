@@ -206,7 +206,7 @@
           ],
           "pathPattern": "/source-storage/stream/marc-records",
           "permissionsRequired": [
-            "source-storage.marcRecords.search.post"
+            "source-storage.sourceRecords.get"
           ]
         }
       ]
@@ -330,11 +330,6 @@
       "description": "Get Results"
     },
     {
-      "permissionName": "source-storage.marcRecords.search.post",
-      "displayName": "Source Storage - get marc records using post method",
-      "description": "Get marc records using post method"
-    },
-    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -349,8 +344,7 @@
         "source-storage.records.put",
         "source-storage.records.delete",
         "source-storage.record.update",
-        "source-storage.sourceRecords.get",
-        "source-storage.marcRecords.search.post"
+        "source-storage.sourceRecords.get"
       ],
       "visible": false
     }

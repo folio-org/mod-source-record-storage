@@ -262,14 +262,9 @@
         },
         {
           "methods": [
-            "DELETE"
+            "DELETE", "GET"
           ],
-          "pathPattern": "/_/tenant/{id}",
-          "modulePermissions": [
-            "pubsub.event-types.post",
-            "pubsub.publishers.post",
-            "pubsub.subscribers.post"
-          ]
+          "pathPattern": "/_/tenant/{id}"
         }
       ]
     }

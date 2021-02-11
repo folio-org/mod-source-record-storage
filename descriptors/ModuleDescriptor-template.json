@@ -206,7 +206,7 @@
           ],
           "pathPattern": "/source-storage/stream/marc-records",
           "permissionsRequired": [
-            "source-storage.marcRecords.post"
+            "source-storage.marcRecords.search.post"
           ]
         }
       ]
@@ -330,7 +330,7 @@
       "description": "Get Results"
     },
     {
-      "permissionName": "source-storage.marcRecords.post",
+      "permissionName": "source-storage.marcRecords.search.post",
       "displayName": "Source Storage - get marc records using post method",
       "description": "Get marc records using post method"
     },
@@ -350,7 +350,7 @@
         "source-storage.records.delete",
         "source-storage.record.update",
         "source-storage.sourceRecords.get",
-        "source-storage.sourceRecords.post"
+        "source-storage.marcRecords.search.post"
       ],
       "visible": false
     }

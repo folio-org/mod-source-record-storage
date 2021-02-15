@@ -129,20 +129,26 @@ public abstract class AbstractRestVerticleTest {
     TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", okapiPort));
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
+    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, context.asyncAssertSuccess(res -> {
       try {
-        tenantClient.postTenant(new TenantAttributes()
+        TenantAttributes tenantAttributes = new TenantAttributes()
           .withModuleTo("1.0")
           .withParameters(Collections.singletonList(new Parameter()
-            .withKey(LOAD_SAMPLE_PARAMETER)
-            .withValue("true"))), res2 -> {
-          async.complete();
-        });
+          .withKey(LOAD_SAMPLE_PARAMETER)
+          .withValue("true")));
+
+        tenantClient.postTenant(tenantAttributes, context.asyncAssertSuccess(res2 -> {
+          if (res2.statusCode() == 400) {
+            context.assertEquals("Failed to create pub-sub user. Received status code 400", res2.bodyAsString());
+          } else {
+            context.assertEquals(204, res2.statusCode());
+          }
+        }));
       } catch (Exception e) {
         e.printStackTrace();
         async.complete();
       }
-    });
+    }));
   }
 
   @Before

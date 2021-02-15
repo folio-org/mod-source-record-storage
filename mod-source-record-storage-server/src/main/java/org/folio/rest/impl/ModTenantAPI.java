@@ -53,25 +53,21 @@ public class ModTenantAPI extends TenantAPI {
 
   @Validate
   @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers, Handler<AsyncResult<Response>> handlers, Context context) {
-    super.postTenantSync(entity, headers, ar -> {
-      if (ar.failed()) {
-        handlers.handle(ar);
-      } else {
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+    super.postTenantSync(tenantAttributes, headers, handler, context);
+  }
+
+  @Override
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                           Map<String, String> headers, Context context) {
+    return super.loadData(attributes, tenantId, headers, context)
+      .compose(num -> {
         Vertx vertx = context.owner();
-        vertx.executeBlocking(
-          blockingFuture -> {
-            LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
-            blockingFuture.complete();
-          },
-          // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
-          result -> setLoadSampleParameter(entity, context)
-            .compose(v -> createStubSnapshot(entity))
-            .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
-            .onComplete(event -> handlers.handle(ar))
-        );
-      }
-    }, context);
+        LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+        return setLoadSampleParameter(attributes, context)
+          .compose(v -> createStubSnapshot(attributes))
+          .compose(v -> registerModuleToPubsub(attributes, headers, context.owner())).map(num);
+      });
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {

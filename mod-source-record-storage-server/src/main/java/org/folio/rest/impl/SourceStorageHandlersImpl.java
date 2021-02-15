@@ -5,8 +5,8 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.resource.SourceStorageHandlers;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.UpdateRecordEventHandlingService;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class SourceStorageHandlersImpl implements SourceStorageHandlers {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceStorageHandlersImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   @Autowired
   private UpdateRecordEventHandlingService updateRecordEventHandlingService;

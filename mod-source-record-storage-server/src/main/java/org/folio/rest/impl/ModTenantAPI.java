@@ -6,8 +6,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -30,7 +30,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 @SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String TEST_MODE_PARAMETER = "testMode";
 
@@ -107,7 +107,7 @@ public class ModTenantAPI extends TenantAPI {
       .filter(p -> p.getKey().equals(parameterName))
       .findFirst()
       .map(Parameter::getValue)
-      .orElseGet(() -> EMPTY);
+      .orElse(EMPTY);
   }
 
   private Future<Void> registerModuleToPubsub(TenantAttributes attributes, Map<String, String> headers, Vertx vertx) {

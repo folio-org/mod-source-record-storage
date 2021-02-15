@@ -19,17 +19,17 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Service
 public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SnapshotRemovalServiceImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String INVENTORY_INSTANCES_PATH = "/inventory/instances/%s";
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "50"));
@@ -75,12 +75,12 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
       .collect(Collectors.toList());
 
     Promise<Void> promise = Promise.promise();
-    List<Future> deleteInstancesFutures = new ArrayList<>();
+    List<Future<Boolean>> deleteInstancesFutures = new ArrayList<>();
     for (String instanceId : instanceIds) {
       deleteInstancesFutures.add(deleteInstanceById(instanceId, params));
     }
 
-    CompositeFuture.join(deleteInstancesFutures)
+    GenericCompositeFuture.join(deleteInstancesFutures)
       .onSuccess(ar -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
@@ -93,7 +93,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
     RestUtil.doRequest(params, instacesUrl, HttpMethod.DELETE, null)
       .onComplete(responseAr -> {
         if (responseAr.failed()) {
-          LOG.error("Error deleting inventory instance by id '{}'", responseAr.cause(), id);
+          LOG.error("Error deleting inventory instance by id '{}'", id, responseAr.cause());
           promise.complete(false);
         } else if (responseAr.result().getCode() != SC_NO_CONTENT) {
           LOG.error("Failed to delete inventory instance by id '{}', response status: {}", id, responseAr.result().getCode());

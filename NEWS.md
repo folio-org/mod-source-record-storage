@@ -16,6 +16,9 @@
 * [MODSOURCE-205](https://issues.folio.org/browse/MODSOURCE-205) Batch API implementation redesign.
 * [MODSOURCE-177](https://issues.folio.org/browse/MODSOURCE-177) Use kafka to receive chunks of parsed records for saving
 * [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
+* [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
+* [MODSOURCE-239](https://issues.folio.org/browse/MODSOURCE-239) Upgrade to RAML Module Builder 32.x.
+
 
 ### Stream Records API
  | METHOD |             URL                                      | DESCRIPTION                                                               |

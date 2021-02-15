@@ -1,7 +1,7 @@
 package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
+import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.folio.kafka.AsyncRecordHandler;
@@ -82,20 +82,20 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
         .build());
     });
 
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     consumerWrappersList.forEach(consumerWrapper ->
       futures.add(consumerWrapper.start(dataImportKafkaHandler, PubSubClientUtils.constructModuleName())));
 
-    CompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
+    GenericCompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
   }
 
   @Override
   public void stop(Promise<Void> stopPromise) {
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     consumerWrappersList.forEach(consumerWrapper ->
       futures.add(consumerWrapper.stop()));
 
-    CompositeFuture.join(futures).onComplete(ar -> stopPromise.complete());
+    GenericCompositeFuture.join(futures).onComplete(ar -> stopPromise.complete());
   }
 
   //TODO: get rid of this workaround with global spring context

@@ -3,8 +3,8 @@ package org.folio.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang.StringUtils;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -22,7 +22,7 @@ import static org.folio.services.util.EventHandlingUtil.sendEventWithPayloadToPu
 @Component
 public class UpdateRecordEventHandlingService implements EventHandlingService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(UpdateRecordEventHandlingService.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String QM_SRS_MARC_BIB_RECORD_UPDATED_EVENT_TYPE = "QM_SRS_MARC_BIB_RECORD_UPDATED";
   private static final String QM_ERROR_EVENT_TYPE = "QM_ERROR";

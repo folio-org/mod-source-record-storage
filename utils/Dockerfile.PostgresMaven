@@ -1,0 +1,3 @@
+FROM postgres:latest
+RUN apt-get update -y
+RUN apt-get install -y default-jre-headless maven git

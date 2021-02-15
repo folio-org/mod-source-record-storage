@@ -16,6 +16,9 @@
     <vertx-jooq.version>5.2.1</vertx-jooq.version>
     <postgres.version>42.2.18</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
+    <docker.host.address>localhost</docker.host.address>
+    <docker.container.db.ip>127.0.0.1</docker.container.db.ip>
+    <db.port>5432</db.port>
     <lombok.version>1.18.16</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
   </properties>
@@ -376,6 +379,7 @@
         </executions>
       </plugin>
 
+<!--
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
@@ -423,7 +427,7 @@
           </execution>
         </executions>
       </plugin>
-
+-->
       <plugin>
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>

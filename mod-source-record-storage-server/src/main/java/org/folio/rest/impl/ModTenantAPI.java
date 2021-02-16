@@ -1,12 +1,15 @@
 package org.folio.rest.impl;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.liquibase.LiquibaseUtil;
+import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
@@ -18,6 +21,7 @@ import org.folio.spring.SpringContextUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.ws.rs.core.Response;
 import java.util.Date;
 import java.util.Map;
 
@@ -45,6 +49,12 @@ public class ModTenantAPI extends TenantAPI {
   public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     this.tenantId = TenantTool.calculateTenantId(tenantId);
+  }
+
+  @Validate
+  @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+    super.postTenantSync(tenantAttributes, headers, handler, context);
   }
 
   @Override

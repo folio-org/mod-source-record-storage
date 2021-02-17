@@ -6,8 +6,12 @@ stages:
       shellScript: |-
         apt update
         apt install -y maven git
-        docker-entrypoint.sh "$@"
+        docker-entrypoint.sh "postgres" &
         mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+    env:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 - name: Build Docker with DIND
   steps:
   - publishImageConfig:

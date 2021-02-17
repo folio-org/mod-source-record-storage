@@ -7,7 +7,7 @@ stages:
         apt update
         apt install -y maven git
         docker-entrypoint.sh "postgres" &
-        mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+        mvn package -DskipTests -Ddocker.skip -Ddocker.host.address=localhost -Ddocker.container.db.ip=127.0.0.1 -Ddb.port=5432 -Djava.util.logging.config.file=vertx-default-jul-logging.properties
     env:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres

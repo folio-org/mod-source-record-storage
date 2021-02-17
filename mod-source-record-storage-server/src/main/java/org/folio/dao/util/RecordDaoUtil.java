@@ -157,7 +157,7 @@ public final class RecordDaoUtil {
 
   /**
    * Make sure record has id.
-   * 
+   *
    * @param record record
    * @return record with id
    */
@@ -170,7 +170,7 @@ public final class RecordDaoUtil {
 
   /**
    * Make sure record has additional info suppress discovery.
-   * 
+   *
    * @param record record
    * @return record with additional info suppress discovery
    */
@@ -183,7 +183,7 @@ public final class RecordDaoUtil {
 
   /**
    * Make sure all associated records have record id for foreign key.
-   * 
+   *
    * @param record record
    * @return record with all foreign keys set
    */
@@ -584,7 +584,7 @@ public final class RecordDaoUtil {
       externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
     }
     if (Objects.nonNull(pojo.getInstanceHrid())) {
-      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid().toString());
+      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid());
     }
     return externalIdsHolder;
   }

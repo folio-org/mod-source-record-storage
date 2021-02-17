@@ -29,12 +29,12 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class SourceStorageRecordsImpl implements SourceStorageRecords {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceStorageRecordsImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 

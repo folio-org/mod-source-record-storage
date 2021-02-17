@@ -3,8 +3,8 @@ package org.folio.services;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
@@ -44,7 +44,7 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 @Service
 public class RecordServiceImpl implements RecordService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private final RecordDao recordDao;
 
@@ -193,7 +193,7 @@ public class RecordServiceImpl implements RecordService {
       RecordType recordType = toRecordType(record.getRecordType().name());
       recordType.formatRecord(record);
     } catch (Exception e) {
-      LOG.error("Couldn't format {} record", e, record.getRecordType());
+      LOG.error("Couldn't format {} record", record.getRecordType(), e );
     }
     return record;
   }

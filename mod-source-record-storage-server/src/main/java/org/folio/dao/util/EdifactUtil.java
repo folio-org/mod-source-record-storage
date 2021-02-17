@@ -18,7 +18,7 @@ import io.xlate.edi.stream.EDIStreamReader;
  */
 public class EdifactUtil {
 
-  private final static String IGNORED_CODE = "ZZ";
+  private static final String IGNORED_CODE = "ZZ";
 
   private EdifactUtil() { }
 

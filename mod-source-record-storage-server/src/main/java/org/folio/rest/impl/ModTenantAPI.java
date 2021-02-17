@@ -6,8 +6,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -30,7 +30,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 @SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ModTenantAPI.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private static final String TEST_MODE_PARAMETER = "testMode";
 
@@ -53,25 +53,21 @@ public class ModTenantAPI extends TenantAPI {
 
   @Validate
   @Override
-  public void postTenant(TenantAttributes entity, Map<String, String> headers, Handler<AsyncResult<Response>> handlers, Context context) {
-    super.postTenant(entity, headers, ar -> {
-      if (ar.failed()) {
-        handlers.handle(ar);
-      } else {
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+    super.postTenantSync(tenantAttributes, headers, handler, context);
+  }
+
+  @Override
+  Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                           Map<String, String> headers, Context context) {
+    return super.loadData(attributes, tenantId, headers, context)
+      .compose(num -> {
         Vertx vertx = context.owner();
-        vertx.executeBlocking(
-          blockingFuture -> {
-            LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
-            blockingFuture.complete();
-          },
-          // so far, postTenant result doesn't depend on module registration till data import flow uses mod-pubsub as transport
-          result -> setLoadSampleParameter(entity, context)
-            .compose(v -> createStubSnapshot(entity))
-            .compose(v -> registerModuleToPubsub(entity, headers, context.owner()))
-            .onComplete(event -> handlers.handle(ar))
-        );
-      }
-    }, context);
+        LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+        return setLoadSampleParameter(attributes, context)
+          .compose(v -> createStubSnapshot(attributes))
+          .compose(v -> registerModuleToPubsub(attributes, headers, context.owner())).map(num);
+      });
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {
@@ -107,7 +103,7 @@ public class ModTenantAPI extends TenantAPI {
       .filter(p -> p.getKey().equals(parameterName))
       .findFirst()
       .map(Parameter::getValue)
-      .orElseGet(() -> EMPTY);
+      .orElse(EMPTY);
   }
 
   private Future<Void> registerModuleToPubsub(TenantAttributes attributes, Map<String, String> headers, Vertx vertx) {

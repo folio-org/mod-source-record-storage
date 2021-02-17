@@ -4,8 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,7 +26,7 @@ public final class EventHandlingUtil {
 
   private EventHandlingUtil() { }
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EventHandlingUtil.class);
+  private static final Logger LOGGER = LogManager.getLogger();
 
   /**
    * Prepares and sends event with zipped payload to the mod-pubsub
@@ -53,12 +53,12 @@ public final class EventHandlingUtil {
           if (throwable == null) {
             promise.complete(true);
           } else {
-            LOGGER.error("Error during event sending: {}", throwable, event);
+            LOGGER.error("Error during event sending: {}", event, throwable);
             promise.fail(throwable);
           }
         });
     } catch (Exception e) {
-      LOGGER.error("Failed to send {} event to mod-pubsub", e, eventType);
+      LOGGER.error("Failed to send {} event to mod-pubsub", eventType, e);
       promise.fail(e);
     }
     return promise.future();
@@ -88,7 +88,7 @@ public final class EventHandlingUtil {
           .withEventTTL(1)
           .withPublishedBy(PubSubClientUtils.constructModuleName()));
     } catch (IOException e) {
-      LOGGER.error("Failed to construct an event for eventType {}", e, eventType);
+      LOGGER.error("Failed to construct an event for eventType {}", eventType, e);
       return Future.failedFuture(e);
     }
 
@@ -111,7 +111,7 @@ public final class EventHandlingUtil {
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {}:", cause, producerName, eventType);
+        LOGGER.error("{} write error for event {}:",  producerName, eventType, cause);
         promise.fail(cause);
       }
     });

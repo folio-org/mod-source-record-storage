@@ -134,8 +134,8 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     snapshotService.saveSnapshot(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
-      String expected = "null value in column \"status\" violates not-null constraint";
-      context.assertEquals(expected, save.cause().getMessage());
+      String expected = "null value in column \\\"status\\\" violates not-null constraint";
+      context.assertTrue(save.cause().getMessage().contains(expected));
       async.complete();
     });
   }

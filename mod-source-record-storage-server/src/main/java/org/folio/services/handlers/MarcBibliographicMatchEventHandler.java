@@ -3,7 +3,6 @@ package org.folio.services.handlers;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.folio.DataImportEventPayload;
@@ -46,13 +45,16 @@ import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Handler for MARC-MARC matching/not-matching MARC-record by specific fields.
  */
 @Component
 public class MarcBibliographicMatchEventHandler implements EventHandler {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MarcBibliographicMatchEventHandler.class);
+  private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String MATCHED_ID_MARC_FIELD = "999ffs";
   private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
@@ -156,7 +158,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Logic for retreiving MatchDetail from eventPayload.
+   * Logic for retrieving MatchDetail from eventPayload.
    *
    * @param dataImportEventPayload - payload
    * @return - resulted MatchDetail

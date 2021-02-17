@@ -54,7 +54,7 @@ public final class SnapshotDaoUtil {
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
    * using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param condition     condition
    * @param orderFields   fields to order by
@@ -74,7 +74,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Count query by {@link Condition}
-   * 
+   *
    * @param queryExecutor query executor
    * @param condition     condition
    * @return future with count
@@ -88,7 +88,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Searches for {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional Snapshot
@@ -101,7 +101,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Saves {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param snapshot      snapshot
    * @return future with updated Snapshot
@@ -118,7 +118,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Saves {@link List} of {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param snapshots     list of snapshots
    * @return future with updated List of Snapshot
@@ -137,7 +137,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Updates {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param snapshot      snapshot to update
    * @return future of updated Snapshot
@@ -159,7 +159,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Deletes {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with boolean whether Snapshot deleted
@@ -172,7 +172,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Deletes all {@link Snapshot} using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @return future of number of Snapshot deleted
    */
@@ -182,7 +182,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link Snapshot}
-   * 
+   *
    * @param row query result row
    * @return Snapshot
    */
@@ -212,7 +212,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link Optional} {@link Snapshot}
-   * 
+   *
    * @param row query result row
    * @return optional Snapshot
    */
@@ -221,8 +221,8 @@ public final class SnapshotDaoUtil {
   }
 
   /**
-   * Convert {@link Snapshot} to database record {@link SnapshotsRecord}
-   * 
+   * Convert {@link Snapshot} to database record {@link SnapshotsLbRecord}
+   *
    * @param snapshot snapshot
    * @return SnapshotsRecord
    */
@@ -256,7 +256,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Get {@link Condition} to filter by snapshot id
-   * 
+   *
    * @param status snapshot status
    * @return condition
    */
@@ -273,10 +273,10 @@ public final class SnapshotDaoUtil {
 
   /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
-   * 
+   *
    * Relies on strong convention between dto property name and database column name.
    * Property name being lower camel case and column name being lower snake case of the property name.
-   * 
+   *
    * @param orderBy   list of order strings i.e. 'order,ASC' or 'state'
    * @param forOffset flag to ensure an order is applied
    * @return list of order fields

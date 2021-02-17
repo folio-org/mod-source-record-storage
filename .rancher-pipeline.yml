@@ -2,8 +2,16 @@ stages:
 - name: Build
   steps:
   - runScriptConfig:
-      image: grizzlysoftware/maven-non-root:3.6.2-11.0.4-jdk-stretch
-      shellScript: mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+      image: postgres:12.2
+      shellScript: |-
+        apt update
+        apt install -y maven git
+        docker-entrypoint.sh "postgres" &
+        mvn package -DskipTests -Ddocker.skip -Ddocker.host.address=localhost -Ddocker.container.db.ip=127.0.0.1 -Ddb.port=5432 -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+    env:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
 - name: Build Docker with DIND
   steps:
   - publishImageConfig:

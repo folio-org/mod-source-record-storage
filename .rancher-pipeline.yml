@@ -2,8 +2,12 @@ stages:
 - name: Build
   steps:
   - runScriptConfig:
-      image: docker.dev.folio.org/maven-postgres:1
-      shellScript: postgres && mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+      image: postgres:latest
+      shellScript: |-
+        apt update
+        apt install -y maven git
+        postgres
+        mvn package -DskipTests -Djava.util.logging.config.file=vertx-default-jul-logging.properties
 - name: Build Docker with DIND
   steps:
   - publishImageConfig:

@@ -696,6 +696,11 @@
             <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
             <LANG>en_US</LANG>
           </environmentVariables>
+          <argLine>
+            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+            -Dio.netty.tryReflectionSetAccessible=true
+            --illegal-access=warn
+          </argLine>
         </configuration>
       </plugin>
 

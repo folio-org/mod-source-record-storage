@@ -38,6 +38,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.testng.PowerMockTestCase;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.restassured.RestAssured;
@@ -55,7 +56,7 @@ import io.vertx.reactivex.core.Vertx;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(PubSubClientUtils.class)
 @PowerMockIgnore({"org.mockito.*"})
-public abstract class AbstractRestVerticleTest {
+public abstract class AbstractRestVerticleTest extends PowerMockTestCase {
 
   private static PostgreSQLContainer<?> postgresSQLContainer;
 

@@ -21,6 +21,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.testng.PowerMockTestCase;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.vertx.core.DeploymentOptions;
@@ -38,7 +39,7 @@ import java.util.concurrent.CompletableFuture;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(PubSubClientUtils.class)
 @PowerMockIgnore({"org.mockito.*"})
-public abstract class AbstractLBServiceTest {
+public abstract class AbstractLBServiceTest extends PowerMockTestCase {
 
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";

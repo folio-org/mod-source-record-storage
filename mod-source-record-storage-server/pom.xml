@@ -243,6 +243,24 @@
       <artifactId>postgresql</artifactId>
       <version>42.2.18</version>
     </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>2.0.9</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito2</artifactId>
+      <version>2.0.9</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-testng</artifactId>
+      <version>2.0.9</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -696,6 +714,11 @@
             <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
             <LANG>en_US</LANG>
           </environmentVariables>
+          <argLine>
+            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+            -Dio.netty.tryReflectionSetAccessible=true
+            --illegal-access=warn
+          </argLine>
         </configuration>
       </plugin>
 

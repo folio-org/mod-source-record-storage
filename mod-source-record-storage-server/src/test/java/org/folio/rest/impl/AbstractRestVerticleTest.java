@@ -5,6 +5,7 @@ import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -20,14 +21,24 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.util.pubsub.PubSubClientUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.ClassRule;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.testng.PowerMockTestCase;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.restassured.RestAssured;
@@ -42,7 +53,10 @@ import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import io.vertx.reactivex.core.Vertx;
 
-public abstract class AbstractRestVerticleTest {
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(PubSubClientUtils.class)
+@PowerMockIgnore({"org.mockito.*"})
+public abstract class AbstractRestVerticleTest extends PowerMockTestCase {
 
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
@@ -129,6 +143,11 @@ public abstract class AbstractRestVerticleTest {
     TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", okapiPort));
+
+    PowerMockito.mockStatic(PubSubClientUtils.class);
+    PowerMockito.when(PubSubClientUtils.registerModule(Mockito.any(OkapiConnectionParams.class)))
+      .thenReturn(CompletableFuture.completedFuture(true));
+
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
         tenantClient.postTenant(new TenantAttributes()
@@ -136,6 +155,20 @@ public abstract class AbstractRestVerticleTest {
           .withParameters(Collections.singletonList(new Parameter()
             .withKey(LOAD_SAMPLE_PARAMETER)
             .withValue("true"))), res2 -> {
+          if (res2.result().statusCode() == 204) {
+            return;
+          }
+          if (res2.result().statusCode() == 201) {
+            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
+              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
+              String error = res3.bodyAsJson(TenantJob.class).getError();
+              if (error != null) {
+                context.assertEquals("Failed to make post tenant. Received status code 400", error);
+              }
+            }));
+          } else {
+            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+          }
           async.complete();
         });
       } catch (Exception e) {

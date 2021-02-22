@@ -18,6 +18,7 @@
 * [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
 * [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
 * [MODSOURCE-239](https://issues.folio.org/browse/MODSOURCE-239) Upgrade to RAML Module Builder 32.x.
+* [MODSOURCE-250](https://issues.folio.org/browse/MODSOURCE-250) Make tenant API asynchronous.
 
 
 ### Stream Records API

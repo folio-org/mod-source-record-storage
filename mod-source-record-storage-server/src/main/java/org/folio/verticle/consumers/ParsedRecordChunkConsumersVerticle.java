@@ -17,15 +17,15 @@ import org.springframework.context.support.AbstractApplicationContext;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
 
-public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
+public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
   //TODO: get rid of this workaround with global spring context
   private static AbstractApplicationContext springGlobalContext;
 
   private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
 
   @Autowired
-  @Qualifier("ParsedMarcChunksKafkaHandler")
-  private AsyncRecordHandler<String, String> parsedMarcChunksKafkaHandler;
+  @Qualifier("ParsedRecordChunksKafkaHandler")
+  private AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler;
 
   @Autowired
   private KafkaConfig kafkaConfig;
@@ -53,7 +53,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedMarcChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
+    consumerWrapper.start(parsedRecordChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {
@@ -69,7 +69,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
 
   @Deprecated
   public static void setSpringGlobalContext(AbstractApplicationContext springGlobalContext) {
-    ParsedMarcChunkConsumersVerticle.springGlobalContext = springGlobalContext;
+    ParsedRecordChunkConsumersVerticle.springGlobalContext = springGlobalContext;
   }
 
 }

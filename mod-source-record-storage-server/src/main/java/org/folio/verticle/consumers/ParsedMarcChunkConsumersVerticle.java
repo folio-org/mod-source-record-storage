@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_PARSED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
 
 public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
   //TODO: get rid of this workaround with global spring context
@@ -42,7 +42,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
     SpringContextUtil.autowireDependencies(this, context);
 
     SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), DI_RAW_MARC_BIB_RECORDS_CHUNK_PARSED.value());
+      KafkaTopicNameHelper.getDefaultNameSpace(), DI_RAW_RECORDS_CHUNK_PARSED.value());
 
     consumerWrapper = KafkaConsumerWrapper.<String, String>builder()
       .context(context)

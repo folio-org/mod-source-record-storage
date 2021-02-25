@@ -34,11 +34,11 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 
 @Component
-@Qualifier("ParsedMarcChunksKafkaHandler")
-public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, String> {
+@Qualifier("ParsedRecordChunksKafkaHandler")
+public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String, String> {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private static final AtomicInteger chunkCounter = new AtomicInteger();
@@ -48,12 +48,13 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
   private Vertx vertx;
   private KafkaConfig kafkaConfig;
 
-  @Value("${srs.kafka.ParsedMarcChunksKafkaHandler.maxDistributionNum:100}")
+  // TODO: refactor srs.kafka.ParsedRecordChunksKafkaHandler
+  @Value("${srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
-  public ParsedMarcChunksKafkaHandler(@Autowired RecordService recordService,
-                                      @Autowired Vertx vertx,
-                                      @Autowired KafkaConfig kafkaConfig) {
+  public ParsedRecordChunksKafkaHandler(@Autowired RecordService recordService,
+                                        @Autowired Vertx vertx,
+                                        @Autowired KafkaConfig kafkaConfig) {
     this.recordService = recordService;
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
@@ -90,7 +91,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
     try {
       event = new Event()
         .withId(UUID.randomUUID().toString())
-        .withEventType(DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED.value())
+        .withEventType(DI_PARSED_RECORDS_CHUNK_SAVED.value())
         .withEventPayload(ZIPArchiver.zip(Json.encode(normalize(recordsBatchResponse))))
         .withEventMetadata(new EventMetadata()
           .withTenantId(tenantId)
@@ -104,7 +105,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
     String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
 
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
-      tenantId, DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED.value());
+      tenantId, DI_PARSED_RECORDS_CHUNK_SAVED.value());
 
     KafkaProducerRecord<String, String> record =
       KafkaProducerRecord.create(topicName, key, Json.encode(event));
@@ -113,7 +114,7 @@ public class ParsedMarcChunksKafkaHandler implements AsyncRecordHandler<String, 
 
     Promise<String> writePromise = Promise.promise();
 
-    String producerName = DI_PARSED_MARC_BIB_RECORDS_CHUNK_SAVED + "_Producer";
+    String producerName = DI_PARSED_RECORDS_CHUNK_SAVED + "_Producer";
     KafkaProducer<String, String> producer =
       KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
 

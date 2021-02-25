@@ -15,17 +15,17 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_MARC_BIB_RECORDS_CHUNK_PARSED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
 
-public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
+public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
   //TODO: get rid of this workaround with global spring context
   private static AbstractApplicationContext springGlobalContext;
 
   private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
 
   @Autowired
-  @Qualifier("ParsedMarcChunksKafkaHandler")
-  private AsyncRecordHandler<String, String> parsedMarcChunksKafkaHandler;
+  @Qualifier("ParsedRecordChunksKafkaHandler")
+  private AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler;
 
   @Autowired
   private KafkaConfig kafkaConfig;
@@ -42,7 +42,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
     SpringContextUtil.autowireDependencies(this, context);
 
     SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), DI_RAW_MARC_BIB_RECORDS_CHUNK_PARSED.value());
+      KafkaTopicNameHelper.getDefaultNameSpace(), DI_RAW_RECORDS_CHUNK_PARSED.value());
 
     consumerWrapper = KafkaConsumerWrapper.<String, String>builder()
       .context(context)
@@ -53,7 +53,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedMarcChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
+    consumerWrapper.start(parsedRecordChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {
@@ -69,7 +69,7 @@ public class ParsedMarcChunkConsumersVerticle extends AbstractVerticle {
 
   @Deprecated
   public static void setSpringGlobalContext(AbstractApplicationContext springGlobalContext) {
-    ParsedMarcChunkConsumersVerticle.springGlobalContext = springGlobalContext;
+    ParsedRecordChunkConsumersVerticle.springGlobalContext = springGlobalContext;
   }
 
 }

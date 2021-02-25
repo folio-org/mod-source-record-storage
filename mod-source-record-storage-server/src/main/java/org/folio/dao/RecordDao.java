@@ -73,8 +73,8 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by matchedId
    *
-   * @param matchedId       Record matchedId
-   * @param tenantId tenant id
+   * @param matchedId Record matchedId
+   * @param tenantId  tenant id
    * @return future with optional {@link Record}
    */
   Future<Optional<Record>> getRecordByMatchedId(String matchedId, String tenantId);
@@ -82,8 +82,8 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by matchedId using {@link ReactiveClassicGenericQueryExecutor}
    *
-   * @param txQE query execution
-   * @param matchedId   Record matchedId
+   * @param txQE      query execution
+   * @param matchedId Record matchedId
    * @return future with optional {@link Record}
    */
   Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
@@ -127,8 +127,8 @@ public interface RecordDao {
   /**
    * Saves {@link RecordCollection} to the db
    *
-   * @param recordCollection   Record collection to save
-   * @param tenantId tenant id
+   * @param recordCollection Record collection to save
+   * @param tenantId         tenant id
    * @return future with saved {@link RecordsBatchResponse}
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);

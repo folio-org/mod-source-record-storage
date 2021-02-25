@@ -18,7 +18,7 @@ import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
-import org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle;
+import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -70,13 +70,13 @@ public class InitAPIImpl implements InitAPI {
 
   private Future<?> deployConsumerVerticles(Vertx vertx) {
     //TODO: get rid of this workaround with global spring context
-    ParsedMarcChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
+    ParsedRecordChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
     DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
 
     Promise<String> deployConsumer1 = Promise.promise();
     Promise<String> deployConsumer2 = Promise.promise();
 
-    vertx.deployVerticle("org.folio.verticle.consumers.ParsedMarcChunkConsumersVerticle",
+    vertx.deployVerticle("org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle",
       new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
 
     vertx.deployVerticle("org.folio.verticle.consumers.DataImportConsumersVerticle",

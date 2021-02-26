@@ -128,10 +128,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     record.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 
-    // when
     cluster.send(request);
 
-    // then
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
       .observeFor(30, TimeUnit.SECONDS)
@@ -174,10 +172,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     record.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 
-    // when
     cluster.send(request);
 
-    // then
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
       .observeFor(30, TimeUnit.SECONDS)

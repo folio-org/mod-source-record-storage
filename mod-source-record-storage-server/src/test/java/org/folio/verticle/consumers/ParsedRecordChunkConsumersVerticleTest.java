@@ -52,18 +52,24 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
   private static String recordId = UUID.randomUUID().toString();
 
-  private static RawRecord rawRecord;
-  private static ParsedRecord parsedRecord;
+  private static RawRecord rawMarcRecord;
+  private static ParsedRecord parsedMarcRecord;
 
-  private String snapshotId1 = UUID.randomUUID().toString();
-  private String snapshotId2 = UUID.randomUUID().toString();
+  private static RawRecord rawEdifactRecord;
+  private static ParsedRecord parsedEdifactRecord;
+
+  private String snapshotId = UUID.randomUUID().toString();
 
   @BeforeClass
   public static void loadMockRecords(TestContext context) throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
+    rawMarcRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
+    parsedMarcRecord = new ParsedRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+    rawEdifactRecord = new RawRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    parsedEdifactRecord = new ParsedRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
   }
 
   @Before
@@ -71,20 +77,12 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     MockitoAnnotations.initMocks(this);
     Async async = context.async();
 
-    Snapshot snapshot1 = new Snapshot()
-      .withJobExecutionId(snapshotId1)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-    Snapshot snapshot2 = new Snapshot()
-      .withJobExecutionId(snapshotId2)
+    Snapshot snapshot = new Snapshot()
+      .withJobExecutionId(snapshotId)
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
 
-    List<Snapshot> snapshots = new ArrayList<>();
-    snapshots.add(snapshot1);
-    snapshots.add(snapshot2);
-
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -104,7 +102,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
     Async async = context.async();
 
     List<Record> records = new ArrayList<>();
@@ -112,11 +110,11 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     records.add(new Record()
       .withId(recordId)
       .withMatchedId(recordId)
-      .withSnapshotId(snapshotId1)
+      .withSnapshotId(snapshotId)
       .withGeneration(0)
       .withRecordType(RecordType.MARC)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord));
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(parsedMarcRecord));
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
@@ -144,6 +142,53 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
         context.fail(ar.cause());
       }
       context.assertTrue(ar.result().isPresent());
+      context.assertEquals(RecordType.MARC, ar.result().get().getRecordType());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+    Async async = context.async();
+
+    List<Record> records = new ArrayList<>();
+
+    records.add(new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId)
+      .withGeneration(0)
+      .withRecordType(RecordType.EDIFACT)
+      .withRawRecord(rawEdifactRecord)
+      .withParsedRecord(parsedEdifactRecord));
+
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+
+    String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
+    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
+    KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
+    record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
+    record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
+    record.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
+
+    // when
+    cluster.send(request);
+
+    // then
+    String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
+    cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
+
+    RecordDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), recordId).onComplete(ar -> {
+      if (ar.failed()) {
+        context.fail(ar.cause());
+      }
+      context.assertTrue(ar.result().isPresent());
+      context.assertEquals(RecordType.EDIFACT, ar.result().get().getRecordType());
       async.complete();
     });
   }

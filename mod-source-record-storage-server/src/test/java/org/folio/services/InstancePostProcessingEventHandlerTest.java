@@ -1,6 +1,5 @@
 package org.folio.services;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
@@ -26,10 +25,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -38,7 +33,6 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -54,7 +48,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
@@ -66,8 +59,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-@Ignore
-// TODO fix in scope of MODSOURCE-235
+// TODO: fix @Ignore tests in scope of MODSOURCE-235
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTest {
 
@@ -149,6 +141,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSetInstanceIdToRecord(TestContext context) {
     Async async = context.async();
 
@@ -258,6 +251,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
     Async async = context.async();
 
@@ -338,6 +332,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
 
@@ -401,6 +396,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
@@ -464,6 +460,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
     Async async = context.async();
 
@@ -531,6 +528,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
     Async async = context.async();
 

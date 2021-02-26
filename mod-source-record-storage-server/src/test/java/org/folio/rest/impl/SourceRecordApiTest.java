@@ -548,8 +548,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
-  //TODO fix
-  @Ignore
   @Test
   public void shouldReturnSpecificSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);

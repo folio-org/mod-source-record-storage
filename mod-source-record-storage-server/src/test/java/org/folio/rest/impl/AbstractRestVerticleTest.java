@@ -1,18 +1,20 @@
 package org.folio.rest.impl;
 
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import org.apache.http.HttpStatus;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
-
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
@@ -27,23 +29,25 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.ClassRule;
+import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
+import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import io.vertx.reactivex.core.Vertx;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
-public abstract class AbstractRestVerticleTest{
+public abstract class AbstractRestVerticleTest {
 
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
@@ -96,6 +100,16 @@ public abstract class AbstractRestVerticleTest{
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");
+
+    RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
+      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
+        @Override
+        public ObjectMapper create(Type arg0, String arg1) {
+          ObjectMapper objectMapper = new ObjectMapper();
+          return objectMapper;
+        }
+      }
+    ));
 
     switch (useExternalDatabase) {
       case "environment":

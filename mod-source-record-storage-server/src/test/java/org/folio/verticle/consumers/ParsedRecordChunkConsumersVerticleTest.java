@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.folio.TestUtil;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.utils.ZIPArchiver;
@@ -103,8 +102,6 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
   @Test
   public void shouldSendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
-    Async async = context.async();
-
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -132,23 +129,12 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(45, TimeUnit.SECONDS)
+      .observeFor(30, TimeUnit.SECONDS)
       .build());
-
-    RecordDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), recordId).onComplete(ar -> {
-      if (ar.failed()) {
-        context.fail(ar.cause());
-      }
-      context.assertTrue(ar.result().isPresent());
-      context.assertEquals(RecordType.MARC, ar.result().get().getRecordType());
-      async.complete();
-    });
   }
 
   @Test
   public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
-    Async async = context.async();
-
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -176,17 +162,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(45, TimeUnit.SECONDS)
+      .observeFor(30, TimeUnit.SECONDS)
       .build());
-
-    RecordDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), recordId).onComplete(ar -> {
-      if (ar.failed()) {
-        context.fail(ar.cause());
-      }
-      context.assertTrue(ar.result().isPresent());
-      context.assertEquals(RecordType.EDIFACT, ar.result().get().getRecordType());
-      async.complete();
-    });
   }
 
 }

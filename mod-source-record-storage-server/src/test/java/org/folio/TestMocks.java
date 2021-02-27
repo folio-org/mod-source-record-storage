@@ -70,12 +70,20 @@ public class TestMocks {
     return clone(records.get(index));
   }
 
-  public static Record getEdifactRecord() {
+  public static Record getRecords(RecordType type) {
     return records.stream()
-      .filter(s -> s.getRecordType().equals(RecordType.EDIFACT))
+      .filter(s -> s.getRecordType().equals(type))
       .map(TestMocks::clone)
       .findFirst()
       .get();
+  }
+
+  public static Record getMarcRecord() {
+    return getRecords(RecordType.MARC);
+  }
+
+  public static Record getEdifactRecord() {
+    return getRecords(RecordType.EDIFACT);
   }
 
   public static List<ErrorRecord> getErrorRecords() {

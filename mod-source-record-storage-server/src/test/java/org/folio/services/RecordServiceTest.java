@@ -256,7 +256,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveMarcRecord(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());

@@ -132,7 +132,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
+      .observeFor(45, TimeUnit.SECONDS)
       .build());
 
     RecordDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), recordId).onComplete(ar -> {
@@ -176,7 +176,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
+      .observeFor(45, TimeUnit.SECONDS)
       .build());
 
     RecordDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), recordId).onComplete(ar -> {

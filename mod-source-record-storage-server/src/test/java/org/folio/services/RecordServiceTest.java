@@ -220,7 +220,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetRecordById(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -256,7 +256,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveMarcRecord(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -727,7 +727,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetSourceRecordById(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -750,7 +750,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldNotGetSourceRecordById(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
       if (get.failed()) {
         context.fail(get.cause());
@@ -808,7 +808,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetFormattedMarcRecord(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
@@ -846,7 +846,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateSuppressFromDiscoveryForRecord(TestContext context) {
     Async async = context.async();
-    Record expected = TestMocks.getRecord(0);
+    Record expected = TestMocks.getMarcRecord();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());

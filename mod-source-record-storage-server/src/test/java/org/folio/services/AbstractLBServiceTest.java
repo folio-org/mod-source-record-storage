@@ -1,6 +1,12 @@
 package org.folio.services;
 
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+
+import java.lang.reflect.Type;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.RestVerticle;
@@ -13,17 +19,19 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import org.junit.ClassRule;
-
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
 public abstract class AbstractLBServiceTest {
 
@@ -63,6 +71,16 @@ public abstract class AbstractLBServiceTest {
       .kafkaHost(hostAndPort[0])
       .kafkaPort(hostAndPort[1])
       .build();
+
+    RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
+      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
+        @Override
+        public ObjectMapper create(Type arg0, String arg1) {
+          ObjectMapper objectMapper = new ObjectMapper();
+          return objectMapper;
+        }
+      }
+    ));
 
     String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
     postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);

@@ -90,10 +90,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
-    HashMap<String, String> headers = new HashMap<>();
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + NetworkUtils.nextFreePort());
-    headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    headers.put(OKAPI_TOKEN_HEADER, "token");
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx, kafkaConfig);
     Async async = context.async();

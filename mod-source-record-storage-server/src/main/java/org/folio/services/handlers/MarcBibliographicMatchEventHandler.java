@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
@@ -138,7 +139,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
 
   @Override
   public String getPostProcessingInitializationEventType() {
-    return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
+    return DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING.value();
   }
 
   /**

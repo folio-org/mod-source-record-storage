@@ -145,8 +145,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    recordCollection.getRecords()
-      .forEach(record -> record.withMetadata(null));
     RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -534,8 +532,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
-    recordCollection.getRecords()
-      .forEach(record -> record.withMetadata(null));
     RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -600,8 +596,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(1);
 
     async = testContext.async();
-    recordCollection.getRecords()
-      .forEach(record -> record.withMetadata(null));
     ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -613,8 +607,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
-    //TODO fix
-    //    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+
+    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
 
     RestAssured.given()
@@ -696,8 +690,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withTotalRecords(1);
 
     async = testContext.async();
-    recordCollection.getRecords()
-      .forEach(record -> record.withMetadata(null));
     ParsedRecordsBatchResponse updatedParsedRecordCollection = RestAssured.given()
       .spec(spec)
       .body(recordCollection)
@@ -709,8 +701,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
     assertThat(updatedParsedRecord.getId(), notNullValue());
-    //TODO
-//    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
+
+    assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
     async.complete();
   }
 

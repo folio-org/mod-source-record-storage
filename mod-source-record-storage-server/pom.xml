@@ -503,7 +503,7 @@
               <name>org.jooq.meta.postgres.PostgresDatabase</name>
               <includes>.*</includes>
               <excludes>
-                databasechangelog|databasechangeloglock
+                databasechangelog|databasechangeloglock|marc_indexers.*
               </excludes>
               <inputSchema>public</inputSchema>
               <outputSchemaToDefault>true</outputSchemaToDefault>

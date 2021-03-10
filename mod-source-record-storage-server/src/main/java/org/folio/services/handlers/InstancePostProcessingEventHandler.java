@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
@@ -109,6 +111,11 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
             sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(context), DI_SRS_MARC_BIB_INSTANCE_HRID_SET.value(),
               kafkaHeaders, kafkaConfig, key);
+            // MODSOURMAN-384: sent event to log when record updated implicitly only for INSTANCE_UPDATED case
+            if (dataImportEventPayload.getEventType().equals(DI_INVENTORY_INSTANCE_UPDATED.value())) {
+              sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(context), DI_SRS_MARC_BIB_RECORD_UPDATED.value(),
+                kafkaHeaders, kafkaConfig, key);
+            }
             future.complete(dataImportEventPayload);
           } else {
             LOG.error(FAIL_MSG, updateAr.cause());

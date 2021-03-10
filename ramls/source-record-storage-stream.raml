@@ -15,7 +15,6 @@ uses:
 types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
   marcRecordSearchRequest: !include raml-storage/schemas/dto/sourceRecordSearchRequest.json
-  marcRecordSearchResponse: !include raml-storage/schemas/dto/sourceRecordSearchResponse.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -123,20 +122,17 @@ traits:
           example: ["order,ASC"]
           required: false
   /marc-records:
-      displayName: Marc Records Stream
-      description: Stream collection of marc records
+      displayName: Marc Records IDs Stream
+      description: Stream collection of marc record IDs
       post:
-        description: Get a list of Marc Records using post method
+        description: Get a list of Marc Record IDs using post method
         is: [validate]
         body:
             application/json:
-              description: Request to search marc records
+              description: Request to search marc record IDs
               type: marcRecordSearchRequest
         responses:
           200:
-            body:
-              application/json:
-                type: marcRecordSearchResponse
           400:
             description: Bad request
             body:

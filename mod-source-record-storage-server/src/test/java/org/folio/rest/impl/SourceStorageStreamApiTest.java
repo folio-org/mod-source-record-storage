@@ -772,7 +772,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .collect(Collectors.joining("\n"));
 
     assertTrue(true);
-
+    async.complete();
 //    flowableInputStreamScanner(response)
 //      .map(r -> Json.decodeValue(r, String.class))
 //      .doFinally(() -> {

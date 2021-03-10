@@ -17,7 +17,7 @@
     <postgres.version>42.2.18</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.16</lombok.version>
-    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records</generate_routing_context>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-records</generate_routing_context>
   </properties>
 
   <dependencyManagement>

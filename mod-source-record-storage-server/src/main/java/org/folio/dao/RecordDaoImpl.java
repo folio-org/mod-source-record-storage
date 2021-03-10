@@ -1,42 +1,13 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
+import com.google.common.collect.Lists;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.sqlclient.Row;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -48,6 +19,7 @@ import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -66,6 +38,7 @@ import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
+import org.folio.services.util.parser.ParseFieldsResult;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -73,7 +46,9 @@ import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
+import org.jooq.SelectJoinStep;
 import org.jooq.SortOrder;
+import org.jooq.Table;
 import org.jooq.UpdateConditionStep;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
@@ -82,17 +57,41 @@ import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
-import io.reactivex.Flowable;
-import org.folio.okapi.common.GenericCompositeFuture;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import com.google.common.collect.Lists;
-
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.reactivex.pgclient.PgPool;
-import io.vertx.sqlclient.Row;
+import static java.lang.String.format;
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -102,6 +101,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String CTE = "cte";
 
   private static final String ID = "id";
+  private static final String MARC_ID = "marc_id";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
@@ -185,6 +185,39 @@ public class RecordDaoImpl implements RecordDao {
             .map(this::toRow)
             .map(this::toRecord))
           .doAfterTerminate(tx::commit)));
+  }
+
+  @Override
+  public Flowable<String> streamMarcRecordIds(ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId) {
+//    Field<Integer> COUNT = DSL.field("COUNT(*) OVER ()", Integer.class);
+//    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID, COUNT.as("total")};
+    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
+
+    SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
+    appendJoin(step, parseFieldsResult.getFieldsToJoin());
+    appendWhere(step, parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams());
+    String sql = step.offset(offset).limit(limit).getSQL(ParamType.INLINED);
+
+    return getCachedPool(tenantId)
+      .rxGetConnection()
+      .flatMapPublisher(conn -> conn.rxBegin()
+        .flatMapPublisher(tx -> conn.rxPrepare(sql)
+          .flatMapPublisher(pq -> pq.createStream(10000)
+            .toFlowable()
+            .map(this::toRow)
+            .map(this::toRecordId))
+          .doAfterTerminate(tx::commit)));
+  }
+
+  private void appendJoin(SelectJoinStep selectJoinStep, Set<String> fieldsToJoin) {
+    fieldsToJoin.forEach(fieldToJoin -> {
+      Table leftJoinTable = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
+      selectJoinStep.innerJoin(leftJoinTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, leftJoinTable, name(MARC_ID))));
+    });
+  }
+
+  private void appendWhere(SelectJoinStep step, String whereExpression, List<String> bindingParameters) {
+    step.where(DSL.condition(whereExpression, bindingParameters.toArray()).and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)));
   }
 
   @Override
@@ -900,6 +933,12 @@ public class RecordDaoImpl implements RecordDao {
     }
     return sourceRecord;
   }
+
+
+  private String toRecordId(Row row) {
+    return row.getUUID(0).toString();
+  }
+
 
   private Record toRecord(Row row) {
     Record record = RecordDaoUtil.toRecord(row);

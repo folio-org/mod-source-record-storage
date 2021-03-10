@@ -1,6 +1,12 @@
 package org.folio.services;
 
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+
+import java.lang.reflect.Type;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.RestVerticle;
@@ -13,38 +19,46 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import org.junit.ClassRule;
-
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
 public abstract class AbstractLBServiceTest {
 
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String KAFKA_ENV = "ENV";
+  private static final String KAFKA_ENV_ID = "test-env";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
+
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
 
+  protected static final String TENANT_ID = "diku";
+  protected static final String TOKEN = "dummy";
+
+  protected static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
+  protected static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
+
+  protected static final String RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEdifactRecordContent.sample";
+  protected static final String PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedEdifactRecordContent.sample";
+
+  protected static Vertx vertx;
+  protected static KafkaConfig kafkaConfig;
+
+  protected static PostgresClientFactory postgresClientFactory;
+
   private static PostgreSQLContainer<?> postgresSQLContainer;
-
-  static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
-  static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
-
-  static final String TENANT_ID = "diku";
-  static final String TOKEN = "dummy";
-
-  static PostgresClientFactory postgresClientFactory;
-
-  static Vertx vertx;
-  static KafkaConfig kafkaConfig;
 
   @ClassRule
   public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
@@ -57,12 +71,24 @@ public abstract class AbstractLBServiceTest {
     String[] hostAndPort = cluster.getBrokerList().split(":");
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
-    KafkaConfig kafkaConfig = KafkaConfig.builder()
+    kafkaConfig = KafkaConfig.builder()
       .kafkaHost(hostAndPort[0])
       .kafkaPort(hostAndPort[1])
+      .envId(KAFKA_ENV_ID)
       .build();
+
+    RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
+      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
+        @Override
+        public ObjectMapper create(Type arg0, String arg1) {
+          ObjectMapper objectMapper = new ObjectMapper();
+          return objectMapper;
+        }
+      }
+    ));
 
     String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
     postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
@@ -76,11 +102,9 @@ public abstract class AbstractLBServiceTest {
       postgresSQLContainer.getDatabaseName()
     );
 
-    int port = NetworkUtils.nextFreePort();
-    String okapiUrl = "http://localhost:" + port;
-    TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
+    TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, TOKEN);
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
-      .setConfig(new JsonObject().put("http.port", port));
+      .setConfig(new JsonObject().put("http.port", PORT));
 
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, deployResponse -> {
       try {

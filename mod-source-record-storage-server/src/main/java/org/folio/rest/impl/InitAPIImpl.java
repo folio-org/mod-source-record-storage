@@ -76,10 +76,10 @@ public class InitAPIImpl implements InitAPI {
     Promise<String> deployConsumer1 = Promise.promise();
     Promise<String> deployConsumer2 = Promise.promise();
 
-    vertx.deployVerticle("org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle",
+    vertx.deployVerticle(ParsedRecordChunkConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
 
-    vertx.deployVerticle("org.folio.verticle.consumers.DataImportConsumersVerticle",
+    vertx.deployVerticle(DataImportConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
 
     return GenericCompositeFuture.all(Lists.newArrayList(deployConsumer1.future(), deployConsumer2.future()));

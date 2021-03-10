@@ -1,6 +1,5 @@
 package org.folio.services;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
@@ -13,7 +12,6 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.mockito.ArgumentMatchers.any;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,10 +22,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.collect.Lists;
 
 import org.folio.DataImportEventPayload;
@@ -105,10 +99,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
-    HashMap<String, String> headers = new HashMap<>();
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + NetworkUtils.nextFreePort());
-    headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    headers.put(OKAPI_TOKEN_HEADER, "token");
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     marcBibliographicMatchEventHandler = new MarcBibliographicMatchEventHandler(recordDao, vertx);
     Async async = context.async();

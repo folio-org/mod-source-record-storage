@@ -24,10 +24,6 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.core.Response;
 
-import io.reactivex.FlowableSubscriber;
-import io.reactivex.Maybe;
-import io.reactivex.Observable;
-import io.reactivex.annotations.NonNull;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
@@ -37,8 +33,6 @@ import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-import org.jooq.impl.DSL;
-import org.reactivestreams.Subscription;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.reactivex.Flowable;

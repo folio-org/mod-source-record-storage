@@ -4,8 +4,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,11 +29,13 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -45,7 +51,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-@Ignore
 @RunWith(VertxUnitRunner.class)
 public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
@@ -740,6 +745,32 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
             .subscribe();
       }).collect(() -> sourceRecordList, (a, r) -> a.add(r))
         .subscribe();
+  }
+
+  @Test
+  public void shouldReturnAllRecordsWithOnPost(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+    postRecords(testContext, record_1, record_2, record_3);
+
+    final Async async = testContext.async();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("035.a ^= '(OCoLC)'");
+    InputStream response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-records")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().response().asInputStream();
+
+    String responseBody = new BufferedReader(
+      new InputStreamReader(response, StandardCharsets.UTF_8)).lines()
+      .collect(Collectors.joining("\n"));
+
+    Assert.assertEquals("\"1582d48c-5d33-4952-a313-07f718b876d7\",", responseBody);
+
+    async.complete();
   }
 
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {

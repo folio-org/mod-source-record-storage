@@ -109,6 +109,7 @@ public interface RecordService {
    */
   Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
+  Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, int offset, int limit, String tenantId);
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *

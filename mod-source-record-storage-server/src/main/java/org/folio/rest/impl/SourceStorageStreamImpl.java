@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static io.netty.util.internal.StringUtil.COMMA;
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
@@ -23,14 +24,21 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.core.Response;
 
+import io.reactivex.FlowableSubscriber;
+import io.reactivex.Maybe;
+import io.reactivex.Observable;
+import io.reactivex.annotations.NonNull;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
+import org.jooq.impl.DSL;
+import org.reactivestreams.Subscription;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.reactivex.Flowable;
@@ -103,6 +111,41 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
   }
+
+  @Override
+  public void postSourceStorageStreamMarcRecords(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    HttpServerResponse response = prepareStreamResponse(routingContext);
+    Buffer beginning = Buffer.buffer("{\n   \"records\":[\n");
+//    Buffer ending = Buffer.buffer("],\ntotalCount:");
+    Buffer ending = Buffer.buffer("\n]\n}");
+
+    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), 0, 1000000, tenantId)
+      .map(Json::encodeToBuffer)
+      .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
+//
+//    Flowable<Buffer> firstFlowable = flowable.firstElement().map(beginning::appendBuffer).toFlowable();
+//    Flowable<Buffer> lastFlowable = flowable.lastElement().map(ending::appendBuffer).toFlowable();
+//    Flowable<Buffer> finalFlowable = firstFlowable.concatWith(flowable.skip(1).skipLast(1)).concatWith(lastFlowable);
+
+    processStream(response, flowable, cause -> {
+      LOG.error(cause.getMessage(), cause);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+    });
+  }
+
+//  @Override
+//  public void postSourceStorageStreamMarcRecords(MarcRecordSearchRequest request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+//    HttpServerResponse response = prepareStreamResponse(routingContext);
+//    Condition condition =  DSL.noCondition();
+//    Flowable<Buffer> flowable = recordService.streamRecordIds(condition, orderFields, offset, limit, tenantId)
+//      .map(Json::encodeToBuffer)
+//      .map(buffer -> buffer.appendString(StringUtils.LF));
+//    processStream(response, flowable, cause -> {
+//      LOG.error(cause.getMessage(), cause);
+//      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+//    });
+//    asyncResultHandler.handle(Future.succeededFuture());
+//  }
 
   private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {
     Pump.pump(FlowableHelper.toReadStream(flowable)

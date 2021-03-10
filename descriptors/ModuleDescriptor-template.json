@@ -199,6 +199,15 @@
           "permissionsRequired": [
             "source-storage.sourceRecords.get"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/stream/marc-records",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
         }
       ]
     },

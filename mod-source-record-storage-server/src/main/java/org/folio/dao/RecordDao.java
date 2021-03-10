@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.util.parser.ParseFieldsResult;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -51,6 +52,16 @@ public interface RecordDao {
    * @return {@link Flowable} of {@link Record}
    */
   Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   *
+   * @param parseFieldsResult
+   * @param offset
+   * @param limit
+   * @param tenantId
+   * @return
+   */
+  Flowable<String> streamMarcRecordIds(ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id
@@ -288,5 +299,4 @@ public interface RecordDao {
    * @return future with generic type
    */
   <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
-
 }

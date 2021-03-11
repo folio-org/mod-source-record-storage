@@ -7,7 +7,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.TestUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.util.AdditionalFieldsUtil;
@@ -236,6 +238,28 @@ public class AdditionalFieldsUtilTest {
     boolean added = AdditionalFieldsUtil.addDataFieldToMarcRecord(record, "999", 'f', 'f', 'i', instanceId);
     // then
     Assert.assertTrue(added);
+    Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  }
+
+  @Test
+  public void shouldNotAdd035AndAdd001FieldsIf001And003FieldsNotExists() {
+    // given
+    String parsedContent = "{\"leader\":\"00115nam  22000731a 4500\",\"fields\":[{\"003\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    ParsedRecord parsedRecord = new ParsedRecord();
+    parsedRecord.setContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+
+    JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
+    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
+    // when
+    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
+    // then
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 }

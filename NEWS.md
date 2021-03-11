@@ -19,6 +19,7 @@
 * [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
 * [MODSOURCE-239](https://issues.folio.org/browse/MODSOURCE-239) Upgrade to RAML Module Builder 32.x.
 * [MODSOURCE-250](https://issues.folio.org/browse/MODSOURCE-250) Make tenant API asynchronous.
+* [MODSOURCE-248](https://issues.folio.org/browse/MODSOURCE-248) Incoming MARC Bib with 003, but no 001 should not create an 035[BUGFIX].
 
 
 ### Stream Records API

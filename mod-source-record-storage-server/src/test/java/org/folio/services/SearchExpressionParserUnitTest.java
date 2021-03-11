@@ -70,7 +70,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The number of apostrophes should be multiple of two [expression: marcFieldSearchExpression]";
+    String expectedMessage = "Each value in the expression should be surrounded by single quotes  [expression: marcFieldSearchExpression]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -96,7 +96,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given operator is not supported. key: 035.a, operator: none, value: 1";
+    String expectedMessage = "The given operator is not supported. key: 035.a, operator: none, value: 1"; // TODO return supported operators
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }

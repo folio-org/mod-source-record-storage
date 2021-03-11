@@ -23,7 +23,7 @@ public class ExpressionValidator {
   private static final BiConsumer<String, String> CORRECT_APOSTROPHES = (input, key) -> {
     int apostrophes = StringUtils.countMatches(input, "'");
     if (apostrophes % 2 != 0) {
-      throw new IllegalArgumentException(format("The number of apostrophes should be multiple of two [expression: %s]", key));
+      throw new IllegalArgumentException(format("Each value in the expression should be surrounded by apostrophes [expression: %s]", key));
     }
   };
 

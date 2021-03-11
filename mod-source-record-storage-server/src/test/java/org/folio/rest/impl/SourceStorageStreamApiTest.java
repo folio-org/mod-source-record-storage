@@ -3,13 +3,9 @@ package org.folio.rest.impl;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertTrue;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,7 +15,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,7 +25,6 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -745,41 +739,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
             .subscribe();
       }).collect(() -> sourceRecordList, (a, r) -> a.add(r))
         .subscribe();
-  }
-
-  @Ignore
-  @Test
-  public void shouldReturnAllRecordsWithOnPost(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
-    postRecords(testContext, record_1, record_2, record_3);
-
-    final Async async = testContext.async();
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression("035.a ^= '(OCoLC)'");
-    InputStream response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-records")
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .extract().response().asInputStream();
-
-    List<String> actual = new ArrayList<>();
-
-    String responseBody = new BufferedReader(
-      new InputStreamReader(response, StandardCharsets.UTF_8)).lines()
-      .collect(Collectors.joining("\n"));
-
-    assertTrue(true);
-    async.complete();
-//    flowableInputStreamScanner(response)
-//      .map(r -> Json.decodeValue(r, String.class))
-//      .doFinally(() -> {
-//        testContext.assertEquals(1, actual.size());
-//        async.complete();
-//      }).collect(() -> actual, (a, r) -> actual.add(r))
-//      .subscribe();
   }
 
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {

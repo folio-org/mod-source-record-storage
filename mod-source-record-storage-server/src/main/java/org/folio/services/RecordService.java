@@ -110,13 +110,14 @@ public interface RecordService {
   Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * * Stream {@link Record id} of the marc record by search expressions with offset and limit
    *
-   * @param leaderExpression
-   * @param fieldsExpression
-   * @param offset
-   * @param limit
-   * @param tenantId
-   * @return
+   * @param leaderExpression   expression to search by the leader of marc records
+   * @param fieldsExpression   expression to search by the marc fields of marc records
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return {@link Flowable} of {@link Record id}
    */
   Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, int offset, int limit, String tenantId);
   /**

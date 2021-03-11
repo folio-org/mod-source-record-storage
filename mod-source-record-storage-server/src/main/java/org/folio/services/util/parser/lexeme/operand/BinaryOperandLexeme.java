@@ -26,7 +26,7 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
 
   public static BinaryOperandLexeme of(String key, String stringOperator, String value) {
     Optional<Lexicon> optionalLexiconOperator = BINARY_OPERATORS.stream()
-      .filter(binaryOperator -> binaryOperator.getSearchValue().equals(stringOperator))
+      .filter(binaryOperator -> binaryOperator.getSearchValue().equals(stringOperator.toLowerCase()))
       .findFirst();
     if (optionalLexiconOperator.isPresent()) {
       Lexicon lexiconOperator = optionalLexiconOperator.get();

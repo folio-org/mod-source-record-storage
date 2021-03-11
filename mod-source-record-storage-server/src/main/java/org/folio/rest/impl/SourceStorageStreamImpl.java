@@ -109,18 +109,9 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   @Override
   public void postSourceStorageStreamMarcRecords(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
-    Buffer beginning = Buffer.buffer("{\n   \"records\":[\n");
-//    Buffer ending = Buffer.buffer("],\ntotalCount:");
-    Buffer ending = Buffer.buffer("\n]\n}");
-
-    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), 0, 1000000, tenantId)
+    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), 0, 10_000_000, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
-//
-//    Flowable<Buffer> firstFlowable = flowable.firstElement().map(beginning::appendBuffer).toFlowable();
-//    Flowable<Buffer> lastFlowable = flowable.lastElement().map(ending::appendBuffer).toFlowable();
-//    Flowable<Buffer> finalFlowable = firstFlowable.concatWith(flowable.skip(1).skipLast(1)).concatWith(lastFlowable);
-
     processStream(response, flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));

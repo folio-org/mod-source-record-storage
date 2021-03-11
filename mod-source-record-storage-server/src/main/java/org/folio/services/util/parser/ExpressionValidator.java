@@ -7,6 +7,11 @@ import java.util.function.BiConsumer;
 
 import static java.lang.String.format;
 
+/**
+ * The validator is intended to validate the incoming search expressions using the list of validation rules.
+ *
+ * @see SearchExpressionParser
+ */
 public class ExpressionValidator {
   private static final BiConsumer<String, String> BLANK_OR_EMPTY = (input, key) -> {
     if (input.isBlank() || input.isEmpty()) {
@@ -25,7 +30,11 @@ public class ExpressionValidator {
     if (apostrophes % 2 != 0) {
       throw new IllegalArgumentException(format("Each value in the expression should be surrounded by single quotes [expression: %s]", key));
     }
+    if (input.contains("''")) {
+      throw new IllegalArgumentException(format("Empty values are not allowed [expression: %s]", key));
+    }
   };
+
 
   public static void validate(String input, String key) {
     Arrays.asList(BLANK_OR_EMPTY, CORRECT_BRACKETS, CORRECT_APOSTROPHES).forEach(rule -> rule.accept(input, key));

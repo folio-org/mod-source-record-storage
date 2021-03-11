@@ -5,10 +5,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * The result of parsing the incoming fieldsSearchExpression.
+ *
+ * @see SearchExpressionParser
+ */
 public class ParseFieldsResult {
   private final Set<String> fieldsToJoin = new HashSet<>();
-  private String whereExpression;
   private final List<String> bindingParams = new ArrayList<>();
+  private boolean isEnabled;
+  private String whereExpression;
+
+  public ParseFieldsResult enable() {
+    this.isEnabled = true;
+    return this;
+  }
 
   public Set<String> getFieldsToJoin() {
     return fieldsToJoin;
@@ -35,5 +46,9 @@ public class ParseFieldsResult {
   public ParseFieldsResult withBindingParams(List<String> bindingParams) {
     this.bindingParams.addAll(bindingParams);
     return this;
+  }
+
+  public boolean isEnabled() {
+    return isEnabled;
   }
 }

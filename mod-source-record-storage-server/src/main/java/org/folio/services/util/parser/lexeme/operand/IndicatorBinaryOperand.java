@@ -26,6 +26,6 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
     } else if (OPERATOR_EQUALS.equals(getOperator())) {
       return iField + "." + indicator + " = ?";
     }
-    throw new IllegalArgumentException(format("Operator %s is not supported for the given Indicator operand", getOperator()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Indicator operand", getOperator().getSearchValue()));
   }
 }

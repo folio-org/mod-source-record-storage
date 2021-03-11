@@ -24,6 +24,6 @@ public class OperatorLexeme implements Lexeme {
 
   @Override
   public String toSqlRepresentation() {
-    return SPACE + operator.getSearchExpressionRepresentation() + SPACE;
+    return SPACE + operator.getSearchValue() + SPACE;
   }
 }

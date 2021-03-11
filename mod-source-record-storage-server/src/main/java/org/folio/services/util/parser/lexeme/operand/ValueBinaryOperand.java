@@ -27,6 +27,6 @@ public class ValueBinaryOperand extends BinaryOperandLexeme {
     } else if (OPERATOR_EQUALS.equals(getOperator())) {
       return iField + " = ?";
     }
-    throw new IllegalArgumentException(format("Operator %s is not supported for the given ControlField operand", getOperator()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given ControlField operand", getOperator().getSearchValue()));
   }
 }

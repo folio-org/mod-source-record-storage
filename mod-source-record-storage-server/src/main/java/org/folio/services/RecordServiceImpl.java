@@ -20,6 +20,7 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -130,8 +131,9 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, int offset, int limit, String tenantId) {
+    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(leaderExpression);
     ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(fieldsExpression);
-    return recordDao.streamMarcRecordIds(parseFieldsResult, offset, limit, tenantId);
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, offset, limit, tenantId);
   }
 
   @Override

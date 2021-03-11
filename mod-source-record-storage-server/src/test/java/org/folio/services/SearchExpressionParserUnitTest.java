@@ -70,7 +70,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "Each value in the expression should be surrounded by single quotes  [expression: marcFieldSearchExpression]";
+    String expectedMessage = "Each value in the expression should be surrounded by single quotes [expression: marcFieldSearchExpression]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }

@@ -11,9 +11,9 @@ import java.util.Set;
  * @see SearchExpressionParser
  */
 public class ParseFieldsResult {
+  private boolean isEnabled = false;
   private final Set<String> fieldsToJoin = new HashSet<>();
   private final List<String> bindingParams = new ArrayList<>();
-  private boolean isEnabled;
   private String whereExpression;
 
   public ParseFieldsResult enable() {

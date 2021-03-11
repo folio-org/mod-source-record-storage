@@ -9,8 +9,8 @@ import java.util.List;
  * @see SearchExpressionParser
  */
 public class ParseLeaderResult {
-  private final List<String> bindingParams = new ArrayList<>();
   private boolean isEnabled = false;
+  private final List<String> bindingParams = new ArrayList<>();
   private String whereExpression;
 
   public ParseLeaderResult enable() {

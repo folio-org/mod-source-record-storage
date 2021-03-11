@@ -161,7 +161,7 @@ public interface RecordService {
    * @param tenantId       tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecord(String id, ExternalIdType externalIdTypee, String tenantId);
+  Future<Record> getFormattedRecord(String id, ExternalIdType externalIdType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id

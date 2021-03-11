@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -61,7 +62,7 @@ public interface RecordDao {
    * @param tenantId
    * @return
    */
-  Flowable<String> streamMarcRecordIds(ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId);
+  Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id

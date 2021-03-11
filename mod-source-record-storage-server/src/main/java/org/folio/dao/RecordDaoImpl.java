@@ -39,6 +39,7 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -188,14 +189,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId) {
-//    Field<Integer> COUNT = DSL.field("COUNT(*) OVER ()", Integer.class);
-//    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID, COUNT.as("total")};
+  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId) {
     Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
-
     SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
-    appendJoin(step, parseFieldsResult.getFieldsToJoin());
-    appendWhere(step, parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams());
+    appendJoin(step, parseLeaderResult, parseFieldsResult);
+    appendWhere(step, parseLeaderResult, parseFieldsResult);
     String sql = step.offset(offset).limit(limit).getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
@@ -209,15 +207,27 @@ public class RecordDaoImpl implements RecordDao {
           .doAfterTerminate(tx::commit)));
   }
 
-  private void appendJoin(SelectJoinStep selectJoinStep, Set<String> fieldsToJoin) {
-    fieldsToJoin.forEach(fieldToJoin -> {
-      Table leftJoinTable = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
-      selectJoinStep.innerJoin(leftJoinTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, leftJoinTable, name(MARC_ID))));
-    });
+  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+    if (parseLeaderResult.isEnabled()) {
+      Table marcIndexersLeader = table(name("marc_indexers_leader"));
+      selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
+    }
+    if (parseFieldsResult.isEnabled()) {
+      parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
+        Table marcIndexers = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
+        selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
+      });
+    }
   }
 
-  private void appendWhere(SelectJoinStep step, String whereExpression, List<String> bindingParameters) {
-    step.where(DSL.condition(whereExpression, bindingParameters.toArray()).and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)));
+  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+    Condition leaderCondition = parseLeaderResult.isEnabled()
+      ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
+      : DSL.noCondition();
+    Condition fieldsCondition = parseFieldsResult.isEnabled()
+      ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
+      : DSL.noCondition();
+    step.where(leaderCondition).and(fieldsCondition).and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
   }
 
   @Override

@@ -30,6 +30,6 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
     } else if (OPERATOR_EQUALS.equals(getOperator())) {
       return stringBuilder.append("= ?)").toString();
     }
-    throw new IllegalArgumentException(format("Operator %s is not supported for the given DataField operand", getOperator()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given DataField operand", getOperator().getSearchValue()));
   }
 }

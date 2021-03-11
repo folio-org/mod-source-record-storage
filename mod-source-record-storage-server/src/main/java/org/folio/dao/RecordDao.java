@@ -54,15 +54,20 @@ public interface RecordDao {
    */
   Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
+
   /**
+   * Stream {@link Record id} of the marc record by search expressions with offset and limit
    *
-   * @param parseFieldsResult
-   * @param offset
-   * @param limit
-   * @param tenantId
-   * @return
+   * @param parseLeaderResult     result of parsing leaderSearchExpression
+   * @param parseFieldsResult     result of parsing fieldsSearchExpression
+   * @param deleted               deleted
+   * @param suppress              suppress from discovery
+   * @param offset                offset
+   * @param limit                 limit
+   * @param tenantId              tenant id
+   * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId);
+  Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id

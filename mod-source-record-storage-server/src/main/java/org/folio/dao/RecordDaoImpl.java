@@ -76,11 +76,13 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.lang.Boolean.TRUE;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
@@ -189,11 +191,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, int offset, int limit, String tenantId) {
+  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId) {
     Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
     SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
     appendJoin(step, parseLeaderResult, parseFieldsResult);
-    appendWhere(step, parseLeaderResult, parseFieldsResult);
+    appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);
     String sql = step.offset(offset).limit(limit).getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
@@ -220,14 +222,16 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress) {
+    Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(deleted);
+    Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(suppress);
     Condition leaderCondition = parseLeaderResult.isEnabled()
       ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
       : DSL.noCondition();
     Condition fieldsCondition = parseFieldsResult.isEnabled()
       ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
       : DSL.noCondition();
-    step.where(leaderCondition).and(fieldsCondition).and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+    step.where(leaderCondition).and(fieldsCondition).and(recordStateCondition).and(suppressedFromDiscoveryCondition);
   }
 
   @Override

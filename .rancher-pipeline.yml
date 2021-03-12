@@ -1,34 +1,34 @@
 stages:
-  - name: Build
-    steps:
-      - runScriptConfig:
-          image: postgres:12.2
-          shellScript: |-
-            apt update
-            apt install -y maven git
-            docker-entrypoint.sh "postgres" &
-            mvn package -DskipTests -Ddocker.skip -Ddocker.host.address=localhost -Ddocker.container.db.ip=127.0.0.1 -Ddb.port=5432 -Djava.util.logging.config.file=vertx-default-jul-logging.properties
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-  - name: Build Docker with DIND
-    steps:
-      - publishImageConfig:
-          dockerfilePath: ./Dockerfile
-          buildContext: .
-          tag: docker.dev.folio.org/mod-source-record-storage:folijet-${CICD_EXECUTION_SEQUENCE}
-          pushRemote: true
-          registry: docker.dev.folio.org
-  - name: Deploy
-    steps:
-      - applyAppConfig:
-          catalogTemplate: p-gh7sb:folijet-helmcharts-mod-source-record-storage
-          version: 0.1.32
-          answers:
-            image.repository: docker.dev.folio.org/mod-source-record-storage
-            image.tag: folijet-${CICD_EXECUTION_SEQUENCE}
-          targetNamespace: folijet
-          name: mod-source-record-storage
+- name: Build
+  steps:
+  - runScriptConfig:
+      image: postgres:12.2
+      shellScript: |-
+        apt update
+        apt install -y maven git
+        docker-entrypoint.sh "postgres" &
+        mvn package -DskipTests -Ddocker.skip -Ddocker.host.address=localhost -Ddocker.container.db.ip=127.0.0.1 -Ddb.port=5432 -Djava.util.logging.config.file=vertx-default-jul-logging.properties
+    env:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+- name: Build Docker with DIND
+  steps:
+  - publishImageConfig:
+      dockerfilePath: ./Dockerfile
+      buildContext: .
+      tag: docker.dev.folio.org/mod-source-record-storage:folijet-${CICD_EXECUTION_SEQUENCE}
+      pushRemote: true
+      registry: docker.dev.folio.org
+- name: Deploy
+  steps:
+  - applyAppConfig:
+      catalogTemplate: p-gh7sb:folijet-helmcharts-mod-source-record-storage
+      version: 0.1.32
+      answers:
+        image.repository: docker.dev.folio.org/mod-source-record-storage
+        image.tag: folijet-${CICD_EXECUTION_SEQUENCE}
+      targetNamespace: folijet
+      name: mod-source-record-storage
 timeout: 60
 notification: {}

@@ -19,6 +19,9 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
+import org.folio.services.util.parser.SearchExpressionParser;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,6 +127,16 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     return recordDao.streamSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId) {
+    if (leaderExpression == null && fieldsExpression == null) {
+      throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
+    }
+    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(leaderExpression);
+    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(fieldsExpression);
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, deleted, suppress, offset, limit, tenantId);
   }
 
   @Override

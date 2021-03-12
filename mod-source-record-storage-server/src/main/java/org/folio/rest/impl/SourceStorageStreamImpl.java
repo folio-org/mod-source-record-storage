@@ -107,9 +107,12 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   }
 
   @Override
-  public void postSourceStorageStreamMarcRecords(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageStreamMarcRecordIdentifiers(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
-    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), request.getDeleted(), request.getSuppressFromDiscovery(), request.getOffset(), request.getLimit(), tenantId)
+    // will fix the default values in schema
+    int offset = request.getOffset() == null ? 0 : request.getOffset();
+    int limit = request.getLimit() == null ? 10_000_000 : request.getLimit();
+    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), request.getDeleted(), request.getSuppressFromDiscovery(), offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
     processStream(response, flowable, cause -> {

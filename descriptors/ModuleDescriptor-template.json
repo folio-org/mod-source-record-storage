@@ -204,9 +204,9 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/source-storage/stream/marc-records",
+          "pathPattern": "/source-storage/stream/marc-record-identifiers",
           "permissionsRequired": [
-            "source-storage.sourceRecords.get"
+            "source-storage.records.get"
           ]
         }
       ]

@@ -1,11 +1,17 @@
 package org.folio.rest.impl;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,22 +21,27 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.restassured.response.ExtractableResponse;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -738,6 +749,383 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
             .subscribe();
       }).collect(() -> sourceRecordList, (a, r) -> a.add(r))
         .subscribe();
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnSearchMarcRecordIdsWhenExpressionsAreMissing(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression(null);
+    searchRequest.setFieldsSearchExpression(null);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    // then
+    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnSearchMarcRecordIdsWhenFieldsSearchExpressionIsWrong(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '3451991' and 005.value = '20140701')");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    // then
+    assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenNoRecordsPosted(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '3451991'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(EMPTY, responseBody);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenSearchByFieldsSearchExpression(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenSearchByLeaderSearchExpression(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenSearchByLeaderSearchExpressionAndFieldsSearchExpression(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenRecordWasDeleted(TestContext testContext) {
+    // given
+    postSnapshots(testContext, snapshot_2);
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsed = createParsed.body().as(Record.class);
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    // when
+    async = testContext.async();
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(EMPTY, responseBody);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenRecordWasDeleted(TestContext testContext) {
+    // given
+    postSnapshots(testContext, snapshot_2);
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(record_2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsed = createParsed.body().as(Record.class);
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setDeleted(true);
+    // when
+    async = testContext.async();
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenRecordWasSuppressed(TestContext testContext) {
+    // given
+    Async async = testContext.async();
+    Record suppressedRecord = new Record()
+      .withId(record_2.getId())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(record_2.getRawRecord())
+      .withParsedRecord(record_2.getParsedRecord())
+      .withMatchedId(record_2.getMatchedId())
+      .withState(Record.State.ACTUAL)
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, suppressedRecord);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(EMPTY, responseBody);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnResponseOnSearchMarcRecordIdsWhenRecordWasSuppressed(TestContext testContext) {
+    // given
+    Async async = testContext.async();
+    Record suppressedRecord = new Record()
+      .withId(record_2.getId())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC)
+      .withRawRecord(record_2.getRawRecord())
+      .withParsedRecord(record_2.getParsedRecord())
+      .withMatchedId(record_2.getMatchedId())
+      .withState(Record.State.ACTUAL)
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, suppressedRecord);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setSuppressFromDiscovery(true);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenLimitIs0(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setLimit(0);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(EMPTY, responseBody);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenLimitIs1(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setLimit(1);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    String[] ids = responseBody.split(",");
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, ids.length);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenOffsetIs1(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, record_2);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setOffset(1);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
+      .lines()
+      .collect(Collectors.joining(","));
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(EMPTY, responseBody);
+    async.complete();
   }
 
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {

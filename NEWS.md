@@ -1,4 +1,4 @@
-## 2020-12-07 v4.2.0-SNAPSHOT
+## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.
 * [MODSOURCE-217](https://issues.folio.org/browse/MODSOURCE-217) If incoming MARC bib lacks 001, sometimes it is added and sometimes not.[BUGFIX].
 * [MODSOURCE-218](https://issues.folio.org/browse/MODSOURCE-218) Performance issues with SRS requests when instance ID is not found

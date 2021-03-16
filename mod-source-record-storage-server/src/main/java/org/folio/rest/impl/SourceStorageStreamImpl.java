@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static io.netty.util.internal.StringUtil.COMMA;
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
@@ -25,6 +26,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -98,6 +100,21 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     Flowable<Buffer> flowable = recordService.streamSourceRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
+    processStream(response, flowable, cause -> {
+      LOG.error(cause.getMessage(), cause);
+      asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+    });
+  }
+
+  @Override
+  public void postSourceStorageStreamMarcRecordIdentifiers(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    HttpServerResponse response = prepareStreamResponse(routingContext);
+    // will fix the default values in schema
+    int offset = request.getOffset() == null ? 0 : request.getOffset();
+    int limit = request.getLimit() == null ? 10_000_000 : request.getLimit();
+    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), request.getDeleted(), request.getSuppressFromDiscovery(), offset, limit, tenantId)
+      .map(Json::encodeToBuffer)
+      .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
     processStream(response, flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));

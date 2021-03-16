@@ -56,7 +56,7 @@ public interface RecordDao {
 
 
   /**
-   * Stream {@link Record id} of the marc record by search expressions with offset and limit
+   * Stream {@link Record instanceId} of the marc record by search expressions with offset and limit
    *
    * @param parseLeaderResult     result of parsing leaderSearchExpression
    * @param parseFieldsResult     result of parsing fieldsSearchExpression

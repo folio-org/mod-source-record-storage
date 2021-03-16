@@ -40,7 +40,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -1022,7 +1021,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(record_2.getParsedRecord())
       .withMatchedId(record_2.getMatchedId())
       .withState(Record.State.ACTUAL)
-      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
+      .withExternalIdsHolder(record_2.getExternalIdsHolder());
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, suppressedRecord);
 

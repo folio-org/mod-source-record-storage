@@ -192,7 +192,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
+    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.INSTANCE_ID};
     SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
     appendJoin(step, parseLeaderResult, parseFieldsResult);
     appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);

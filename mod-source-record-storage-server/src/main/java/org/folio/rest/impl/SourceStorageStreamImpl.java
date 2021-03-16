@@ -1,5 +1,38 @@
 package org.folio.rest.impl;
 
+import io.reactivex.Flowable;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.Json;
+import io.vertx.core.streams.Pump;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.FlowableHelper;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
+import org.folio.rest.jaxrs.resource.SourceStorageStream;
+import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.RecordService;
+import org.folio.spring.SpringContextUtil;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Pattern;
+import javax.ws.rs.core.Response;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
 import static io.netty.util.internal.StringUtil.COMMA;
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
@@ -14,41 +47,6 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscove
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
-import javax.ws.rs.core.Response;
-
-import org.apache.commons.lang3.StringUtils;
-import org.folio.dataimport.util.ExceptionHelper;
-import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
-import org.folio.rest.jaxrs.resource.SourceStorageStream;
-import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.RecordService;
-import org.folio.spring.SpringContextUtil;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import io.reactivex.Flowable;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.Json;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import io.vertx.core.streams.Pump;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.reactivex.FlowableHelper;
 
 public class SourceStorageStreamImpl implements SourceStorageStream {
 
@@ -109,10 +107,14 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   @Override
   public void postSourceStorageStreamMarcRecordIdentifiers(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
-    // will fix the default values in schema
-    int offset = request.getOffset() == null ? 0 : request.getOffset();
-    int limit = request.getLimit() == null ? 10_000_000 : request.getLimit();
-    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(request.getLeaderSearchExpression(), request.getFieldsSearchExpression(), request.getDeleted(), request.getSuppressFromDiscovery(), offset, limit, tenantId)
+    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(
+      request.getLeaderSearchExpression(),
+      request.getFieldsSearchExpression(),
+      request.getDeleted(),
+      request.getSuppressFromDiscovery(),
+      request.getOffset(),
+      request.getLimit(),
+      tenantId)
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
     processStream(response, flowable, cause -> {

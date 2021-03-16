@@ -67,7 +67,7 @@ public interface RecordDao {
    * @param tenantId              tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId);
+  Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id

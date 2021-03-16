@@ -121,7 +121,7 @@ public interface RecordService {
    * @param tenantId            tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId);
+  Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *

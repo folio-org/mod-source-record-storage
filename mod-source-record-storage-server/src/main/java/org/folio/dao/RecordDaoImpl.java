@@ -191,12 +191,18 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId) {
+  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
     Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
     SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
     appendJoin(step, parseLeaderResult, parseFieldsResult);
     appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);
-    String sql = step.offset(offset).limit(limit).getSQL(ParamType.INLINED);
+    if (offset != null) {
+      step.offset(offset);
+    }
+    if (limit != null) {
+      step.limit(limit);
+    }
+    String sql = step.getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
       .rxGetConnection()

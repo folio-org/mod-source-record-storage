@@ -130,7 +130,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId) {
+  public Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
     if (leaderExpression == null && fieldsExpression == null) {
       throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
     }

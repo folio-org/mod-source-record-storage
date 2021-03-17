@@ -7,17 +7,25 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.sqlclient.Row;
+
 import static java.lang.String.format;
 
+/**
+ * The stream needed to build HTTP response following the pre-defined schema:
+ * {
+ *    "records" : array of instance UUIDs,
+ *    "totalCount" : integer
+ * }
+ */
 public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   private final HttpServerResponse delegate;
-  private int writeIndex = 0;
-  private int totalCount = 0;
-  private String COMMA = ",";
-  private String DOUBLE_QUOTE = "\"";
   private final String emptyResponse = "{\n  \"records\" : [ ],\n  \"totalCount\" : 0\n}";
   private final String responseBeginning = "{\n  \"records\" : [%s";
   private final String responseEnding = "],\n  \"totalCount\" : %s\n}";
+  private final String COMMA = ",";
+  private final String DOUBLE_QUOTE = "\"";
+  private int writeIndex = 0;
+  private int totalCount = 0;
 
   public SearchRecordIdsWriteStream(HttpServerResponse delegate) {
     this.delegate = delegate;

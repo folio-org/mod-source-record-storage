@@ -1,16 +1,12 @@
 package org.folio.rest.impl;
 
-import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,7 +16,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -802,12 +797,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(EMPTY, responseBody);
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -827,13 +821,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -853,13 +845,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -880,14 +870,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -922,12 +909,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(EMPTY, responseBody);
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -963,13 +949,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1000,12 +984,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(EMPTY, responseBody);
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1038,13 +1021,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1065,12 +1046,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(EMPTY, responseBody);
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1091,13 +1071,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
-    String[] ids = responseBody.split(",");
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, ids.length);
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1118,12 +1096,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .post("/source-storage/stream/marc-record-identifiers")
       .then()
       .extract();
-    String responseBody = new BufferedReader(new InputStreamReader(response.asInputStream(), StandardCharsets.UTF_8))
-      .lines()
-      .collect(Collectors.joining(","));
+    JsonObject responseBody = new JsonObject(response.body().asString());
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(EMPTY, responseBody);
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 

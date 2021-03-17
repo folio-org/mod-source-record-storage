@@ -12,10 +12,12 @@ import io.vertx.core.json.Json;
 import io.vertx.core.streams.Pump;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.reactivex.FlowableHelper;
+import io.vertx.sqlclient.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.impl.wrapper.SearchRecordIdsWriteStream;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
@@ -33,7 +35,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import static io.netty.util.internal.StringUtil.COMMA;
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
@@ -107,20 +108,31 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   @Override
   public void postSourceStorageStreamMarcRecordIdentifiers(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
-    Flowable<Buffer> flowable = recordService.streamMarcRecordIds(
+    Flowable<Row> flowable = recordService.streamMarcRecordIds(
       request.getLeaderSearchExpression(),
       request.getFieldsSearchExpression(),
       request.getDeleted(),
       request.getSuppressFromDiscovery(),
       request.getOffset(),
       request.getLimit(),
-      tenantId)
-      .map(Json::encodeToBuffer)
-      .map(buffer -> buffer.appendString(COMMA + StringUtils.LF));
-    processStream(response, flowable, cause -> {
+      tenantId
+    );
+
+    processStream(new SearchRecordIdsWriteStream(response), flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
+  }
+
+  private void processStream(SearchRecordIdsWriteStream responseWrapper, Flowable<Row> flowable, Handler<Throwable> errorHandler) {
+    Pump.pump(FlowableHelper.toReadStream(flowable)
+      .exceptionHandler(errorHandler)
+      .endHandler(end -> {
+        responseWrapper.end();
+        responseWrapper.close();
+      }), responseWrapper)
+      .start();
+    flowable.doOnError(errorHandler::handle);
   }
 
   private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {

@@ -76,13 +76,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static java.lang.Boolean.TRUE;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
@@ -191,8 +189,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.INSTANCE_ID};
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
+    Field<Integer> totalCount = DSL.field("COUNT(distinct " + RECORDS_LB.INSTANCE_ID +")", Integer.class);
+    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.INSTANCE_ID, totalCount.as("totalCount")};
+
     SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
     appendJoin(step, parseLeaderResult, parseFieldsResult);
     appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);
@@ -202,6 +202,7 @@ public class RecordDaoImpl implements RecordDao {
     if (limit != null) {
       step.limit(limit);
     }
+    step.groupBy(RECORDS_LB.INSTANCE_ID);
     String sql = step.getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
@@ -209,9 +210,7 @@ public class RecordDaoImpl implements RecordDao {
       .flatMapPublisher(conn -> conn.rxBegin()
         .flatMapPublisher(tx -> conn.rxPrepare(sql)
           .flatMapPublisher(pq -> pq.createStream(10000)
-            .toFlowable()
-            .map(this::toRow)
-            .map(this::toRecordId))
+            .toFlowable().map(this::toRow))
           .doAfterTerminate(tx::commit)));
   }
 

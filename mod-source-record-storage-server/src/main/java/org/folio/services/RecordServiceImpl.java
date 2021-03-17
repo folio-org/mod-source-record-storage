@@ -3,6 +3,7 @@ package org.folio.services;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.RecordDao;
@@ -130,7 +131,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
+  public Flowable<Row> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
     if (leaderExpression == null && fieldsExpression == null) {
       throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
     }

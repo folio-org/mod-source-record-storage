@@ -35,7 +35,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   public Future<Void> write(Row row) {
     String instanceId = row.getUUID("instance_id").toString();
     if (writeIndex == 0) {
-      this.totalCount = row.getInteger("totalCount");
+      this.totalCount = row.getInteger("count");
       this.writeIndex++;
       return this.delegate.write(format(responseBeginning, DOUBLE_QUOTE + instanceId + DOUBLE_QUOTE));
     } else {

@@ -190,21 +190,16 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    Field<Integer> totalCount = DSL.field("COUNT(distinct " + RECORDS_LB.INSTANCE_ID +")", Integer.class);
-    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.INSTANCE_ID, totalCount.as("totalCount")};
-
-    SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
-    appendJoin(step, parseLeaderResult, parseFieldsResult);
-    appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    SelectJoinStep subQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
+    appendJoin(subQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(subQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
     if (offset != null) {
-      step.offset(offset);
+      subQuery.offset(offset);
     }
     if (limit != null) {
-      step.limit(limit);
+      subQuery.limit(limit);
     }
-    step.groupBy(RECORDS_LB.INSTANCE_ID);
-    String sql = step.getSQL(ParamType.INLINED);
-
+    String sql = DSL.selectCount().select(subQuery.fields()).from(subQuery).groupBy(subQuery.field(RECORDS_LB.INSTANCE_ID)).getSQL(ParamType.INLINED);
     return getCachedPool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(conn -> conn.rxBegin()
@@ -952,12 +947,6 @@ public class RecordDaoImpl implements RecordDao {
     }
     return sourceRecord;
   }
-
-
-  private String toRecordId(Row row) {
-    return row.getUUID(0).toString();
-  }
-
 
   private Record toRecord(Row row) {
     Record record = RecordDaoUtil.toRecord(row);

@@ -47,6 +47,7 @@ import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
+import org.jooq.SelectHavingStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
@@ -88,9 +89,12 @@ import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.selectCount;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
@@ -190,16 +194,23 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    SelectJoinStep subQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
-    appendJoin(subQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(subQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    /* Building a search query */
+    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
+    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
     if (offset != null) {
-      subQuery.offset(offset);
+      searchQuery.offset(offset);
     }
     if (limit != null) {
-      subQuery.limit(limit);
+      searchQuery.limit(limit);
     }
-    String sql = DSL.selectCount().select(subQuery.fields()).from(subQuery).groupBy(subQuery.field(RECORDS_LB.INSTANCE_ID)).getSQL(ParamType.INLINED);
+    /* Building a count query */
+    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.INSTANCE_ID)).from(RECORDS_LB);
+    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    /* Join both in one query */
+    String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+
     return getCachedPool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(conn -> conn.rxBegin()

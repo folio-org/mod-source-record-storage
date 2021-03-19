@@ -1050,7 +1050,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
     assertEquals(0, responseBody.getJsonArray("records").size());
-    assertEquals(0, responseBody.getInteger("totalCount").intValue());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 
@@ -1086,7 +1086,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
     searchRequest.setOffset(1);
     // when
     ExtractableResponse<Response> response = RestAssured.given()
@@ -1100,7 +1100,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // then
     assertEquals(HttpStatus.SC_OK, response.statusCode());
     assertEquals(0, responseBody.getJsonArray("records").size());
-    assertEquals(0, responseBody.getInteger("totalCount").intValue());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 

@@ -7,14 +7,17 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.sqlclient.Row;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.UUID;
 
 import static java.lang.String.format;
 
 /**
  * The stream needed to build HTTP response following the pre-defined schema:
  * {
- *    "records" : array of instance UUIDs,
- *    "totalCount" : integer
+ * "records" : array of instance UUIDs,
+ * "totalCount" : integer
  * }
  */
 public class SearchRecordIdsWriteStream implements WriteStream<Row> {
@@ -33,14 +36,15 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
 
   @Override
   public Future<Void> write(Row row) {
-    String instanceId = row.getUUID("instance_id").toString();
+    UUID instanceUUID = row.getUUID("instance_id");
+    this.totalCount = row.getInteger("count");
     if (writeIndex == 0) {
-      this.totalCount = row.getInteger("count");
       this.writeIndex++;
-      return this.delegate.write(format(responseBeginning, DOUBLE_QUOTE + instanceId + DOUBLE_QUOTE));
+      String id = instanceUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + instanceUUID.toString() + DOUBLE_QUOTE;
+      return this.delegate.write(format(responseBeginning, id));
     } else {
       this.writeIndex++;
-      return this.delegate.write(COMMA + DOUBLE_QUOTE + instanceId + DOUBLE_QUOTE);
+      return this.delegate.write(COMMA + DOUBLE_QUOTE + instanceUUID.toString() + DOUBLE_QUOTE);
     }
   }
 
@@ -51,7 +55,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
 
   @Override
   public void end(Handler<AsyncResult<Void>> handler) {
-    if (this.totalCount == 0) {
+    if (this.writeIndex == 0) {
       this.delegate.write(emptyResponse).onSuccess(ar -> {
         this.delegate.end(handler);
       });

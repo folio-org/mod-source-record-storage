@@ -47,7 +47,6 @@ import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
-import org.jooq.SelectHavingStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
@@ -93,8 +92,6 @@ import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.selectCount;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 

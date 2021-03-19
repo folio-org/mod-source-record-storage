@@ -2,7 +2,7 @@ package org.folio.services.util.parser.lexeme;
 
 public enum Lexicon {
   MARC_FIELD("^[0-9].*$"),
-  LEADER_FIELD("p_"),
+  LEADER_FIELD("^p_.*"),
   OPENED_BRACKET("("),
   CLOSED_BRACKET(")"),
   OPERATOR_AND("and"),

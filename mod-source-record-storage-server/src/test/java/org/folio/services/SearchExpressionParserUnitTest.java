@@ -131,7 +131,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given expression part xxx.a is not parsable";
+    String expectedMessage = "The given expression [xxx.a = '1'] is not parsable";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -334,7 +334,7 @@ public class SearchExpressionParserUnitTest {
       parseLeaderSearchExpression(leaderSearchExpression);
     });
     // then
-    String expectedMessage = "The given expression part xxx.a is not parsable";
+    String expectedMessage = "The given expression [xxx.a = '1'] is not parsable";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }

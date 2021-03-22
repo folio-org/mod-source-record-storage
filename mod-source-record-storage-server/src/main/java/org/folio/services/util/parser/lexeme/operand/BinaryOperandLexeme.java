@@ -38,6 +38,8 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
         return new SubFieldBinaryOperand(key, lexiconOperator, value);
       } else if (ValueBinaryOperand.isApplicable(key)) {
         return new ValueBinaryOperand(key, lexiconOperator, value);
+      } else if (PositionBinaryOperand.isApplicable(key)) {
+        return new PositionBinaryOperand(key, lexiconOperator, value);
       } else {
         throw new IllegalArgumentException(format(
           "The given key is not supported [key: %s, operator: %s, value: %s]",

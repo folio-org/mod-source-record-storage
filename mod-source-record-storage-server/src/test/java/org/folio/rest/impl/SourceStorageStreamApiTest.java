@@ -812,7 +812,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#' and 005.04_02 = '41'");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)
@@ -1036,8 +1036,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
-    searchRequest.setLimit(0);
+    searchRequest.setFieldsSearchExpression("001.01_02 = '30'");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)

@@ -13,7 +13,7 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
   }
 
   public static boolean isApplicable(String key) {
-    return key.contains(".ind");
+    return key.matches("[0-9]{3}.ind[1-2]$");
   }
 
   @Override

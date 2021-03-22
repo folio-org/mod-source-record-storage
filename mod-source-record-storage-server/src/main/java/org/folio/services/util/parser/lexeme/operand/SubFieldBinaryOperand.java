@@ -13,7 +13,7 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
   }
 
   public static boolean isApplicable(String key) {
-    return key.contains(".") && key.split("\\.")[1].length() == 1;
+    return key.matches("^[0-9]{3}.[0-9a-z]$");
   }
 
   @Override

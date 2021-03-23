@@ -13,7 +13,7 @@ public class ValueBinaryOperand extends BinaryOperandLexeme {
   }
 
   public static boolean isApplicable(String key) {
-    return key.contains(".value");
+    return key.matches("^[0-9]{3}.value$");
   }
 
   @Override

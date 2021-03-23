@@ -5,6 +5,10 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
 
+/**
+ * Given "001": "393893". Available search cases:
+ * 001.04_02 = "89" - simple equality
+ */
 public class PositionBinaryOperand extends BinaryOperandLexeme {
   private final String field;
   private final int startPosition;

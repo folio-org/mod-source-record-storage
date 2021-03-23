@@ -6,6 +6,11 @@ import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
 
+/**
+ * Given "008": "830419m19559999gw mua". Available search cases:
+ * 008.value = '830419m19559999gw mua'    - simple equality
+ * 008.value ^= '830419m1'                - left-anchored equality
+ */
 public class ValueBinaryOperand extends BinaryOperandLexeme {
 
   public ValueBinaryOperand(String key, Lexicon operator, String value) {

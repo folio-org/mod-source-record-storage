@@ -6,6 +6,21 @@ import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
 
+/**
+ * Given
+ * "010": {
+ *    "subfields": [
+ *      {
+ *        "a": "   55001156/M "
+ *      }
+ *    ],
+ *    "ind1": "",
+ *    "ind2": " "
+ *  }
+ *  Available search cases:
+ *  010.a = '   55001156/M '    - simple equality
+ *  010.a ^= '   55'            - left-anchored equality
+ */
 public class SubFieldBinaryOperand extends BinaryOperandLexeme {
 
   public SubFieldBinaryOperand(String key, Lexicon lexiconOperator, String value) {

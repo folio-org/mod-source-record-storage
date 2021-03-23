@@ -6,6 +6,18 @@ import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
 
+/**
+ * Given
+ * "240": {
+ *      "subfields": [...]
+ *      "ind1": "1",
+ *      "ind2": " "
+ * }
+ * Available search cases:
+ * 240.ind1 = "1"  - simple equality
+ * 240.ind1 ^= "1" - left-anchored equality
+ * 240.ind2 = "#"  - equality to the empty value
+ */
 public class IndicatorBinaryOperand extends BinaryOperandLexeme {
 
   public IndicatorBinaryOperand(String key, Lexicon operator, String value) {

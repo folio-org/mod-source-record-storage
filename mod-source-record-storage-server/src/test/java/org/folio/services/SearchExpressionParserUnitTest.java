@@ -214,6 +214,48 @@ public class SearchExpressionParserUnitTest {
     assertEquals("\"i005\".\"value\" like ?", result.getWhereExpression());
   }
 
+
+  @Test
+  public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
+    // given
+    String fieldsSearchExpression = "001.09_01 = 'abc'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "The length of the value [abc] should be equal to the end position [expected length = 1]";
+    String actualMessage = exception.getMessage();
+    assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForPositionOperand() {
+    // given
+    String fieldsSearchExpression = "001.09_01 ^= 'a'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "Operator [^=] is not supported for the given PositionBinary operand";
+    String actualMessage = exception.getMessage();
+    assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_PositionOperand_EqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.01_04 = '2014'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("2014"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("substring(\"i005\".\"value\", 1, 4) = ?", result.getWhereExpression());
+  }
+
   @Test
   public void shouldParseFieldsSearchExpression_with_boolean_operators() {
     // given

@@ -12,7 +12,7 @@ public class LeaderBinaryOperand extends BinaryOperandLexeme {
   }
 
   public static boolean isApplicable(String key) {
-    return key.startsWith("p_");
+    return key.matches("^p_.*");
   }
 
   @Override

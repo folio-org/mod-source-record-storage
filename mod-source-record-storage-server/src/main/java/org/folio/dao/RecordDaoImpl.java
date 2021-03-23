@@ -76,13 +76,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static java.lang.Boolean.TRUE;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
@@ -90,6 +88,7 @@ import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
@@ -191,21 +190,30 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<String> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId) {
-    Field<?>[] recordFields = new Field<?>[]{RECORDS_LB.ID};
-    SelectJoinStep step = DSL.selectDistinct(recordFields).from(RECORDS_LB);
-    appendJoin(step, parseLeaderResult, parseFieldsResult);
-    appendWhere(step, parseLeaderResult, parseFieldsResult, deleted, suppress);
-    String sql = step.offset(offset).limit(limit).getSQL(ParamType.INLINED);
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
+    /* Building a search query */
+    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
+    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    if (offset != null) {
+      searchQuery.offset(offset);
+    }
+    if (limit != null) {
+      searchQuery.limit(limit);
+    }
+    /* Building a count query */
+    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.INSTANCE_ID)).from(RECORDS_LB);
+    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    /* Join both in one query */
+    String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(conn -> conn.rxBegin()
         .flatMapPublisher(tx -> conn.rxPrepare(sql)
           .flatMapPublisher(pq -> pq.createStream(10000)
-            .toFlowable()
-            .map(this::toRow)
-            .map(this::toRecordId))
+            .toFlowable().map(this::toRow))
           .doAfterTerminate(tx::commit)));
   }
 
@@ -947,12 +955,6 @@ public class RecordDaoImpl implements RecordDao {
     }
     return sourceRecord;
   }
-
-
-  private String toRecordId(Row row) {
-    return row.getUUID(0).toString();
-  }
-
 
   private Record toRecord(Row row) {
     Record record = RecordDaoUtil.toRecord(row);

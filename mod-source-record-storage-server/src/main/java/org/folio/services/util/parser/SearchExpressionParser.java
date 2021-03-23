@@ -9,7 +9,6 @@ import org.folio.services.util.parser.lexeme.operand.BinaryOperandLexeme;
 import org.folio.services.util.parser.lexeme.operator.OperatorLexeme;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -57,44 +56,39 @@ public class SearchExpressionParser {
   }
 
   private static List<Lexeme> getLexemes(String expression) {
-    List<String> expressionParts = Arrays.asList(expression.split(SPACE));
     List<Lexeme> lexemes = new ArrayList<>();
-    for (int lexemeIndex = 0; lexemeIndex < expressionParts.size(); lexemeIndex++) {
-      String currentExpressionPart = expressionParts.get(lexemeIndex);
-      lexemeIndex = processExpressionPart(expressionParts, lexemes, lexemeIndex, currentExpressionPart);
+    while (!expression.isEmpty()) {
+      expression = processExpression(expression, lexemes);
     }
     return lexemes;
   }
 
-  private static int processExpressionPart(List<String> expressionParts, List<Lexeme> lexemes, int lexemeIndex, String currentExpressionPart) {
-    if (currentExpressionPart.matches(MARC_FIELD.getSearchValue()) || currentExpressionPart.startsWith(LEADER_FIELD.getSearchValue())) {
-      String leftOperand = currentExpressionPart;
-      String operator = expressionParts.get(++lexemeIndex);
-      String rightOperand = expressionParts.get(++lexemeIndex);
-      if (rightOperand.endsWith("'" + CLOSED_BRACKET.getSearchValue())) {
-        String[] rightOperandParts = rightOperand.split("'");
-        rightOperand = rightOperandParts[1];
-        int numberOfEndBrackets = rightOperandParts[2].length();
-        lexemes.add(BinaryOperandLexeme.of(leftOperand, operator, rightOperand));
-        for (int index = 0; index < numberOfEndBrackets; index++) {
-          lexemes.add(BracketLexeme.closed());
-        }
-      } else {
-        rightOperand = rightOperand.substring(1, rightOperand.length() - 1);
-        lexemes.add(BinaryOperandLexeme.of(leftOperand, operator, rightOperand));
-      }
-    } else if (currentExpressionPart.startsWith(OPENED_BRACKET.getSearchValue())) {
+  private static String processExpression(String expression, List<Lexeme> lexemes) {
+    if (expression.matches(MARC_FIELD.getSearchValue()) || expression.matches(LEADER_FIELD.getSearchValue())) {
+      String splitResult[] = expression.split(SPACE, 3);
+      String leftOperand = splitResult[0];
+      String operator = splitResult[1];
+      String rightSuffix[] = splitResult[2].split("'*'", 3);
+      String rightOperand = rightSuffix[1];
+      lexemes.add(BinaryOperandLexeme.of(leftOperand, operator, rightOperand));
+      return rightSuffix[2];
+    } else if (expression.startsWith(OPENED_BRACKET.getSearchValue())) {
       lexemes.add(BracketLexeme.opened());
-      currentExpressionPart = currentExpressionPart.substring(1);
-      lexemeIndex = processExpressionPart(expressionParts, lexemes, lexemeIndex, currentExpressionPart);
-    } else if (currentExpressionPart.equals(OPERATOR_AND.getSearchValue())) {
+      return expression.substring(1);
+    } else if (expression.startsWith(CLOSED_BRACKET.getSearchValue())) {
+      lexemes.add(BracketLexeme.closed());
+      return expression.substring(1);
+    } else if (expression.startsWith(OPERATOR_AND.getSearchValue())) {
       lexemes.add(OperatorLexeme.of(OPERATOR_AND));
-    } else if (currentExpressionPart.equals(OPERATOR_OR.getSearchValue())) {
+      return expression.substring(OPERATOR_AND.getSearchValue().length());
+    } else if (expression.startsWith(OPERATOR_OR.getSearchValue())) {
       lexemes.add(OperatorLexeme.of(OPERATOR_OR));
+      return expression.substring(OPERATOR_OR.getSearchValue().length());
+    } else if (expression.startsWith(SPACE)) {
+      return expression.substring(1);
     } else {
-      throw new IllegalArgumentException(String.format("The given expression part %s is not parsable", currentExpressionPart));
+      throw new IllegalArgumentException(String.format("The given expression [%s] is not parsable", expression));
     }
-    return lexemeIndex;
   }
 
   private static Set<String> getFieldsToJoin(List<Lexeme> lexemes) {

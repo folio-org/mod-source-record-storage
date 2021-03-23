@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import io.vertx.sqlclient.Row;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -110,7 +111,7 @@ public interface RecordService {
   Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Stream {@link Record id} of the marc record by search expressions with offset and limit
+   * Stream [instanceId, totalCount]  of the marc record by search expressions with offset and limit
    *
    * @param leaderExpression    expression to search by the leader of marc records
    * @param fieldsExpression    expression to search by the marc fields of marc records
@@ -121,7 +122,7 @@ public interface RecordService {
    * @param tenantId            tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<String> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, int offset, int limit, String tenantId);
+  Flowable<Row> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *

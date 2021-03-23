@@ -3,7 +3,7 @@ package org.folio.services.util.parser.lexeme.operand;
 import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 
 /**
  * Given: "leader": "01542ccm a2200361   4500". Available search cases:
@@ -23,9 +23,9 @@ public class LeaderBinaryOperand extends BinaryOperandLexeme {
 
   @Override
   public String toSqlRepresentation() {
-    if (OPERATOR_EQUALS.equals(getOperator())) {
+    if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return key + " = ?";
     }
-    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Leader operand. Supported operators: [%s]", getOperator().getSearchValue(), OPERATOR_EQUALS.getSearchValue()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Leader operand. Supported operators: [%s]", getOperator().getSearchValue(), BINARY_OPERATOR_EQUALS.getSearchValue()));
   }
 }

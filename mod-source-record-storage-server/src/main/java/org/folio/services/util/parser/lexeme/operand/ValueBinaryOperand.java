@@ -3,8 +3,8 @@ package org.folio.services.util.parser.lexeme.operand;
 import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
 
 /**
  * Given "008": "830419m19559999gw mua". Available search cases:
@@ -27,9 +27,9 @@ public class ValueBinaryOperand extends BinaryOperandLexeme {
     String[] keyParts = getKey().split("\\.");
     String iField = stringBuilder.append("\"").append("i").append(keyParts[0]).append("\"").append(".\"")
       .append(keyParts[1]).append("\"").toString();
-    if (OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
+    if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return iField + " like ?";
-    } else if (OPERATOR_EQUALS.equals(getOperator())) {
+    } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return iField + " = ?";
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given ControlField operand", getOperator().getSearchValue()));

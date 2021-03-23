@@ -6,15 +6,15 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static org.apache.commons.lang3.StringUtils.SPACE;
 
-public class OperatorLexeme implements Lexeme {
+public class BooleanOperatorLexeme implements Lexeme {
   private final Lexicon operator;
 
-  public OperatorLexeme(Lexicon operator) {
+  public BooleanOperatorLexeme(Lexicon operator) {
     this.operator = operator;
   }
 
-  public static OperatorLexeme of(Lexicon operator) {
-    return new OperatorLexeme(operator);
+  public static BooleanOperatorLexeme of(Lexicon operator) {
+    return new BooleanOperatorLexeme(operator);
   }
 
   @Override

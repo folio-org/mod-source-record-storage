@@ -9,11 +9,20 @@ import java.util.List;
 import java.util.Optional;
 
 import static java.lang.String.format;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_FROM;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IN;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
 
 public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
-  private final static List<Lexicon> BINARY_OPERATORS = Arrays.asList(OPERATOR_EQUALS, OPERATOR_LEFT_ANCHORED_EQUALS);
+  private final static List<Lexicon> BINARY_OPERATORS = Arrays.asList(
+    BINARY_OPERATOR_EQUALS,
+    BINARY_OPERATOR_LEFT_ANCHORED_EQUALS,
+    BINARY_OPERATOR_FROM,
+    BINARY_OPERATOR_TO,
+    BINARY_OPERATOR_IN
+  );
   protected String key;
   protected Lexicon operator;
   protected String value;
@@ -70,7 +79,7 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
 
   @Override
   public String getBindingParam() {
-    if (OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
+    if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return this.value + "%";
     }
     return this.value;

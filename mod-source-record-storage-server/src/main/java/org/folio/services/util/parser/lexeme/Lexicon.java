@@ -5,16 +5,19 @@ public enum Lexicon {
   LEADER_FIELD("^p_.*"),
   OPENED_BRACKET("("),
   CLOSED_BRACKET(")"),
-  OPERATOR_AND("and"),
-  OPERATOR_OR("or"),
-  OPERATOR_EQUALS("="),
-  OPERATOR_LEFT_ANCHORED_EQUALS("^=");
+  BOOLEAN_OPERATOR_AND("and"),
+  BOOLEAN_OPERATOR_OR("or"),
+  BINARY_OPERATOR_EQUALS("="),
+  BINARY_OPERATOR_LEFT_ANCHORED_EQUALS("^="),
+  BINARY_OPERATOR_FROM("from"),
+  BINARY_OPERATOR_TO("to"),
+  BINARY_OPERATOR_IN("in");
+
+  private final String searchValue;
 
   Lexicon(String searchValue) {
     this.searchValue = searchValue;
   }
-
-  private String searchValue;
 
   public String getSearchValue() {
     return searchValue;

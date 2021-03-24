@@ -6,7 +6,7 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 import org.folio.services.util.parser.lexeme.bracket.BracketLexeme;
 import org.folio.services.util.parser.lexeme.operand.BinaryOperand;
 import org.folio.services.util.parser.lexeme.operand.BinaryOperandLexeme;
-import org.folio.services.util.parser.lexeme.operator.OperatorLexeme;
+import org.folio.services.util.parser.lexeme.operator.BooleanOperatorLexeme;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.commons.lang3.StringUtils.SPACE;
+import static org.folio.services.util.parser.lexeme.Lexicon.BOOLEAN_OPERATOR_AND;
+import static org.folio.services.util.parser.lexeme.Lexicon.BOOLEAN_OPERATOR_OR;
 import static org.folio.services.util.parser.lexeme.Lexicon.CLOSED_BRACKET;
 import static org.folio.services.util.parser.lexeme.Lexicon.LEADER_FIELD;
 import static org.folio.services.util.parser.lexeme.Lexicon.MARC_FIELD;
 import static org.folio.services.util.parser.lexeme.Lexicon.OPENED_BRACKET;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_AND;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_OR;
 
 /**
  * The parser is intended to parse the incoming search expressions for leader and marc fields
@@ -78,12 +78,12 @@ public class SearchExpressionParser {
     } else if (expression.startsWith(CLOSED_BRACKET.getSearchValue())) {
       lexemes.add(BracketLexeme.closed());
       return expression.substring(1);
-    } else if (expression.startsWith(OPERATOR_AND.getSearchValue())) {
-      lexemes.add(OperatorLexeme.of(OPERATOR_AND));
-      return expression.substring(OPERATOR_AND.getSearchValue().length());
-    } else if (expression.startsWith(OPERATOR_OR.getSearchValue())) {
-      lexemes.add(OperatorLexeme.of(OPERATOR_OR));
-      return expression.substring(OPERATOR_OR.getSearchValue().length());
+    } else if (expression.startsWith(BOOLEAN_OPERATOR_AND.getSearchValue())) {
+      lexemes.add(BooleanOperatorLexeme.of(BOOLEAN_OPERATOR_AND));
+      return expression.substring(BOOLEAN_OPERATOR_AND.getSearchValue().length());
+    } else if (expression.startsWith(BOOLEAN_OPERATOR_OR.getSearchValue())) {
+      lexemes.add(BooleanOperatorLexeme.of(BOOLEAN_OPERATOR_OR));
+      return expression.substring(BOOLEAN_OPERATOR_OR.getSearchValue().length());
     } else if (expression.startsWith(SPACE)) {
       return expression.substring(1);
     } else {
@@ -112,7 +112,7 @@ public class SearchExpressionParser {
     List<String> bindingParams = new ArrayList<>();
     for (Lexeme lexeme : lexemes) {
       if (LexemeType.BINARY_OPERAND.equals(lexeme.getType())) {
-        bindingParams.add(((BinaryOperandLexeme) lexeme).getBindingParam());
+        bindingParams.addAll(((BinaryOperandLexeme) lexeme).getBindingParams());
       }
     }
     return bindingParams;

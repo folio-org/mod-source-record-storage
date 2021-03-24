@@ -3,8 +3,12 @@ package org.folio.services.util.parser.lexeme.operand;
 import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 
+/**
+ * Given "001": "393893". Available search cases:
+ * 001.04_02 = "89" - simple equality
+ */
 public class PositionBinaryOperand extends BinaryOperandLexeme {
   private final String field;
   private final int startPosition;
@@ -20,17 +24,17 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
     }
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^[0-9]{3}.[0-9]{2,3}_[0-9]{2,3}$");
   }
 
   @Override
   public String toSqlRepresentation() {
     String iField = "\"" + "i" + field + "\"";
-    if (OPERATOR_EQUALS.equals(getOperator())) {
+    if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return "substring(" + iField + ".\"value\", " + startPosition + ", " + endPosition + ") = ?";
     } else {
-      throw new IllegalArgumentException(format("Operator [%s] is not supported for the given PositionBinary operand", getOperator().getSearchValue()));
+      throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Position operand", getOperator().getSearchValue()));
     }
   }
 }

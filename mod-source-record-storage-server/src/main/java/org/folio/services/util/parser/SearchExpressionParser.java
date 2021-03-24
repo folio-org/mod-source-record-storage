@@ -112,7 +112,7 @@ public class SearchExpressionParser {
     List<String> bindingParams = new ArrayList<>();
     for (Lexeme lexeme : lexemes) {
       if (LexemeType.BINARY_OPERAND.equals(lexeme.getType())) {
-        bindingParams.add(((BinaryOperandLexeme) lexeme).getBindingParam());
+        bindingParams.addAll(((BinaryOperandLexeme) lexeme).getBindingParams());
       }
     }
     return bindingParams;

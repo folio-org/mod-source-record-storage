@@ -17,7 +17,7 @@ public class LeaderBinaryOperand extends BinaryOperandLexeme {
     super(key, operator, value);
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^p_.*");
   }
 

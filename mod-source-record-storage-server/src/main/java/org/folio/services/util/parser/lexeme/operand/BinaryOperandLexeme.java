@@ -5,6 +5,7 @@ import org.folio.services.util.parser.lexeme.LexemeType;
 import org.folio.services.util.parser.lexeme.Lexicon;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,16 +40,18 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
       .findFirst();
     if (optionalLexiconOperator.isPresent()) {
       Lexicon lexiconOperator = optionalLexiconOperator.get();
-      if (LeaderBinaryOperand.isApplicable(key)) {
+      if (LeaderBinaryOperand.matches(key)) {
         return new LeaderBinaryOperand(key, lexiconOperator, value);
-      } else if (IndicatorBinaryOperand.isApplicable(key)) {
+      } else if (IndicatorBinaryOperand.matches(key)) {
         return new IndicatorBinaryOperand(key, lexiconOperator, value);
-      } else if (SubFieldBinaryOperand.isApplicable(key)) {
+      } else if (SubFieldBinaryOperand.matches(key)) {
         return new SubFieldBinaryOperand(key, lexiconOperator, value);
-      } else if (ValueBinaryOperand.isApplicable(key)) {
+      } else if (ValueBinaryOperand.matches(key)) {
         return new ValueBinaryOperand(key, lexiconOperator, value);
-      } else if (PositionBinaryOperand.isApplicable(key)) {
+      } else if (PositionBinaryOperand.matches(key)) {
         return new PositionBinaryOperand(key, lexiconOperator, value);
+      } else if (DateRangeBinaryOperand.matches(key)) {
+        return new DateRangeBinaryOperand(key, lexiconOperator, value);
       } else {
         throw new IllegalArgumentException(format(
           "The given key is not supported [key: %s, operator: %s, value: %s]",
@@ -78,11 +81,12 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
   }
 
   @Override
-  public String getBindingParam() {
+  public List<String> getBindingParams() {
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
-      return this.value + "%";
+      return Collections.singletonList(this.value + "%");
+    } else {
+      return Collections.singletonList(this.value);
     }
-    return this.value;
   }
 
   public String getKey() {

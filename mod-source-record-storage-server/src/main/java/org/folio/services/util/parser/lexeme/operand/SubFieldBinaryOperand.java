@@ -27,7 +27,7 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
     super(key, lexiconOperator, value);
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^[0-9]{3}.[0-9a-z]$");
   }
 
@@ -45,6 +45,6 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return stringBuilder.append("= ?)").toString();
     }
-    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given DataField operand", getOperator().getSearchValue()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given SubField operand", getOperator().getSearchValue()));
   }
 }

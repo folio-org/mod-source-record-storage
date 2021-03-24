@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 
+import java.util.Arrays;
 import java.util.HashSet;
 
 import static java.util.Arrays.asList;
@@ -117,7 +118,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=]";
+    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, from, to, in]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -214,7 +215,6 @@ public class SearchExpressionParserUnitTest {
     assertEquals("\"i005\".\"value\" like ?", result.getWhereExpression());
   }
 
-
   @Test
   public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
     // given
@@ -238,7 +238,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "Operator [^=] is not supported for the given PositionBinary operand";
+    String expectedMessage = "Operator [^=] is not supported for the given Position operand";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -257,16 +257,110 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_with_boolean_operators() {
+  public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForDateRangeOperand() {
     // given
-    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 = '1') or (036.ind1 ^= '1' and 005.value ^= '20141107')";
+    String fieldsSearchExpression = "005.date in 'wrong date'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "The given date [wrong date] is in a wrong format. Expected date pattern: [YYYYMMDD]";
+    String actualMessage = exception.getMessage();
+    assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForDateRangeOperand() {
+    // given
+    String fieldsSearchExpression = "005.date ^= '201701025'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "The given expression [005.date ^= '201701025'] is not supported";
+    String actualMessage = exception.getMessage();
+    assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void shouldThrowException_if_fieldsSearchExpression_hasNonSupportedExpressionForDateRangeOperand() {
+    // given
+    String fieldsSearchExpression = "005.date in '201701025'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "The given expression [005.date in '201701025'] is not supported";
+    String actualMessage = exception.getMessage();
+    assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_forDateRangeOperand_EqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.date = '201701025'";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
-    assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%"), result.getBindingParams());
-    assertEquals(new HashSet<>(asList("035", "036", "005")), result.getFieldsToJoin());
-    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" = ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?)", result.getWhereExpression());
+    assertEquals(singletonList("201701025"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8,) 'YYYYMMDD') = ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_forDateRangeOperand_FromOperator() {
+    // given
+    String fieldsSearchExpression = "005.date from '201701025'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("201701025"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8,) 'YYYYMMDD') >= ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_forDateRangeOperand_ToOperator() {
+    // given
+    String fieldsSearchExpression = "005.date to '201701025'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("201701025"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8,) 'YYYYMMDD') <= ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_forDateRangeOperand_InOperator() {
+    // given
+    String fieldsSearchExpression = "005.date in '201701025-20200213'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(Arrays.asList("201701025", "20200213"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8,) 'YYYYMMDD') between ? and ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_with_boolean_operators() {
+    // given
+    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 = '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.02_03 = 'abc' and 005.date in '20171128-20200114')";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%", "abc", "20171128", "20200114"), result.getBindingParams());
+    assertEquals(new HashSet<>(asList("001", "035", "036", "005")), result.getFieldsToJoin());
+    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" = ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8,) 'YYYYMMDD') between ? and ?)", result.getWhereExpression());
   }
 
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */

@@ -24,7 +24,7 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
     }
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^[0-9]{3}.[0-9]{2,3}_[0-9]{2,3}$");
   }
 
@@ -34,7 +34,7 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
     if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return "substring(" + iField + ".\"value\", " + startPosition + ", " + endPosition + ") = ?";
     } else {
-      throw new IllegalArgumentException(format("Operator [%s] is not supported for the given PositionBinary operand", getOperator().getSearchValue()));
+      throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Position operand", getOperator().getSearchValue()));
     }
   }
 }

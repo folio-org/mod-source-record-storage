@@ -24,7 +24,7 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
     super(key, operator, value);
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^[0-9]{3}.ind[1-2]$");
   }
 

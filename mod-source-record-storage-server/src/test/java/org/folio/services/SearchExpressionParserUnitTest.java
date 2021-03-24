@@ -265,7 +265,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given date [wrong date] is in a wrong format. Expected date pattern: [YYYYMMDD]";
+    String expectedMessage = "The given date [wrong date] is in a wrong format. Expected date pattern: [yyyymmdd]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -308,7 +308,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'YYYYMMDD') = ?", result.getWhereExpression());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') = ?", result.getWhereExpression());
   }
 
   @Test
@@ -321,7 +321,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'YYYYMMDD') >= ?", result.getWhereExpression());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') >= ?", result.getWhereExpression());
   }
 
   @Test
@@ -334,7 +334,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'YYYYMMDD') <= ?", result.getWhereExpression());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') <= ?", result.getWhereExpression());
   }
 
   @Test
@@ -347,7 +347,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(Arrays.asList("201701025", "20200213"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'YYYYMMDD') between ? and ?", result.getWhereExpression());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') between ? and ?", result.getWhereExpression());
   }
 
   @Test
@@ -360,7 +360,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%", "abc", "20171128", "20200114"), result.getBindingParams());
     assertEquals(new HashSet<>(asList("001", "035", "036", "005")), result.getFieldsToJoin());
-    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" = ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8), 'YYYYMMDD') between ? and ?)", result.getWhereExpression());
+    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" = ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
   }
 
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */

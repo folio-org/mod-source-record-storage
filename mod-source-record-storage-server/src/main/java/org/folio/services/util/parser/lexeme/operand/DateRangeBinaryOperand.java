@@ -21,7 +21,7 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
  * 005.date in '20141106-20141108'  - the given date is in the date range including boundaries
  */
 public class DateRangeBinaryOperand extends BinaryOperandLexeme {
-  private static final String DATE_PATTERN = "YYYYMMDD";
+  private static final String DATE_PATTERN = "yyyymmdd";
   private final boolean rangeSearch;
   private final String firstDate;
   private String secondDate;

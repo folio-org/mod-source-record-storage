@@ -14,12 +14,14 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUA
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_FROM;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IN;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
 
 public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
   private final static List<Lexicon> BINARY_OPERATORS = Arrays.asList(
     BINARY_OPERATOR_EQUALS,
     BINARY_OPERATOR_LEFT_ANCHORED_EQUALS,
+    BINARY_OPERATOR_NOT_EQUALS,
     BINARY_OPERATOR_FROM,
     BINARY_OPERATOR_TO,
     BINARY_OPERATOR_IN

@@ -5,6 +5,7 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 
 /**
  * Given
@@ -14,9 +15,9 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT
  *      "ind2": " "
  * }
  * Available search cases:
- * 240.ind1 = "1"  - simple equality
- * 240.ind1 ^= "1" - left-anchored equality
- * 240.ind2 = "#"  - equality to the empty value
+ * 240.ind1 = '1'     - simple equality, use '#' to search by empty values (240.ind2 = "#")
+ * 240.ind1 ^= '1'    - left-anchored equality
+ * 240.ind2 not= '0'  - not equals
  */
 public class IndicatorBinaryOperand extends BinaryOperandLexeme {
 
@@ -37,6 +38,8 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
       return iField + "." + indicator + " like ?";
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return iField + "." + indicator + " = ?";
+    } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
+      return iField + "." + indicator + " <> ?";
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Indicator operand", getOperator().getSearchValue()));
   }

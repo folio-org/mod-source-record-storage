@@ -118,7 +118,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, from, to, in]";
+    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -151,32 +151,6 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_EqualsOperator() {
-    // given
-    String fieldsSearchExpression = "036.ind1 = '1'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(singletonList("1"), result.getBindingParams());
-    assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
-    assertEquals("\"i036\".\"ind1\" = ?", result.getWhereExpression());
-  }
-
-  @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_EqualsOperator() {
-    // given
-    String fieldsSearchExpression = "005.value = '20141107001016.0'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(singletonList("20141107001016.0"), result.getBindingParams());
-    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("\"i005\".\"value\" = ?", result.getWhereExpression());
-  }
-
-  @Test
   public void shouldParseFieldsSearchExpression_for_SubFieldOperand_LeftAnchoredEqualsOperator() {
     // given
     String fieldsSearchExpression = "035.a ^= '(OCoLC)'";
@@ -187,6 +161,32 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("(OCoLC)%"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
     assertEquals("(\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" like ?)", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_NotEqualsOperator() {
+    // given
+    String fieldsSearchExpression = "035.a not= '(OCoLC)'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("(OCoLC)"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
+    assertEquals("(\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" <> ?)", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_EqualsOperator() {
+    // given
+    String fieldsSearchExpression = "036.ind1 = '1'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("1"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
+    assertEquals("\"i036\".\"ind1\" = ?", result.getWhereExpression());
   }
 
   @Test
@@ -203,6 +203,32 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
+  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_NotEqualsOperator() {
+    // given
+    String fieldsSearchExpression = "036.ind1 not= '1'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("1"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
+    assertEquals("\"i036\".\"ind1\" <> ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_ValueOperand_EqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.value = '20141107001016.0'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("20141107001016.0"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("\"i005\".\"value\" = ?", result.getWhereExpression());
+  }
+
+  @Test
   public void shouldParseFieldsSearchExpression_for_ValueOperand_LeftAnchoredEqualsOperator() {
     // given
     String fieldsSearchExpression = "005.value ^= '20141107'";
@@ -213,6 +239,19 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("20141107%"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
     assertEquals("\"i005\".\"value\" like ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_ValueOperand_NotEqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.value not= '20141107'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("20141107"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("\"i005\".\"value\" <> ?", result.getWhereExpression());
   }
 
   @Test
@@ -254,6 +293,19 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("2014"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
     assertEquals("substring(\"i005\".\"value\", 1, 4) = ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_PositionOperand_NotEqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.01_04 not= '2014'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("2014"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("substring(\"i005\".\"value\", 1, 4) <> ?", result.getWhereExpression());
   }
 
   @Test
@@ -312,6 +364,19 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
+  public void shouldParseFieldsSearchExpression_forDateRangeOperand_NotEqualsOperator() {
+    // given
+    String fieldsSearchExpression = "005.date not= '201701025'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("201701025"), result.getBindingParams());
+    assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
+    assertEquals("to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') <> ?", result.getWhereExpression());
+  }
+
+  @Test
   public void shouldParseFieldsSearchExpression_forDateRangeOperand_FromOperator() {
     // given
     String fieldsSearchExpression = "005.date from '201701025'";
@@ -353,14 +418,14 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldParseFieldsSearchExpression_with_boolean_operators() {
     // given
-    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 = '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.02_03 = 'abc' and 005.date in '20171128-20200114')";
+    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.02_03 = 'abc' and 005.date in '20171128-20200114')";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
     assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%", "abc", "20171128", "20200114"), result.getBindingParams());
     assertEquals(new HashSet<>(asList("001", "035", "036", "005")), result.getFieldsToJoin());
-    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" = ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
+    assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" <> ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
   }
 
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */
@@ -488,14 +553,26 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
+  public void shouldParseLeaderSearchExpression_for_NotEqualsOperator() {
+    // given
+    String leaderSearchExpression = "p_06 not= 'd'";
+    // when
+    ParseLeaderResult result = parseLeaderSearchExpression(leaderSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(singletonList("d"), result.getBindingParams());
+    assertEquals("p_06 <> ?", result.getWhereExpression());
+  }
+
+  @Test
   public void shouldParseLeaderSearchExpression_with_boolean_operators() {
     // given
-    String fieldsSearchExpression = "(p_05 = 'a' and p_06 = 'b') or (p_07 = '1' and p_08 = '2')";
+    String fieldsSearchExpression = "(p_05 = 'a' and p_06 = 'b') or (p_07 = '1' and p_08 not= '2')";
     // when
     ParseLeaderResult result = parseLeaderSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
     assertEquals(asList("a", "b", "1", "2"), result.getBindingParams());
-    assertEquals("(p_05 = ? and p_06 = ?) or (p_07 = ? and p_08 = ?)", result.getWhereExpression());
+    assertEquals("(p_05 = ? and p_06 = ?) or (p_07 = ? and p_08 <> ?)", result.getWhereExpression());
   }
 }

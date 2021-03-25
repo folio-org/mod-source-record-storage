@@ -4,10 +4,12 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 
 /**
  * Given "001": "393893". Available search cases:
- * 001.04_02 = "89" - simple equality
+ * 001.04_02 = "89"     - simple equality
+ * 001.04_02 not= "89"  - not equals
  */
 public class PositionBinaryOperand extends BinaryOperandLexeme {
   private final String field;
@@ -31,10 +33,12 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
   @Override
   public String toSqlRepresentation() {
     String iField = "\"" + "i" + field + "\"";
+    String prefix = "substring(" + iField + ".\"value\", " + startPosition + ", " + endPosition + ")";
     if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
-      return "substring(" + iField + ".\"value\", " + startPosition + ", " + endPosition + ") = ?";
-    } else {
-      throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Position operand", getOperator().getSearchValue()));
+      return prefix + " = ?";
+    } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
+      return prefix + " <> ?";
     }
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Position operand", getOperator().getSearchValue()));
   }
 }

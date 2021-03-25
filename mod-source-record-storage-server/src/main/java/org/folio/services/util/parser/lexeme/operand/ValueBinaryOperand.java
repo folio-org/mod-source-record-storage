@@ -34,7 +34,7 @@ public class ValueBinaryOperand extends BinaryOperandLexeme {
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return prefix + " = ?";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
-      return stringBuilder.append(" <> ?)").toString();
+      return stringBuilder.append(" <> ?").toString();
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Value operand", getOperator().getSearchValue()));
   }

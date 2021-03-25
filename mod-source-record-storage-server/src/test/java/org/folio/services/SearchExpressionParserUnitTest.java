@@ -118,7 +118,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, from, to, in]";
+    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -171,7 +171,7 @@ public class SearchExpressionParserUnitTest {
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
-    assertEquals(singletonList("(OCoLC)%"), result.getBindingParams());
+    assertEquals(singletonList("(OCoLC)"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
     assertEquals("(\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" <> ?)", result.getWhereExpression());
   }
@@ -210,7 +210,7 @@ public class SearchExpressionParserUnitTest {
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
-    assertEquals(singletonList("1%"), result.getBindingParams());
+    assertEquals(singletonList("1"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
     assertEquals("\"i036\".\"ind1\" <> ?", result.getWhereExpression());
   }
@@ -249,7 +249,7 @@ public class SearchExpressionParserUnitTest {
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
-    assertEquals(singletonList("20141107%"), result.getBindingParams());
+    assertEquals(singletonList("20141107"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
     assertEquals("\"i005\".\"value\" <> ?", result.getWhereExpression());
   }
@@ -561,7 +561,7 @@ public class SearchExpressionParserUnitTest {
     // then
     assertTrue(result.isEnabled());
     assertEquals(singletonList("d"), result.getBindingParams());
-    assertEquals("p_05 <> ?", result.getWhereExpression());
+    assertEquals("p_06 <> ?", result.getWhereExpression());
   }
 
   @Test

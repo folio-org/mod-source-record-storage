@@ -3,16 +3,31 @@ package org.folio.services.util.parser.lexeme.operand;
 import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_EQUALS;
-import static org.folio.services.util.parser.lexeme.Lexicon.OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
 
+/**
+ * Given
+ * "010": {
+ *    "subfields": [
+ *      {
+ *        "a": "   55001156/M "
+ *      }
+ *    ],
+ *    "ind1": "",
+ *    "ind2": " "
+ *  }
+ *  Available search cases:
+ *  010.a = '   55001156/M '    - simple equality
+ *  010.a ^= '   55'            - left-anchored equality
+ */
 public class SubFieldBinaryOperand extends BinaryOperandLexeme {
 
   public SubFieldBinaryOperand(String key, Lexicon lexiconOperator, String value) {
     super(key, lexiconOperator, value);
   }
 
-  public static boolean isApplicable(String key) {
+  public static boolean matches(String key) {
     return key.matches("^[0-9]{3}.[0-9a-z]$");
   }
 
@@ -25,11 +40,11 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
       .append("(").append(iField).append(".\"subfield_no\" = '").append(subField).append("'")
       .append(" and ")
       .append(iField).append(".\"value\" ");
-    if (OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
+    if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return stringBuilder.append("like ?)").toString();
-    } else if (OPERATOR_EQUALS.equals(getOperator())) {
+    } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return stringBuilder.append("= ?)").toString();
     }
-    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given DataField operand", getOperator().getSearchValue()));
+    throw new IllegalArgumentException(format("Operator [%s] is not supported for the given SubField operand", getOperator().getSearchValue()));
   }
 }

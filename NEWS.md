@@ -4,6 +4,7 @@
 * [MODSOURCE-255](https://issues.folio.org/browse/MODSOURCE-255) Return HTTP response according to the schema
 * [MODSOURCE-257](https://issues.folio.org/browse/MODSOURCE-257) Implement the search by position
 * [MODSOURCE-256](https://issues.folio.org/browse/MODSOURCE-256) Implement the search by the date range
+* [MODSOURCE-258](https://issues.folio.org/browse/MODSOURCE-258) Implement NOT searches
 
 ## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.

@@ -11,11 +11,13 @@ import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_FROM;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IN;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
 
 /**
  * Given  "005": "20141107001016.0". Available search cases:
  * 005.date = '20141107'            - only single date equality
+ * 005.date not= '20141107'         - not equals
  * 005.date from '20141106'         - from the given date to now
  * 005.date to '20141108'           - to the beginning of time to the given date
  * 005.date in '20141106-20141108'  - the given date is in the date range including boundaries
@@ -51,25 +53,17 @@ public class DateRangeBinaryOperand extends BinaryOperandLexeme {
     String iField = "\"i" + key.substring(0, key.indexOf('.')) + "\"";
     StringBuilder builder = new StringBuilder("to_date(substring(").append(iField).append(".\"value\", 1, 8), '").append(DATE_PATTERN).append("')");
     if (BINARY_OPERATOR_EQUALS.equals(getOperator()) && !this.rangeSearch) {
-      builder
-        .append(" = ")
-        .append("?");
+      return builder.append(" = ?").toString();
+    } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator()) && !this.rangeSearch) {
+      return builder.append(" <> ?").toString();
     } else if (BINARY_OPERATOR_FROM.equals(getOperator()) && !this.rangeSearch) {
-      builder
-        .append(" >= ")
-        .append("?");
+      return builder.append(" >= ?").toString();
     } else if (BINARY_OPERATOR_TO.equals(getOperator()) && !this.rangeSearch) {
-      builder
-        .append(" <= ")
-        .append("?");
+      return builder.append(" <= ?").toString();
     } else if (BINARY_OPERATOR_IN.equals(getOperator()) && this.rangeSearch) {
-      builder
-        .append(" between ")
-        .append("? and ?");
-    } else {
-      throw new IllegalArgumentException(format("The given expression [%s %s '%s'] is not supported", key, operator.getSearchValue(), value));
+      return builder.append(" between ? and ?").toString();
     }
-    return builder.toString();
+    throw new IllegalArgumentException(format("The given expression [%s %s '%s'] is not supported", key, operator.getSearchValue(), value));
   }
 
   @Override

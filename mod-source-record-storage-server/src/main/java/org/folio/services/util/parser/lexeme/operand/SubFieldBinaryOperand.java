@@ -5,6 +5,7 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 
 /**
  * Given
@@ -20,6 +21,7 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT
  *  Available search cases:
  *  010.a = '   55001156/M '    - simple equality
  *  010.a ^= '   55'            - left-anchored equality
+ *  010.a not= '   55001156/M ' - not equals
  */
 public class SubFieldBinaryOperand extends BinaryOperandLexeme {
 
@@ -44,6 +46,8 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
       return stringBuilder.append("like ?)").toString();
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return stringBuilder.append("= ?)").toString();
+    } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
+      return stringBuilder.append("<> ?)").toString();
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given SubField operand", getOperator().getSearchValue()));
   }

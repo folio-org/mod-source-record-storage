@@ -418,7 +418,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldParseFieldsSearchExpression_with_boolean_operators() {
     // given
-    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.02_03 = 'abc' and 005.date in '20171128-20200114')";
+    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.01_03 = 'abc' and 005.date in '20171128-20200114')";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then

@@ -257,7 +257,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
     // given
-    String fieldsSearchExpression = "001.09_01 = 'abc'";
+    String fieldsSearchExpression = "001.08_01 = 'abc'";
     // when
     Exception exception = assertThrows(IllegalArgumentException.class, () -> {
       parseFieldsSearchExpression(fieldsSearchExpression);
@@ -271,7 +271,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForPositionOperand() {
     // given
-    String fieldsSearchExpression = "001.09_01 ^= 'a'";
+    String fieldsSearchExpression = "001.08_01 ^= 'a'";
     // when
     Exception exception = assertThrows(IllegalArgumentException.class, () -> {
       parseFieldsSearchExpression(fieldsSearchExpression);
@@ -285,7 +285,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldParseFieldsSearchExpression_for_PositionOperand_EqualsOperator() {
     // given
-    String fieldsSearchExpression = "005.01_04 = '2014'";
+    String fieldsSearchExpression = "005.00_04 = '2014'";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
@@ -298,7 +298,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldParseFieldsSearchExpression_for_PositionOperand_NotEqualsOperator() {
     // given
-    String fieldsSearchExpression = "005.01_04 not= '2014'";
+    String fieldsSearchExpression = "005.00_04 not= '2014'";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
@@ -418,7 +418,7 @@ public class SearchExpressionParserUnitTest {
   @Test
   public void shouldParseFieldsSearchExpression_with_boolean_operators() {
     // given
-    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.02_03 = 'abc' and 005.date in '20171128-20200114')";
+    String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.01_03 = 'abc' and 005.date in '20171128-20200114')";
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then

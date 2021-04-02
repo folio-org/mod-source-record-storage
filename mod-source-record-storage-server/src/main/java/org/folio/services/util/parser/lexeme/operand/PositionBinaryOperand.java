@@ -8,8 +8,8 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
 
 /**
  * Given "001": "393893". Available search cases:
- * 001.04_02 = "89"     - simple equality
- * 001.04_02 not= "89"  - not equals
+ * 001.03_02 = "89"     - simple equality
+ * 001.03_02 not= "89"  - not equals
  */
 public class PositionBinaryOperand extends BinaryOperandLexeme {
   private final String field;
@@ -19,7 +19,7 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
   public PositionBinaryOperand(String key, Lexicon operator, String value) {
     super(key, operator, value);
     this.field = key.substring(0, key.indexOf('.'));
-    this.startPosition = Integer.parseInt(key.substring(key.indexOf('.') + 1, key.indexOf('_')));
+    this.startPosition = Integer.parseInt(key.substring(key.indexOf('.') + 1, key.indexOf('_'))) + 1;
     this.endPosition = Integer.parseInt(key.substring(key.indexOf('_') + 1));
     if (endPosition != value.length()) {
       throw new IllegalArgumentException(format("The length of the value [%s] should be equal to the end position [expected length = %s]", value, endPosition));

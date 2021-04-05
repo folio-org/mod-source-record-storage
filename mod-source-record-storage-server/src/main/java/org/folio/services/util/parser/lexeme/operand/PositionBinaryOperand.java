@@ -8,8 +8,8 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
 
 /**
  * Given "001": "393893". Available search cases:
- * 001.03_02 = "89"     - simple equality
- * 001.03_02 not= "89"  - not equals
+ * 001.03_02 = '89'     - simple equality
+ * 001.03_02 not= '89'  - not equals
  */
 public class PositionBinaryOperand extends BinaryOperandLexeme {
   private final String field;

@@ -6,6 +6,7 @@
 * [MODSOURCE-256](https://issues.folio.org/browse/MODSOURCE-256) Implement the search by the date range
 * [MODSOURCE-258](https://issues.folio.org/browse/MODSOURCE-258) Implement NOT searches
 * [MODSOURCE-260](https://issues.folio.org/browse/MODSOURCE-260) Position count should begin at 0 when searching control fields  
+* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
 
 ## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.

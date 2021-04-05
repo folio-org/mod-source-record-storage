@@ -11,6 +11,7 @@ import org.folio.services.util.parser.lexeme.operator.BooleanOperatorLexeme;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.commons.lang3.StringUtils.SPACE;
@@ -96,7 +97,8 @@ public class SearchExpressionParser {
     lexemes.forEach(lexeme -> {
       if (LexemeType.BINARY_OPERAND.equals(lexeme.getType())) {
         BinaryOperand binaryOperandLexeme = (BinaryOperand) lexeme;
-        fieldsToJoin.add(binaryOperandLexeme.getField());
+        Optional<String> optionalField = binaryOperandLexeme.getField();
+        optionalField.ifPresent(fieldsToJoin::add);
       }
     });
     return fieldsToJoin;

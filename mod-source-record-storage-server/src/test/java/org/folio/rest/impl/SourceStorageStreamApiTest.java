@@ -819,7 +819,9 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       "and 005.03_02 = '41' " +
       "and 005.date in '20120101-20190101' " +
       "and 035.value is 'present' " +
-      "and 999.value is 'absent'");
+      "and 999.value is 'absent' " +
+      "and 041.g is 'present' " +
+      "and 041.z is 'absent'");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)

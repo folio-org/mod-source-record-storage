@@ -44,6 +44,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       DataImportEventPayload eventPayload = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(DataImportEventPayload.class);
       LOGGER.debug("Data import event payload has been received with event type: {} and correlationId: {}", eventPayload.getEventType(), correlationId);
 
+      eventPayload.getContext().put(CORRELATION_ID_HEADER, correlationId);
       EventManager.handleEvent(eventPayload).whenComplete((processedPayload, throwable) -> {
         if (throwable != null) {
           promise.fail(throwable);

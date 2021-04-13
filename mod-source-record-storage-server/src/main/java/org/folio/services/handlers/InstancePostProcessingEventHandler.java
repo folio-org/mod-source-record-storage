@@ -1,23 +1,23 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -41,8 +41,8 @@ import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
@@ -61,6 +61,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
+  private static final String CORRELATION_ID_HEADER = "correlationId";
 
   private final RecordDao recordDao;
   private final Vertx vertx;
@@ -140,10 +141,16 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   }
 
   private List<KafkaHeader> getKafkaHeaders(DataImportEventPayload eventPayload) {
-    return List.of(
+    List<KafkaHeader> kafkaHeaders = new ArrayList<>(List.of(
       KafkaHeader.header(OKAPI_URL_HEADER, eventPayload.getOkapiUrl()),
       KafkaHeader.header(OKAPI_TENANT_HEADER, eventPayload.getTenant()),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()));
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken())));
+
+    String correlationId = eventPayload.getContext().get(CORRELATION_ID_HEADER);
+    if (correlationId != null) {
+      kafkaHeaders.add(KafkaHeader.header(CORRELATION_ID_HEADER, correlationId));
+    }
+    return kafkaHeaders;
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {

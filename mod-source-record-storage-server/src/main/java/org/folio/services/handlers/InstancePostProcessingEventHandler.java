@@ -61,6 +61,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private static final String FAIL_MSG = "Failed to handle instance event {}";
   private static final String EVENT_HAS_NO_DATA_MSG = "Failed to handle Instance event, cause event payload context does not contain INSTANCE and/or MARC_BIBLIOGRAPHIC data";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
+  private static final String CORRELATION_ID_HEADER = "correlationId";
 
   private final RecordDao recordDao;
   private final Vertx vertx;
@@ -140,10 +141,16 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   }
 
   private List<KafkaHeader> getKafkaHeaders(DataImportEventPayload eventPayload) {
-    return List.of(
+    List<KafkaHeader> kafkaHeaders = new ArrayList<>(List.of(
       KafkaHeader.header(OKAPI_URL_HEADER, eventPayload.getOkapiUrl()),
       KafkaHeader.header(OKAPI_TENANT_HEADER, eventPayload.getTenant()),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()));
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken())));
+
+    String correlationId = eventPayload.getContext().get(CORRELATION_ID_HEADER);
+    if (correlationId != null) {
+      kafkaHeaders.add(KafkaHeader.header(CORRELATION_ID_HEADER, correlationId));
+    }
+    return kafkaHeaders;
   }
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {

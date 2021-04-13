@@ -77,9 +77,9 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       int chunkNumber = chunkCounter.incrementAndGet();
       LOGGER.debug("RecordCollection has been received, correlationId: {}, starting processing... chunkNumber {}-{}", correlationId, chunkNumber, key);
       return recordService.saveRecords(recordCollection, tenantId)
-        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber),
+        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber),
           th -> {
-            LOGGER.error("RecordCollection processing has failed with errors... chunkNumber {}-{}", chunkNumber, key, th);
+            LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, th);
             return Future.failedFuture(th);
           });
     } catch (IOException e) {
@@ -88,7 +88,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber) {
+  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, String correlationId, int chunkNumber) {
     Event event;
     try {
       event = new Event()
@@ -123,7 +123,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkNumber {}-{}", chunkNumber, record.key());
+        LOGGER.debug("RecordCollection processing has been completed with response sent... correlationId {}, chunkNumber {}-{}", correlationId, chunkNumber, record.key());
         writePromise.complete(record.key());
       } else {
         Throwable cause = war.cause();

@@ -5,12 +5,12 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
@@ -69,11 +69,13 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
       List<KafkaHeader> kafkaHeaders = record.headers();
 
-      String tenantId = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx).getTenantId();
+      OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+      String tenantId = okapiConnectionParams.getTenantId();
+      String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
       String key = record.key();
 
       int chunkNumber = chunkCounter.incrementAndGet();
-      LOGGER.debug("RecordCollection has been received, starting processing... chunkNumber {}-{}", chunkNumber, key);
+      LOGGER.debug("RecordCollection has been received, correlationId: {}, starting processing... chunkNumber {}-{}", correlationId, chunkNumber, key);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber),
           th -> {

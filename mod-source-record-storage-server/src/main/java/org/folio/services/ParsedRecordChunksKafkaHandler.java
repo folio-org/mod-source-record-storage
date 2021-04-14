@@ -5,12 +5,12 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
@@ -69,15 +69,17 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
       List<KafkaHeader> kafkaHeaders = record.headers();
 
-      String tenantId = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx).getTenantId();
+      OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+      String tenantId = okapiConnectionParams.getTenantId();
+      String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
       String key = record.key();
 
       int chunkNumber = chunkCounter.incrementAndGet();
-      LOGGER.debug("RecordCollection has been received, starting processing... chunkNumber {}-{}", chunkNumber, key);
+      LOGGER.debug("RecordCollection has been received, correlationId: {}, starting processing... chunkNumber {}-{}", correlationId, chunkNumber, key);
       return recordService.saveRecords(recordCollection, tenantId)
-        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber),
+        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber),
           th -> {
-            LOGGER.error("RecordCollection processing has failed with errors... chunkNumber {}-{}", chunkNumber, key, th);
+            LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, th);
             return Future.failedFuture(th);
           });
     } catch (IOException e) {
@@ -86,7 +88,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber) {
+  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, String correlationId, int chunkNumber) {
     Event event;
     try {
       event = new Event()
@@ -121,7 +123,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkNumber {}-{}", chunkNumber, record.key());
+        LOGGER.debug("RecordCollection processing has been completed with response sent... correlationId {}, chunkNumber {}-{}", correlationId, chunkNumber, record.key());
         writePromise.complete(record.key());
       } else {
         Throwable cause = war.cause();

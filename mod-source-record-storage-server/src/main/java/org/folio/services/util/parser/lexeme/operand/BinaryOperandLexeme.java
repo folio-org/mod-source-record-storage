@@ -13,6 +13,7 @@ import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_FROM;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IN;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
@@ -24,7 +25,8 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
     BINARY_OPERATOR_NOT_EQUALS,
     BINARY_OPERATOR_FROM,
     BINARY_OPERATOR_TO,
-    BINARY_OPERATOR_IN
+    BINARY_OPERATOR_IN,
+    BINARY_OPERATOR_IS
   );
   protected String key;
   protected Lexicon operator;
@@ -74,16 +76,22 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
   }
 
   @Override
-  public String getField() {
+  public Optional<String> getField() {
+    if (BINARY_OPERATOR_IS.equals(operator)) {
+      return Optional.empty();
+    }
     if (key.contains(".")) {
-      return key.substring(0, key.indexOf("."));
+      return Optional.of(key.substring(0, key.indexOf(".")));
     } else {
-      return key;
+      return Optional.of(key);
     }
   }
 
   @Override
   public List<String> getBindingParams() {
+    if (BINARY_OPERATOR_IS.equals(operator)) {
+      return Collections.emptyList();
+    }
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return Collections.singletonList(this.value + "%");
     } else {

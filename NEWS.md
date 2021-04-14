@@ -1,3 +1,6 @@
+## 2021-04-12 v5.1.0-SNAPSHOT
+* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
+
 ## 2021-03-12 v5.0.1-SNAPSHOT
 * [MODSOURCE-222](https://issues.folio.org/browse/MODSOURCE-222) Design API & implement data structures and end-points for search functionality in mod-source-record-storage
 * [MODSOURCE-223](https://issues.folio.org/browse/MODSOURCE-223) Design and implement service layer for MARC search functionality

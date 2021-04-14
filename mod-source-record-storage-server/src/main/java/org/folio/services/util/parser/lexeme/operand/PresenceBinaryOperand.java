@@ -10,8 +10,11 @@ import static java.lang.String.format;
  * 010.a is 'absent'            - check sub field for absence
  */
 public class PresenceBinaryOperand {
-  private final static String PRESENT = "present";
-  private final static String ABSENT = "absent";
+  private static final String PRESENT = "present";
+  private static final String ABSENT = "absent";
+
+  private PresenceBinaryOperand() {
+  }
 
   public static String getSqlRepresentationForMarcField(String field, String value) {
     validateValue(value);

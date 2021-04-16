@@ -736,7 +736,8 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
       String externalId, ExternalIdType externalIdType) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType);
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(condition)
       .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))

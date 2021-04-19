@@ -1,5 +1,6 @@
 ## 2021-04-12 v5.1.0-SNAPSHOT
 * [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
+* [MODSOURCE-267](https://issues.folio.org/browse/MODSOURCE-267) View Source does not update when Data Import updates bib record [BUGFIX]
 
 ## 2021-03-12 v5.0.1-SNAPSHOT
 * [MODSOURCE-222](https://issues.folio.org/browse/MODSOURCE-222) Design API & implement data structures and end-points for search functionality in mod-source-record-storage

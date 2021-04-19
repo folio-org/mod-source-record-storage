@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,9 +39,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.reactivex.Flowable;
+
 import org.folio.okapi.common.GenericCompositeFuture;
 
 import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -801,6 +804,28 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           }
           async.complete();
         });
+      });
+    });
+  }
+
+  @Test
+  public void shouldUpdateParsedRecordsAndGetOnlyActualRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getMarcRecord();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      expected.setLeaderRecordStatus("a");
+      recordService.updateRecord(expected, TENANT_ID);
+      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertNotNull(get.result().getParsedRecord());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
+        context.assertEquals(get.result().getState().toString(), "ACTUAL");
+        async.complete();
       });
     });
   }

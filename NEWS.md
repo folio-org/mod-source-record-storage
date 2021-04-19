@@ -6,7 +6,8 @@
 * [MODSOURCE-256](https://issues.folio.org/browse/MODSOURCE-256) Implement the search by the date range
 * [MODSOURCE-258](https://issues.folio.org/browse/MODSOURCE-258) Implement NOT searches
 * [MODSOURCE-260](https://issues.folio.org/browse/MODSOURCE-260) Position count should begin at 0 when searching control fields 
-* [MODSOURCE-263](https://issues.folio.org/browse/MODSOURCE-263) SRS MARC Bib column indicates the MARC record was "Created" for "Update" operation
+* [MODSOURCE-267](https://issues.folio.org/browse/MODSOURCE-267) View Source does not update when Data Import updates bib record [BUGFIX]
+
 
 ## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.

@@ -1,3 +1,7 @@
+## 2021-04-12 v5.1.0-SNAPSHOT
+* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
+* [MODSOURCE-267](https://issues.folio.org/browse/MODSOURCE-267) View Source does not update when Data Import updates bib record [BUGFIX]
+
 ## 2021-03-12 v5.0.1-SNAPSHOT
 * [MODSOURCE-222](https://issues.folio.org/browse/MODSOURCE-222) Design API & implement data structures and end-points for search functionality in mod-source-record-storage
 * [MODSOURCE-223](https://issues.folio.org/browse/MODSOURCE-223) Design and implement service layer for MARC search functionality
@@ -6,6 +10,7 @@
 * [MODSOURCE-256](https://issues.folio.org/browse/MODSOURCE-256) Implement the search by the date range
 * [MODSOURCE-258](https://issues.folio.org/browse/MODSOURCE-258) Implement NOT searches
 * [MODSOURCE-260](https://issues.folio.org/browse/MODSOURCE-260) Position count should begin at 0 when searching control fields  
+* [MODSOURMAN-437](https://issues.folio.org/browse/MODSOURMAN-437) Add logging for event correlationId  
 
 ## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.

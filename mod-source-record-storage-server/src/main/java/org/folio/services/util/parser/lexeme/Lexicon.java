@@ -12,7 +12,8 @@ public enum Lexicon {
   BINARY_OPERATOR_LEFT_ANCHORED_EQUALS("^="),
   BINARY_OPERATOR_FROM("from"),
   BINARY_OPERATOR_TO("to"),
-  BINARY_OPERATOR_IN("in");
+  BINARY_OPERATOR_IN("in"),
+  BINARY_OPERATOR_IS("is");
 
   private final String searchValue;
 

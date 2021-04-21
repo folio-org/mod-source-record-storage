@@ -118,7 +118,7 @@ public class SearchExpressionParserUnitTest {
       parseFieldsSearchExpression(fieldsSearchExpression);
     });
     // then
-    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in]";
+    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in, is]";
     String actualMessage = exception.getMessage();
     assertEquals(expectedMessage, actualMessage);
   }
@@ -174,6 +174,32 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("(OCoLC)"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
     assertEquals("(\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" <> ?)", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsPresentOperator() {
+    // given
+    String fieldsSearchExpression = "035.a is 'present'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id in (select marc_id from marc_indexers_035 where subfield_no = 'a')) ", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsAbsentOperator() {
+    // given
+    String fieldsSearchExpression = "035.z is 'absent'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id not in (select marc_id from marc_indexers_035 where subfield_no = 'z')) ", result.getWhereExpression());
   }
 
   @Test
@@ -252,6 +278,32 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("20141107"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
     assertEquals("\"i005\".\"value\" <> ?", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_ValueOperand_IsPresentOperator() {
+    // given
+    String fieldsSearchExpression = "035.value is 'present'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id in (select marc_id from marc_indexers_035))", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_ValueOperand_IsAbsentOperator() {
+    // given
+    String fieldsSearchExpression = "035.value is 'absent'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id not in (select marc_id from marc_indexers_035))", result.getWhereExpression());
   }
 
   @Test

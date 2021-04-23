@@ -50,7 +50,6 @@
 
   <include file="scripts/v-0.0.3/2021-02-13--09-00-create-indexers-tables.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-0.0.3/2021-02-13--10-00-create-partitions.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-0.0.3/2021-02-13--11-00-fill-marc-indexers.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-0.0.3/2021-02-13--12-00-create-fill-in-trigger.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-0.0.3/2021-02-13--13-00-create-indexes.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

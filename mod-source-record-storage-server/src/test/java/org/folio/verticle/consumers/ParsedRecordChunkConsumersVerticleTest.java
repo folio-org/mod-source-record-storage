@@ -9,6 +9,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
@@ -201,7 +203,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
     List<String> observedValues = cluster.observeValues(ObserveKeyValues.on(observeTopic, records.size())
-      .observeFor(60, TimeUnit.SECONDS)
+      .observeFor(30, TimeUnit.SECONDS)
       .build());
 
     assertEquals(2, observedValues.size());

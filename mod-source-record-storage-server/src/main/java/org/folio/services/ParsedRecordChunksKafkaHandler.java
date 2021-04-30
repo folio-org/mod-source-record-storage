@@ -94,8 +94,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
             LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, th);
             return sendErrorRecordsSavingEvents(recordCollection, th.getMessage(), kafkaHeaders, jobExecutionId, tenantId)
               .compose(v -> Future.failedFuture(th));
-          })
-        .onFailure(th -> sendErrorRecordsSavingEvents(recordCollection, th.getMessage(), kafkaHeaders, jobExecutionId, tenantId));
+          });
     } catch (Exception e) {
       LOGGER.error("Can't process the kafka record: ", e);
       return Future.failedFuture(e);

@@ -54,5 +54,5 @@
   <include file="scripts/v-0.0.3/2021-02-13--13-00-create-indexes.xml" relativeToChangelogFile="true"/>
 
   <include file="scripts/v-0.0.4/2021-05-19--13-00-drop-unused-set-id-function.xml" relativeToChangelogFile="true"/>
-
+  <include file="scripts/v-0.0.4/2021-05-27--14-00-update-record-types.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

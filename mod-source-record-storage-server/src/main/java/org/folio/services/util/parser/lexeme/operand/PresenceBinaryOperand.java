@@ -10,6 +10,7 @@ import static java.lang.String.format;
  * 010.a is 'absent'            - check sub field for absence
  */
 public class PresenceBinaryOperand {
+
   private static final String PRESENT = "present";
   private static final String ABSENT = "absent";
 
@@ -31,6 +32,15 @@ public class PresenceBinaryOperand {
       return "(id in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
     } else {
       return "(id not in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
+    }
+  }
+
+  public static String getSqlRepresentationForIndicator(String field, String indicator, String value) {
+    validateValue(value);
+    if (PRESENT.equals(value)) {
+      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " <> '#')) ";
+    } else {
+      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " = '#')) ";
     }
   }
 

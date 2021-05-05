@@ -105,7 +105,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
           if (updateAr.succeeded()) {
             record.getParsedRecord().setContent(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
             HashMap<String, String> context = dataImportEventPayload.getContext();
-            context.put(Record.RecordType.MARC.value(), Json.encode(record));
+            context.put(Record.RecordType.MARC_BIB.value(), Json.encode(record));
             context.put(DATA_IMPORT_IDENTIFIER, "true");
             List<KafkaHeader> kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
             String key = String.valueOf(indexer.incrementAndGet() % 100);
@@ -157,7 +157,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     Condition condition = filterRecordByNotSnapshotId(snapshotId)
       .and(filterRecordByInstanceId(instanceId));
 
-    return recordDao.getRecords(condition, RecordType.MARC, new ArrayList<>(), 0, 999, tenantId)
+    return recordDao.getRecords(condition, RecordType.MARC_BIB, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")

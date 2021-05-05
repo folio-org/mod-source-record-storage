@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -43,7 +42,6 @@ import io.reactivex.Flowable;
 import org.folio.okapi.common.GenericCompositeFuture;
 
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -80,7 +78,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetMarcRecordsBySnapshotId(TestContext context) {
+  public void shouldGetMarcBibRecordsBySnapshotId(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -94,12 +92,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      recordService.getRecords(condition, RecordType.MARC, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
+      recordService.getRecords(condition, RecordType.MARC_BIB, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<Record> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .collect(Collectors.toList());
         Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
@@ -112,38 +110,18 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetEdifactRecordsBySnapshotId(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      String snapshotId = "dcd898af-03bb-4b12-b8a6-f6a02e86459b";
-      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      recordService.getRecords(condition, RecordType.EDIFACT, orderFields, 0, 1, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        List<Record> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
-          .filter(r -> r.getSnapshotId().equals(snapshotId))
-          .collect(Collectors.toList());
-        Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
-        context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
-        async.complete();
-      });
-    });
+  public void shouldGetMarcAuthorityRecordsBySnapshotId(TestContext context) {
+    getRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_AUTHORITY,
+      Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
-  public void shouldStreamMarcRecordsBySnapshotId(TestContext context) {
+  public void shouldGetEdifactRecordsBySnapshotId(TestContext context) {
+    getRecordsBySnapshotId(context, "dcd898af-03bb-4b12-b8a6-f6a02e86459b", RecordType.EDIFACT, Record.RecordType.EDIFACT);
+  }
+
+  @Test
+  public void shouldStreamMarcBibRecordsBySnapshotId(TestContext context) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -157,10 +135,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      Flowable<Record> flowable = recordService.streamRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID);
+      Flowable<Record> flowable = recordService.streamRecords(condition, RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID);
 
       List<Record> expected = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .collect(Collectors.toList());
 
@@ -182,63 +160,27 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldStreamMarcAuthorityRecordsBySnapshotId(TestContext context) {
+    streamRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_AUTHORITY,
+      Record.RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
   public void shouldStreamEdifactRecordsBySnapshotId(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      String snapshotId = "dcd898af-03bb-4b12-b8a6-f6a02e86459b";
-      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
-      Flowable<Record> flowable = recordService.streamRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID);
-
-      List<Record> expected = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
-        .filter(r -> r.getSnapshotId().equals(snapshotId))
-        .collect(Collectors.toList());
-
-      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
-
-      List<Record> actual = new ArrayList<>();
-      flowable.doFinally(() -> {
-
-        context.assertEquals(expected.size(), actual.size());
-        compareRecords(context, expected.get(0), actual.get(0));
-
-        async.complete();
-
-      }).collect(() -> actual, (a, r) -> a.add(r))
-        .subscribe();
-    });
+    streamRecordsBySnapshotId(context, "dcd898af-03bb-4b12-b8a6-f6a02e86459b", RecordType.EDIFACT,
+      Record.RecordType.EDIFACT);
   }
 
   // TODO: test get records between two dates
 
   @Test
-  public void shouldGetRecordById(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      recordService.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertTrue(get.result().isPresent());
-        context.assertNotNull(get.result().get().getRawRecord());
-        context.assertNotNull(get.result().get().getParsedRecord());
-        compareRecords(context, expected, get.result().get());
-        async.complete();
-      });
-    });
+  public void shouldGetMarcBibRecordById(TestContext context) {
+    getMarcRecordById(context, TestMocks.getMarcBibRecord());
+  }
+  @Test
+
+  public void shouldGetMarcAuthorityRecordById(TestContext context) {
+    getMarcRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
 
   // TODO: test get by matched id not equal to id
@@ -257,53 +199,18 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSaveMarcRecord(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      context.assertNotNull(save.result().getRawRecord());
-      context.assertNotNull(save.result().getParsedRecord());
-      compareRecords(context, expected, save.result());
-      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertTrue(get.result().isPresent());
-        context.assertNotNull(get.result().get().getRawRecord());
-        context.assertNotNull(get.result().get().getParsedRecord());
-        context.assertEquals(Record.RecordType.MARC, get.result().get().getRecordType());
-        compareRecords(context, expected, get.result().get());
-        async.complete();
-      });
-    });
+  public void shouldSaveMarcBibRecord(TestContext context) {
+    saveMarcRecord(context, TestMocks.getMarcBibRecord(), Record.RecordType.MARC_BIB);
+  }
+
+  @Test
+  public void shouldSaveMarcAuthorityRecord(TestContext context) {
+    saveMarcRecord(context, TestMocks.getMarcAuthorityRecord(), Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
   public void shouldSaveEdifactRecord(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getEdifactRecord();
-    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      context.assertNotNull(save.result().getRawRecord());
-      context.assertNotNull(save.result().getParsedRecord());
-      compareRecords(context, expected, save.result());
-      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertTrue(get.result().isPresent());
-        context.assertNotNull(get.result().get().getRawRecord());
-        context.assertNotNull(get.result().get().getParsedRecord());
-        context.assertEquals(Record.RecordType.EDIFACT, get.result().get().getRecordType());
-        compareRecords(context, expected, get.result().get());
-        async.complete();
-      });
-    });
+    saveMarcRecord(context, TestMocks.getEdifactRecord(), Record.RecordType.EDIFACT);
   }
 
   // TODO: test save record with calculate generation greater than 0
@@ -333,61 +240,18 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSaveMarcRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(expected)
-      .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      context.assertEquals(0, batch.result().getErrorMessages().size());
-      context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      compareRecords(context, expected, batch.result().getRecords());
-      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
-        if (count.failed()) {
-          context.fail(count.cause());
-        }
-        context.assertEquals(expected.size(), count.result());
-        async.complete();
-      });
-    });
+  public void shouldSaveMarcBibRecords(TestContext context) {
+    saveMarcRecords(context, Record.RecordType.MARC_BIB);
+  }
+
+  @Test
+  public void shouldSaveMarcAuthorityRecords(TestContext context) {
+    saveMarcRecords(context, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
   public void shouldSaveEdifactRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(Record.RecordType.EDIFACT))
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(expected)
-      .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      context.assertEquals(0, batch.result().getErrorMessages().size());
-      context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
-      compareRecords(context, expected, batch.result().getRecords());
-      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition()).onComplete(count -> {
-        if (count.failed()) {
-          context.fail(count.cause());
-        }
-        context.assertEquals(expected.size(), count.result());
-        async.complete();
-      });
-    });
+    saveMarcRecords(context, Record.RecordType.EDIFACT);
   }
 
   // TODO: test save records with expected errors
@@ -501,352 +365,107 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldGetMarcSourceRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
+  public void shouldGetMarcBibSourceRecords(TestContext context) {
+    getMarcSourceRecords(context, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+  }
 
-      Condition condition = DSL.trueCondition();
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      recordService.getSourceRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        List<SourceRecord> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-          .map(RecordDaoUtil::toSourceRecord)
-          .collect(Collectors.toList());
-        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected, get.result().getSourceRecords());
-        async.complete();
-      });
-    });
+  @Test
+  public void shouldGetMarcAuthoritySourceRecords(TestContext context) {
+    getMarcSourceRecords(context, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
   public void shouldGetEdifactSourceRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-
-      Condition condition = DSL.trueCondition();
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      recordService.getSourceRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        List<SourceRecord> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
-          .map(RecordDaoUtil::toSourceRecord)
-          .collect(Collectors.toList());
-        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected, get.result().getSourceRecords());
-        async.complete();
-      });
-    });
+    getMarcSourceRecords(context, RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
 
   @Test
-  public void shouldStreamMarcSourceRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      Condition condition = DSL.trueCondition();
-      List<OrderField<?>> orderFields = new ArrayList<>();
+  public void shouldStreamMarcBibSourceRecords(TestContext context) {
+    streamMarcSourceRecords(context, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+  }
 
-      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID);
-
-      List<SourceRecord> expected = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-        .map(RecordDaoUtil::toSourceRecord)
-        .collect(Collectors.toList());
-      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-
-      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
-
-      List<SourceRecord> actual = new ArrayList<>();
-      flowable.doFinally(() -> {
-
-        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), actual.size());
-        compareSourceRecords(context, expected, actual);
-
-        async.complete();
-
-      }).collect(() -> actual, (a, r) -> a.add(r))
-        .subscribe();
-    });
+  @Test
+  public void shouldStreamMarcAuthoritySourceRecords(TestContext context) {
+    streamMarcSourceRecords(context, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
   public void shouldStreamEdifactSourceRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      Condition condition = DSL.trueCondition();
-      List<OrderField<?>> orderFields = new ArrayList<>();
-
-      Flowable<SourceRecord> flowable = recordService.streamSourceRecords(condition, RecordType.EDIFACT, orderFields, 0, 10, TENANT_ID);
-
-      List<SourceRecord> expected = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.EDIFACT))
-        .map(RecordDaoUtil::toSourceRecord)
-        .collect(Collectors.toList());
-      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-
-      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
-
-      List<SourceRecord> actual = new ArrayList<>();
-      flowable.doFinally(() -> {
-
-        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), actual.size());
-        compareSourceRecords(context, expected, actual);
-
-        async.complete();
-
-      }).collect(() -> actual, (a, r) -> a.add(r))
-        .subscribe();
-    });
+    streamMarcSourceRecords(context, RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
 
   @Test
-  public void shouldGetSourceRecordsByListOfIds(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      List<String> ids = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-        .map(record -> record.getExternalIdsHolder().getInstanceId())
-        .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, false, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        List<SourceRecord> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-          .map(RecordDaoUtil::toSourceRecord)
-          .collect(Collectors.toList());
-        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected, get.result().getSourceRecords());
-        async.complete();
-      });
-    });
+  public void shouldGetMarcBibSourceRecordsByListOfIds(TestContext context) {
+    getMarcSourceRecordsByListOfIds(context, Record.RecordType.MARC_BIB, RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldGetSourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
-    Async async = context.async();
-    List<Record> records = TestMocks.getRecords().stream()
-      .map(record -> {
-        Record deletedRecord = new Record()
-          .withId(record.getId())
-          .withSnapshotId(record.getSnapshotId())
-          .withMatchedId(record.getMatchedId())
-          .withRecordType(record.getRecordType())
-          .withState(State.DELETED)
-          .withGeneration(record.getGeneration())
-          .withOrder(record.getOrder())
-          .withLeaderRecordStatus(record.getLeaderRecordStatus())
-          .withRawRecord(record.getRawRecord())
-          .withParsedRecord(record.getParsedRecord())
-          .withAdditionalInfo(record.getAdditionalInfo())
-          .withExternalIdsHolder(record.getExternalIdsHolder());
-        if (Objects.nonNull(record.getMetadata())) {
-          deletedRecord.withMetadata(record.getMetadata());
-        }
-        if (Objects.nonNull(record.getErrorRecord())) {
-          deletedRecord.withErrorRecord(record.getErrorRecord());
-        }
-        return deletedRecord;
-      })
-      .collect(Collectors.toList());
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      List<String> ids = records.stream()
-        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-        .map(record -> record.getExternalIdsHolder().getInstanceId())
-        .collect(Collectors.toList());
-      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, RecordType.MARC, true, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        List<SourceRecord> expected = records.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-          .map(RecordDaoUtil::toSourceRecord)
-          .collect(Collectors.toList());
-        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
-        context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected, get.result().getSourceRecords());
-        async.complete();
-      });
-    });
+  public void shouldGetMarcAuthoritySourceRecordsByListOfIds(TestContext context) {
+    getMarcSourceRecordsByListOfIds(context, Record.RecordType.MARC_AUTHORITY, RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
+  public void shouldGetMarcBibSourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
+    getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_BIB, RecordType.MARC_BIB);
+  }
+
+  @Test
+  public void shouldGetMarcAuthoritySourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
+    getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_AUTHORITY, RecordType.MARC_AUTHORITY);
   }
 
   // TODO: test get source records between two dates
 
   @Test
-  public void shouldGetSourceRecordById(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertTrue(get.result().isPresent());
-        context.assertNotNull(get.result().get().getRawRecord());
-        context.assertNotNull(get.result().get().getParsedRecord());
-        compareSourceRecords(context, RecordDaoUtil.toSourceRecord(expected), get.result().get());
-        async.complete();
-      });
-    });
+  public void shouldGetMarcBibSourceRecordById(TestContext context) {
+    getMarcSourceRecordById(context, TestMocks.getMarcBibRecord());
+  }
+
+  @Test
+  public void shouldGetMarcAuthoritySourceRecordById(TestContext context) {
+    getMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
 
   // TODO: test get by matched id not equal to id
 
   @Test
-  public void shouldNotGetSourceRecordById(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordService.getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
-      if (get.failed()) {
-        context.fail(get.cause());
-      }
-      context.assertFalse(get.result().isPresent());
-      async.complete();
-    });
+  public void shouldNotGetMarcBibSourceRecordById(TestContext context) {
+    notGetMarcSourceRecordById(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
-  public void shouldUpdateParsedRecords(TestContext context) {
-    Async async = context.async();
-    List<Record> original = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC))
-      .collect(Collectors.toList());
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(original)
-      .withTotalRecords(original.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      List<Record> updated = original.stream()
-        .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
-        .collect(Collectors.toList());
-      recordCollection
-        .withRecords(updated)
-        .withTotalRecords(updated.size());
-      List<ParsedRecord> expected = updated.stream()
-        .map(record -> record.getParsedRecord()).collect(Collectors.toList());
-      recordService.updateParsedRecords(recordCollection, TENANT_ID).onComplete(update -> {
-        if (update.failed()) {
-          context.fail(update.cause());
-        }
-        context.assertEquals(0, update.result().getErrorMessages().size());
-        context.assertEquals(expected.size(), update.result().getTotalRecords());
-        Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
-        Collections.sort(update.result().getParsedRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
-        compareParsedRecords(context, expected, update.result().getParsedRecords());
-        GenericCompositeFuture.all(updated.stream().map(record -> recordDao.getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
-          if (get.failed()) {
-            context.fail(get.cause());
-          }
-          context.assertTrue(get.result().isPresent());
-        })).collect(Collectors.toList())).onComplete(res -> {
-          if (res.failed()) {
-            context.fail(res.cause());
-          }
-          async.complete();
-        });
-      });
-    });
+  public void shouldNotGetMarcAuthoritySourceRecordById(TestContext context) {
+    notGetMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
-  public void shouldUpdateParsedRecordsAndGetOnlyActualRecord(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      expected.setLeaderRecordStatus("a");
-      recordService.updateRecord(expected, TENANT_ID);
-      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertNotNull(get.result().getParsedRecord());
-        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
-        context.assertEquals(get.result().getState().toString(), "ACTUAL");
-        async.complete();
-      });
-    });
+  public void shouldUpdateParsedMarcBibRecords(TestContext context) {
+    updateParsedMarcRecords(context, Record.RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldGetFormattedMarcRecord(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      recordService.getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
-        context.assertNotNull(get.result().getParsedRecord());
-        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
-        async.complete();
-      });
-    });
+  public void shouldUpdateParsedMarcAuthorityRecords(TestContext context) {
+    updateParsedMarcRecords(context, Record.RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
+  public void shouldUpdateParsedMarcBibRecordsAndGetOnlyActualRecord(TestContext context) {
+    updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcBibRecord());
+  }
+
+  @Test
+  public void shouldUpdateParsedMarcAuthorityRecordsAndGetOnlyActualRecord(TestContext context) {
+    updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldGetFormattedMarcBibRecord(TestContext context) {
+    getFormattedMarcBibRecord(context, TestMocks.getMarcBibRecord());
+  }
+
+  @Test
+  public void shouldGetFormattedMarcAuthorityRecord(TestContext context) {
+    getFormattedMarcBibRecord(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
@@ -869,80 +488,23 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateSuppressFromDiscoveryForRecord(TestContext context) {
-    Async async = context.async();
-    Record expected = TestMocks.getMarcRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      String instanceId = expected.getExternalIdsHolder().getInstanceId();
-      Boolean suppress = true;
-      recordService.updateSuppressFromDiscoveryForRecord(instanceId, ExternalIdType.INSTANCE, suppress, TENANT_ID).onComplete(update -> {
-        if (update.failed()) {
-          context.fail(update.cause());
-        }
-        context.assertTrue(update.result());
-        recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-          if (get.failed()) {
-            context.fail(get.cause());
-          }
-          context.assertTrue(get.result().isPresent());
-          context.assertNotNull(get.result().get().getRawRecord());
-          context.assertNotNull(get.result().get().getParsedRecord());
-          expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
-          compareRecords(context, expected, get.result().get());
-          async.complete();
-        });
-      });
-    });
+  public void shouldUpdateSuppressFromDiscoveryForMarcBibRecord(TestContext context) {
+    updateSuppressFromDiscoveryForMarcRecord(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
-  public void shouldDeleteRecordsBySnapshotId(TestContext context) {
-    Async async = context.async();
-    List<Record> original = TestMocks.getRecords();
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(original)
-      .withTotalRecords(original.size());
-    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-      String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
-      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
-      List<OrderField<?>> orderFields = new ArrayList<>();
-      recordDao.getRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
-        if (getBefore.failed()) {
-          context.fail(getBefore.cause());
-        }
-        Integer expected = (int) original.stream()
-          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC))
-          .filter(record -> record.getSnapshotId().equals(snapshotId))
-          .count();
-        context.assertTrue(expected > 0);
-        context.assertEquals(expected, getBefore.result().getTotalRecords());
-        recordService.deleteRecordsBySnapshotId(snapshotId, TENANT_ID).onComplete(delete -> {
-          if (delete.failed()) {
-            context.fail(delete.cause());
-          }
-          context.assertTrue(delete.result());
-          recordDao.getRecords(condition, RecordType.MARC, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
-            if (getAfter.failed()) {
-              context.fail(getAfter.cause());
-            }
-            context.assertEquals(0, getAfter.result().getTotalRecords());
-            SnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
-              if (getSnapshot.failed()) {
-                context.fail(getSnapshot.cause());
-              }
-              context.assertFalse(getSnapshot.result().isPresent());
-              async.complete();
-            });
-          });
-        });
-      });
-    });
+  public void shouldUpdateSuppressFromDiscoveryForMarcAuthorityRecord(TestContext context) {
+    updateSuppressFromDiscoveryForMarcRecord(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
+    deleteMarcRecordsBySnapshotId(context, 3, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+  }
+
+  @Test
+  public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
+    deleteMarcRecordsBySnapshotId(context, 2, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
@@ -985,6 +547,501 @@ public class RecordServiceTest extends AbstractLBServiceTest {
               context.assertEquals(State.OLD, getOldRecord.result().get().getState());
               async.complete();
             });
+          });
+        });
+      });
+    });
+  }
+
+  private void getRecordsBySnapshotId(TestContext context, String uuid, RecordType parsedRecordType,
+    Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = uuid;
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      recordService.getRecords(condition, parsedRecordType, orderFields, 0, 1, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .filter(r -> r.getSnapshotId().equals(snapshotId))
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        async.complete();
+      });
+    });
+  }
+
+  private void streamRecordsBySnapshotId(TestContext context, String s, RecordType parsedRecordType,
+    Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = s;
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      Flowable<Record> flowable = recordService.streamRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID);
+
+      List<Record> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(recordType))
+        .filter(r -> r.getSnapshotId().equals(snapshotId))
+        .collect(Collectors.toList());
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<Record> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        context.assertEquals(expected.size(), actual.size());
+        compareRecords(context, expected.get(0), actual.get(0));
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+    });
+  }
+
+  private void getMarcRecordById(TestContext context, Record expected) {
+    Async async = context.async();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  private void saveMarcRecord(TestContext context, Record expected, Record.RecordType marcBib) {
+    Async async = context.async();
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, expected, save.result());
+      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(marcBib, get.result().get().getRecordType());
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
+  private void saveMarcRecords(TestContext context, Record.RecordType marcBib) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(marcBib))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      context.assertEquals(0, batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      Collections.sort(batch.result().getRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+      compareRecords(context, expected, batch.result().getRecords());
+      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
+        .onComplete(count -> {
+          if (count.failed()) {
+            context.fail(count.cause());
+          }
+          context.assertEquals(expected.size(), count.result());
+          async.complete();
+        });
+    });
+  }
+
+  private void getMarcSourceRecords(TestContext context, RecordType parsedRecordType, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordService.getSourceRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .map(RecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
+  private void streamMarcSourceRecords(TestContext context, RecordType parsedRecordType, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+
+      Flowable<SourceRecord> flowable = recordService
+        .streamSourceRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID);
+
+      List<SourceRecord> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(recordType))
+        .map(RecordDaoUtil::toSourceRecord)
+        .collect(Collectors.toList());
+      Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+
+      Collections.sort(expected, (r1, r2) -> r1.getOrder().compareTo(r2.getOrder()));
+
+      List<SourceRecord> actual = new ArrayList<>();
+      flowable.doFinally(() -> {
+
+        Collections.sort(actual, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), actual.size());
+        compareSourceRecords(context, expected, actual);
+
+        async.complete();
+
+      }).collect(() -> actual, (a, r) -> a.add(r))
+        .subscribe();
+    });
+  }
+
+  private void getMarcSourceRecordsByListOfIds(TestContext context, Record.RecordType recordType,
+    RecordType parsedRecordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(recordType))
+        .map(record -> record.getExternalIdsHolder().getInstanceId())
+        .collect(Collectors.toList());
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, parsedRecordType, false, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .map(RecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
+  private void getMarcSourceRecordsByListOfIdsThatAreDeleted(TestContext context, Record.RecordType recordType,
+    RecordType parsedRecordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords().stream()
+      .map(record -> {
+        Record deletedRecord = new Record()
+          .withId(record.getId())
+          .withSnapshotId(record.getSnapshotId())
+          .withMatchedId(record.getMatchedId())
+          .withRecordType(record.getRecordType())
+          .withState(State.DELETED)
+          .withGeneration(record.getGeneration())
+          .withOrder(record.getOrder())
+          .withLeaderRecordStatus(record.getLeaderRecordStatus())
+          .withRawRecord(record.getRawRecord())
+          .withParsedRecord(record.getParsedRecord())
+          .withAdditionalInfo(record.getAdditionalInfo())
+          .withExternalIdsHolder(record.getExternalIdsHolder());
+        if (Objects.nonNull(record.getMetadata())) {
+          deletedRecord.withMetadata(record.getMetadata());
+        }
+        if (Objects.nonNull(record.getErrorRecord())) {
+          deletedRecord.withErrorRecord(record.getErrorRecord());
+        }
+        return deletedRecord;
+      })
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<String> ids = records.stream()
+        .filter(r -> r.getRecordType().equals(recordType))
+        .map(record -> record.getExternalIdsHolder().getInstanceId())
+        .collect(Collectors.toList());
+      recordService.getSourceRecords(ids, ExternalIdType.INSTANCE, parsedRecordType, true, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .map(RecordDaoUtil::toSourceRecord)
+          .collect(Collectors.toList());
+        Collections.sort(expected, (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        Collections.sort(get.result().getSourceRecords(), (r1, r2) -> r1.getRecordId().compareTo(r2.getRecordId()));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
+  }
+
+  private void getMarcSourceRecordById(TestContext context, Record expected) {
+    Async async = context.async();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService
+        .getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID)
+        .onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isPresent());
+          context.assertNotNull(get.result().get().getRawRecord());
+          context.assertNotNull(get.result().get().getParsedRecord());
+          compareSourceRecords(context, RecordDaoUtil.toSourceRecord(expected), get.result().get());
+          async.complete();
+        });
+    });
+  }
+
+  private void notGetMarcSourceRecordById(TestContext context, Record expected) {
+    Async async = context.async();
+    recordService
+      .getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID)
+      .onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertFalse(get.result().isPresent());
+        async.complete();
+      });
+  }
+
+  private void updateParsedMarcRecords(TestContext context, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> original = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(recordType))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(original)
+      .withTotalRecords(original.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      List<Record> updated = original.stream()
+        .map(record -> record
+          .withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
+        .collect(Collectors.toList());
+      recordCollection
+        .withRecords(updated)
+        .withTotalRecords(updated.size());
+      List<ParsedRecord> expected = updated.stream()
+        .map(record -> record.getParsedRecord()).collect(Collectors.toList());
+      recordService.updateParsedRecords(recordCollection, TENANT_ID).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        context.assertEquals(0, update.result().getErrorMessages().size());
+        context.assertEquals(expected.size(), update.result().getTotalRecords());
+        Collections.sort(expected, (r1, r2) -> r1.getId().compareTo(r2.getId()));
+        Collections.sort(update.result().getParsedRecords(), (r1, r2) -> r1.getId().compareTo(r2.getId()));
+        compareParsedRecords(context, expected, update.result().getParsedRecords());
+        GenericCompositeFuture.all(updated.stream().map(record -> recordDao
+          .getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+          })).collect(Collectors.toList())).onComplete(res -> {
+          if (res.failed()) {
+            context.fail(res.cause());
+          }
+          async.complete();
+        });
+      });
+    });
+  }
+
+  private void updateParsedMarcRecordsAndGetOnlyActualRecord(TestContext context, Record expected) {
+    Async async = context.async();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      expected.setLeaderRecordStatus("a");
+      recordService.updateRecord(expected, TENANT_ID);
+      recordService
+        .getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID)
+        .onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertNotNull(get.result().getParsedRecord());
+          context.assertEquals(expected.getParsedRecord().getFormattedContent(),
+            get.result().getParsedRecord().getFormattedContent());
+          context.assertEquals(get.result().getState().toString(), "ACTUAL");
+          async.complete();
+        });
+    });
+  }
+
+  private void getFormattedMarcBibRecord(TestContext context, Record expected) {
+    Async async = context.async();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService
+        .getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), ExternalIdType.INSTANCE, TENANT_ID)
+        .onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertNotNull(get.result().getParsedRecord());
+          context.assertEquals(expected.getParsedRecord().getFormattedContent(),
+            get.result().getParsedRecord().getFormattedContent());
+          async.complete();
+        });
+    });
+  }
+
+  private void updateSuppressFromDiscoveryForMarcRecord(TestContext context, Record expected) {
+    Async async = context.async();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String instanceId = expected.getExternalIdsHolder().getInstanceId();
+      Boolean suppress = true;
+      recordService.updateSuppressFromDiscoveryForRecord(instanceId, ExternalIdType.INSTANCE, suppress, TENANT_ID)
+        .onComplete(update -> {
+          if (update.failed()) {
+            context.fail(update.cause());
+          }
+          context.assertTrue(update.result());
+          recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+            context.assertNotNull(get.result().get().getRawRecord());
+            context.assertNotNull(get.result().get().getParsedRecord());
+            expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
+            compareRecords(context, expected, get.result().get());
+            async.complete();
+          });
+        });
+    });
+  }
+
+  private void deleteMarcRecordsBySnapshotId(TestContext context, int i, RecordType parsedRecordType,
+    Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> original = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(original)
+      .withTotalRecords(original.size());
+    saveRecords(recordCollection.getRecords(), TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      String snapshotId = TestMocks.getSnapshot(i).getJobExecutionId();
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordDao.getRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {
+        if (getBefore.failed()) {
+          context.fail(getBefore.cause());
+        }
+        Integer expected = (int) original.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .filter(record -> record.getSnapshotId().equals(snapshotId))
+          .count();
+        context.assertTrue(expected > 0);
+        context.assertEquals(expected, getBefore.result().getTotalRecords());
+        recordService.deleteRecordsBySnapshotId(snapshotId, TENANT_ID).onComplete(delete -> {
+          if (delete.failed()) {
+            context.fail(delete.cause());
+          }
+          context.assertTrue(delete.result());
+          recordDao.getRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(getAfter -> {
+            if (getAfter.failed()) {
+              context.fail(getAfter.cause());
+            }
+            context.assertEquals(0, getAfter.result().getTotalRecords());
+            SnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId)
+              .onComplete(getSnapshot -> {
+                if (getSnapshot.failed()) {
+                  context.fail(getSnapshot.cause());
+                }
+                context.assertFalse(getSnapshot.result().isPresent());
+                async.complete();
+              });
           });
         });
       });

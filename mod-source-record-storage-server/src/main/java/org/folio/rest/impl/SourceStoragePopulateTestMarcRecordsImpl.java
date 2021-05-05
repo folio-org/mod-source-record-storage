@@ -12,6 +12,7 @@ import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.folio.rest.jaxrs.resource.SourceStoragePopulateTestMarcRecords;
@@ -55,7 +56,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
               .withId(rawRecord.getId())
               .withMatchedId(rawRecord.getId())
               .withSnapshotId(STUB_SNAPSHOT.getJobExecutionId())
-              .withRecordType(Record.RecordType.MARC)
+              .withRecordType(RecordType.MARC_BIB)
               .withState(State.ACTUAL)
               .withRawRecord(rawRecord);
             if (rawRecord.getContent().startsWith("{")) {

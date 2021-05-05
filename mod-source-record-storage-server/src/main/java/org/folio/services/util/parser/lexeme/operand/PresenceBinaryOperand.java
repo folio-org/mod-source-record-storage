@@ -8,6 +8,8 @@ import static java.lang.String.format;
  * 999.value is 'absent'        - check field for absence
  * 010.a is 'present'           - check sub field for presence
  * 010.a is 'absent'            - check sub field for absence
+ * 010.ind1 is 'present'        - check indicator for presence
+ * 010.ind1 is 'absent'         - check indicator for absence
  */
 public class PresenceBinaryOperand {
 

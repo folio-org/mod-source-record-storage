@@ -16,9 +16,11 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
  *      "ind2": " "
  * }
  * Available search cases:
- * 240.ind1 = '1'     - simple equality, use '#' to search by empty values (240.ind2 = "#")
- * 240.ind1 ^= '1'    - left-anchored equality
- * 240.ind2 not= '0'  - not equals
+ * 240.ind1 = '1'        - simple equality, use '#' to search by empty values (240.ind2 = "#")
+ * 240.ind1 ^= '1'       - left-anchored equality
+ * 240.ind2 not= '0'     - not equals
+ * 010.ind1 is 'present' - is present
+ * 010.ind2 is 'absent'  - is absent
  */
 public class IndicatorBinaryOperand extends BinaryOperandLexeme {
 

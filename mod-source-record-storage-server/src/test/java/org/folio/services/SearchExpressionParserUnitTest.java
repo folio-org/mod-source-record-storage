@@ -480,6 +480,45 @@ public class SearchExpressionParserUnitTest {
     assertEquals("((\"i035\".\"subfield_no\" = 'a' and \"i035\".\"value\" = ?) and \"i036\".\"ind1\" <> ?) or (\"i036\".\"ind1\" like ? and \"i005\".\"value\" like ?) or (substring(\"i001\".\"value\", 2, 3) = ? and to_date(substring(\"i005\".\"value\", 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
   }
 
+  @Test
+  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsPresentOperator() {
+    // given
+    String fieldsSearchExpression = "050.ind1 is 'present'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id in (select marc_id from marc_indexers_050 where ind1 <> '#')) ", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsAbsentOperator() {
+    // given
+    String fieldsSearchExpression = "050.ind2 is 'absent'";
+    // when
+    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
+    // then
+    assertTrue(result.isEnabled());
+    assertEquals(emptyList(), result.getBindingParams());
+    assertEquals(emptySet(), result.getFieldsToJoin());
+    assertEquals("(id in (select marc_id from marc_indexers_050 where ind2 = '#')) ", result.getWhereExpression());
+  }
+
+  @Test
+  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForIndicatorOperand() {
+    // given
+    String fieldsSearchExpression = "050.ind2 is 'empty'";
+    // when
+    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
+      parseFieldsSearchExpression(fieldsSearchExpression);
+    });
+    // then
+    String expectedMessage = "Value [empty] is not supported for the given Presence operand";
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */
 
   @Test

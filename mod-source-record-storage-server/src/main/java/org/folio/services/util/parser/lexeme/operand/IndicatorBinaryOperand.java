@@ -4,6 +4,7 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 
 import static java.lang.String.format;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
+import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_IS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_LEFT_ANCHORED_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 
@@ -15,9 +16,11 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
  *      "ind2": " "
  * }
  * Available search cases:
- * 240.ind1 = '1'     - simple equality, use '#' to search by empty values (240.ind2 = "#")
- * 240.ind1 ^= '1'    - left-anchored equality
- * 240.ind2 not= '0'  - not equals
+ * 240.ind1 = '1'        - simple equality, use '#' to search by empty values (240.ind2 = "#")
+ * 240.ind1 ^= '1'       - left-anchored equality
+ * 240.ind2 not= '0'     - not equals
+ * 010.ind1 is 'present' - is present
+ * 010.ind2 is 'absent'  - is absent
  */
 public class IndicatorBinaryOperand extends BinaryOperandLexeme {
 
@@ -32,14 +35,17 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
   @Override
   public String toSqlRepresentation() {
     String[] keyParts = getKey().split("\\.");
-    String iField = "\"" + "i" + keyParts[0] + "\"";
-    String indicator = "\"" + keyParts[1] + "\"";
+    var field = keyParts[0];
+    var indicator = keyParts[1];
+    var sqlRepresentation = "\"" + "i" + field + "\"" + "." + "\"" + indicator + "\"";
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
-      return iField + "." + indicator + " like ?";
+      return sqlRepresentation + " like ?";
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
-      return iField + "." + indicator + " = ?";
+      return sqlRepresentation + " = ?";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
-      return iField + "." + indicator + " <> ?";
+      return sqlRepresentation + " <> ?";
+    } else if (BINARY_OPERATOR_IS.equals(getOperator())) {
+      return PresenceBinaryOperand.getSqlRepresentationForIndicator(field, indicator, value);
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Indicator operand", getOperator().getSearchValue()));
   }

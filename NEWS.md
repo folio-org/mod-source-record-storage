@@ -1,6 +1,7 @@
 ## 2021-04-12 v5.1.0-SNAPSHOT
 * [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
 * [MODSOURCE-269](https://issues.folio.org/browse/MODSOURCE-269) Implement presence or absence searches for indicators
+* [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed.  
 
 ## 2021-04-23 v5.0.3
 * [MODSOURCE-272](https://issues.folio.org/browse/MODSOURCE-272) MARC srs query API returns 0 results on bugfest

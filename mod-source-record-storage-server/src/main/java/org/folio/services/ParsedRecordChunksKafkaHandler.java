@@ -17,11 +17,16 @@ import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.services.util.EventHandlingUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -29,18 +34,24 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 
 @Component
 @Qualifier("ParsedRecordChunksKafkaHandler")
 public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String, String> {
   private static final Logger LOGGER = LogManager.getLogger();
 
+  public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  public static final String ERROR_KEY = "ERROR";
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
@@ -65,13 +76,14 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     Event event = new JsonObject(record.value()).mapTo(Event.class);
 
     try {
-      RecordCollection recordCollection = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(RecordCollection.class);
+      RecordCollection recordCollection = Json.decodeValue(ZIPArchiver.unzip(event.getEventPayload()), RecordCollection.class);
 
       List<KafkaHeader> kafkaHeaders = record.headers();
 
       OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
       String tenantId = okapiConnectionParams.getTenantId();
       String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
+      String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
       String key = record.key();
 
       int chunkNumber = chunkCounter.incrementAndGet();
@@ -80,9 +92,10 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber),
           th -> {
             LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, th);
-            return Future.failedFuture(th);
+            return sendErrorRecordsSavingEvents(recordCollection, th.getMessage(), kafkaHeaders, jobExecutionId, tenantId)
+              .compose(v -> Future.failedFuture(th));
           });
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Can't process the kafka record: ", e);
       return Future.failedFuture(e);
     }
@@ -140,6 +153,33 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
         String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
         return record.withParsedRecord(record.getParsedRecord().withContent(content));
       }).collect(Collectors.toList()));
+  }
+
+  private Future<Void> sendErrorRecordsSavingEvents(RecordCollection recordCollection, String message, List<KafkaHeader> kafkaHeaders, String jobExecutionId, String tenantId) {
+    List<Future<Boolean>> sendingFutures = new ArrayList<>();
+    for (Record record : recordCollection.getRecords()) {
+      DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+        .withEventType(DI_ERROR.value())
+        .withJobExecutionId(jobExecutionId)
+        .withEventsChain(List.of(DI_SRS_MARC_BIB_RECORD_CREATED.value()))
+        .withContext(new HashMap<>(){{
+          put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+          put(ERROR_KEY, message);
+        }});
+
+      String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
+      sendingFutures.add(EventHandlingUtil.sendEventToKafka(tenantId, Json.encode(dataImportEventPayload), DI_ERROR.value(), kafkaHeaders, kafkaConfig, key));
+    }
+
+    Promise<Void> promise = Promise.promise();
+    GenericCompositeFuture.join(sendingFutures)
+      .onSuccess(v -> promise.complete())
+      .onFailure(th -> {
+        LOGGER.warn("Failed to send records sending error events" , th);
+        promise.fail(th);
+      });
+
+    return promise.future();
   }
 
 }

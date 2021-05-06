@@ -28,6 +28,7 @@ import org.folio.services.AbstractLBServiceTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
@@ -171,6 +172,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .build());
   }
 
+  @Ignore
   @Test
   public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException, IOException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);

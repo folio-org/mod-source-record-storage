@@ -44,6 +44,8 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.Loader;
+import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
@@ -54,6 +56,7 @@ import org.jooq.UpdateConditionStep;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -61,6 +64,7 @@ import org.springframework.stereotype.Component;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -383,7 +387,7 @@ public class RecordDaoImpl implements RecordDao {
           .from(RECORDS_LB)
           .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
           .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
-            .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
+            .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR))
             .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
               .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
               .from(SNAPSHOTS_LB)
@@ -404,7 +408,7 @@ public class RecordDaoImpl implements RecordDao {
           .execute();
 
         // batch insert records updating generation if required
-        dsl.loadInto(RECORDS_LB)
+        List<LoaderError> recordsLoadingErrors = dsl.loadInto(RECORDS_LB)
           .batchAfter(1000)
           .bulkAfter(500)
           .commitAfter(1000)
@@ -419,7 +423,13 @@ public class RecordDaoImpl implements RecordDao {
             return record;
           }).collect(Collectors.toList()))
           .fieldsFromSource()
-          .execute();
+          .execute()
+          .errors();
+
+        recordsLoadingErrors.forEach(error -> {
+          LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
+          LOG.debug("Failed to execute statement from batch: {}", error.query());
+        });
 
         // batch insert raw records
         dsl.loadInto(RAW_RECORDS_LB)
@@ -458,7 +468,7 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
-    } catch (SQLException e) {
+    } catch (SQLException | DataAccessException e) {
       LOG.error("Failed to save records", e);
       promise.fail(e);
     }

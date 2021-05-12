@@ -22,10 +22,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_BIB_FOR_UPDATE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
@@ -39,6 +41,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
   private final List<String> events = Arrays.asList(DI_SRS_MARC_BIB_RECORD_CREATED.value(),
     DI_INVENTORY_INSTANCE_CREATED.value(), DI_INVENTORY_INSTANCE_UPDATED.value(),
+    DI_INVENTORY_HOLDING_CREATED.value(), DI_INVENTORY_ITEM_CREATED.value(),
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(), DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
     DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
     DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value(),

@@ -94,12 +94,10 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
+      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
+      .onSuccess(ar -> async.complete())
+      .onFailure(context::fail);
   }
 
   @After
@@ -114,7 +112,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateParsedRecord(TestContext context) throws IOException, InterruptedException {
+  public void shouldUpdateParsedRecordAndSendRecordUpdatedEvent(TestContext context) throws IOException, InterruptedException {
     Async async = context.async();
 
     ParsedRecord parsedRecord = record.getParsedRecord();
@@ -172,7 +170,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenNoDataInPayload() throws IOException, InterruptedException {
+  public void shouldSendErrorEventWhenNoDataInPayload() throws IOException, InterruptedException {
     cluster.send(createRequest(new HashMap<>()));
 
     String observeTopic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_ERROR.name());
@@ -183,7 +181,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
 
   private SendKeyValues<String, String> createRequest(HashMap<String, String> payload) throws IOException {
     String topic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_RECORD_UPDATED.name());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
+    Event event = new Event().withId(UUID.randomUUID().toString()).withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
     KeyValue<String, String> eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     eventRecord.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     eventRecord.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());

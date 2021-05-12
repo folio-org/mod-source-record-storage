@@ -83,6 +83,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
                 .map(aBoolean -> record.key());
             })
             .recover(th -> {
+              log.error("Failed to handle QM_RECORD_UPDATED event", th);
               eventPayload.put(ERROR_KEY, th.getMessage());
               return sendEvent(eventPayload, QM_ERROR, params.getTenantId(), kafkaHeaders)
                 .map(aBoolean -> th.getMessage());

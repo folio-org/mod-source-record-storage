@@ -260,7 +260,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("recordSubfield").withValue("b"))))))));
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
+      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
@@ -309,7 +310,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("recordSubfield").withValue("d"))))))));
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
+      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {

@@ -1,4 +1,5 @@
--- This filler magration script is intended for manual running
+-- This filler migration script is intended for manual running
+-- The script fills in database tables marc_indexers & marc_indexers_leaders needed for Search API
 -- The script takes records from marc_indexers_lb table and puts marc fields into marc_indexers table and marc leaders into marc_indexers_leaders
 -- For more details see MODSOURCE-276
 

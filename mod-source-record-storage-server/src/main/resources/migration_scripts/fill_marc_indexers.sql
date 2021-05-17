@@ -1,6 +1,5 @@
--- This filler script is intended for manual running
--- The script takes records from marc_indexers_lb table and
--- puts marc fields into marc_indexers table and marc leaders into marc_indexers_leaders
+-- This filler magration script is intended for manual running
+-- The script takes records from marc_indexers_lb table and puts marc fields into marc_indexers table and marc leaders into marc_indexers_leaders
 -- For more details see MODSOURCE-276
 
 SET search_path TO <tenant_mod_source_record_storage>;

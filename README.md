@@ -95,6 +95,22 @@ curl -w '\n' -X POST -D -   \
     http://localhost:9130/_/proxy/tenants/<tenant_name>/modules
 ```
 
+
+## Interaction with Kafka
+
+
+There are several properties that should be set for modules that interact with Kafka: **KAFKA_HOST, KAFKA_PORT, OKAPI_URL, ENV**(unique env ID).
+After setup, it is good to check logs in all related modules for errors. Data import consumers and producers work in separate verticles that are set up in RMB's InitAPI for each module. That would be the first place to check deploy/install logs.
+
+**Environment variables** that can be adjusted for this module and default values:
+* "_srs.kafka.ParsedMarcChunkConsumer.instancesNumber_": 1
+* "_srs.kafka.DataImportConsumer.instancesNumber_": 1
+* "_srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum_": 100
+* "_srs.kafka.DataImportConsumer.loadLimit_": 5
+* "_srs.kafka.DataImportConsumerVerticle.maxDistributionNum_": 100
+* "_srs.kafka.ParsedMarcChunkConsumer.loadLimit_": 5
+
+
 ## Database schemas
 
 The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.

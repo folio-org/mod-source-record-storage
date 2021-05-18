@@ -110,7 +110,7 @@ After setup, it is good to check logs in all related modules for errors. Data im
 * "_srs.kafka.DataImportConsumerVerticle.maxDistributionNum_": 100
 * "_srs.kafka.ParsedMarcChunkConsumer.loadLimit_": 5
 
-####Note
+#### Note
 **These variables are relevant for the **Iris** release. Module version: 5.0.0 (5.0.1, 5.0.2, 5.0.3).**
 
 ## Database schemas

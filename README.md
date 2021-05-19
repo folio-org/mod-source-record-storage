@@ -103,16 +103,18 @@ There are several properties that should be set for modules that interact with K
 After setup, it is good to check logs in all related modules for errors. Data import consumers and producers work in separate verticles that are set up in RMB's InitAPI for each module. That would be the first place to check deploy/install logs.
 
 **Environment variables** that can be adjusted for this module and default values:
-* "_srs.kafka.ParsedMarcChunkConsumer.instancesNumber_": 1
-* "_srs.kafka.DataImportConsumer.instancesNumber_": 1
-* "_srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum_": 100
-* "_srs.kafka.DataImportConsumer.loadLimit_": 5
-* "_srs.kafka.DataImportConsumerVerticle.maxDistributionNum_": 100
-* "_srs.kafka.ParsedMarcChunkConsumer.loadLimit_": 5
-
-#### Note
-**These variables are relevant for the **Iris** release. Module version: 5.0.0 (5.0.1, 5.0.2, 5.0.3).**
-
+* Relevant for the **Iris** release, module versions from 5.0.0:
+  * "_srs.kafka.ParsedMarcChunkConsumer.instancesNumber_": 1
+  * "_srs.kafka.DataImportConsumer.instancesNumber_": 1
+  * "_srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum_": 100
+  * "_srs.kafka.DataImportConsumer.loadLimit_": 5
+  * "_srs.kafka.DataImportConsumerVerticle.maxDistributionNum_": 100
+  * "_srs.kafka.ParsedMarcChunkConsumer.loadLimit_": 5
+* Relevant for the **Juniper** release, module versions from 5.1.0:
+  * "_srs.kafka.QuickMarcConsumer.instancesNumber_": 1
+  * "_srs.kafka.QuickMarcKafkaHandler.maxDistributionNum_": 100
+  * "_srs.kafka.cache.cleanup.interval.ms_": 3600000
+  * "_srs.kafka.cache.expiration.time.hours_": 3
 ## Database schemas
 
 The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.

@@ -2,6 +2,7 @@
 * [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches  
 * [MODSOURCE-269](https://issues.folio.org/browse/MODSOURCE-269) Implement presence or absence searches for indicators
 * [MODSOURCE-276](https://issues.folio.org/browse/MODSOURCE-276) Add existing records to the SRS Query API table
+* [MODSOURCE-288](https://issues.folio.org/browse/MODSOURCE-288) Migrate QM-flow to Kafka
 
 ## 2021-05-xx v5.0.4-SNAPSHOT
 * [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed.

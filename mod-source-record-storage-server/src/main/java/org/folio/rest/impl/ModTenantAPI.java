@@ -1,38 +1,29 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.liquibase.LiquibaseUtil;
-import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.SnapshotService;
 import org.folio.spring.SpringContextUtil;
-import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.core.Response;
 import java.util.Date;
 import java.util.Map;
 
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
-@SuppressWarnings("squid:CallToDeprecatedMethod")
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();
-
-  private static final String TEST_MODE_PARAMETER = "testMode";
 
   static final String LOAD_SAMPLE_PARAMETER = "loadSample";
 
@@ -59,8 +50,7 @@ public class ModTenantAPI extends TenantAPI {
         Vertx vertx = context.owner();
         LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
         return setLoadSampleParameter(attributes, context)
-          .compose(v -> createStubSnapshot(attributes))
-          .compose(v -> registerModuleToPubsub(attributes, headers, context.owner())).map(num);
+          .compose(v -> createStubSnapshot(attributes)).map(num);
       });
   }
 
@@ -98,24 +88,5 @@ public class ModTenantAPI extends TenantAPI {
       .findFirst()
       .map(Parameter::getValue)
       .orElse(EMPTY);
-  }
-
-  private Future<Void> registerModuleToPubsub(TenantAttributes attributes, Map<String, String> headers, Vertx vertx) {
-    if (Boolean.parseBoolean(getTenantAttributesParameter(attributes, TEST_MODE_PARAMETER))) {
-      return Future.succeededFuture();
-    }
-
-    Promise<Void> promise = Promise.promise();
-    PubSubClientUtils.registerModule(new OkapiConnectionParams(headers, vertx))
-      .whenComplete((registrationAr, throwable) -> {
-        if (throwable == null) {
-          LOGGER.info("Module was successfully registered as publisher/subscriber in mod-pubsub");
-          promise.complete();
-        } else {
-          LOGGER.error("Error during module registration in mod-pubsub", throwable);
-          promise.fail(throwable);
-        }
-      });
-    return promise.future();
   }
 }

@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import java.util.List;
+
 import io.vertx.core.AsyncResult;
 import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Context;
@@ -19,10 +21,10 @@ import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
+import org.folio.verticle.consumers.QuickMarcConsumersVerticle;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-
-import com.google.common.collect.Lists;
 
 public class InitAPIImpl implements InitAPI {
 
@@ -42,6 +44,9 @@ public class InitAPIImpl implements InitAPI {
 
   @Value("${srs.kafka.DataImportConsumer.instancesNumber:1}")
   private int dataImportConsumerInstancesNumber;
+
+  @Value("${srs.kafka.QuickMarcConsumer.instancesNumber:1}")
+  private int quickMarcConsumerInstancesNumber;
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
@@ -72,9 +77,11 @@ public class InitAPIImpl implements InitAPI {
     //TODO: get rid of this workaround with global spring context
     ParsedRecordChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
     DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
+    QuickMarcConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
 
     Promise<String> deployConsumer1 = Promise.promise();
     Promise<String> deployConsumer2 = Promise.promise();
+    Promise<String> deployConsumer3 = Promise.promise();
 
     vertx.deployVerticle(ParsedRecordChunkConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
@@ -82,7 +89,10 @@ public class InitAPIImpl implements InitAPI {
     vertx.deployVerticle(DataImportConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
 
-    return GenericCompositeFuture.all(Lists.newArrayList(deployConsumer1.future(), deployConsumer2.future()));
+    vertx.deployVerticle(QuickMarcConsumersVerticle.class.getCanonicalName(),
+      new DeploymentOptions().setWorker(true).setInstances(quickMarcConsumerInstancesNumber), deployConsumer3);
+
+    return GenericCompositeFuture.all(List.of(deployConsumer1.future(), deployConsumer2.future(), deployConsumer3.future()));
   }
 
 }

@@ -12,12 +12,16 @@ documentation:
 types:
   errorRecord: !include raml-storage/schemas/mod-source-record-storage/errorRecord.json
   errorRecordCollection: !include raml-storage/schemas/mod-source-record-storage/errorRecordCollection.json
+  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
   parsedRecord: !include raml-storage/schemas/mod-source-record-storage/parsedRecord.json
   parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
   rawRecord: !include raml-storage/schemas/mod-source-record-storage/rawRecord.json
   rawRecordCollection: !include raml-storage/schemas/mod-source-record-storage/rawRecordCollection.json
   record: !include raml-storage/schemas/dto/record.json
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
+  dataImportEventPayload: !include raml-storage/schemas/common/dataImportEventPayload.json
+  data: !include raml-storage/schemas/mod-data-import-converter-storage/mapping-profile-detail/marcData.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
 traits:

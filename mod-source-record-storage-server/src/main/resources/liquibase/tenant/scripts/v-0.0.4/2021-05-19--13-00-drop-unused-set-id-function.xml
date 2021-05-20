@@ -6,7 +6,7 @@
 
   <changeSet id="2021-05-19--13-00-drop-unused-set-id-function" author="VolodymyrRohach">
     <sql>
-      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb();
+      DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb() CASCADE;
     </sql>
   </changeSet>
 

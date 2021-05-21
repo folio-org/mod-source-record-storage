@@ -1,3 +1,6 @@
+## 2021-XX-XX v5.0.4
+* [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release [HOTFIX]
+
 ## 2021-04-23 v5.0.3
 * [MODSOURCE-272](https://issues.folio.org/browse/MODSOURCE-272) MARC srs query API returns 0 results on bugfest  
 

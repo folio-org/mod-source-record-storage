@@ -1,6 +1,6 @@
-## 2021-05-XX v5.0.4-SNAPSHOT
-* [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release [HOTFIX]
-* [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed.
+## 2021-05-22 v5.0.4
+* [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release
+* [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed
 * [MODSOURCE-285](https://issues.folio.org/browse/MODSOURCE-285) Order of execution keeps marc updates from occurring
 * [MODSOURCE-295](https://issues.folio.org/browse/MODSOURCE-295) Multiple records are found by match criteria after subsequent updates
 

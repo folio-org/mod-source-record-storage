@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import io.xlate.edi.stream.EDIInputFactory;
 import io.xlate.edi.stream.EDIStreamException;
@@ -18,7 +19,7 @@ import io.xlate.edi.stream.EDIStreamReader;
  */
 public class EdifactUtil {
 
-  private static final String IGNORED_CODE = "ZZ";
+  private static final Set<String> IGNORED_CODES = Set.of("ZZ", "31B");
 
   private EdifactUtil() { }
 
@@ -41,7 +42,7 @@ public class EdifactUtil {
           case ELEMENT_DATA_ERROR:
           case ELEMENT_OCCURRENCE_ERROR:
           case SEGMENT_ERROR:
-            if (!reader.getText().equals(IGNORED_CODE)) {
+            if (!IGNORED_CODES.contains(reader.getText())) {
               throw new EDIStreamException(format("%s: %s", reader.getErrorType(), reader.getText()));
             }
             break;

@@ -1,20 +1,5 @@
 package org.folio.services;
 
-import static org.folio.dao.util.QMEventTypes.QM_ERROR;
-import static org.folio.dao.util.QMEventTypes.QM_RECORD_UPDATED;
-import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
-import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
-
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
@@ -25,13 +10,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
-
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -48,6 +26,27 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.Tables;
 import org.folio.rest.util.OkapiConnectionParams;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.MockitoAnnotations;
+
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import static org.folio.dao.util.QMEventTypes.QM_ERROR;
+import static org.folio.dao.util.QMEventTypes.QM_RECORD_UPDATED;
+import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
+import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
 public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
@@ -91,7 +90,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
       .withMatchedId(recordId)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
@@ -123,7 +122,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withId(record.getMatchedId())
       .withParsedRecord(new ParsedRecord()
         .withContent(UPDATED_PARSED_RECORD_CONTENT))
-      .withRecordType(ParsedRecordDto.RecordType.MARC);
+      .withRecordType(ParsedRecordDto.RecordType.MARC_BIB);
 
     var payload = new HashMap<String, String>();
     payload.put("PARSED_RECORD_DTO", Json.encode(parsedRecordDto));

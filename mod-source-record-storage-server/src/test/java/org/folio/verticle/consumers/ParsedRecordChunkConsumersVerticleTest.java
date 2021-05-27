@@ -107,40 +107,26 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
-    List<Record> records = new ArrayList<>();
+  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+    sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_BIB, rawMarcRecord,
+      parsedMarcRecord);
+  }
 
-    records.add(new Record()
-      .withId(recordId)
-      .withMatchedId(recordId)
-      .withSnapshotId(snapshotId)
-      .withGeneration(0)
-      .withRecordType(RecordType.MARC)
-      .withRawRecord(rawMarcRecord)
-      .withParsedRecord(parsedMarcRecord));
-
-    RecordCollection recordCollection = new RecordCollection()
-      .withRecords(records)
-      .withTotalRecords(records.size());
-
-    String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
-    KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
-    record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
-    record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
-    record.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
-
-    cluster.send(request);
-
-    String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
-    cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+  @Test
+  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+    sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_AUTHORITY,
+      rawMarcRecord,
+      parsedMarcRecord);
   }
 
   @Test
   public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+    sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.EDIFACT, rawEdifactRecord,
+      parsedEdifactRecord);
+  }
+
+  private void sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType recordType,
+    RawRecord rawRecord, ParsedRecord parsedRecord) throws IOException, InterruptedException {
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -148,15 +134,16 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId)
       .withGeneration(0)
-      .withRecordType(RecordType.EDIFACT)
-      .withRawRecord(rawEdifactRecord)
-      .withParsedRecord(parsedEdifactRecord));
+      .withRecordType(recordType)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord));
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
 
-    String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
+    String topic = KafkaTopicNameHelper
+      .formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
     Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
     KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
@@ -166,7 +153,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     cluster.send(request);
 
-    String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
+    String observeTopic = KafkaTopicNameHelper
+      .formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_PARSED_RECORDS_CHUNK_SAVED.value());
     cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
       .observeFor(30, TimeUnit.SECONDS)
       .build());

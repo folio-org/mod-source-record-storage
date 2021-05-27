@@ -49,7 +49,7 @@ import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTest {
@@ -105,7 +105,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(1)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withId(recordId)
@@ -120,7 +120,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withId(recordId)

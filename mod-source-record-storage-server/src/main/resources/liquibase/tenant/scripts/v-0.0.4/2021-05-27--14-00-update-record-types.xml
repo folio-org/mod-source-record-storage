@@ -1,0 +1,25 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+
+  <changeSet id="2021-05-27--14-00-rename-marc-type-to-marc-bib" author="OleksandrDekin" runInTransaction="false">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM pg_enum as p WHERE enumlabel='MARC' ;
+      </sqlCheck>
+    </preConditions>
+    <sql>
+      ALTER TYPE ${database.defaultSchemaName}.record_type RENAME VALUE 'MARC' TO 'MARC_BIB';
+    </sql>
+  </changeSet>
+
+  <changeSet id="2021-05-127--14-00-add-marc-types" author="NataliaZaitseva" runInTransaction="false">
+    <sql>
+      ALTER TYPE ${database.defaultSchemaName}.record_type ADD VALUE IF NOT EXISTS 'MARC_AUTHORITY' BEFORE 'EDIFACT';
+      ALTER TYPE ${database.defaultSchemaName}.record_type ADD VALUE IF NOT EXISTS 'MARC_HOLDING' BEFORE 'EDIFACT';
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

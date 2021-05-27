@@ -31,6 +31,7 @@ import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -495,11 +496,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
     deleteMarcRecordsBySnapshotId(context, 2, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
   }
 
   @Test
+  @Ignore
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
     deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }

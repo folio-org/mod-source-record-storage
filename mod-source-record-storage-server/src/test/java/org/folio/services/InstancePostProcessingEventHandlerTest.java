@@ -6,7 +6,7 @@ import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
@@ -113,7 +113,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
 
@@ -263,7 +263,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
@@ -411,7 +411,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
@@ -472,7 +472,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 

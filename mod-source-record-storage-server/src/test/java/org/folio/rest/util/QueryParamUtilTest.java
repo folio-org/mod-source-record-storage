@@ -35,8 +35,8 @@ public class QueryParamUtilTest {
   }
 
   @Test
-  public void shouldReturnMarcRecordType() {
-    assertEquals(RecordType.MARC, QueryParamUtil.toRecordType("MARC"));
+  public void shouldReturnMarcBibRecordType() {
+    assertEquals(RecordType.MARC_BIB, QueryParamUtil.toRecordType("MARC_BIB"));
   }
 
   @Test
@@ -45,9 +45,14 @@ public class QueryParamUtilTest {
   }
 
   @Test
+  public void shouldReturnMarcAuthorityRecordType() {
+    assertEquals(RecordType.MARC_AUTHORITY, QueryParamUtil.toRecordType("MARC_AUTHORITY"));
+  }
+
+  @Test
   public void shouldReturnDefaultRecordType() {
-    assertEquals(RecordType.MARC, QueryParamUtil.toRecordType(null));
-    assertEquals(RecordType.MARC, QueryParamUtil.toRecordType(""));
+    assertEquals(RecordType.MARC_BIB, QueryParamUtil.toRecordType(null));
+    assertEquals(RecordType.MARC_BIB, QueryParamUtil.toRecordType(""));
   }
 
   @Test(expected = BadRequestException.class)

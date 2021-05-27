@@ -53,11 +53,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String SOURCE_STORAGE_BATCH_RECORDS_PATH = "/source-storage/batch/records";
   private static final String SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
 
-  private static final String INVALID_POST_REQUEST = "{\"records\":[{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"snapshotId\":\"7f939c0b-618c-4eab-8276-a14e0bfe5728\",\"matchedId\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"generation\":0,\"recordType\":\"MARC\",\"rawRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":\"01104cam \"},\"parsedRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":{\"leader\":\"00000cam a2200277   4500\",\"fields\":[{\"001\":\"in00000000007\"},{\"005\":\"20120817205822.0\"},{\"008\":\"690410s1965    dcu          f000 0 eng  \"},{\"010\":{\"subfields\":[{\"a\":\"65062892\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"600\":{\"subfields\":[{\"a\":\"Ross, Arthur M.\"},{\"q\":\"(Arthur Max),\"},{\"d\":\"1916-1970.\"},{\"0\":\"http://id.loc.gov/authorities/names/n50047449\"}],\"ind1\":\"1\",\"ind2\":\"0\"}}],\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"i\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"}]}}},\"deleted\":false,\"order\":0,\"externalIdsHolder\":{\"instanceId\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"},\"additionalInfo\":{\"suppressDiscovery\":false},\"state\":\"ACTUAL\",\"leaderRecordStatus\":\"c\"}],\"totalRecords\":1}";
+  private static final String INVALID_POST_REQUEST = "{\"records\":[{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"snapshotId\":\"7f939c0b-618c-4eab-8276-a14e0bfe5728\",\"matchedId\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"generation\":0,\"recordType\":\"MARC_BIB\",\"rawRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":\"01104cam \"},\"parsedRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":{\"leader\":\"00000cam a2200277   4500\",\"fields\":[{\"001\":\"in00000000007\"},{\"005\":\"20120817205822.0\"},{\"008\":\"690410s1965    dcu          f000 0 eng  \"},{\"010\":{\"subfields\":[{\"a\":\"65062892\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"600\":{\"subfields\":[{\"a\":\"Ross, Arthur M.\"},{\"q\":\"(Arthur Max),\"},{\"d\":\"1916-1970.\"},{\"0\":\"http://id.loc.gov/authorities/names/n50047449\"}],\"ind1\":\"1\",\"ind2\":\"0\"}}],\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"i\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"}]}}},\"deleted\":false,\"order\":0,\"externalIdsHolder\":{\"instanceId\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"},\"additionalInfo\":{\"suppressDiscovery\":false},\"state\":\"ACTUAL\",\"leaderRecordStatus\":\"c\"}],\"totalRecords\":1}";
   private static final String FIRST_UUID = UUID.randomUUID().toString();
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
+  private static final String FIFTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -79,6 +80,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Snapshot snapshot_2 = new Snapshot()
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+  private static Snapshot snapshot_3 = new Snapshot()
+    .withJobExecutionId(UUID.randomUUID().toString())
+    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
   private static ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
@@ -87,7 +91,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Record record_1 = new Record()
     .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC)
+    .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
     .withMatchedId(FIRST_UUID)
     .withOrder(0)
@@ -95,7 +99,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Record record_2 = new Record()
     .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC)
+    .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
     .withMatchedId(SECOND_UUID)
@@ -104,7 +108,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Record record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC)
+    .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
     .withErrorRecord(errorRecord)
     .withMatchedId(THIRD_UUID)
@@ -112,11 +116,20 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static Record record_4 = new Record()
     .withId(FOURTH_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC)
+    .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
     .withParsedRecord(marcRecord)
     .withMatchedId(FOURTH_UUID)
     .withOrder(1)
+    .withState(Record.State.ACTUAL);
+  private static Record record_5 = new Record()
+    .withId(FIFTH_UUID)
+    .withSnapshotId(snapshot_3.getJobExecutionId())
+    .withRecordType(RecordType.MARC_AUTHORITY)
+    .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecord)
+    .withMatchedId(FIFTH_UUID)
+    .withOrder(0)
     .withState(Record.State.ACTUAL);
 
   @Before
@@ -139,7 +152,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   public void shouldPostSourceStorageBatchMarcRecords(TestContext testContext) {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -185,7 +198,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   public void shouldFailWhenPostSourceStorageBatchRecordsWithMultipleSnapshots(TestContext testContext) {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -238,7 +251,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Snapshot> snapshots = Arrays.asList(snapshot1, snapshot2, snapshot3, snapshot4);
 
     List<Record> records = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> {
         RawRecord rawRecord = record.getRawRecord();
         if (Objects.nonNull(rawRecord)) {
@@ -277,7 +290,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       records = records.stream()
         .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
         .collect(Collectors.toList());
-      
+
       RecordCollection recordCollection = new RecordCollection()
         .withRecords(records)
         .withTotalRecords(records.size());
@@ -346,7 +359,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     String snapshotId = "c698cfde-14e1-4edf-8b54-d9d43895571e";
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(snapshotId))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -379,12 +392,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot.getJobExecutionId()))
       .body("status", is(snapshot.getStatus().name()));
-    
+
     async.complete();
     async = testContext.async();
 
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -526,7 +539,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   public void shouldPutSourceStorageBatchParsedRecords(TestContext testContext) {
     Async async = testContext.async();
     List<Record> original = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC))
+      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .collect(Collectors.toList());
     RecordCollection recordCollection = new RecordCollection()
@@ -573,7 +586,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Record newRecord = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(matchedId)
@@ -630,7 +643,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Record record1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withParsedRecord(new ParsedRecord()
@@ -639,7 +652,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     Record record2 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withParsedRecord(new ParsedRecord()
@@ -665,7 +678,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     Record newRecord = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(UUID.randomUUID().toString())
@@ -716,7 +729,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withId(UUID.randomUUID().toString())
       .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withContent(marcRecord.getContent()));
@@ -725,7 +738,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withId(UUID.randomUUID().toString())
       .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withContent(marcRecord.getContent()));
@@ -791,14 +804,14 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withId(UUID.randomUUID().toString())
       .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord);
 
     Record record2 = new Record()
       .withId(UUID.randomUUID().toString())
       .withMatchedId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord);
 
     RecordCollection recordCollection = new RecordCollection()

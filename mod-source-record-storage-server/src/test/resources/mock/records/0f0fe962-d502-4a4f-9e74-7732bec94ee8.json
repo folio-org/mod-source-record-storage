@@ -3,7 +3,7 @@
   "snapshotId": "7f939c0b-618c-4eab-8276-a14e0bfe5728",
   "matchedId": "0f0fe962-d502-4a4f-9e74-7732bec94ee8",
   "generation": 0,
-  "recordType": "MARC",
+  "recordType": "MARC_BIB",
   "deleted": false,
   "leaderRecordStatus": "n",
   "order": 1,

@@ -496,12 +496,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 3, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+    deleteMarcRecordsBySnapshotId(context, 2, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
   }
 
   @Test
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 2, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
+    deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test

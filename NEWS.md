@@ -1,6 +1,7 @@
-## 2021-05-xx v5.0.5-SNAPSHOT
+## 2021-06-16 v5.0.5-SNAPSHOT
 * [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM
 * [MODSOURCE-310](https://issues.folio.org/browse/MODSOURCE-310) Handling 001/003/035 handling in SRS for MARC bib records broken
+* [MODSOURCE-301](https://issues.folio.org/browse/MODSOURCE-301) Cannot import GOBI EDIFACT invoice
 
 ## 2021-05-22 v5.0.4
 * [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release

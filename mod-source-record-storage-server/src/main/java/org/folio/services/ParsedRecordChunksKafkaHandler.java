@@ -149,9 +149,11 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   private RecordsBatchResponse normalize(RecordsBatchResponse recordsBatchResponse) {
     return recordsBatchResponse.withRecords(recordsBatchResponse.getRecords()
-      .stream().map(record -> {
-        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-        return record.withParsedRecord(record.getParsedRecord().withContent(content));
+      .stream().peek(record -> {
+        if (record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+          String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+          record.getParsedRecord().withContent(content);
+        }
       }).collect(Collectors.toList()));
   }
 

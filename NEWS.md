@@ -4,7 +4,6 @@
 * [MODSOURCE-276](https://issues.folio.org/browse/MODSOURCE-276) Add existing records to the SRS Query API table
 * [MODSOURCE-288](https://issues.folio.org/browse/MODSOURCE-288) Migrate QM-flow to Kafka
 * [MODSOURCE-279](https://issues.folio.org/browse/MODSOURCE-279) Store MARC Authority record
-* [MODSOURCE-308](https://issues.folio.org/browse/MODSOURCE-308) Update interfaces version
 
 ## 2021-05-xx v5.0.5-SNAPSHOT
 * [MODSOURCE-301](https://issues.folio.org/browse/MODSOURCE-301) Cannot import GOBI EDIFACT invoice

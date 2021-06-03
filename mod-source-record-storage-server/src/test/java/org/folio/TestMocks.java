@@ -78,8 +78,12 @@ public class TestMocks {
       .get();
   }
 
-  public static Record getMarcRecord() {
-    return getRecords(RecordType.MARC);
+  public static Record getMarcBibRecord() {
+    return getRecords(RecordType.MARC_BIB);
+  }
+
+  public static Record getMarcAuthorityRecord() {
+    return getRecords(RecordType.MARC_AUTHORITY);
   }
 
   public static Record getEdifactRecord() {

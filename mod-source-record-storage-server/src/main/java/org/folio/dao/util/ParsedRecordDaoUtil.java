@@ -188,7 +188,7 @@ public final class ParsedRecordDaoUtil {
 
   /**
    * Convert {@link ParsedRecord} to database record {@link MarcRecordsLbRecord}
-   * 
+   *
    * @param parsedRecord parsed record
    * @return MarcRecordsLbRecord
    */
@@ -204,7 +204,7 @@ public final class ParsedRecordDaoUtil {
 
   /**
    * Convert {@link ParsedRecord} to database record {@link EdifactRecordsLbRecord}
-   * 
+   *
    * @param parsedRecord parsed record
    * @return EdifactRecordsLbRecord
    */
@@ -228,7 +228,7 @@ public final class ParsedRecordDaoUtil {
     if (Objects.nonNull(record.getRecordType())) {
       return RecordType.valueOf(record.getRecordType().toString());
     }
-    return RecordType.MARC;
+    return RecordType.MARC_BIB;
   }
 
   private static JsonObject normalize(Object content) {

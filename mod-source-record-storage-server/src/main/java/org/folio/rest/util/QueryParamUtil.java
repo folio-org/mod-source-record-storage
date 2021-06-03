@@ -43,7 +43,7 @@ public final class QueryParamUtil {
         throw new BadRequestException(format("Unknown record type %s", recordType));
       }
     }
-    return RecordType.MARC;
+    return RecordType.MARC_BIB;
   }
 
 }

@@ -25,13 +25,48 @@ import io.xlate.edi.stream.EDIStreamException;
  * Enum used to distingush table for parsed record and provide implementation
  * for specific funtionality per record type. Used to convert {@link Record} type
  * to parsed record database table.
- * 
+ *
  * Enum string value must match those of
  * {@link org.folio.rest.jaxrs.model.Record.RecordType}.
  */
 public enum RecordType implements ParsedRecordType {
 
-  MARC("marc_records_lb") {
+  MARC_BIB("marc_records_lb") {
+    @Override
+    public void formatRecord(Record record) throws FormatRecordException {
+      if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
+        && Objects.nonNull(record.getParsedRecord().getContent())) {
+        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+        try {
+          record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+        } catch (IOException e) {
+          throw new FormatRecordException(e);
+        }
+      }
+    }
+
+    @Override
+    public Condition getRecordImplicitCondition() {
+      return filterRecordByType(this.name());
+    }
+
+    @Override
+    public Condition getSourceRecordImplicitCondition() {
+      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    }
+
+    @Override
+    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+    }
+
+    @Override
+    public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
+      return dsl.loadInto(MARC_RECORDS_LB);
+    }
+  },
+
+  MARC_AUTHORITY("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
       if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())

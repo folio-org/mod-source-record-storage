@@ -1,29 +1,12 @@
 package org.folio.services;
 
-import static java.util.Collections.singletonList;
-import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.MatchDetail;
@@ -42,36 +25,36 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import static java.util.Collections.singletonList;
+import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
+import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-
-  private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
 
   public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
 
@@ -122,7 +105,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(1)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withId(recordId)
@@ -137,7 +120,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(new ParsedRecord()
         .withId(recordId)
@@ -210,9 +193,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       async.complete();
     });
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
+      .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
@@ -259,9 +241,9 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("b"))))))));
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
+      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
+      .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
@@ -308,9 +290,9 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("d"))))))));
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
+      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
+      .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
@@ -357,9 +339,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("b"))))))));
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
+      .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
@@ -405,9 +386,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("d"))))))));
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
+      .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);

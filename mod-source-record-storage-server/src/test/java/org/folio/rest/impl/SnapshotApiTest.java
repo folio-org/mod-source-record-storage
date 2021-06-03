@@ -298,7 +298,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     String instanceId = UUID.randomUUID().toString();
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
       .withSnapshotId(snapshot_3.getJobExecutionId());

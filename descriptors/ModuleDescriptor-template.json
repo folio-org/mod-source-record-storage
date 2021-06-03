@@ -1,24 +1,6 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Source Record Storage Module",
-  "requires": [
-    {
-      "id": "pubsub-event-types",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-publishers",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-subscribers",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-publish",
-      "version": "0.1"
-    }
-  ],
   "provides": [
     {
       "id": "source-storage-snapshots",
@@ -236,24 +218,6 @@
       ]
     },
     {
-      "id": "source-storage-event-handlers",
-      "version": "2.0",
-      "handlers": [
-        {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/handlers/updated-record",
-          "permissionsRequired": [
-            "pubsub.events.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
-          ]
-        }
-      ]
-    },
-    {
       "id": "_tenant",
       "version": "2.0",
       "interfaceType": "system",
@@ -262,12 +226,7 @@
           "methods": [
             "POST"
           ],
-          "pathPattern": "/_/tenant",
-          "modulePermissions": [
-            "pubsub.event-types.post",
-            "pubsub.publishers.post",
-            "pubsub.subscribers.post"
-          ]
+          "pathPattern": "/_/tenant"
         },
         {
           "methods": [

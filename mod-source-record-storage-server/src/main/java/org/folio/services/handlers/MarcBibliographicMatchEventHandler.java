@@ -45,6 +45,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RE
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -108,7 +109,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
 
     if (condition != null) {
-      recordDao.getRecords(condition, RecordType.MARC, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
+      recordDao.getRecords(condition, RecordType.MARC_BIB, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
         .onComplete(ar -> {
           if (ar.succeeded()) {
             processSucceededResult(dataImportEventPayload, future, context, ar);
@@ -189,10 +190,10 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
         condition = filterRecordByRecordId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_ID_MARC_FIELD:
-        condition = filterRecordByInstanceId(valueFromField);
+        condition = filterRecordByInstanceId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_HRID_MARC_FIELD:
-        condition = filterRecordByInstanceHrid(valueFromField);
+        condition = filterRecordByInstanceHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       default:
         condition = null;

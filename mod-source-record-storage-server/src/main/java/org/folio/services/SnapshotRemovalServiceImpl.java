@@ -60,7 +60,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
         while (totalRequestedRecords < totalRecords) {
           int offset = totalRequestedRecords;
-          future = future.compose(ar -> recordService.getRecords(condition, RecordType.MARC, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
+          future = future.compose(ar -> recordService.getRecords(condition, RecordType.MARC_BIB, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
             .compose(recordCollection -> deleteInstances(recordCollection.getRecords(), params));
           totalRequestedRecords += RECORDS_LIMIT;
         }

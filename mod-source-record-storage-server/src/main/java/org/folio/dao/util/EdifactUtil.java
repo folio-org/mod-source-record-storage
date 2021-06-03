@@ -1,5 +1,6 @@
 package org.folio.dao.util;
 
+import static io.xlate.edi.stream.EDIInputFactory.EDI_VALIDATE_CONTROL_CODE_VALUES;
 import static io.xlate.edi.stream.EDIStreamConstants.Delimiters.SEGMENT;
 import static java.lang.String.format;
 
@@ -18,8 +19,6 @@ import io.xlate.edi.stream.EDIStreamReader;
  */
 public class EdifactUtil {
 
-  private static final String IGNORED_CODE = "ZZ";
-
   private EdifactUtil() { }
 
   public static String formatEdifact(String edifact) throws IOException, EDIStreamException {
@@ -29,9 +28,11 @@ public class EdifactUtil {
 
   private static String inferSegmentDelimiter(String edifact) throws IOException, EDIStreamException {
     Map<String, Character> delimiters = new HashMap<>();
+    EDIInputFactory ediInputFactory = EDIInputFactory.newFactory();
+    ediInputFactory.setProperty(EDI_VALIDATE_CONTROL_CODE_VALUES, false);
     try (
       InputStream stream = new ByteArrayInputStream(edifact.getBytes());
-      EDIStreamReader reader = EDIInputFactory.newFactory().createEDIStreamReader(stream);
+      EDIStreamReader reader = ediInputFactory.createEDIStreamReader(stream);
     ) {
       while (reader.hasNext()) {
         switch (reader.next()) {
@@ -41,10 +42,7 @@ public class EdifactUtil {
           case ELEMENT_DATA_ERROR:
           case ELEMENT_OCCURRENCE_ERROR:
           case SEGMENT_ERROR:
-            if (!reader.getText().equals(IGNORED_CODE)) {
-              throw new EDIStreamException(format("%s: %s", reader.getErrorType(), reader.getText()));
-            }
-            break;
+            throw new EDIStreamException(format("%s: %s", reader.getErrorType(), reader.getText()));
           default:
             break;
         }

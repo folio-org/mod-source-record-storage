@@ -1,7 +1,9 @@
 package org.folio.services.handlers.actions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.vertx.core.json.JsonObject;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
@@ -72,6 +74,7 @@ public class ModifyRecordEventHandler implements EventHandler {
 
       Record changedRecord = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       AdditionalFieldsUtil.addControlledFieldToMarcRecord(changedRecord, AdditionalFieldsUtil.HR_ID_FROM_FIELD, hrId, true);
+      AdditionalFieldsUtil.remove003FieldIfNeeded(changedRecord, hrId);
 
       payloadContext.put(MARC_BIBLIOGRAPHIC.value(), OBJECT_MAPPER.writeValueAsString(changedRecord));
 

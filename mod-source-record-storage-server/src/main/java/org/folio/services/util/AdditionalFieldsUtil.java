@@ -39,6 +39,7 @@ import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
 import io.vertx.core.json.JsonObject;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -54,6 +55,7 @@ public final class AdditionalFieldsUtil {
   private static final String HR_ID_PREFIX_FROM_FIELD = "003";
   private static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
+  private static final String ID_FIELD = "id";
   private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
@@ -355,6 +357,29 @@ public final class AdditionalFieldsUtil {
         throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", record.getId()));
       }
     }
+  }
+
+  /**
+   * Remove 003 field if hrid is not empty (ffrom instance and marc-record)
+   * @param record - source record
+   * @param instanceHrid - existing instanceHrid
+   */
+  public static void remove003FieldIfNeeded(Record record, String instanceHrid) {
+    if (StringUtils.isNotBlank(instanceHrid) && StringUtils.isNotBlank(AdditionalFieldsUtil.getValueFromControlledField(record, "001"))) {
+      AdditionalFieldsUtil.removeField(record, HR_ID_PREFIX_FROM_FIELD);
+    }
+  }
+
+  /**
+   * Check if record should be filled by specific fields.
+   * @param record - source record.
+   * @param instance - source instance.
+   * @return - true if need.
+   */
+  public static boolean ifFillingFieldsNeeded(Record record, JsonObject instance) {
+    return (StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) &&
+      (instance.getString(ID_FIELD).equals(record.getExternalIdsHolder().getInstanceId())
+        && !instance.getString(HR_ID_FIELD).equals(record.getExternalIdsHolder().getInstanceHrid()));
   }
 
   /**

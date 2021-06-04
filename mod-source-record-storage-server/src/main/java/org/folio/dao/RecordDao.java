@@ -61,6 +61,7 @@ public interface RecordDao {
    *
    * @param parseLeaderResult     result of parsing leaderSearchExpression
    * @param parseFieldsResult     result of parsing fieldsSearchExpression
+   * @param recordType            type of record searched for
    * @param deleted               deleted
    * @param suppress              suppress from discovery
    * @param offset                offset
@@ -68,7 +69,7 @@ public interface RecordDao {
    * @param tenantId              tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
+  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Record.RecordType recordType, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
 
   /**
    * Searches for {@link Record} by id

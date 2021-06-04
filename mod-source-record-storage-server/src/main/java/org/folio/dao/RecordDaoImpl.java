@@ -44,7 +44,6 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
-import org.jooq.Loader;
 import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
@@ -64,7 +63,6 @@ import org.springframework.stereotype.Component;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -194,11 +192,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Record.RecordType recordType, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
     /* Building a search query */
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, recordType, deleted, suppress);
     if (offset != null) {
       searchQuery.offset(offset);
     }
@@ -208,7 +206,7 @@ public class RecordDaoImpl implements RecordDao {
     /* Building a count query */
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.INSTANCE_ID)).from(RECORDS_LB);
     appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, recordType, deleted, suppress);
     /* Join both in one query */
     String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
 
@@ -234,7 +232,8 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress) {
+  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Record.RecordType recordType, Boolean deleted, Boolean suppress) {
+    Condition recordTypeCondition = RecordDaoUtil.filterRecordByType(recordType.value());
     Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(deleted);
     Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(suppress);
     Condition leaderCondition = parseLeaderResult.isEnabled()
@@ -243,7 +242,11 @@ public class RecordDaoImpl implements RecordDao {
     Condition fieldsCondition = parseFieldsResult.isEnabled()
       ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
       : DSL.noCondition();
-    step.where(leaderCondition).and(fieldsCondition).and(recordStateCondition).and(suppressedFromDiscoveryCondition);
+    step.where(leaderCondition)
+      .and(fieldsCondition)
+      .and(recordStateCondition)
+      .and(suppressedFromDiscoveryCondition)
+      .and(recordTypeCondition);
   }
 
   @Override

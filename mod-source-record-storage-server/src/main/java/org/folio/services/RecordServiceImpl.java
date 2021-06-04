@@ -137,7 +137,9 @@ public class RecordServiceImpl implements RecordService {
     }
     ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(leaderExpression);
     ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(fieldsExpression);
-    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, deleted, suppress, offset, limit, tenantId);
+    /* Temporary set record type to MARC_BIB. This will come from Http request in future. See MODSOURCE-281 */
+    Record.RecordType defaultRecordType = Record.RecordType.MARC_BIB;
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, defaultRecordType, deleted, suppress, offset, limit, tenantId);
   }
 
   @Override

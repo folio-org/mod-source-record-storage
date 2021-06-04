@@ -131,15 +131,13 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Flowable<Row> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    if (leaderExpression == null && fieldsExpression == null) {
+  public Flowable<Row> streamMarcRecordIds(RecordSearchParameters searchParameters, String tenantId) {
+    if (searchParameters.getLeaderSearchExpression() == null && searchParameters.getFieldsSearchExpression() == null) {
       throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
     }
-    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(leaderExpression);
-    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(fieldsExpression);
-    /* Temporary set record type to MARC_BIB. This parameter will come from Http request in future. See MODSOURCE-281 */
-    Record.RecordType defaultRecordType = Record.RecordType.MARC_BIB;
-    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, defaultRecordType, deleted, suppress, offset, limit, tenantId);
+    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(searchParameters.getLeaderSearchExpression());
+    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(searchParameters.getFieldsSearchExpression());
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParameters, tenantId);
   }
 
   @Override

@@ -21,6 +21,7 @@ import org.folio.rest.impl.wrapper.SearchRecordIdsWriteStream;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.resource.SourceStorageStream;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.RecordSearchParameters;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
@@ -108,16 +109,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   @Override
   public void postSourceStorageStreamMarcRecordIdentifiers(MarcRecordSearchRequest request, RoutingContext routingContext, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);
-    Flowable<Row> flowable = recordService.streamMarcRecordIds(
-      request.getLeaderSearchExpression(),
-      request.getFieldsSearchExpression(),
-      request.getDeleted(),
-      request.getSuppressFromDiscovery(),
-      request.getOffset(),
-      request.getLimit(),
-      tenantId
-    );
-
+    Flowable<Row> flowable = recordService.streamMarcRecordIds(RecordSearchParameters.from(request), tenantId);
     processStream(new SearchRecordIdsWriteStream(response), flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));

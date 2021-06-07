@@ -18,6 +18,9 @@ public class RecordSearchParameters {
   private Integer offset;
 
   public static RecordSearchParameters from(MarcRecordSearchRequest request) {
+    if (request == null) {
+      throw new IllegalArgumentException("Failed to create RecordSearchParameters: the incoming MarcRecordSearchRequest is null");
+    }
     RecordSearchParameters params = new RecordSearchParameters();
     params.setLeaderSearchExpression(request.getLeaderSearchExpression());
     params.setFieldsSearchExpression(request.getFieldsSearchExpression());

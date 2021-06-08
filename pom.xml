@@ -20,7 +20,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <raml-module-builder.version>32.1.0</raml-module-builder.version>
+    <raml-module-builder.version>32.2.3</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>

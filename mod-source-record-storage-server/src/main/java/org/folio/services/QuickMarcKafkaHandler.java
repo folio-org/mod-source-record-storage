@@ -42,7 +42,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private static final String PARSED_RECORD_DTO_KEY = "PARSED_RECORD_DTO";
   private static final String SNAPSHOT_ID_KEY = "SNAPSHOT_ID";
   private static final String ERROR_KEY = "ERROR";
-  private static final String MARC_KEY = "MARC";
+  private static final String MARC_KEY = "MARC_BIB";
 
   private static final AtomicInteger indexer = new AtomicInteger();
 

@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -184,6 +185,7 @@ public class RecordServiceImpl implements RecordService {
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
+          .withProcessingStartedDate(new Date())
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
             .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
               .withId(newRecordId)

@@ -532,6 +532,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             context.fail(getSnapshot.cause());
           }
           context.assertTrue(getSnapshot.result().isPresent());
+          context.assertNotNull(getSnapshot.result().get().getProcessingStartedDate());
           recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID).onComplete(getNewRecord -> {
             if (getNewRecord.failed()) {
               context.fail(getNewRecord.cause());

@@ -1,3 +1,6 @@
+## 2021-05-xx v5.0.5-SNAPSHOT
+* [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM
+
 ## 2021-05-22 v5.0.4
 * [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release
 * [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed

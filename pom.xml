@@ -84,7 +84,6 @@
             -Dio.netty.tryReflectionSetAccessible=true
             --illegal-access=warn
           </argLine>
-          <testFailureIgnore>true</testFailureIgnore>
         </configuration>
       </plugin>
 

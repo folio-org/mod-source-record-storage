@@ -241,6 +241,7 @@
   </dependencyManagement>
 
   <build>
+    <sourceDirectory>${project.build.directory}/generated-sources/delombok</sourceDirectory>
     <resources>
       <resource>
         <directory>src/main/resources</directory>
@@ -529,6 +530,7 @@
           <complianceLevel>11</complianceLevel>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
+          <forceAjcCompile>true</forceAjcCompile>
           <aspectLibraries>
             <aspectLibrary>
               <groupId>org.folio</groupId>

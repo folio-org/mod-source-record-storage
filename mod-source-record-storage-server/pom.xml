@@ -241,7 +241,6 @@
   </dependencyManagement>
 
   <build>
-    <sourceDirectory>${project.build.directory}/generated-sources/delombok</sourceDirectory>
     <resources>
       <resource>
         <directory>src/main/resources</directory>

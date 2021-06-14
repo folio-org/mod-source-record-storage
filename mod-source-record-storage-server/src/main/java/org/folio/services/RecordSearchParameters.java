@@ -11,8 +11,6 @@ import org.folio.rest.jaxrs.model.Record;
  *
  * @see MarcRecordSearchRequest
  */
-@Getter(AccessLevel.PUBLIC)
-@Setter(AccessLevel.PRIVATE)
 public class RecordSearchParameters {
   private String leaderSearchExpression;
   private String fieldsSearchExpression;
@@ -36,5 +34,61 @@ public class RecordSearchParameters {
     params.setLimit(request.getLimit());
     params.setOffset(request.getOffset());
     return params;
+  }
+
+  public String getLeaderSearchExpression() {
+    return leaderSearchExpression;
+  }
+
+  public void setLeaderSearchExpression(String leaderSearchExpression) {
+    this.leaderSearchExpression = leaderSearchExpression;
+  }
+
+  public String getFieldsSearchExpression() {
+    return fieldsSearchExpression;
+  }
+
+  public void setFieldsSearchExpression(String fieldsSearchExpression) {
+    this.fieldsSearchExpression = fieldsSearchExpression;
+  }
+
+  public Record.RecordType getRecordType() {
+    return recordType;
+  }
+
+  public void setRecordType(Record.RecordType recordType) {
+    this.recordType = recordType;
+  }
+
+  public boolean isDeleted() {
+    return deleted;
+  }
+
+  public void setDeleted(boolean deleted) {
+    this.deleted = deleted;
+  }
+
+  public boolean isSuppressedFromDiscovery() {
+    return suppressedFromDiscovery;
+  }
+
+  public void setSuppressedFromDiscovery(boolean suppressedFromDiscovery) {
+    this.suppressedFromDiscovery = suppressedFromDiscovery;
+  }
+
+  public Integer getLimit() {
+    return limit;
+  }
+
+  public void setLimit(Integer limit) {
+    this.limit = limit;
+  }
+
+  public Integer getOffset() {
+    return offset;
+  }
+
+  public void setOffset(Integer offset) {
+    this.offset = offset;
   }
 }

@@ -1,8 +1,5 @@
 package org.folio.services;
 
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.Record;
 

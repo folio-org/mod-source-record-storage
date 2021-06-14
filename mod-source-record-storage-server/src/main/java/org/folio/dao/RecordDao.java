@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.RecordSearchParameters;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
@@ -61,14 +62,11 @@ public interface RecordDao {
    *
    * @param parseLeaderResult     result of parsing leaderSearchExpression
    * @param parseFieldsResult     result of parsing fieldsSearchExpression
-   * @param deleted               deleted
-   * @param suppress              suppress from discovery
-   * @param offset                offset
-   * @param limit                 limit
+   * @param searchParameters      additional parameters needed for search
    * @param tenantId              tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId);
+  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId);
 
   /**
    * Searches for {@link Record} by id

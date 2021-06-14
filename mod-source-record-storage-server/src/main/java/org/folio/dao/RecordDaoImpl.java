@@ -38,13 +38,13 @@ import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
+import org.folio.services.RecordSearchParameters;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
-import org.jooq.Loader;
 import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
@@ -64,7 +64,6 @@ import org.springframework.stereotype.Component;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -194,21 +193,21 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
     /* Building a search query */
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
-    if (offset != null) {
-      searchQuery.offset(offset);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
+    if (searchParameters.getOffset() != null) {
+      searchQuery.offset(searchParameters.getOffset());
     }
-    if (limit != null) {
-      searchQuery.limit(limit);
+    if (searchParameters.getLimit() != null) {
+      searchQuery.limit(searchParameters.getLimit());
     }
     /* Building a count query */
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.INSTANCE_ID)).from(RECORDS_LB);
     appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, deleted, suppress);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     /* Join both in one query */
     String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
 
@@ -234,16 +233,21 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, Boolean deleted, Boolean suppress) {
-    Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(deleted);
-    Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(suppress);
+  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
+    Condition recordTypeCondition = RecordDaoUtil.filterRecordByType(searchParameters.getRecordType().value());
+    Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(searchParameters.isDeleted());
+    Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(searchParameters.isSuppressedFromDiscovery());
     Condition leaderCondition = parseLeaderResult.isEnabled()
       ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
       : DSL.noCondition();
     Condition fieldsCondition = parseFieldsResult.isEnabled()
       ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
       : DSL.noCondition();
-    step.where(leaderCondition).and(fieldsCondition).and(recordStateCondition).and(suppressedFromDiscoveryCondition);
+    step.where(leaderCondition)
+      .and(fieldsCondition)
+      .and(recordStateCondition)
+      .and(suppressedFromDiscoveryCondition)
+      .and(recordTypeCondition);
   }
 
   @Override

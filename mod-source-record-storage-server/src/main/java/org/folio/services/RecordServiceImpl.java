@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -131,13 +132,13 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Flowable<Row> streamMarcRecordIds(String leaderExpression, String fieldsExpression, Boolean deleted, Boolean suppress, Integer offset, Integer limit, String tenantId) {
-    if (leaderExpression == null && fieldsExpression == null) {
+  public Flowable<Row> streamMarcRecordIds(RecordSearchParameters searchParameters, String tenantId) {
+    if (searchParameters.getLeaderSearchExpression() == null && searchParameters.getFieldsSearchExpression() == null) {
       throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
     }
-    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(leaderExpression);
-    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(fieldsExpression);
-    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, deleted, suppress, offset, limit, tenantId);
+    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(searchParameters.getLeaderSearchExpression());
+    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(searchParameters.getFieldsSearchExpression());
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParameters, tenantId);
   }
 
   @Override
@@ -184,6 +185,7 @@ public class RecordServiceImpl implements RecordService {
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
+          .withProcessingStartedDate(new Date())
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
             .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
               .withId(newRecordId)

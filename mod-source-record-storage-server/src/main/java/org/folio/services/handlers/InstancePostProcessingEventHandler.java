@@ -1,12 +1,14 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -169,7 +171,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
             result.complete();
           } else {
             result.fail(ar.cause());
-            LOG.error( "ERROR during update old records state for instance chane event", ar.cause());
+            LOG.error("ERROR during update old records state for instance chane event", ar.cause());
           }
         });
         return result.future();
@@ -188,8 +190,15 @@ public class InstancePostProcessingEventHandler implements EventHandler {
     }
     if (isNotEmpty(record.getExternalIdsHolder().getInstanceId())
       || isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
+      if (AdditionalFieldsUtil.ifFillingFieldsNeeded(record, instance)) {
+        executeHridManipulation(record, instance);
+      }
       return;
     }
+    executeHridManipulation(record, instance);
+  }
+
+  private void executeHridManipulation(Record record, JsonObject instance) {
     String instanceId = instance.getString("id");
     String instanceHrid = instance.getString("hrid");
     record.getExternalIdsHolder().setInstanceHrid(instanceHrid);

@@ -93,7 +93,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-  private static Record record_1 = new Record()
+  private static Record marc_bib_record_1 = new Record()
     .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -101,7 +101,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withMatchedId(FIRST_UUID)
     .withOrder(0)
     .withState(Record.State.ACTUAL);
-  private static Record record_2 = new Record()
+  private static Record marc_bib_record_2 = new Record()
     .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -113,7 +113,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid("12345"));
-  private static Record record_3 = new Record()
+  private static Record marc_bib_record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -121,7 +121,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withErrorRecord(errorRecord)
     .withMatchedId(THIRD_UUID)
     .withState(Record.State.ACTUAL);
-  private static Record record_4 = new Record()
+  private static Record marc_bib_record_4 = new Record()
     .withId(FOURTH_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -133,7 +133,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid("12345"));
-  private static Record record_5 = new Record()
+  private static Record marc_bib_record_5 = new Record()
     .withId(FIFTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -142,7 +142,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(invalidParsedRecord)
     .withOrder(101)
     .withState(Record.State.ACTUAL);
-  private static Record record_6 = new Record()
+  private static Record marc_bib_record_6 = new Record()
     .withId(SIXTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -154,7 +154,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid("12345"));
-  private static Record record_7 = new Record()
+  private static Record marc_auth_record_1 = new Record()
     .withId(SEVENTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(RecordType.MARC_AUTHORITY)
@@ -212,7 +212,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -247,7 +247,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4, record_7);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4, marc_auth_record_1);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -282,13 +282,13 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, recordWithOldStatus);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?state=ACTUAL&snapshotId=" + record_2.getSnapshotId())
+      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?state=ACTUAL&snapshotId=" + marc_bib_record_2.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().asInputStream();
@@ -298,8 +298,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
-        testContext.assertEquals(record_2.getSnapshotId(), actual.get(0).getSnapshotId());
-        testContext.assertEquals(record_2.getSnapshotId(), actual.get(1).getSnapshotId());
+        testContext.assertEquals(marc_bib_record_2.getSnapshotId(), actual.get(0).getSnapshotId());
+        testContext.assertEquals(marc_bib_record_2.getSnapshotId(), actual.get(1).getSnapshotId());
         testContext.assertEquals(false, actual.get(1).getAdditionalInfo().getSuppressDiscovery());
         testContext.assertEquals(false, actual.get(1).getAdditionalInfo().getSuppressDiscovery());
         async.complete();
@@ -321,13 +321,13 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, record_1, record_2, record_3, record_7, recordWithOldStatus);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, marc_auth_record_1, recordWithOldStatus);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=MARC_AUTHORITY&state=ACTUAL&snapshotId=" + record_7.getSnapshotId())
+      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=MARC_AUTHORITY&state=ACTUAL&snapshotId=" + marc_auth_record_1.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().asInputStream();
@@ -337,7 +337,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         testContext.assertEquals(1, actual.size());
-        testContext.assertEquals(record_7.getSnapshotId(), actual.get(0).getSnapshotId());
+        testContext.assertEquals(marc_auth_record_1.getSnapshotId(), actual.get(0).getSnapshotId());
         testContext.assertEquals(false, actual.get(0).getAdditionalInfo().getSuppressDiscovery());
         async.complete();
       }).collect(() -> actual, (a, r) -> a.add(r))
@@ -358,7 +358,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, recordWithOldStatus);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -485,11 +485,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnSpecificSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_3);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(marc_bib_record_2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -520,11 +520,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsNull(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_3);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
-      .body(record_3)
+      .body(marc_bib_record_3)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -552,7 +552,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnEmptyCollectionOnGetByRecordIdIfThereIsNoSuchRecord(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2, record_3);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -579,7 +579,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
     Response createParsed = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(marc_bib_record_2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
@@ -618,12 +618,12 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnErrorOnGetByRecordIdIfInvalidUUID(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2);
 
     Record createdRecord =
       RestAssured.given()
         .spec(spec)
-        .body(record_3)
+        .body(marc_bib_record_3)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .body().as(Record.class);
@@ -666,7 +666,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(11)
       .withState(Record.State.ACTUAL);
 
-    postRecords(testContext, record_2, record_2_tmp, record_4, record_4_tmp);
+    postRecords(testContext, marc_bib_record_2, record_2_tmp, marc_bib_record_4, record_4_tmp);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -703,7 +703,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
 
     // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
-    postRecords(testContext, record_2, record_3, record_5, record_6);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_3, marc_bib_record_5, marc_bib_record_6);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -734,7 +734,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnSourceRecordsForPeriod(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1);
+    postRecords(testContext, marc_bib_record_1);
 
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 
@@ -742,7 +742,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     String from = dateTimeFormatter.format(ZonedDateTime.ofInstant(fromDate.toInstant(), ZoneId.systemDefault()));
 
     // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
-    postRecords(testContext, record_2, record_3, record_4, record_5);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_3, marc_bib_record_4, marc_bib_record_5);
 
     Date toDate = new Date();
     String to = dateTimeFormatter.format(ZonedDateTime.ofInstant(toDate.toInstant(), ZoneId.systemDefault()));
@@ -750,7 +750,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     RestAssured.given()
         .spec(spec)
-        .body(record_6)
+        .body(marc_bib_record_6)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()
@@ -899,7 +899,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setFieldsSearchExpression(
       "001.value = '393893' " +
@@ -934,7 +934,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
     // when
@@ -958,7 +958,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
     searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
@@ -984,7 +984,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     Response createParsed = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(marc_bib_record_2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
@@ -1023,7 +1023,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     Response createParsed = RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(marc_bib_record_2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
@@ -1062,12 +1062,12 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     Async async = testContext.async();
     Record suppressedRecord = new Record()
-      .withId(record_2.getId())
+      .withId(marc_bib_record_2.getId())
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(record_2.getRawRecord())
-      .withParsedRecord(record_2.getParsedRecord())
-      .withMatchedId(record_2.getMatchedId())
+      .withRawRecord(marc_bib_record_2.getRawRecord())
+      .withParsedRecord(marc_bib_record_2.getParsedRecord())
+      .withMatchedId(marc_bib_record_2.getMatchedId())
       .withState(Record.State.ACTUAL)
       .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
     postSnapshots(testContext, snapshot_2);
@@ -1097,15 +1097,15 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     Async async = testContext.async();
     Record suppressedRecord = new Record()
-      .withId(record_2.getId())
+      .withId(marc_bib_record_2.getId())
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(record_2.getRawRecord())
-      .withParsedRecord(record_2.getParsedRecord())
-      .withMatchedId(record_2.getMatchedId())
+      .withRawRecord(marc_bib_record_2.getRawRecord())
+      .withParsedRecord(marc_bib_record_2.getParsedRecord())
+      .withMatchedId(marc_bib_record_2.getMatchedId())
       .withState(Record.State.ACTUAL)
       .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
-      .withExternalIdsHolder(record_2.getExternalIdsHolder());
+      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, suppressedRecord);
 
@@ -1134,7 +1134,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
     searchRequest.setLimit(0);
@@ -1159,7 +1159,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
     searchRequest.setLimit(1);
@@ -1184,7 +1184,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     // given
     final Async async = testContext.async();
     postSnapshots(testContext, snapshot_2);
-    postRecords(testContext, record_2);
+    postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setFieldsSearchExpression("001.value = '393893'");
     searchRequest.setOffset(1);
@@ -1201,6 +1201,54 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     assertEquals(HttpStatus.SC_OK, response.statusCode());
     assertEquals(0, responseBody.getJsonArray("records").size());
     assertEquals(1, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdResponseOnSearchMarcRecordIdsWhenMarcBibAndAuthoritySaved(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, marc_bib_record_2, marc_auth_record_1);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenMarcBibAndAuthoritySaved(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, marc_auth_record_1);
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 

@@ -24,7 +24,6 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.Assert;
 import org.junit.Before;

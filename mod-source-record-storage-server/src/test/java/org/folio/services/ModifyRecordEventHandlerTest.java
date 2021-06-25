@@ -15,16 +15,8 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.Data;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.MarcField;
-import org.folio.rest.jaxrs.model.MarcMappingDetail;
-import org.folio.rest.jaxrs.model.MarcSubfield;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.Assert;
 import org.junit.Before;
@@ -70,7 +62,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
-    .withDataType(JobProfile.DataType.MARC_BIB);
+    .withDataType(JobProfile.DataType.MARC);
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())

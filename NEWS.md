@@ -1,3 +1,7 @@
+## 2021-06-25 v5.1.2
+* [MODSOURCE-323](https://issues.folio.org/browse/MODSOURCE-323) Change dataType to have have common type for MARC related subtypes
+* Update data-import-processing-core dependency to v3.1.2
+
 ## 2021-06-22 v5.1.1
 * [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
 

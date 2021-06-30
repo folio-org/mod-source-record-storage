@@ -55,4 +55,6 @@
 
   <include file="scripts/v-0.0.4/2021-05-19--13-00-drop-unused-set-id-function.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-5.0.6-5.1.3-5.2.0/2021-06-30--16-00-update-snapshot-invalid-statuses.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

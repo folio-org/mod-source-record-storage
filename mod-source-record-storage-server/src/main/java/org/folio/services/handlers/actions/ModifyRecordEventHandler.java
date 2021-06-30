@@ -110,6 +110,8 @@ public class ModifyRecordEventHandler implements EventHandler {
     if (marcMappingOption == MappingDetail.MarcMappingOption.UPDATE) {
       Record changedRecord = Json.decodeValue(context.remove(MATCHED_MARC_BIB_KEY), Record.class);
       changedRecord.setSnapshotId(dataImportEventPayload.getJobExecutionId());
+      changedRecord.setGeneration(null);
+      changedRecord.setId(UUID.randomUUID().toString());
       context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(changedRecord));
     }
   }

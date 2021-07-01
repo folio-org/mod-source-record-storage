@@ -502,6 +502,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
     deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }

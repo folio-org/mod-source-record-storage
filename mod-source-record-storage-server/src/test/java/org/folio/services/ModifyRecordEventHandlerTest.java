@@ -131,13 +131,16 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
+    Async async = context.async();
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     modifyRecordEventHandler = new ModifyRecordEventHandler(recordService);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
-      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
 
     snapshotForRecordUpdate = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -157,13 +160,22 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       .compose(v -> recordService.saveRecord(record, TENANT_ID))
       .compose(v -> SnapshotDaoUtil.update(queryExecutor, snapshot.withStatus(COMMITTED)))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess());
+      .onSuccess(v -> async.complete())
+      .onFailure(context::fail);
   }
 
   @After
   public void tearDown(TestContext context) {
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
-      .onComplete(context.asyncAssertSuccess());
+    Async async = context.async();
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(ar -> {
+      if (ar.failed()) {
+        System.err.println("tearDown failed cause: " + ar.cause().getMessage());
+        context.fail();
+        return;
+      }
+      System.err.println("tearDown completed");
+      async.complete();
+    });
   }
 
   @Test
@@ -183,7 +195,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
         .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
-
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -209,6 +220,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldUpdateMatchedMarcRecordWithFieldFromIncomingRecord(TestContext context) {
+    System.err.println("TEST 1");
     // given
     Async async = context.async();
 
@@ -254,6 +266,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldModifyMarcRecordAndRemove003Field(TestContext context) {
+    System.err.println("TEST 2");
     // given
     Async async = context.async();
 
@@ -275,6 +288,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)

@@ -1,5 +1,6 @@
 ## 2021-xx-xx v5.1.3-SNAPSHOT
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+* [MODSOURMAN-451](https://issues.folio.org/browse/MODSOURMAN-451) Log details for Inventory single record imports for Overlays
 
 ## 2021-06-25 v5.1.2
 * [MODSOURCE-323](https://issues.folio.org/browse/MODSOURCE-323) Change dataType to have common type for MARC related subtypes

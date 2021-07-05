@@ -2,7 +2,6 @@ package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -15,7 +14,6 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.SnapshotDao;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
@@ -131,8 +129,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
-    Async async = context.async();
-
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     modifyRecordEventHandler = new ModifyRecordEventHandler(recordService);
@@ -158,24 +154,14 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.update(queryExecutor, snapshot.withStatus(COMMITTED)))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
-      .onSuccess(v -> async.complete())
-      .onFailure(context::fail);
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @After
   public void tearDown(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(ar -> {
-      if (ar.failed()) {
-        System.err.println("tearDown failed cause: " + ar.cause().getMessage());
-        context.fail();
-        return;
-      }
-      System.err.println("tearDown completed");
-      async.complete();
-    });
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -220,7 +206,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldUpdateMatchedMarcRecordWithFieldFromIncomingRecord(TestContext context) {
-    System.err.println("TEST 1");
     // given
     Async async = context.async();
 
@@ -266,7 +251,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldModifyMarcRecordAndRemove003Field(TestContext context) {
-    System.err.println("TEST 2");
     // given
     Async async = context.async();
 

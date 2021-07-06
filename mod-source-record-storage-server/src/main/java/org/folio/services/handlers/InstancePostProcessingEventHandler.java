@@ -1,14 +1,12 @@
 package org.folio.services.handlers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -40,10 +38,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -228,12 +227,12 @@ public class InstancePostProcessingEventHandler implements EventHandler {
   private void sendEventToDataImportLog(DataImportEventPayload dataImportEventPayload, Record record, List<KafkaHeader> kafkaHeaders, String key) {
     if (dataImportEventPayload.getEventType().equals(DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value()) && record.getGeneration() != null) {
       if (record.getGeneration() > 0) {
-        dataImportEventPayload.setEventType("DI_LOG_SRS_MARC_BIB_RECORD_UPDATED");
-        sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(dataImportEventPayload), "DI_LOG_SRS_MARC_BIB_RECORD_UPDATED",
+        dataImportEventPayload.setEventType(DI_LOG_SRS_MARC_BIB_RECORD_UPDATED.value());
+        sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(dataImportEventPayload), DI_LOG_SRS_MARC_BIB_RECORD_UPDATED.value(),
           kafkaHeaders, kafkaConfig, key);
       } else if (record.getGeneration() == 0) {
-        dataImportEventPayload.setEventType("DI_LOG_SRS_MARC_BIB_RECORD_CREATED");
-        sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(dataImportEventPayload), "DI_LOG_SRS_MARC_BIB_RECORD_CREATED",
+        dataImportEventPayload.setEventType(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value());
+        sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(dataImportEventPayload), DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(),
           kafkaHeaders, kafkaConfig, key);
       }
     }

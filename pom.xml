@@ -79,11 +79,6 @@
         <version>2.22.2</version>
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
-          <argLine>
-            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
-            -Dio.netty.tryReflectionSetAccessible=true
-            --illegal-access=warn
-          </argLine>
         </configuration>
       </plugin>
 
@@ -96,6 +91,15 @@
           <tagNameFormat>v@{project.version}</tagNameFormat>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>2.8.1</version>
+        <configuration>
+          <generateBackupPoms>false</generateBackupPoms>
         </configuration>
       </plugin>
 

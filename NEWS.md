@@ -1,7 +1,93 @@
-## 2020-12-07 v4.2.0-SNAPSHOT
+## xxxx-xx-xx v5.2.0-SNAPSHOT
+* [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
+* [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+
+## 2021-xx-xx v5.1.3
+* [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+* [MODSOURMAN-451](https://issues.folio.org/browse/MODSOURMAN-451) Log details for Inventory single record imports for Overlays
+
+## 2021-06-25 v5.1.2
+* [MODSOURCE-323](https://issues.folio.org/browse/MODSOURCE-323) Change dataType to have common type for MARC related subtypes
+* Update data-import-processing-core dependency to v3.1.2
+
+## 2021-06-22 v5.1.1
+* [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
+
+## 2021-06-11 v5.1.0
+* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches
+* [MODSOURCE-269](https://issues.folio.org/browse/MODSOURCE-269) Implement presence or absence searches for indicators
+* [MODSOURCE-276](https://issues.folio.org/browse/MODSOURCE-276) Add existing records to the SRS Query API table
+* [MODSOURCE-288](https://issues.folio.org/browse/MODSOURCE-288) Migrate QM-flow to Kafka
+* [MODSOURCE-279](https://issues.folio.org/browse/MODSOURCE-279) Store MARC Authority record
+* [MODSOURCE-308](https://issues.folio.org/browse/MODSOURCE-308) Update interfaces version
+* [MODSOURCE-310](https://issues.folio.org/browse/MODSOURCE-310) Handling 001/003/035 handling in SRS for MARC bib records broken
+* [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM
+* [MODSOURCE-301](https://issues.folio.org/browse/MODSOURCE-301) Cannot import GOBI EDIFACT invoice
+* [MODSOURCE-316](https://issues.folio.org/browse/MODSOURCE-316) quickMARC Latency: quickMARC updates are not reflected on Inventory instance record
+
+## 2021-xx-xx v5.0.6
+* [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+
+## 2021-06-17 v5.0.5
+* [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM
+* [MODSOURCE-310](https://issues.folio.org/browse/MODSOURCE-310) Handling 001/003/035 handling in SRS for MARC bib records broken
+* [MODSOURCE-301](https://issues.folio.org/browse/MODSOURCE-301) Cannot import GOBI EDIFACT invoice
+* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches
+* Update folio-kafka-wrapper to v2.0.8
+* Update data-import-processing-core to v3.0.3
+
+## 2021-05-22 v5.0.4
+* [MODSOURCE-280](https://issues.folio.org/browse/MODSOURCE-280) Issue with database migration for Iris release
+* [MODSOURCE-278](https://issues.folio.org/browse/MODSOURCE-278) Take into account saved records from failed data import on generation calculation. Prevent import hanging if records saving failed
+* [MODSOURCE-285](https://issues.folio.org/browse/MODSOURCE-285) Order of execution keeps marc updates from occurring
+* [MODSOURCE-295](https://issues.folio.org/browse/MODSOURCE-295) Multiple records are found by match criteria after subsequent updates
+
+## 2021-04-23 v5.0.3
+* [MODSOURCE-272](https://issues.folio.org/browse/MODSOURCE-272) MARC srs query API returns 0 results on bugfest
+
+## 2021-04-22 v5.0.2
+* [MODSOURCE-267](https://issues.folio.org/browse/MODSOURCE-267) View Source does not update when Data Import updates bib record
+* [MODSOURMAN-437](https://issues.folio.org/browse/MODSOURMAN-437) Add logging for event correlationId
+
+## 2021-04-09 v5.0.1
+* [MODSOURCE-222](https://issues.folio.org/browse/MODSOURCE-222) Design API & implement data structures and end-points for search functionality in mod-source-record-storage
+* [MODSOURCE-223](https://issues.folio.org/browse/MODSOURCE-223) Design and implement service layer for MARC search functionality
+* [MODSOURCE-255](https://issues.folio.org/browse/MODSOURCE-255) Return HTTP response according to the schema
+* [MODSOURCE-257](https://issues.folio.org/browse/MODSOURCE-257) Implement the search by position
+* [MODSOURCE-256](https://issues.folio.org/browse/MODSOURCE-256) Implement the search by the date range
+* [MODSOURCE-258](https://issues.folio.org/browse/MODSOURCE-258) Implement NOT searches
+* [MODSOURCE-260](https://issues.folio.org/browse/MODSOURCE-260) Position count should begin at 0 when searching control fields
+* [MODSOURCE-263](https://issues.folio.org/browse/MODSOURCE-263) SRS MARC Bib column indicates the MARC record was "Created" for "Update" operation
+
+## 2021-03-12 v5.0.0
 * [MODSOURMAN-385](https://issues.folio.org/browse/MODSOURMAN-385) Enable OCLC update processing.
 * [MODSOURCE-217](https://issues.folio.org/browse/MODSOURCE-217) If incoming MARC bib lacks 001, sometimes it is added and sometimes not.[BUGFIX].
 * [MODSOURCE-218](https://issues.folio.org/browse/MODSOURCE-218) Performance issues with SRS requests when instance ID is not found
+* [MODSOURCE-232](https://issues.folio.org/browse/MODSOURCE-232) Making Instance Records Suppress from Discovery with the Batch Import is not reflected in the SRS
+* [MODSOURCE-220](https://issues.folio.org/browse/MODSOURCE-220) Migration script between Goldenrod-hotfix-5 and Honeysuckle.
+* [MODSOURCE-233](https://issues.folio.org/browse/MODSOURCE-233) Support for storing EDIFACT records in the database
+* [MODSOURCE-216](https://issues.folio.org/browse/MODSOURCE-216) Update MARC 005 field when MARC record has changes
+* [MODSOURCE-204](https://issues.folio.org/browse/MODSOURCE-204) Join query for get records. Add records_lb index for order column.
+* [MODSOURCE-203](https://issues.folio.org/browse/MODSOURCE-203) Ensure queries with offset include order. Add records_lb order index to liquibase change log.
+* [MODSOURCE-202](https://issues.folio.org/browse/MODSOURCE-202) Records stream API using reactivex.
+* [MODSOURCE-201](https://issues.folio.org/browse/MODSOURCE-201) Source Records stream API using reactivex.
+* [MODSOURCE-238](https://issues.folio.org/browse/MODSOURCE-238) Use docker-maven-plugin to support build with newer versions of postgres.
+* [MODSOURCE-242](https://issues.folio.org/browse/MODSOURCE-242) Use Testcontainers for tests.
+* [MODSOURCE-234](https://issues.folio.org/browse/MODSOURCE-234) Add `recordType` query parameter to Records and Source Records APIs. Update join queries to condition on `record_type`. Add database index for `record_type` column of `records_lb` table.
+* [MODSOURCE-205](https://issues.folio.org/browse/MODSOURCE-205) Batch API implementation redesign.
+* [MODSOURCE-177](https://issues.folio.org/browse/MODSOURCE-177) Use kafka to receive chunks of parsed records for saving
+* [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
+* [MODSOURCE-225](https://issues.folio.org/browse/MODSOURCE-225) Add personal data disclosure.
+* [MODSOURCE-239](https://issues.folio.org/browse/MODSOURCE-239) Upgrade to RAML Module Builder 32.x.
+* [MODSOURCE-250](https://issues.folio.org/browse/MODSOURCE-250) Make tenant API asynchronous.
+* [MODSOURCE-248](https://issues.folio.org/browse/MODSOURCE-248) Incoming MARC Bib with 003, but no 001 should not create an 035[BUGFIX].
+
+
+### Stream Records API
+ | METHOD |             URL                                      | DESCRIPTION                                                               |
+ |--------|------------------------------------------------------|---------------------------------------------------------------------------|
+ | GET    | /source-storage/stream/records                       | Stream collection of records; including raw, parsed, and error record     |
+ | GET    | /source-storage/stream/source-records                | Stream collection of source records; latest generation with parsed record |
 
 ## 2020-11-20 v4.1.3
 * [MODSOURCE-212](https://issues.folio.org/browse/MODSOURCE-212) Fix matching by 999 ff s field

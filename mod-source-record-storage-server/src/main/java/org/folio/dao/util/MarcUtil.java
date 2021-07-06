@@ -1,5 +1,7 @@
 package org.folio.dao.util;
 
+import static java.lang.String.format;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +32,7 @@ public class MarcUtil {
    *
    * @param rawMarc raw MARC
    * @return MARC json
-   * @throws IOException
+   * @throws IOException - throws while converting MARC raw to MARC json
    */
   public static String rawMarcToMarcJson(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
@@ -42,7 +44,7 @@ public class MarcUtil {
    *
    * @param rawMarc raw MARC
    * @return text formatted MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC raw to formatted MARC json
    */
   public static String rawMarcToTxtMarc(String rawMarc) throws IOException {
     Record record = rawMarcToRecord(rawMarc);
@@ -54,7 +56,7 @@ public class MarcUtil {
    *
    * @param marcJson MARC json
    * @return raw MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC json to MARC raw
    */
   public static String marcJsonToRawMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);
@@ -66,7 +68,7 @@ public class MarcUtil {
    *
    * @param marcJson MARC json
    * @return text formatted MARC
-   * @throws IOException
+   * @throws IOException - throws while converting MARC json to MARC text formatted
    */
   public static String marcJsonToTxtMarc(String marcJson) throws IOException {
     Record record = marcJsonToRecord(marcJson);
@@ -80,7 +82,7 @@ public class MarcUtil {
         return reader.next();
       }
     }
-    throw new MarcException(String.format("Unable to read: %s", rawMarc));
+    throw new MarcException(format("Unable to read: %s", rawMarc));
   }
 
   private static Record marcJsonToRecord(String marcJson) throws IOException {
@@ -94,7 +96,7 @@ public class MarcUtil {
         }
       }
     }
-    throw new MarcException(String.format("Unable to read: %s", marcJson));
+    throw new MarcException(format("Unable to read: %s", marcJson));
   }
 
   private static String recordToMarcJson(Record record) throws IOException {

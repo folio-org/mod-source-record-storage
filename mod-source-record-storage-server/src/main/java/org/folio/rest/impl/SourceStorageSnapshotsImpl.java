@@ -1,12 +1,15 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static java.lang.String.format;
+import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
+import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
+
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
+
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -19,17 +22,17 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.util.List;
-import java.util.Map;
-
-import static org.folio.dao.util.SnapshotDaoUtil.filterSnapshotByStatus;
-import static org.folio.dao.util.SnapshotDaoUtil.toSnapshotOrderFields;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceStorageSnapshotsImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
 
   @Autowired
@@ -67,7 +70,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterSnapshotByStatus(status);
-        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy);
+        List<OrderField<?>> orderFields = toSnapshotOrderFields(orderBy, true);
         snapshotService.getSnapshots(condition, orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSnapshotsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -107,7 +110,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .map(deleted -> Boolean.TRUE.equals(deleted)
             ? DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204()
             : DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(
-                String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
+                format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId)))
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
@@ -125,7 +128,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
       try {
         snapshotService.getSnapshotById(jobExecutionId, tenantId)
           .map(optionalSnapshot -> optionalSnapshot.orElseThrow(() ->
-            new NotFoundException(String.format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
+            new NotFoundException(format(NOT_FOUND_MESSAGE, Snapshot.class.getSimpleName(), jobExecutionId))))
           .map(GetSourceStorageSnapshotsByJobExecutionIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

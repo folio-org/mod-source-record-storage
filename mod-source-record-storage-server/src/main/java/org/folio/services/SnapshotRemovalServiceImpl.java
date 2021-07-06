@@ -1,13 +1,17 @@
 package org.folio.services;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static java.lang.String.format;
+import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.Record;
@@ -15,18 +19,17 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import org.folio.okapi.common.GenericCompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpMethod;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Service
 public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SnapshotRemovalServiceImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String INVENTORY_INSTANCES_PATH = "/inventory/instances/%s";
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "50"));
@@ -57,7 +60,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
         while (totalRequestedRecords < totalRecords) {
           int offset = totalRequestedRecords;
-          future = future.compose(ar -> recordService.getRecords(condition, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
+          future = future.compose(ar -> recordService.getRecords(condition, RecordType.MARC_BIB, Collections.emptyList(), offset, RECORDS_LIMIT, params.getTenantId()))
             .compose(recordCollection -> deleteInstances(recordCollection.getRecords(), params));
           totalRequestedRecords += RECORDS_LIMIT;
         }
@@ -72,12 +75,12 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
       .collect(Collectors.toList());
 
     Promise<Void> promise = Promise.promise();
-    List<Future> deleteInstancesFutures = new ArrayList<>();
+    List<Future<Boolean>> deleteInstancesFutures = new ArrayList<>();
     for (String instanceId : instanceIds) {
       deleteInstancesFutures.add(deleteInstanceById(instanceId, params));
     }
 
-    CompositeFuture.join(deleteInstancesFutures)
+    GenericCompositeFuture.join(deleteInstancesFutures)
       .onSuccess(ar -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
@@ -85,12 +88,12 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
   private Future<Boolean> deleteInstanceById(String id, OkapiConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
-    String instacesUrl = String.format(INVENTORY_INSTANCES_PATH, id);
+    String instacesUrl = format(INVENTORY_INSTANCES_PATH, id);
 
     RestUtil.doRequest(params, instacesUrl, HttpMethod.DELETE, null)
       .onComplete(responseAr -> {
         if (responseAr.failed()) {
-          LOG.error("Error deleting inventory instance by id '{}'", responseAr.cause(), id);
+          LOG.error("Error deleting inventory instance by id '{}'", id, responseAr.cause());
           promise.complete(false);
         } else if (responseAr.result().getCode() != SC_NO_CONTENT) {
           LOG.error("Failed to delete inventory instance by id '{}', response status: {}", id, responseAr.result().getCode());

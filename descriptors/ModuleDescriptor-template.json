@@ -1,24 +1,6 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Source Record Storage Module",
-  "requires": [
-    {
-      "id": "pubsub-event-types",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-publishers",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-subscribers",
-      "version": "0.1"
-    },
-    {
-      "id": "pubsub-publish",
-      "version": "0.1"
-    }
-  ],
   "provides": [
     {
       "id": "source-storage-snapshots",
@@ -72,7 +54,7 @@
     },
     {
       "id": "source-storage-records",
-      "version": "2.0",
+      "version": "3.0",
       "handlers": [
         {
           "methods": [
@@ -141,7 +123,7 @@
     },
     {
       "id": "source-storage-source-records",
-      "version": "2.0",
+      "version": "3.0",
       "handlers": [
         {
           "methods": [
@@ -179,8 +161,41 @@
       ]
     },
     {
+      "id": "source-storage-stream",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/stream/records",
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
+        },
+        {
+          "methods": [
+            "GET"
+          ],
+          "pathPattern": "/source-storage/stream/source-records",
+          "permissionsRequired": [
+            "source-storage.sourceRecords.get"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/stream/marc-record-identifiers",
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
+        }
+      ]
+    },
+    {
       "id": "source-storage-batch",
-      "version": "0.1",
+      "version": "1.0",
       "handlers": [
         {
           "methods": [
@@ -203,51 +218,21 @@
       ]
     },
     {
-      "id": "source-storage-event-handlers",
-      "version": "1.0",
-      "handlers": [
-        {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/handlers/data-import",
-          "permissionsRequired": [
-            "source-storage.events.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
-          ]
-        },
-        {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/handlers/updated-record",
-          "permissionsRequired": [
-            "source-storage.events.post"
-          ],
-          "modulePermissions": [
-            "pubsub.publish.post"
-          ]
-        }
-      ]
-    },
-    {
       "id": "_tenant",
-      "version": "1.2",
+      "version": "2.0",
       "interfaceType": "system",
       "handlers": [
         {
           "methods": [
-            "POST",
-            "DELETE"
+            "POST"
           ],
-          "pathPattern": "/_/tenant",
-          "modulePermissions": [
-            "pubsub.event-types.post",
-            "pubsub.publishers.post",
-            "pubsub.subscribers.post"
-          ]
+          "pathPattern": "/_/tenant"
+        },
+        {
+          "methods": [
+            "DELETE", "GET"
+          ],
+          "pathPattern": "/_/tenant/{id}"
         }
       ]
     }
@@ -383,6 +368,14 @@
       {
         "name": "test.mode",
         "value": "true"
+      },
+      {
+        "name": "KAFKA_HOST",
+        "value": "10.0.2.15"
+      },
+      {
+        "name": "KAFKA_PORT",
+        "value": "9092"
       }
     ]
   }

@@ -59,7 +59,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
   }
 
   @Before
@@ -90,46 +90,25 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
-    Async async = testContext.async();
-    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
-    for (Snapshot snapshot : snapshotsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot)
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-    }
-    async.complete();
+    Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3 };
+    postSnapshots(testContext, snapshots);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(snapshotsToPost.size()));
+      .body("totalRecords", is(snapshots.length));
     async.complete();
   }
 
   @Test
   public void shouldReturnNewSnapshotsOnGetByStatusNew(TestContext testContext) {
-    Async async = testContext.async();
-    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3);
-    for (Snapshot snapshot : snapshotsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot)
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-    }
-    async.complete();
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -167,20 +146,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnLimitedCollectionOnGet(TestContext testContext) {
-    Async async = testContext.async();
-    List<Snapshot> snapshotsToPost = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
-    for (Snapshot snapshot : snapshotsToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot)
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-    }
-    async.complete();
+    Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3, snapshot_4 };
+    postSnapshots(testContext, snapshots);
 
-    async = testContext.async();
+    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -188,7 +157,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("snapshots.size()", is(3))
-      .body("totalRecords", is(snapshotsToPost.size()));
+      .body("totalRecords", is(snapshots.length));
     async.complete();
   }
 
@@ -329,7 +298,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     String instanceId = UUID.randomUUID().toString();
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
       .withSnapshotId(snapshot_3.getJobExecutionId());

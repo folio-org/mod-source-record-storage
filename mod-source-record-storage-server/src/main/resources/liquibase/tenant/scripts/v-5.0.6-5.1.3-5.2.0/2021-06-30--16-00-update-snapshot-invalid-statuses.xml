@@ -1,0 +1,15 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2021-06-30--16-00-update-snapshot-invalid-statuses" author="KaterynaSenchenko">
+    <sql>
+      UPDATE ${database.defaultSchemaName}.snapshots_lb
+      SET status = 'ERROR'
+      WHERE status != 'COMMITTED';
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

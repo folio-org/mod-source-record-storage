@@ -1,27 +1,15 @@
 package org.folio.services;
 
-import static java.lang.String.format;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.sqlclient.Row;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.MarcUtil;
-import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -32,21 +20,36 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
+import org.folio.services.util.parser.SearchExpressionParser;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+
+import static java.lang.String.format;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 @Service
 public class RecordServiceImpl implements RecordService {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RecordServiceImpl.class);
+  private static final Logger LOG = LogManager.getLogger();
 
   private final RecordDao recordDao;
 
@@ -56,9 +59,14 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordCollection> getRecords(Condition condition, Collection<OrderField<?>> orderFields, int offset,
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset,
       int limit, String tenantId) {
-    return recordDao.getRecords(condition, orderFields, offset, limit, tenantId);
+    return recordDao.getRecords(condition, recordType, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
@@ -67,27 +75,15 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getRecordByExternalId(externalId, externalIdType, tenantId);
-  }
-
-  @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    if (Objects.isNull(record.getId())) {
-      record.setId(UUID.randomUUID().toString());
-    }
-    if (Objects.isNull(record.getAdditionalInfo()) || Objects.isNull(record.getAdditionalInfo().getSuppressDiscovery())) {
-      record.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false));
-    }
+    ensureRecordHasId(record);
+    ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
       .map(optionalSnapshot -> optionalSnapshot
-        .orElseThrow(() -> new NotFoundException("Couldn't find snapshot with id " + record.getSnapshotId())))
+        .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
       .compose(snapshot -> {
         if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-          String msgTemplate = "Date when processing started is not set, expected snapshot status is PARSING_IN_PROGRESS, actual - %s";
-          String message = String.format(msgTemplate, snapshot.getStatus());
-          return Future.failedFuture(new BadRequestException(message));
+          return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
         }
         return Future.succeededFuture();
       })
@@ -106,30 +102,17 @@ public class RecordServiceImpl implements RecordService {
         } else {
           return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
         }
-      }),
-      tenantId);
+      }), tenantId);
   }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = recordCollection.getRecords().stream()
-      .map(record -> saveRecord(record, tenantId))
-      .collect(Collectors.toList());
-    Promise<RecordsBatchResponse> promise = Promise.promise();
-    CompositeFuture.join(futures).onComplete(ar -> {
-      RecordsBatchResponse response = new RecordsBatchResponse();
-      futures.forEach(save -> {
-        if (save.failed()) {
-          response.getErrorMessages().add(save.cause().getMessage());
-        } else {
-          response.getRecords().add((Record) save.result());
-        }
-      });
-      response.setTotalRecords(response.getRecords().size());
-      promise.complete(response);
-    });
-    return promise.future();
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<RecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new RecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
+    return recordDao.saveRecords(recordCollection, tenantId);
   }
 
   @Override
@@ -138,57 +121,56 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(Condition condition, Collection<OrderField<?>> orderFields,
+  public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return recordDao.getSourceRecords(condition, orderFields, offset, limit, tenantId);
+    return recordDao.getSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, String idType, Boolean deleted, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
-    return recordDao.getSourceRecords(ids, externalIdType, deleted, tenantId);
+  public Flowable<SourceRecord> streamSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return recordDao.streamSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Flowable<Row> streamMarcRecordIds(RecordSearchParameters searchParameters, String tenantId) {
+    if (searchParameters.getLeaderSearchExpression() == null && searchParameters.getFieldsSearchExpression() == null) {
+      throw new IllegalArgumentException("The 'leaderSearchExpression' and the 'fieldsSearchExpression' are missing");
+    }
+    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(searchParameters.getLeaderSearchExpression());
+    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(searchParameters.getFieldsSearchExpression());
+    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParameters, tenantId);
+  }
+
+  @Override
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId) {
+    return recordDao.getSourceRecords(ids, externalIdType, recordType, deleted, tenantId);
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, ExternalIdType externalIdType, String tenantId) {
     return recordDao.getSourceRecordByExternalId(id, externalIdType, tenantId);
   }
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
-    @SuppressWarnings("squid:S3740")
-    List<Future> futures = recordCollection.getRecords().stream()
-      .map(this::validateParsedRecordId)
-      .map(record -> recordDao.updateParsedRecord(record, tenantId))
-      .collect(Collectors.toList());
-    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
-    CompositeFuture.join(futures).onComplete(ar -> {
-      ParsedRecordsBatchResponse response = new ParsedRecordsBatchResponse();
-      futures.forEach(update -> {
-        if (update.failed()) {
-          response.getErrorMessages().add(update.cause().getMessage());
-        } else {
-          response.getParsedRecords().add((ParsedRecord) update.result());
-        }
-      });
-      response.setTotalRecords(response.getParsedRecords().size());
-      promise.complete(response);
-    });
-    return promise.future();
+    if (recordCollection.getRecords().isEmpty()) {
+      Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
+      promise.complete(new ParsedRecordsBatchResponse().withTotalRecords(0));
+      return promise.future();
+    }
+    return recordDao.updateParsedRecords(recordCollection, tenantId);
   }
 
   @Override
-  public Future<Record> getFormattedRecord(String id, String idType, String tenantId) {
-    ExternalIdType externalIdType = RecordDaoUtil.toExternalIdType(idType);
+  public Future<Record> getFormattedRecord(String id, ExternalIdType externalIdType, String tenantId) {
     return recordDao.getRecordByExternalId(id, externalIdType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
-        new NotFoundException(format("Couldn't find Record with %s id %s", idType, id)))));
+        new NotFoundException(format("Couldn't find record with id type %s and id %s", externalIdType, id)))));
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, String idType, Boolean suppress, String tenantId) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, externalIdType, suppress, tenantId);
   }
 
   @Override
@@ -203,6 +185,7 @@ public class RecordServiceImpl implements RecordService {
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
           .withJobExecutionId(snapshotId)
+          .withProcessingStartedDate(new Date())
           .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
             .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
               .withId(newRecordId)
@@ -218,35 +201,15 @@ public class RecordServiceImpl implements RecordService {
               .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
-          String.format("Record with id '%s' was not found", parsedRecordDto.getId()))))), tenantId);
-  }
-
-  private Record ensureRecordForeignKeys(Record record) {
-    if (Objects.nonNull(record.getRawRecord()) && StringUtils.isEmpty(record.getRawRecord().getId())) {
-      record.getRawRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getParsedRecord()) && StringUtils.isEmpty(record.getParsedRecord().getId())) {
-      record.getParsedRecord().setId(record.getId());
-    }
-    if (Objects.nonNull(record.getErrorRecord()) && StringUtils.isEmpty(record.getErrorRecord().getId())) {
-      record.getErrorRecord().setId(record.getId());
-    }
-    return record;
-  }
-
-  private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) || Strings.isEmpty(record.getParsedRecord().getId())) {
-      throw new BadRequestException("Each parsed record should contain an id");
-    }
-    return record;
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
   }
 
   private Record formatMarcRecord(Record record) {
     try {
-      String parsedRecordContent = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-      record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(parsedRecordContent));
-    } catch (IOException e) {
-      LOG.error("Couldn't format MARC record", e);
+      RecordType recordType = toRecordType(record.getRecordType().name());
+      recordType.formatRecord(record);
+    } catch (Exception e) {
+      LOG.error("Couldn't format {} record", record.getRecordType(), e );
     }
     return record;
   }

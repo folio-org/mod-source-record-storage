@@ -3,13 +3,13 @@ package org.folio.services.handlers;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
 import org.folio.dao.RecordDao;
+import org.folio.dao.util.RecordType;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.exceptions.MatchingException;
@@ -32,16 +32,23 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Handler for MARC-MARC matching/not-matching MARC-record by specific fields.
@@ -49,7 +56,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 @Component
 public class MarcBibliographicMatchEventHandler implements EventHandler {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MarcBibliographicMatchEventHandler.class);
+  private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String MATCHED_ID_MARC_FIELD = "999ffs";
   private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
@@ -102,7 +109,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
 
     if (condition != null) {
-      recordDao.getRecords(condition, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
+      recordDao.getRecords(condition, RecordType.MARC_BIB, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
         .onComplete(ar -> {
           if (ar.succeeded()) {
             processSucceededResult(dataImportEventPayload, future, context, ar);
@@ -111,7 +118,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
           }
         });
     } else {
-      constructError(dataImportEventPayload, String.format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
+      constructError(dataImportEventPayload, format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
       future.complete(dataImportEventPayload);
     }
     return future;
@@ -124,6 +131,16 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
       return matchProfile.getIncomingRecordType() == MARC_BIBLIOGRAPHIC && matchProfile.getExistingRecordType() == MARC_BIBLIOGRAPHIC;
     }
     return false;
+  }
+
+  @Override
+  public boolean isPostProcessingNeeded() {
+    return true;
+  }
+
+  @Override
+  public String getPostProcessingInitializationEventType() {
+    return DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING.value();
   }
 
   /**
@@ -143,7 +160,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Logic for retreiving MatchDetail from eventPayload.
+   * Logic for retrieving MatchDetail from eventPayload.
    *
    * @param dataImportEventPayload - payload
    * @return - resulted MatchDetail
@@ -173,10 +190,10 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
         condition = filterRecordByRecordId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_ID_MARC_FIELD:
-        condition = filterRecordByInstanceId(valueFromField);
+        condition = filterRecordByInstanceId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_HRID_MARC_FIELD:
-        condition = filterRecordByInstanceHrid(valueFromField);
+        condition = filterRecordByInstanceHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       default:
         condition = null;

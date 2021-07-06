@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +21,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.Assert;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,9 +42,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   static {
     try {
       rawRecord = new RawRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -93,7 +94,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       Record record = new Record()
         .withId(matchedId)
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
-        .withRecordType(Record.RecordType.MARC)
+        .withRecordType(Record.RecordType.MARC_BIB)
         .withRawRecord(rawRecord)
         .withParsedRecord(marcRecord)
         .withMatchedId(matchedId);
@@ -105,10 +106,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .body().as(Record.class);
 
-      snapshots.get(i).setStatus(Snapshot.Status.COMMITTED);
       RestAssured.given()
         .spec(spec)
-        .body(snapshots.get(i))
+        .body(snapshots.get(i).withStatus(Snapshot.Status.COMMITTED))
         .when()
         .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i).getJobExecutionId())
         .then()
@@ -147,7 +147,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     Record record = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(matchedId)
@@ -160,10 +160,9 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    snapshot_1.setStatus(Snapshot.Status.COMMITTED);
     RestAssured.given()
       .spec(spec)
-      .body(snapshot_1)
+      .body(snapshot_1.withStatus(Snapshot.Status.COMMITTED))
       .when()
       .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
       .then()
@@ -199,7 +198,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       Record record = new Record()
         .withId(matchedId)
         .withSnapshotId(snapshot.getJobExecutionId())
-        .withRecordType(Record.RecordType.MARC)
+        .withRecordType(Record.RecordType.MARC_BIB)
         .withRawRecord(rawRecord)
         .withParsedRecord(marcRecord)
         .withMatchedId(matchedId);
@@ -230,6 +229,8 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   @Test
   public void shouldNotUpdateRecordsGenerationIfSnapshotsCommittedAfter(TestContext testContext) {
     List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2);
+    List<String> ids = new ArrayList<>();
+    // create snapshots and records
     for (int i = 0; i < snapshots.size(); i++) {
       Async async = testContext.async();
       RestAssured.given()
@@ -241,26 +242,15 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_CREATED);
       async.complete();
 
-      async = testContext.async();
       Record record = new Record()
         .withId(matchedId)
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
-        .withRecordType(Record.RecordType.MARC)
+        .withRecordType(Record.RecordType.MARC_BIB)
         .withRawRecord(rawRecord)
         .withParsedRecord(marcRecord)
         .withMatchedId(matchedId);
 
-      if (i > 0) {
-        snapshots.get(i - 1).setStatus(Snapshot.Status.COMMITTED);
-        RestAssured.given()
-          .spec(spec)
-          .body(snapshots.get(i - 1))
-          .when()
-          .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i - 1).getJobExecutionId())
-          .then()
-          .statusCode(HttpStatus.SC_OK);
-      }
-      async.complete();
+      ids.add(record.getId());
 
       async = testContext.async();
       Record created = RestAssured.given()
@@ -277,6 +267,32 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_OK)
         .body("id", is(created.getId()))
+        .body("rawRecord.content", is(rawRecord.getContent()))
+        .body("matchedId", is(matchedId))
+        .body("generation", is(0));
+      async.complete();
+    }
+
+    // update snapshots to committed after
+    for (int i = 0; i < snapshots.size(); i++) {
+      Async async = testContext.async();
+      RestAssured.given()
+        .spec(spec)
+        .body(snapshots.get(i).withStatus(Snapshot.Status.COMMITTED))
+        .when()
+        .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i).getJobExecutionId())
+        .then()
+        .statusCode(HttpStatus.SC_OK);
+      async.complete();
+
+      async = testContext.async();
+      RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(SOURCE_STORAGE_RECORDS_PATH + "/" + ids.get(i))
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .body("id", is(ids.get(i)))
         .body("rawRecord.content", is(rawRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(0));
@@ -299,7 +315,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(matchedId);
@@ -316,7 +332,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async = testContext.async();
     Record record_2 = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(matchedId);
@@ -346,7 +362,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(matchedId);
@@ -404,7 +420,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     Record newRecord = new Record()
       .withId(srsId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
       .withMatchedId(srsId);
@@ -432,10 +448,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_RECORDS_PATH + "/" + srsId + "/formatted")
       .body().as(Record.class);
 
-    Assert.assertThat(getByIdRecord.getId(), is(getBySRSIdRecord.getId()));
-    Assert.assertThat(getByIdRecord.getRawRecord().getContent(), is(getBySRSIdRecord.getRawRecord().getContent()));
-    Assert.assertNotNull(getBySRSIdRecord.getParsedRecord().getFormattedContent());
-    Assert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), containsString("LEADER 01542ccm a2200361   4500"));
+    MatcherAssert.assertThat(getByIdRecord.getId(), is(getBySRSIdRecord.getId()));
+    MatcherAssert.assertThat(getByIdRecord.getRawRecord().getContent(), is(getBySRSIdRecord.getRawRecord().getContent()));
+    MatcherAssert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), notNullValue());
+    MatcherAssert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), containsString("LEADER 01542ccm a2200361   4500"));
     async.complete();
   }
 
@@ -463,7 +479,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     Record newRecord = new Record()
       .withId(srsId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
       .withMatchedId(matchedId)

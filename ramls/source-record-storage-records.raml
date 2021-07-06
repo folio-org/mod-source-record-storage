@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Source Record Storage Record API
-version: v3.0
+version: v2.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -12,12 +12,16 @@ documentation:
 types:
   errorRecord: !include raml-storage/schemas/mod-source-record-storage/errorRecord.json
   errorRecordCollection: !include raml-storage/schemas/mod-source-record-storage/errorRecordCollection.json
+  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
   parsedRecord: !include raml-storage/schemas/mod-source-record-storage/parsedRecord.json
   parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
   rawRecord: !include raml-storage/schemas/mod-source-record-storage/rawRecord.json
   rawRecordCollection: !include raml-storage/schemas/mod-source-record-storage/rawRecordCollection.json
   record: !include raml-storage/schemas/dto/record.json
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  dataImportEventTypes: !include raml-storage/schemas/common/dataImportEventTypes.json
+  dataImportEventPayload: !include raml-storage/schemas/common/dataImportEventPayload.json
+  data: !include raml-storage/schemas/mod-data-import-converter-storage/mapping-profile-detail/marcData.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
 
 traits:
@@ -51,10 +55,15 @@ resourceTypes:
         type: string
         example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
         required: false
+      recordType:
+        description: Filter by Record Type
+        type: string
+        example: MARC_BIB
+        default: MARC_BIB
       state:
         description: Filter by State
         type: string
-        example: "ACTUAL"
+        example: ACTUAL
         required: false
       orderBy:
         description: Sort Records
@@ -87,7 +96,6 @@ resourceTypes:
             description: Type of Id for Record lookup
             type: string
             example: INSTANCE
-            required: false
             default: RECORD
         responses:
           200:
@@ -118,13 +126,11 @@ resourceTypes:
             description: Type of Id for Record lookup
             type: string
             example: INSTANCE
-            required: false
             default: RECORD
           suppress:
             description: Whether to suppress or unsuppress from discovery
             example: false
             type: boolean
-            required: false
             default: true
         responses:
           200:

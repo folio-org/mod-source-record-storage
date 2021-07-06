@@ -1,10 +1,56 @@
 package org.folio.services;
 
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+
+import org.folio.ActionProfile;
+import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
+import org.folio.TestUtil;
+import org.folio.dao.RecordDao;
+import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.services.handlers.InstancePostProcessingEventHandler;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.MockitoAnnotations;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -13,68 +59,14 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-import org.folio.ActionProfile;
-import org.folio.DataImportEventPayload;
-import org.folio.MappingProfile;
-import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
-import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.RecordDaoUtil;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.services.handlers.InstancePostProcessingEventHandler;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-
+// TODO: fix @Ignore tests in scope of MODSOURCE-235
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTest {
 
-  private static final String RAW_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawRecordContent.sample";
-  private static final String PARSED_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedRecordContent.sample";
   private static final String PARSED_CONTENT_WITH_999_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-
   private static final String PARSED_CONTENT_WITHOUT_001_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
 
-  private static final String PUBSUB_PUBLISH_URL = "/pubsub/publish";
-
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
-
   private RecordDao recordDao;
-
   private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
 
   private static RawRecord rawRecord;
@@ -90,20 +82,17 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
   }
 
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
-    HashMap<String, String> headers = new HashMap<>();
-    headers.put(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port());
-    headers.put(OKAPI_TENANT_HEADER, TENANT_ID);
-    headers.put(OKAPI_TOKEN_HEADER, "token");
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx);
+    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -124,7 +113,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
 
@@ -149,11 +138,9 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSetInstanceIdToRecord(TestContext context) {
     Async async = context.async();
-
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
@@ -168,7 +155,9 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
@@ -259,24 +248,22 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
     Async async = context.async();
 
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
-
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
 
     Record defaultRecord = new Record()
       .withId(recordId)
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC)
+      .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
@@ -342,11 +329,9 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
+  @Ignore
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
-
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
 
     record.withParsedRecord(new ParsedRecord()
       .withId(recordId)
@@ -408,11 +393,141 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
+  @Ignore
+  public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
-    WireMock.stubFor(post(PUBSUB_PUBLISH_URL)
-      .willReturn(WireMock.noContent()));
+    String expectedDate = AdditionalFieldsUtil.dateTime005Formatter
+      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withGeneration(0)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = new JsonObject()
+      .put("id", expectedInstanceId)
+      .put("hrid", expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+      .thenApply(future::complete)
+      .exceptionally(future::completeExceptionally);
+
+    future.whenComplete((payload, throwable) -> {
+      if (throwable != null) {
+        context.fail(throwable);
+      }
+      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record updatedRecord = getAr.result().get();
+
+        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
+        Assert.assertEquals(expectedDate.substring(0, 10),
+          actualDate.substring(0, 10));
+
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  @Ignore
+  public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
+    Async async = context.async();
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withGeneration(0)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
+
+    MappingParameters mappingParameters = new MappingParameters()
+      .withMarcFieldProtectionSettings(Arrays.asList(new MarcFieldProtectionSetting()
+        .withField(TAG_005)
+        .withData("*")));
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = new JsonObject()
+      .put("id", expectedInstanceId)
+      .put("hrid", expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
+    payloadContext.put("MAPPING_PARAMS", Json.encodePrettily(mappingParameters));
+
+    String expectedDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+      .thenApply(future::complete)
+      .exceptionally(future::completeExceptionally);
+
+    future.whenComplete((payload, throwable) -> {
+      if (throwable != null) {
+        context.fail(throwable);
+      }
+      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record updatedRecord = getAr.result().get();
+
+        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
+        Assert.assertEquals(expectedDate, actualDate);
+
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  @Ignore
+  public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
+    Async async = context.async();
 
     record.withParsedRecord(new ParsedRecord()
       .withId(recordId)

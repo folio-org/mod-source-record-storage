@@ -1,0 +1,145 @@
+#%RAML 1.0
+
+title: Source Record Storage Stream API
+version: v1.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Stream API
+    content: Streaming API for searching records
+
+uses:
+  ramltojaxrs: raml-storage/raml-util/library/ramltojaxrs.raml
+
+types:
+  errors: !include raml-storage/raml-util/schemas/errors.schema
+  marcRecordSearchRequest: !include raml-storage/schemas/dto/sourceRecordSearchRequest.json
+
+traits:
+  validate: !include raml-storage/raml-util/traits/validation.raml
+  pageable:  !include raml-storage/raml-util/traits/pageable.raml
+
+/source-storage/stream:
+  /records:
+    displayName: Records Stream
+    description: Stream collection of records
+    get:
+      description: Stream collection of records; including raw record, parsed record, and error record if applicable
+      is: [
+        pageable,
+        validate
+      ]
+      queryParameters:
+        snapshotId:
+          description: Filter by Snapshot Id
+          type: string
+          example: "e5ddbbdc-90b3-498f-bb8f-49367ca4c142"
+          required: false
+        recordType:
+          description: Filter by Record Type
+          type: string
+          example: MARC_BIB
+          default: MARC_BIB
+        state:
+          description: Filter by State
+          type: string
+          example: ACTUAL
+          required: false
+        orderBy:
+          description: Sort Records
+          type: string[]
+          example: ["order,ASC"]
+          required: false
+  /source-records:
+    displayName: Source Records Stream
+    description: Stream collection of source records
+    get:
+      description: Stream collection of source records; including only latest generation and parsed record
+      is: [
+        pageable,
+        validate
+      ]
+      queryParameters:
+        recordId:
+          description: Filter by Record Id
+          type: string
+          example: "876270bc-fbb4-409d-b8b0-3f59b1cb61f2"
+          required: false
+        snapshotId:
+          description: Filter by Snapshot Id
+          type: string
+          example: "7a8fbd77-5b2a-496c-93e7-cd04478f4fcc"
+          required: false
+        instanceId:
+          description: Filter by Instance Id
+          type: string
+          example: "8b07da70-8ea7-4acd-83a0-44d83979c73b"
+          required: false
+        instanceHrid:
+          description: Filter by Instance Hrid
+          type: string
+          example: "12345"
+          required: false
+        recordType:
+          description: Filter by Record Type
+          type: string
+          example: MARC_BIB
+          default: MARC_BIB
+        suppressFromDiscovery:
+          description: Filter by suppress from discovery
+          type: boolean
+          (ramltojaxrs.types):
+            plugins:
+              - name: core.box
+          example: true
+          required: false
+        deleted:
+          description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
+          type: boolean
+          (ramltojaxrs.types):
+            plugins:
+              - name: core.box
+          example: true
+          default: false
+        leaderRecordStatus:
+          description: Filter by MARC leader 05 status
+          type: string
+          example: "n"
+          required: false
+          "pattern": "^[a|c|d|n|p|o|s|x]{1}$"
+        updatedAfter:
+          description: Start date to filter after, inclusive
+          type: datetime
+          required: false
+        updatedBefore:
+          description: End date to filter before, inclusive
+          type: datetime
+          required: false
+        orderBy:
+          description: Sort records
+          type: string[]
+          example: ["order,ASC"]
+          required: false
+  /marc-record-identifiers:
+      displayName: Marc Records IDs Stream
+      description: Stream collection of marc record IDs
+      post:
+        description: Get a list of Marc Record IDs using post method
+        is: [validate]
+        body:
+            application/json:
+              description: Request to search marc record IDs
+              type: marcRecordSearchRequest
+        responses:
+          200:
+          400:
+            description: Bad request
+            body:
+              text/plain:
+                example: "Bad request"
+          500:
+            description: Internal server error
+            body:
+              text/plain:
+                example: "Internal server error"

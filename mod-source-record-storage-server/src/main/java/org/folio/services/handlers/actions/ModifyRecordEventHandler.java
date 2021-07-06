@@ -1,10 +1,12 @@
 package org.folio.services.handlers.actions;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
@@ -19,8 +21,10 @@ import org.folio.services.util.AdditionalFieldsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.isNull;
@@ -35,7 +39,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 @Component
 public class ModifyRecordEventHandler implements EventHandler {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ModifyRecordEventHandler.class);
+  private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data to modify MARC record";
 
   public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
@@ -72,6 +76,7 @@ public class ModifyRecordEventHandler implements EventHandler {
 
       Record changedRecord = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       AdditionalFieldsUtil.addControlledFieldToMarcRecord(changedRecord, AdditionalFieldsUtil.HR_ID_FROM_FIELD, hrId, true);
+      AdditionalFieldsUtil.remove003FieldIfNeeded(changedRecord, hrId);
 
       payloadContext.put(MARC_BIBLIOGRAPHIC.value(), OBJECT_MAPPER.writeValueAsString(changedRecord));
 
@@ -92,7 +97,7 @@ public class ModifyRecordEventHandler implements EventHandler {
     return future;
   }
 
-  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws JsonProcessingException {
+  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws IOException {
     String recordAsString = marcMappingOption == MappingDetail.MarcMappingOption.UPDATE
       ? eventPayload.getContext().get(MATCHED_MARC_BIB_KEY) : eventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value());
 
@@ -103,7 +108,11 @@ public class ModifyRecordEventHandler implements EventHandler {
   private void prepareModificationResult(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
     HashMap<String, String> context = dataImportEventPayload.getContext();
     if (marcMappingOption == MappingDetail.MarcMappingOption.UPDATE) {
-      context.put(MARC_BIBLIOGRAPHIC.value(), context.remove(MATCHED_MARC_BIB_KEY));
+      Record changedRecord = Json.decodeValue(context.remove(MATCHED_MARC_BIB_KEY), Record.class);
+      changedRecord.setSnapshotId(dataImportEventPayload.getJobExecutionId());
+      changedRecord.setGeneration(null);
+      changedRecord.setId(UUID.randomUUID().toString());
+      context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(changedRecord));
     }
   }
 

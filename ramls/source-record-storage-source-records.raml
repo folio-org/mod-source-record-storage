@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Source Record Storage Source Record API
-version: v3.0
+version: v2.0
 protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
@@ -59,8 +59,8 @@ resourceTypes:
       recordType:
         description: Filter by Record Type
         type: string
-        example: "MARC"
-        required: false
+        example: MARC_BIB
+        default: MARC_BIB
       suppressFromDiscovery:
         description: Filter by suppress from discovery
         type: boolean
@@ -125,8 +125,12 @@ resourceTypes:
         description: Type of id for Record lookup
         type: string
         example: INSTANCE
-        required: false
         default: RECORD
+      recordType:
+        description: Filter by Record Type
+        type: string
+        example: MARC_BIB
+        default: MARC_BIB
       deleted:
         description: Filter by records with state ACTUAL OR state DELETED OR leader 05 status d, s, or x
         type: boolean
@@ -160,7 +164,6 @@ resourceTypes:
           description: Type of id for record lookup
           type: string
           example: INSTANCE
-          required: false
           default: RECORD
       responses:
         200:

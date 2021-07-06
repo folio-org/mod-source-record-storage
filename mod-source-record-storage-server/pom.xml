@@ -5,18 +5,8 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>4.2.0-SNAPSHOT</version>
+    <version>5.2.0-SNAPSHOT</version>
   </parent>
-
-  <properties>
-    <basedir>${project.parent.basedir}</basedir>
-    <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.jaxb.version>2.9.9</jackson.jaxb.version>
-    <jooq.version>3.13.2</jooq.version>
-    <vertx-jooq.version>5.1.2</vertx-jooq.version>
-    <postgres.version>42.2.16</postgres.version>
-    <testcontainers.version>1.15.3</testcontainers.version>
-  </properties>
 
   <dependencies>
     <dependency>
@@ -36,6 +26,12 @@
       <artifactId>kafka</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -59,6 +55,12 @@
       <version>${raml-module-builder.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>1.15.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
@@ -67,6 +69,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
+      <version>${jackson.jaxb.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -78,7 +81,12 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
-      <artifactId>vertx-pg-client</artifactId>
+      <artifactId>vertx-reactive-streams</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-rx-java2</artifactId>
+      <version>4.0.2</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -88,13 +96,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.6.0</version>
+      <version>1.8.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
-      <version>2.9.1</version>
     </dependency>
     <dependency>
       <groupId>org.marc4j</groupId>
@@ -102,16 +109,27 @@
       <version>2.9.1</version>
     </dependency>
     <dependency>
+      <groupId>io.xlate</groupId>
+      <artifactId>staedi</artifactId>
+      <version>1.16.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.1.0</version>
+      <version>1.2.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.1.0</version>
+      <version>1.2.0</version>
       <type>jar</type>
+      <exclusions>
+        <exclusion>
+          <groupId> ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jooq</groupId>
@@ -127,22 +145,23 @@
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <!-- matching RMB guava dependency version, otherwise RMB code generation fails -->
-      <version>19.0</version>
+      <version>21.0</version>
     </dependency>
     <dependency>
       <groupId>org.raml.jaxrs</groupId>
       <artifactId>jaxrs-code-generator</artifactId>
       <version>3.0.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-pubsub-client</artifactId>
-      <version>1.3.3</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.scala-lang</groupId>
+          <artifactId>scala-library</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
       <artifactId>wiremock</artifactId>
-      <version>2.19.0</version>
+      <version>2.27.2</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -154,9 +173,86 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>2.3.0-SNAPSHOT</version>
+      <version>3.2.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-kafka-client</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.kafka</groupId>
+          <artifactId>kafka-clients</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>folio-kafka-wrapper</artifactId>
+      <version>2.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>net.mguenther.kafka</groupId>
+      <artifactId>kafka-junit</artifactId>
+      <version>2.5.0</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>net.sf.jopt-simple</groupId>
+          <artifactId>jopt-simple</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>2.13.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.2.18</version>
     </dependency>
   </dependencies>
+
+  <properties>
+    <testcontainers.version>1.15.3</testcontainers.version>
+    <basedir>${project.parent.basedir}</basedir>
+    <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
+    <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
+    <jooq.version>3.13.6</jooq.version>
+    <vertx-jooq.version>6.1.1</vertx-jooq.version>
+    <postgres.version>42.2.18</postgres.version>
+    <postgres.image>postgres:12-alpine</postgres.image>
+    <lombok.version>1.18.20</lombok.version>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.13.3</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
     <resources>
@@ -174,6 +270,18 @@
         <configuration>
           <release>11</release>
           <encoding>UTF-8</encoding>
+          <annotationProcessors>
+            <annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
+          </annotationProcessors>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>versions-maven-plugin</artifactId>
+        <version>2.8.1</version>
+        <configuration>
+          <generateBackupPoms>false</generateBackupPoms>
         </configuration>
       </plugin>
 
@@ -195,13 +303,25 @@
               </sources>
             </configuration>
           </execution>
+          <execution>
+            <id>reserve-db-port</id>
+            <phase>initialize</phase>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <configuration>
+              <portNames>
+                <portName>db.port</portName>
+              </portNames>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.6.0</version>
+        <version>3.0.0</version>
         <executions>
           <execution>
             <id>generate_interfaces</id>
@@ -281,14 +401,33 @@
       </plugin>
 
       <plugin>
-        <groupId>com.gitlab.janecekpetr</groupId>
-        <artifactId>embedded-postgresql-maven-plugin</artifactId>
-        <version>0.1.0</version>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+        <version>0.34.1</version>
         <configuration>
-          <pgServerPort>15432</pgServerPort>
-          <dbName>postgres</dbName>
-          <userName>postgres</userName>
-          <password>postgres</password>
+          <images>
+            <image>
+              <alias>db</alias>
+              <name>${postgres.image}</name>
+              <run>
+                <privileged>true</privileged>
+                <containerNamePattern>%n-%t</containerNamePattern>
+                <env>
+                  <POSTGRES_DB>postgres</POSTGRES_DB>
+                  <POSTGRES_USER>postgres</POSTGRES_USER>
+                  <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
+                </env>
+                <ports>
+                  <port>${db.port}:5432</port>
+                  <port>+docker.host.address:${db.port}:5432</port>
+                </ports>
+                <wait>
+                  <log>(?s)ready to accept connections.*ready to accept connections</log>
+                  <time>90000</time>
+                </wait>
+              </run>
+            </image>
+          </images>
         </configuration>
         <executions>
           <execution>
@@ -303,6 +442,7 @@
             <phase>compile</phase>
             <goals>
               <goal>stop</goal>
+              <goal>remove</goal>
             </goals>
           </execution>
         </executions>
@@ -311,13 +451,14 @@
       <plugin>
         <groupId>org.liquibase</groupId>
         <artifactId>liquibase-maven-plugin</artifactId>
-        <version>4.0.0</version>
+        <version>4.2.2</version>
         <configuration>
           <changeLogFile>src/main/resources/liquibase/tenant/changelog.xml</changeLogFile>
           <driver>org.postgresql.Driver</driver>
-          <url>jdbc:postgresql://localhost:15432/postgres</url>
+          <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
           <username>postgres</username>
           <password>postgres</password>
+          <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
         </configuration>
         <dependencies>
           <dependency>
@@ -370,7 +511,7 @@
         <configuration>
           <jdbc>
             <driver>org.postgresql.Driver</driver>
-            <url>jdbc:postgresql://localhost:15432/postgres</url>
+            <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
             <user>postgres</user>
             <password>postgres</password>
           </jdbc>
@@ -380,7 +521,7 @@
               <name>org.jooq.meta.postgres.PostgresDatabase</name>
               <includes>.*</includes>
               <excludes>
-                databasechangelog|databasechangeloglock
+                databasechangelog|databasechangeloglock|marc_indexers.*
               </excludes>
               <inputSchema>public</inputSchema>
               <outputSchemaToDefault>true</outputSchemaToDefault>
@@ -408,9 +549,10 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>11</complianceLevel>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
+          <forceAjcCompile>true</forceAjcCompile>
           <aspectLibraries>
             <aspectLibrary>
               <groupId>org.folio</groupId>
@@ -429,12 +571,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.9.5</version>
+            <version>1.9.6</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.9.5</version>
+            <version>1.9.6</version>
           </dependency>
         </dependencies>
       </plugin>
@@ -515,15 +657,6 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>versions-maven-plugin</artifactId>
-        <version>2.8.1</version>
-        <configuration>
-          <generateBackupPoms>false</generateBackupPoms>
-        </configuration>
-      </plugin>
-
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.2.4</version>
@@ -539,6 +672,7 @@
                   <manifestEntries>
                     <Main-Class>org.folio.rest.RestLauncher</Main-Class>
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                    <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>
               </transformers>
@@ -574,6 +708,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.2</version>
         <configuration>
+          <forkMode>always</forkMode>
           <useSystemClassLoader>false</useSystemClassLoader>
           <environmentVariables>
             <LC_ALL>en_US.UTF-8</LC_ALL>

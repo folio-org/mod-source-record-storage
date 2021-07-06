@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-source-record-storage</artifactId>
-  <version>4.2.0-SNAPSHOT</version>
+  <version>5.2.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -20,18 +20,20 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <raml-module-builder.version>31.1.5</raml-module-builder.version>
+    <raml-module-builder.version>32.1.0</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>3.9.4</vertx.version>
+    <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.1</rest-assured.version>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 
   <dependencyManagement>
     <dependencies>
 
-      <!-- also sets jackson version:
-	   https://github.com/vert-x3/vertx-dependencies/blob/3.9.1/pom.xml#L52
+      <!--
+        also sets jackson version:
+        https://github.com/vert-x3/vertx-dependencies/blob/3.9.1/pom.xml#L52
       -->
       <dependency>
         <groupId>io.vertx</groupId>
@@ -77,6 +79,11 @@
         <version>2.22.2</version>
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
+          <argLine>
+            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+            -Dio.netty.tryReflectionSetAccessible=true
+            --illegal-access=warn
+          </argLine>
         </configuration>
       </plugin>
 

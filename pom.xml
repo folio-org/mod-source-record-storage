@@ -79,11 +79,6 @@
         <version>2.22.2</version>
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
-          <argLine>
-            --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
-            -Dio.netty.tryReflectionSetAccessible=true
-            --illegal-access=warn
-          </argLine>
         </configuration>
       </plugin>
 

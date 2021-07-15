@@ -1,5 +1,6 @@
 ## 2021-xx-xx v5.0.6-SNAPSHOT
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+* Update data-import-processing-core to v3.0.4
 
 ## 2021-06-17 v5.0.5
 * [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM

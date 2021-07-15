@@ -1,4 +1,4 @@
-## 2021-xx-xx v5.0.6-SNAPSHOT
+## 2021-07-15 v5.0.6
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * Update data-import-processing-core to v3.0.4
 

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class MarcAuthorityEventHandler extends AbstractMarcEventHandler {
 
   @Override
-  public String getRecordType() {
+  public String getEntityType() {
     return MARC_AUTHORITY.value();
   }
 }

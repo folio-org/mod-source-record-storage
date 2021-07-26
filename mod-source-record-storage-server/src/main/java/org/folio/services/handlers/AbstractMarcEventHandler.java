@@ -2,8 +2,6 @@ package org.folio.services.handlers;
 
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
-import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
-
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
@@ -26,7 +24,7 @@ public abstract class AbstractMarcEventHandler implements EventHandler {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     HashMap<String, String> context = dataImportEventPayload.getContext();
 
-    if (context == null || context.isEmpty() || isEmpty(dataImportEventPayload.getContext().get(getRecordType()))){
+    if (context == null || context.isEmpty() || isEmpty(context.get(getEntityType()))){
       LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
       future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
@@ -38,10 +36,10 @@ public abstract class AbstractMarcEventHandler implements EventHandler {
 
   @Override
   public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
-    return (dataImportEventPayload.getContext().containsKey(getRecordType()));
+    return (dataImportEventPayload.getContext().containsKey(getEntityType()));
   }
 
-  public abstract String getRecordType();
+  public abstract String getEntityType();
 
   @Override
   public boolean isPostProcessingNeeded() {

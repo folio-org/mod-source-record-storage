@@ -114,6 +114,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldGetMarcHoldingsRecordsBySnapshotId(TestContext context) {
+    getRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_HOLDING,
+      Record.RecordType.MARC_HOLDING);
+  }
+
+  @Test
   public void shouldGetEdifactRecordsBySnapshotId(TestContext context) {
     getRecordsBySnapshotId(context, "dcd898af-03bb-4b12-b8a6-f6a02e86459b", RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
@@ -164,6 +170,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldStreamMarcHoldingsRecordsBySnapshotId(TestContext context) {
+    streamRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_HOLDING,
+      Record.RecordType.MARC_HOLDING);
+  }
+
+  @Test
   public void shouldStreamEdifactRecordsBySnapshotId(TestContext context) {
     streamRecordsBySnapshotId(context, "dcd898af-03bb-4b12-b8a6-f6a02e86459b", RecordType.EDIFACT,
       Record.RecordType.EDIFACT);
@@ -175,10 +187,15 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetMarcBibRecordById(TestContext context) {
     getMarcRecordById(context, TestMocks.getMarcBibRecord());
   }
-  @Test
 
+  @Test
   public void shouldGetMarcAuthorityRecordById(TestContext context) {
     getMarcRecordById(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldGetMarcHoldingsRecordById(TestContext context) {
+    getMarcRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
 
   // TODO: test get by matched id not equal to id
@@ -204,6 +221,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveMarcAuthorityRecord(TestContext context) {
     saveMarcRecord(context, TestMocks.getMarcAuthorityRecord(), Record.RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
+  public void shouldSaveMarcHoldingsRecord(TestContext context) {
+    saveMarcRecord(context, TestMocks.getMarcHoldingsRecord(), Record.RecordType.MARC_HOLDING);
   }
 
   @Test
@@ -388,6 +410,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldStreamMarcHoldingSourceRecords(TestContext context) {
+    streamMarcSourceRecords(context, RecordType.MARC_HOLDING, Record.RecordType.MARC_HOLDING);
+  }
+
+  @Test
   public void shouldStreamEdifactSourceRecords(TestContext context) {
     streamMarcSourceRecords(context, RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
@@ -403,6 +430,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldGetMarcHoldingsSourceRecordsByListOfIds(TestContext context) {
+    getMarcSourceRecordsByListOfIds(context, Record.RecordType.MARC_HOLDING, RecordType.MARC_HOLDING);
+  }
+
+  @Test
   public void shouldGetMarcBibSourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
     getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_BIB, RecordType.MARC_BIB);
   }
@@ -410,6 +442,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetMarcAuthoritySourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
     getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_AUTHORITY, RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
+  public void shouldGetMarcHoldingsSourceRecordsByListOfIdsThatAreDeleted(TestContext context) {
+    getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_HOLDING, RecordType.MARC_HOLDING);
   }
 
   // TODO: test get source records between two dates
@@ -422,6 +459,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetMarcAuthoritySourceRecordById(TestContext context) {
     getMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldGetMarcHoldingsSourceRecordById(TestContext context) {
+    getMarcSourceRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
 
   // TODO: test get by matched id not equal to id
@@ -437,6 +479,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldNotGetMarcHoldingsSourceRecordById(TestContext context) {
+    notGetMarcSourceRecordById(context, TestMocks.getMarcHoldingsRecord());
+  }
+
+  @Test
   public void shouldUpdateParsedMarcBibRecords(TestContext context) {
     updateParsedMarcRecords(context, Record.RecordType.MARC_BIB);
   }
@@ -444,6 +491,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateParsedMarcAuthorityRecords(TestContext context) {
     updateParsedMarcRecords(context, Record.RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
+  public void shouldUpdateParsedMarcHoldingsRecords(TestContext context) {
+    updateParsedMarcRecords(context, Record.RecordType.MARC_HOLDING);
   }
 
   @Test
@@ -457,6 +509,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldUpdateParsedMarcHoldingsRecordsAndGetOnlyActualRecord(TestContext context) {
+    updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcHoldingsRecord());
+  }
+
+  @Test
   public void shouldGetFormattedMarcBibRecord(TestContext context) {
     getFormattedMarcBibRecord(context, TestMocks.getMarcBibRecord());
   }
@@ -464,6 +521,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetFormattedMarcAuthorityRecord(TestContext context) {
     getFormattedMarcBibRecord(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldGetFormattedMarcHoldingsRecord(TestContext context) {
+    getFormattedMarcBibRecord(context, TestMocks.getMarcHoldingsRecord());
   }
 
   @Test
@@ -493,6 +555,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateSuppressFromDiscoveryForMarcAuthorityRecord(TestContext context) {
     updateSuppressFromDiscoveryForMarcRecord(context, TestMocks.getMarcAuthorityRecord());
+  }
+
+  @Test
+  public void shouldUpdateSuppressFromDiscoveryForMarcHoldingsRecord(TestContext context) {
+    updateSuppressFromDiscoveryForMarcRecord(context, TestMocks.getMarcHoldingsRecord());
   }
 
   @Test

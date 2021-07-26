@@ -101,6 +101,41 @@ public enum RecordType implements ParsedRecordType {
     }
   },
 
+  MARC_HOLDING("marc_records_lb") {
+    @Override
+    public void formatRecord(Record record) throws FormatRecordException {
+      if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
+        && Objects.nonNull(record.getParsedRecord().getContent())) {
+        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+        try {
+          record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+        } catch (IOException e) {
+          throw new FormatRecordException(e);
+        }
+      }
+    }
+
+    @Override
+    public Condition getRecordImplicitCondition() {
+      return filterRecordByType(this.name());
+    }
+
+    @Override
+    public Condition getSourceRecordImplicitCondition() {
+      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    }
+
+    @Override
+    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+    }
+
+    @Override
+    public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
+      return dsl.loadInto(MARC_RECORDS_LB);
+    }
+  },
+
   EDIFACT("edifact_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {

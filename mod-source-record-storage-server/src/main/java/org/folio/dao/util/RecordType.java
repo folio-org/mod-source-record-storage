@@ -34,14 +34,7 @@ public enum RecordType implements ParsedRecordType {
   MARC_BIB("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (isParsedRecord(record)) {
-        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-        try {
-          record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-        } catch (IOException e) {
-          throw new FormatRecordException(e);
-        }
-      }
+      formatMarcRecord(record);
     }
 
     @Override
@@ -56,26 +49,19 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return toDatabaseMarcRecord(parsedRecord);
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return loadInfo(dsl);
+      return dsl.loadInto(MARC_RECORDS_LB);
     }
   },
 
   MARC_AUTHORITY("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (isParsedRecord(record)) {
-        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-        try {
-          record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-        } catch (IOException e) {
-          throw new FormatRecordException(e);
-        }
-      }
+      formatMarcRecord(record);
     }
 
     @Override
@@ -90,26 +76,19 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return toDatabaseMarcRecord(parsedRecord);
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return loadInfo(dsl);
+      return dsl.loadInto(MARC_RECORDS_LB);
     }
   },
 
   MARC_HOLDING("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (isParsedRecord(record)) {
-        String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-        try {
-          record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-        } catch (IOException e) {
-          throw new FormatRecordException(e);
-        }
-      }
+      formatMarcRecord(record);
     }
 
     @Override
@@ -124,12 +103,12 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return toDatabaseMarcRecord(parsedRecord);
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return loadInfo(dsl);
+      return dsl.loadInto(MARC_RECORDS_LB);
     }
   },
 
@@ -169,23 +148,22 @@ public enum RecordType implements ParsedRecordType {
     }
   };
 
+  private static void formatMarcRecord(Record record) throws FormatRecordException {
+    if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
+      && Objects.nonNull(record.getParsedRecord().getContent())) {
+      String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+      try {
+        record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+      } catch (IOException e) {
+        throw new FormatRecordException(e);
+      }
+    }
+  }
+
   private String tableName;
 
   RecordType(String tableName) {
     this.tableName = tableName;
-  }
-
-  private static boolean isParsedRecord(Record record) {
-    return Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
-      && Objects.nonNull(record.getParsedRecord().getContent());
-  }
-
-  private static LoaderOptionsStep<MarcRecordsLbRecord> loadInfo(DSLContext dsl) {
-    return dsl.loadInto(MARC_RECORDS_LB);
-  }
-
-  private static Record2<UUID, JSONB> toDatabaseMarcRecord(ParsedRecord parsedRecord) {
-    return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
   }
 
   public String getTableName() {

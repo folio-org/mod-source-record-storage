@@ -9,23 +9,23 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
-import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
+import io.xlate.edi.stream.EDIStreamException;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.JSONB;
 import org.jooq.LoaderOptionsStep;
 import org.jooq.Record2;
 
-import io.xlate.edi.stream.EDIStreamException;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
 
 /**
  * Enum used to distingush table for parsed record and provide implementation
  * for specific funtionality per record type. Used to convert {@link Record} type
  * to parsed record database table.
- *
+ * <p>
  * Enum string value must match those of
  * {@link org.folio.rest.jaxrs.model.Record.RecordType}.
  */
@@ -34,8 +34,7 @@ public enum RecordType implements ParsedRecordType {
   MARC_BIB("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
-        && Objects.nonNull(record.getParsedRecord().getContent())) {
+      if (isParsedRecord(record)) {
         String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
         try {
           record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
@@ -57,20 +56,19 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+      return toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return dsl.loadInto(MARC_RECORDS_LB);
+      return loadInfo(dsl);
     }
   },
 
   MARC_AUTHORITY("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
-          && Objects.nonNull(record.getParsedRecord().getContent())) {
+      if (isParsedRecord(record)) {
         String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
         try {
           record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
@@ -92,20 +90,19 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+      return toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return dsl.loadInto(MARC_RECORDS_LB);
+      return loadInfo(dsl);
     }
   },
 
   MARC_HOLDING("marc_records_lb") {
     @Override
     public void formatRecord(Record record) throws FormatRecordException {
-      if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
-        && Objects.nonNull(record.getParsedRecord().getContent())) {
+      if (isParsedRecord(record)) {
         String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
         try {
           record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
@@ -127,12 +124,12 @@ public enum RecordType implements ParsedRecordType {
 
     @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+      return toDatabaseMarcRecord(parsedRecord);
     }
 
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return dsl.loadInto(MARC_RECORDS_LB);
+      return loadInfo(dsl);
     }
   },
 
@@ -141,7 +138,7 @@ public enum RecordType implements ParsedRecordType {
     public void formatRecord(Record record) throws FormatRecordException {
       // NOTE: formatting EDIFACT raw record
       if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
-          && Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
+        && Objects.nonNull(record.getRawRecord()) && Objects.nonNull(record.getRawRecord().getContent())) {
         String content = record.getRawRecord().getContent();
         try {
           record.getParsedRecord().setFormattedContent(EdifactUtil.formatEdifact(content));
@@ -176,6 +173,19 @@ public enum RecordType implements ParsedRecordType {
 
   RecordType(String tableName) {
     this.tableName = tableName;
+  }
+
+  private static boolean isParsedRecord(Record record) {
+    return Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
+      && Objects.nonNull(record.getParsedRecord().getContent());
+  }
+
+  private static LoaderOptionsStep<MarcRecordsLbRecord> loadInfo(DSLContext dsl) {
+    return dsl.loadInto(MARC_RECORDS_LB);
+  }
+
+  private static Record2<UUID, JSONB> toDatabaseMarcRecord(ParsedRecord parsedRecord) {
+    return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
   }
 
   public String getTableName() {

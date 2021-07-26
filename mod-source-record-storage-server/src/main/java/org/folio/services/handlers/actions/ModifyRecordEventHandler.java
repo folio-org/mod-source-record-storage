@@ -2,6 +2,7 @@ package org.folio.services.handlers.actions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
 import org.apache.logging.log4j.LogManager;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.isNull;
@@ -106,7 +108,11 @@ public class ModifyRecordEventHandler implements EventHandler {
   private void prepareModificationResult(DataImportEventPayload dataImportEventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
     HashMap<String, String> context = dataImportEventPayload.getContext();
     if (marcMappingOption == MappingDetail.MarcMappingOption.UPDATE) {
-      context.put(MARC_BIBLIOGRAPHIC.value(), context.remove(MATCHED_MARC_BIB_KEY));
+      Record changedRecord = Json.decodeValue(context.remove(MATCHED_MARC_BIB_KEY), Record.class);
+      changedRecord.setSnapshotId(dataImportEventPayload.getJobExecutionId());
+      changedRecord.setGeneration(null);
+      changedRecord.setId(UUID.randomUUID().toString());
+      context.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(changedRecord));
     }
   }
 

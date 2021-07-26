@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -15,17 +16,10 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.Data;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.MarcField;
-import org.folio.rest.jaxrs.model.MarcMappingDetail;
-import org.folio.rest.jaxrs.model.MarcSubfield;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -51,6 +45,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.jaxrs.model.Snapshot.Status.COMMITTED;
 import static org.folio.services.handlers.actions.ModifyRecordEventHandler.MATCHED_MARC_BIB_KEY;
 
 @RunWith(VertxUnitRunner.class)
@@ -65,12 +60,13 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
   private RecordDao recordDao;
   private RecordService recordService;
   private ModifyRecordEventHandler modifyRecordEventHandler;
+  private Snapshot snapshotForRecordUpdate;
   private Record record;
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
-    .withDataType(JobProfile.DataType.MARC_BIB);
+    .withDataType(JobProfile.DataType.MARC);
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
@@ -125,8 +121,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
-    Async async = context.async();
-
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     modifyRecordEventHandler = new ModifyRecordEventHandler(recordService);
@@ -134,7 +128,11 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    snapshotForRecordUpdate = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
     record = new Record()
       .withId(recordId)
@@ -145,10 +143,17 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
-      .onSuccess(ar -> async.complete())
-      .onFailure(context::fail);
+    ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
+      .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
+      .onComplete(context.asyncAssertSuccess());
+  }
+
+  @After
+  public void tearDown(TestContext context) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -168,7 +173,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
         .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
-
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -215,6 +219,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
@@ -231,6 +236,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
       async.complete();
     });
   }
@@ -258,6 +264,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)

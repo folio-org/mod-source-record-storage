@@ -4,19 +4,24 @@ import static java.lang.String.format;
 
 import static org.folio.dao.util.QMEventTypes.QM_ERROR;
 import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.kafka.KafkaHeaderUtils.kafkaHeadersToMap;
+import static org.folio.services.util.EventHandlingUtil.createProducer;
+import static org.folio.services.util.EventHandlingUtil.createProducerRecord;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,7 +31,6 @@ import org.springframework.stereotype.Component;
 import org.folio.dao.util.QMEventTypes;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.cache.KafkaInternalCache;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
@@ -51,6 +55,8 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private final KafkaConfig kafkaConfig;
   private final KafkaInternalCache kafkaCache;
 
+  private final Map<QMEventTypes, KafkaProducer<String, String>> producerMap = new HashMap<>();
+
   @Value("${srs.kafka.QuickMarcKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
@@ -60,6 +66,8 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     this.recordService = recordService;
     this.kafkaConfig = kafkaConfig;
     this.kafkaCache = kafkaCache;
+    producerMap.put(QM_SRS_MARC_RECORD_UPDATED, createProducer(QM_SRS_MARC_RECORD_UPDATED.name(), kafkaConfig));
+    producerMap.put(QM_ERROR, createProducer(QM_SRS_MARC_RECORD_UPDATED.name(), kafkaConfig));
   }
 
   @Override
@@ -70,7 +78,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     if (!kafkaCache.containsByKey(cacheEventId)) {
       kafkaCache.putToCache(cacheEventId);
       var kafkaHeaders = record.headers();
-      var params = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+      var params = new OkapiConnectionParams(kafkaHeadersToMap(kafkaHeaders), vertx);
 
       return getEventPayload(event)
         .compose(eventPayload -> {
@@ -99,6 +107,35 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     }
   }
 
+  private Future<Boolean> sendEvent(Object payload, QMEventTypes eventType, String tenantId,
+                                    List<KafkaHeader> kafkaHeaders) {
+    String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
+    return sendEventToKafka(tenantId, Json.encode(payload), eventType, kafkaHeaders, kafkaConfig, key);
+  }
+
+  private Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, QMEventTypes eventType,
+                                           List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
+    Promise<Boolean> promise = Promise.promise();
+    try {
+      var producer = producerMap.get(eventType);
+      var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);
+      producer.write(record, war -> {
+        if (war.succeeded()) {
+          log.info("Event with type {} was sent to kafka", eventType);
+          promise.complete(true);
+        } else {
+          Throwable cause = war.cause();
+          log.error("Failed to sent event {}, cause: {}", eventType, cause);
+          promise.fail(cause);
+        }
+      });
+    } catch (Exception e) {
+      log.error("Failed to send an event for eventType {}, cause {}", eventType, e);
+      return Future.failedFuture(e);
+    }
+    return promise.future();
+  }
+
   @SuppressWarnings("unchecked")
   private Future<HashMap<String, String>> getEventPayload(Event event) {
     try {
@@ -118,11 +155,5 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     } else {
       return Future.succeededFuture(Json.decodeValue(parsedRecordDtoJson, ParsedRecordDto.class));
     }
-  }
-
-  private Future<Boolean> sendEvent(Object payload, QMEventTypes eventType, String tenantId,
-                                    List<KafkaHeader> kafkaHeaders) {
-    String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
-    return sendEventToKafka(tenantId, Json.encode(payload), eventType.name(), kafkaHeaders, kafkaConfig, key);
   }
 }

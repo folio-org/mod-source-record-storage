@@ -38,13 +38,13 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Condition getRecordImplicitCondition() {
-      return filterRecordByType(this.name());
+    public Condition getSourceRecordImplicitCondition() {
+      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     }
 
     @Override
-    public Condition getSourceRecordImplicitCondition() {
-      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    public Condition getRecordImplicitCondition() {
+      return filterRecordByType(this.name());
     }
 
     @Override
@@ -75,13 +75,13 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
-      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
+    public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
+      return dsl.loadInto(MARC_RECORDS_LB);
     }
 
     @Override
-    public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
-      return dsl.loadInto(MARC_RECORDS_LB);
+    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+      return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
   },
 
@@ -97,11 +97,6 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Condition getSourceRecordImplicitCondition() {
-      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
-    }
-
-    @Override
     public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
       return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
@@ -109,6 +104,11 @@ public enum RecordType implements ParsedRecordType {
     @Override
     public LoaderOptionsStep<MarcRecordsLbRecord> toLoaderOptionsStep(DSLContext dsl) {
       return dsl.loadInto(MARC_RECORDS_LB);
+    }
+
+    @Override
+    public Condition getSourceRecordImplicitCondition() {
+      return filterRecordByType(this.name()).and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     }
   },
 
@@ -148,6 +148,12 @@ public enum RecordType implements ParsedRecordType {
     }
   };
 
+  private String tableName;
+
+  RecordType(String tableName) {
+    this.tableName = tableName;
+  }
+
   private static void formatMarcRecord(Record record) throws FormatRecordException {
     if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
       && Objects.nonNull(record.getParsedRecord().getContent())) {
@@ -158,12 +164,6 @@ public enum RecordType implements ParsedRecordType {
         throw new FormatRecordException(e);
       }
     }
-  }
-
-  private String tableName;
-
-  RecordType(String tableName) {
-    this.tableName = tableName;
   }
 
   public String getTableName() {

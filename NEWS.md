@@ -1,4 +1,5 @@
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
+* [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type
 * [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record

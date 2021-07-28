@@ -9,7 +9,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -28,7 +27,6 @@ import org.folio.services.AbstractLBServiceTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
@@ -42,18 +40,21 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
 import static org.folio.services.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 @RunWith(VertxUnitRunner.class)
 public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String KAFKA_KEY_NAME = "test-key";
+  public static final String WRONG_LEADER_STATUS = "wrong leader status";
+  public static final int EXPECTED_ERROR_EVENTS_NUMBER = 2;
 
   private static String recordId = UUID.randomUUID().toString();
 
@@ -160,7 +161,6 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .build());
   }
 
-  @Ignore
   @Test
   public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException, IOException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
@@ -172,8 +172,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .withRecordType(validRecord.getRecordType())
       .withRawRecord(validRecord.getRawRecord())
       .withParsedRecord(validRecord.getParsedRecord())
-      // set invalid status to cause records saving error
-      .withLeaderRecordStatus("wrong leader status");
+      .withLeaderRecordStatus(WRONG_LEADER_STATUS);
 
     List<Record> records = List.of(validRecord, invalidRecord);
     RecordCollection recordCollection = new RecordCollection()
@@ -196,17 +195,21 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
-    assertEquals(2, observedValues.size());
-
+    List<DataImportEventPayload> testedEventsPayLoads = new ArrayList<>();
     for (String observedValue : observedValues) {
       Event obtainedEvent = Json.decodeValue(observedValue, Event.class);
-      assertEquals(DI_ERROR.value(), obtainedEvent.getEventType());
-
       DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(obtainedEvent.getEventPayload()), DataImportEventPayload.class);
-      assertEquals(snapshotId, eventPayload.getJobExecutionId());
-      assertEquals(DI_ERROR.value(), eventPayload.getEventType());
+      if(snapshotId.equals(eventPayload.getJobExecutionId())) {
+        testedEventsPayLoads.add(eventPayload);
+      }
     }
+    assertEquals(EXPECTED_ERROR_EVENTS_NUMBER, testedEventsPayLoads.size());
 
+    for (DataImportEventPayload eventPayload : testedEventsPayLoads) {
+      assertEquals(DI_ERROR.value(), eventPayload.getEventType());
+      assertEquals(TENANT_ID, eventPayload.getTenant());
+      assertFalse(eventPayload.getEventsChain().isEmpty());
+      assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().get(0));
+    }
   }
-
 }

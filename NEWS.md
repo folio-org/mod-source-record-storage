@@ -1,5 +1,6 @@
 ## xxxx-xx-xx v5.1.4-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type
+* [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
 
 ## 2021-07-21 v5.1.3
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage

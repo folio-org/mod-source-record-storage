@@ -4,10 +4,14 @@
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record
 
-## 2021-xx-xx v5.1.3
+## xxxx-xx-xx v5.1.4
+* [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
+
+## 2021-07-21 v5.1.3
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURMAN-451](https://issues.folio.org/browse/MODSOURMAN-451) Log details for Inventory single record imports for Overlays
 * [MODSOURMAN-508](https://issues.folio.org/browse/MODSOURMAN-508) Log details for Inventory single record imports for Overlays - Part 2
+* Update data-import-processing-core dependency to v3.1.3
 
 ## 2021-06-25 v5.1.2
 * [MODSOURCE-323](https://issues.folio.org/browse/MODSOURCE-323) Change dataType to have common type for MARC related subtypes

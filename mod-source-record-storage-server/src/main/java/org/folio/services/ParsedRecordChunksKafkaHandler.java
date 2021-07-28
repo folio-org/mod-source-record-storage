@@ -42,8 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 
 @Component
 @Qualifier("ParsedRecordChunksKafkaHandler")
@@ -163,7 +163,8 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
         .withEventType(DI_ERROR.value())
         .withJobExecutionId(jobExecutionId)
-        .withEventsChain(List.of(DI_SRS_MARC_BIB_RECORD_CREATED.value()))
+        .withEventsChain(List.of(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value()))
+        .withTenant(tenantId)
         .withContext(new HashMap<>(){{
           put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
           put(ERROR_KEY, message);

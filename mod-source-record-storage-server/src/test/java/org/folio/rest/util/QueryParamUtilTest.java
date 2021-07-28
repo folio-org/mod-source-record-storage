@@ -50,6 +50,11 @@ public class QueryParamUtilTest {
   }
 
   @Test
+  public void shouldReturnMarcHoldingsRecordType() {
+    assertEquals(RecordType.MARC_HOLDING, QueryParamUtil.toRecordType("MARC_HOLDING"));
+  }
+
+  @Test
   public void shouldReturnDefaultRecordType() {
     assertEquals(RecordType.MARC_BIB, QueryParamUtil.toRecordType(null));
     assertEquals(RecordType.MARC_BIB, QueryParamUtil.toRecordType(""));

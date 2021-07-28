@@ -18,9 +18,21 @@ import java.util.Scanner;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
+import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -35,19 +47,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
@@ -62,6 +61,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
+  private static final String EIGHTH_UUID = UUID.randomUUID().toString();
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -166,6 +166,18 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid("12345"));
+  private static Record marc_holdings_record_1 = new Record()
+    .withId(EIGHTH_UUID)
+    .withSnapshotId(snapshot_2.getJobExecutionId())
+    .withRecordType(RecordType.MARC_HOLDING)
+    .withRawRecord(rawRecord)
+    .withMatchedId(EIGHTH_UUID)
+    .withParsedRecord(marcRecord)
+    .withOrder(101)
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid("12345"));
 
   @Before
   public void setUp(TestContext context) {
@@ -235,12 +247,21 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnAllMarcAuthorityRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+    shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(testContext, RecordType.MARC_AUTHORITY, marc_auth_record_1);
+  }
+
+  @Test
+  public void shouldReturnAllMarcHoldingsRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+    shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(testContext, RecordType.MARC_HOLDING, marc_holdings_record_1);
+  }
+
+  private void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext, RecordType recordType, Record marc_auth_record_1) {
     postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
     Record record_4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_3.getJobExecutionId())
-      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRecordType(recordType)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
@@ -253,19 +274,19 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     InputStream response = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=MARC_AUTHORITY")
+      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=" + recordType)
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().asInputStream();
 
-      List<Record> actual = new ArrayList<>();
+    List<Record> actual = new ArrayList<>();
     flowableInputStreamScanner(response)
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
         async.complete();
       }).collect(() -> actual, (a, r) -> a.add(r))
-        .subscribe();
+      .subscribe();
   }
 
   @Test
@@ -309,39 +330,48 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
  @Test
   public void shouldReturnMarcAuthorityRecordsOnGetBySpecifiedSnapshotId(TestContext testContext) {
+   shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(testContext, RecordType.MARC_AUTHORITY, marc_auth_record_1);
+ }
+
+ @Test
+  public void shouldReturnMarcHoldingsRecordsOnGetBySpecifiedSnapshotId(TestContext testContext) {
+   shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(testContext, RecordType.MARC_HOLDING, marc_holdings_record_1);
+ }
+
+  private void shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(TestContext testContext, RecordType marcHolding, Record marc_holdings_record_1) {
     postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
 
     Record recordWithOldStatus = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_3.getJobExecutionId())
-      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRecordType(marcHolding)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, marc_auth_record_1, recordWithOldStatus);
+    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, marc_holdings_record_1, recordWithOldStatus);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=MARC_AUTHORITY&state=ACTUAL&snapshotId=" + marc_auth_record_1.getSnapshotId())
+      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=" + marcHolding + "&state=ACTUAL&snapshotId=" + marc_holdings_record_1.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().asInputStream();
 
-      List<Record> actual = new ArrayList<>();
+    List<Record> actual = new ArrayList<>();
     flowableInputStreamScanner(response)
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         testContext.assertEquals(1, actual.size());
-        testContext.assertEquals(marc_auth_record_1.getSnapshotId(), actual.get(0).getSnapshotId());
+        testContext.assertEquals(marc_holdings_record_1.getSnapshotId(), actual.get(0).getSnapshotId());
         testContext.assertEquals(false, actual.get(0).getAdditionalInfo().getSuppressDiscovery());
         async.complete();
       }).collect(() -> actual, (a, r) -> a.add(r))
-        .subscribe();
+      .subscribe();
   }
 
   @Test

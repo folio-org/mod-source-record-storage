@@ -86,6 +86,10 @@ public class TestMocks {
     return getRecords(RecordType.MARC_AUTHORITY);
   }
 
+  public static Record getMarcHoldingsRecord() {
+    return getRecords(RecordType.MARC_HOLDING);
+  }
+
   public static Record getEdifactRecord() {
     return getRecords(RecordType.EDIFACT);
   }

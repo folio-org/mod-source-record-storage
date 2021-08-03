@@ -34,6 +34,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RE
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDING_RECORD_CREATED;
 
 public class DataImportConsumersVerticle extends AbstractVerticle {
   private static AbstractApplicationContext springGlobalContext;
@@ -42,6 +43,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
   private final List<String> events = Arrays.asList(DI_SRS_MARC_BIB_RECORD_CREATED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_CREATED.value(),
+    DI_SRS_MARC_HOLDING_RECORD_CREATED.value(),
     DI_INVENTORY_INSTANCE_CREATED.value(), DI_INVENTORY_INSTANCE_UPDATED.value(),
     DI_INVENTORY_HOLDING_CREATED.value(), DI_INVENTORY_ITEM_CREATED.value(),
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(), DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),

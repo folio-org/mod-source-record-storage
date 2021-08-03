@@ -17,18 +17,18 @@ stages:
   - publishImageConfig:
       dockerfilePath: ./Dockerfile
       buildContext: .
-      tag: docker.dev.folio.org/mod-source-record-storage:folijet-${CICD_EXECUTION_SEQUENCE}
+      tag: docker.dev.folio.org/mod-source-record-storage:spitfire-${CICD_EXECUTION_SEQUENCE}
       pushRemote: true
       registry: docker.dev.folio.org
 - name: Deploy
   steps:
   - applyAppConfig:
-      catalogTemplate: p-gh7sb:folijet-helmcharts-mod-source-record-storage
+      catalogTemplate: p-htqfq:spitfire-helmcharts-mod-source-record-storage
       version: 0.1.32
       answers:
         image.repository: docker.dev.folio.org/mod-source-record-storage
-        image.tag: folijet-${CICD_EXECUTION_SEQUENCE}
-      targetNamespace: folijet
+        image.tag: spitfire-${CICD_EXECUTION_SEQUENCE}
+      targetNamespace: spitfire
       name: mod-source-record-storage
 timeout: 60
 notification: {}

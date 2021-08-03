@@ -3,6 +3,7 @@
 * [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record
+* [MODSOURCE-332](https://issues.folio.org/browse/MODSOURCE-332) Improve performance of left-anchored SRS queries
 
 ## xxxx-xx-xx v5.1.4
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages

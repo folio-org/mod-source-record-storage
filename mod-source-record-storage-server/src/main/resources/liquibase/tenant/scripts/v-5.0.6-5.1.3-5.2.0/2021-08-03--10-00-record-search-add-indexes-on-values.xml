@@ -1,0 +1,23 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2021-08-03-10-00-record-search-add-indexes-on-values" author="IgorGorchakov">
+    <sql splitStatements="false">
+      do $$ declare
+        index integer;
+        suffix text;
+      begin
+        for index in 0 .. 999
+          loop
+            suffix = lpad(index::text, 3, '0');
+            execute 'CREATE INDEX idx_marc_indexers_' || suffix || ' _values ON marc_indexers_' || suffix || '(value text_pattern_ops);';
+          end loop;
+      end;
+      $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -14,7 +14,7 @@
           loop
             suffix = lpad(index::text, 3, '0');
             IF suffix BETWEEN '001' AND '490' OR suffix BETWEEN '600' AND '878' OR suffix BETWEEN '900' AND '999'
-              THEN execute 'CREATE INDEX idx_marc_indexers_' || suffix || '_values ON marc_indexers_' || suffix || '(value text_pattern_ops);';
+              THEN execute 'CREATE INDEX idx_marc_indexers_' || suffix || '_values ON ${database.defaultSchemaName}.marc_indexers_' || suffix || '(value text_pattern_ops);';
             END IF;
           end loop;
       end;

@@ -8,7 +8,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
-import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -53,7 +53,7 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedRecordChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
+    consumerWrapper.start(parsedRecordChunksKafkaHandler, ModuleName.getModuleName()).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {

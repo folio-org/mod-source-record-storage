@@ -16,6 +16,7 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -23,7 +24,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.tools.PomReader;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
@@ -122,9 +123,7 @@ public abstract class AbstractRestVerticleTest {
         PostgresClientFactory.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
-        String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
-        postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
-        postgresSQLContainer.start();
+        PostgresClient.setPostgresTester(new PostgresTesterContainer());
 
         Envs.setEnv(
           postgresSQLContainer.getHost(),

@@ -85,7 +85,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
         .withSubfield("u")
         .withSubaction(MarcSubfield.Subaction.INSERT)
         .withPosition(MarcSubfield.Position.BEFORE_STRING)
-        .withData(new Data().withText("http://libproxy.smith.edu?url=")))));
+        .withData(new Data_().withText("http://libproxy.smith.edu?url=")))));
 
   private MappingProfile mappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())

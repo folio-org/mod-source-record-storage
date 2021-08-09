@@ -13,8 +13,8 @@ import javax.annotation.PreDestroy;
 
 import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.ModuleName;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
@@ -39,8 +39,7 @@ public class PostgresClientFactory {
 
   public static final Configuration configuration = new DefaultConfiguration().set(SQLDialect.POSTGRES);
 
-  private static final String MODULE_NAME = PomReader.INSTANCE.getModuleName();
-
+  private static final String MODULE_NAME = ModuleName.getModuleName();
   private static final String HOST = "host";
   private static final String PORT = "port";
   private static final String DATABASE = "database";

@@ -14,7 +14,6 @@ import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
@@ -90,9 +89,9 @@ public abstract class AbstractLBServiceTest {
       }
     ));
 
-    String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
+/*    String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
     postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
-    postgresSQLContainer.start();
+    postgresSQLContainer.start();*/
 
     Envs.setEnv(
       postgresSQLContainer.getHost(),

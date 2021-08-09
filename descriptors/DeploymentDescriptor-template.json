@@ -2,6 +2,6 @@
   "srvcId": "${artifactId}-${version}",
   "nodeId": "localhost",
   "descriptor": {
-    "exec": "java -Dport=%p -jar ../mod-source-record-storage/mod-source-record-storage-server/target/mod-source-record-storage-server-fat.jar -Dhttp.port=%p embed_postgres=true"
+    "exec": "java -Dport=%p -jar ../mod-source-record-storage/mod-source-record-storage-server/target/mod-source-record-storage-server-fat.jar -Dhttp.port=%p"
   }
 }

@@ -2,14 +2,7 @@ package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import org.folio.kafka.AsyncRecordHandler;
-import org.folio.kafka.GlobalLoadSensor;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.kafka.SubscriptionDefinition;
-import org.folio.processing.events.utils.PomReaderUtil;
-import org.folio.rest.tools.utils.ModuleName;
+import org.folio.kafka.*;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

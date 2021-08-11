@@ -2,21 +2,13 @@ package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import org.folio.processing.events.utils.PomReaderUtil;
-import org.folio.rest.tools.utils.ModuleName;
+import org.folio.dao.util.QMEventTypes;
+import org.folio.kafka.*;
+import org.folio.services.QuickMarcKafkaHandler;
+import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
-
-import org.folio.dao.util.QMEventTypes;
-import org.folio.kafka.GlobalLoadSensor;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.kafka.SubscriptionDefinition;
-import org.folio.services.QuickMarcKafkaHandler;
-import org.folio.spring.SpringContextUtil;
-import org.folio.util.pubsub.PubSubClientUtils;
 
 import static org.folio.services.util.EventHandlingUtil.constructModelName;
 

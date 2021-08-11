@@ -1,9 +1,5 @@
 package org.folio.services.util;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -13,7 +9,6 @@ import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.utils.PomReaderUtil;
@@ -21,7 +16,10 @@ import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
-import org.folio.util.pubsub.PubSubClientUtils;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 
 public final class EventHandlingUtil {
 
@@ -89,10 +87,6 @@ public final class EventHandlingUtil {
     return record;
   }
 
-  public static String constructModelName() {
-    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
-      ModuleName.getModuleVersion());
-  }
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, eventType);
@@ -109,5 +103,10 @@ public final class EventHandlingUtil {
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
+  }
+
+  public static String constructModelName() {
+    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
+      ModuleName.getModuleVersion());
   }
 }

@@ -97,14 +97,6 @@ public abstract class AbstractLBServiceTest {
 
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
 
-    Envs.setEnv(
-      postgresSQLContainer.getHost(),
-      postgresSQLContainer.getFirstMappedPort(),
-      postgresSQLContainer.getUsername(),
-      postgresSQLContainer.getPassword(),
-      postgresSQLContainer.getDatabaseName()
-    );
-
     TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, TOKEN);
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));

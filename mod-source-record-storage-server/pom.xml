@@ -54,12 +54,6 @@
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
     </dependency>
-<!--    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>1.15.1</version>
-      <scope>test</scope>
-    </dependency>-->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

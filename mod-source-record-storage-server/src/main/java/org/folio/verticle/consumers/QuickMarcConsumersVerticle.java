@@ -2,6 +2,8 @@ package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import org.folio.processing.events.utils.PomReaderUtil;
+import org.folio.rest.tools.utils.ModuleName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
@@ -15,6 +17,8 @@ import org.folio.kafka.SubscriptionDefinition;
 import org.folio.services.QuickMarcKafkaHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
+
+import static org.folio.services.util.EventHandlingUtil.constructModelName;
 
 public class QuickMarcConsumersVerticle extends AbstractVerticle {
 
@@ -62,7 +66,7 @@ public class QuickMarcConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumer.start(kafkaHandler, PubSubClientUtils.constructModuleName())
+    consumer.start(kafkaHandler, constructModelName() + "_" + getClass().getSimpleName())
       .onComplete(ar -> startPromise.complete());
   }
 

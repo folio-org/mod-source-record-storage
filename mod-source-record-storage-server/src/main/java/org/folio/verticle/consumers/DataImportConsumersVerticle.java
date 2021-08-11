@@ -11,6 +11,8 @@ import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.processing.events.EventManager;
+import org.folio.processing.events.utils.PomReaderUtil;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,7 +93,8 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
     List<Future<Void>> futures = new ArrayList<>();
     consumerWrappersList.forEach(consumerWrapper ->
-      futures.add(consumerWrapper.start(dataImportKafkaHandler, PubSubClientUtils.constructModuleName())));
+      futures.add(consumerWrapper.start(dataImportKafkaHandler, PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
+        ModuleName.getModuleVersion()) + "_" + getClass().getSimpleName())));
 
     GenericCompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
   }

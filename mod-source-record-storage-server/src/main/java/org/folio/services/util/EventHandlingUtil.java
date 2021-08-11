@@ -16,9 +16,11 @@ import org.apache.logging.log4j.Logger;
 
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.util.pubsub.PubSubClientUtils;
 
 public final class EventHandlingUtil {
@@ -78,7 +80,7 @@ public final class EventHandlingUtil {
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)
-        .withPublishedBy(PubSubClientUtils.constructModuleName()));
+        .withPublishedBy(constructModelName()));
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
 
@@ -87,6 +89,10 @@ public final class EventHandlingUtil {
     return record;
   }
 
+  public static String constructModelName() {
+    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
+      ModuleName.getModuleVersion());
+  }
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, eventType);

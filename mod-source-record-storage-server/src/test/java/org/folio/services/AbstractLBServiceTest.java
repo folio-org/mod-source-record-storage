@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -94,9 +95,7 @@ public abstract class AbstractLBServiceTest {
       }
     ));
 
-/*    String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
-    postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
-    postgresSQLContainer.start();*/
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
 
     Envs.setEnv(
       postgresSQLContainer.getHost(),

@@ -1,15 +1,52 @@
 package org.folio.services;
 
+import static java.lang.String.format;
+import static org.apache.commons.lang.StringUtils.isNotBlank;
+
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.streams.Pump;
+import io.vertx.reactivex.FlowableHelper;
 import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.marc4j.MarcJsonReader;
+import org.marc4j.MarcReader;
+import org.marc4j.marc.ControlField;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.impl.wrapper.SearchRecordIdsWriteStream;
+import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -23,33 +60,12 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-
-import static java.lang.String.format;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 @Service
 public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final String TAG_004 = "004";
 
   private final RecordDao recordDao;
 
@@ -112,7 +128,60 @@ public class RecordServiceImpl implements RecordService {
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
+    recordCollection = filterMarcHoldingsBy004Field(recordCollection, tenantId);
     return recordDao.saveRecords(recordCollection, tenantId);
+  }
+
+  private RecordCollection filterMarcHoldingsBy004Field(RecordCollection recordCollection, String tenantId) {
+    var records = recordCollection.getRecords().stream()
+      .filter(record -> record.getRecordType() == Record.RecordType.MARC_HOLDING)
+      .filter(record -> isNotBlank(getControlFieldValue(record, TAG_004)))
+      .filter(record -> {
+        JsonArray jsonArray = findMarcBibBy004Field(tenantId, record);
+        LOG.info("The MARC Holdings record with id = {} and MARC Bib = {}", record.getId(), jsonArray);
+        return !jsonArray.isEmpty();
+        }
+      ).collect(Collectors.toList());
+    return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+  }
+
+  private JsonArray findMarcBibBy004Field(String tenantId, Record record) {
+    var controlFieldValue = getControlFieldValue(record, TAG_004);
+    var recordSearchParameters = RecordSearchParameters.from(getMarcRecordSearchRequest(controlFieldValue));
+    LOG.info("Prepare record search parameter: {} ", recordSearchParameters);
+    var rowFlowable = streamMarcRecordIds(recordSearchParameters, tenantId);
+    var jsonObjectFlowable = rowFlowable.map(Row::toJson);
+    return jsonObjectFlowable.firstElement().blockingGet().getJsonArray("records");
+  }
+
+  public static String getControlFieldValue(Record record, String tag) {
+    if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+      MarcReader reader = buildMarcReader(record);
+      try {
+        if (reader.hasNext()) {
+          org.marc4j.marc.Record marcRecord = reader.next();
+          return marcRecord.getControlFields().stream()
+            .filter(controlField -> controlField.getTag().equals(tag))
+            .findFirst()
+            .map(ControlField::getData)
+            .orElse(null);
+        }
+      } catch (Exception e) {
+        LOG.error("Error during the search a field in the record", e);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private MarcRecordSearchRequest getMarcRecordSearchRequest(String controlFieldValue) {
+    MarcRecordSearchRequest marcRecordSearchRequest = new MarcRecordSearchRequest();
+    marcRecordSearchRequest.setFieldsSearchExpression("001.value = '" + controlFieldValue + "'");
+    return marcRecordSearchRequest;
+  }
+
+  private static MarcReader buildMarcReader(Record record) {
+    return new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes(StandardCharsets.UTF_8)));
   }
 
   @Override

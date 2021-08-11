@@ -133,7 +133,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private RecordCollection filterMarcHoldingsBy004Field(RecordCollection recordCollection, String tenantId) {
-    var records = recordCollection.getRecords().stream()
+    var records = recordCollection.getRecords();
+    var marcHoldingsWithoutMarcBib = records.stream()
       .filter(record -> record.getRecordType() == Record.RecordType.MARC_HOLDING)
       .filter(record -> isNotBlank(getControlFieldValue(record, TAG_004)))
       .filter(record -> {
@@ -142,6 +143,7 @@ public class RecordServiceImpl implements RecordService {
         return !jsonArray.isEmpty();
         }
       ).collect(Collectors.toList());
+    records.removeAll(marcHoldingsWithoutMarcBib);
     return new RecordCollection().withRecords(records).withTotalRecords(records.size());
   }
 

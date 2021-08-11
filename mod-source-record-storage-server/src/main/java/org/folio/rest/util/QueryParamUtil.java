@@ -5,7 +5,7 @@ import static java.lang.String.format;
 import javax.ws.rs.BadRequestException;
 
 import org.codehaus.plexus.util.StringUtils;
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 
 public final class QueryParamUtil {
@@ -13,20 +13,24 @@ public final class QueryParamUtil {
   private QueryParamUtil() { }
 
   /**
-   * Tries to convert string to {@link ExternalIdType}. Returns default RECORD if null or empty.
+   * Tries to convert string to {@link IdType}. Returns default RECORD if null or empty.
    *
    * @param externalIdType external id type as string
    * @return external id type
    */
-  public static ExternalIdType toExternalIdType(String externalIdType) {
+  public static IdType toExternalIdType(String externalIdType) {
     if (StringUtils.isNotEmpty(externalIdType)) {
       try {
-        return ExternalIdType.valueOf(externalIdType);
+        var idType = IdType.valueOf(externalIdType);
+        if (idType == IdType.INSTANCE || idType == IdType.HOLDINGS) {
+          idType = IdType.EXTERNAL;
+        }
+        return idType;
       } catch (Exception e) {
         throw new BadRequestException(format("Unknown id type %s", externalIdType));
       }
     }
-    return ExternalIdType.RECORD;
+    return IdType.RECORD;
   }
 
   /**

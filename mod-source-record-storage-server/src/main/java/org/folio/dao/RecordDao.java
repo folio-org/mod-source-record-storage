@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import io.vertx.sqlclient.Row;
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -190,21 +190,21 @@ public interface RecordDao {
    * Searches for {@link Record} by id of external entity which was created from desired record
    *
    * @param externalId     external relation id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @param tenantId       tenant id
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId);
+  Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType, String tenantId);
 
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record
    *
    * @param txQE           query execution
    * @param externalId     external relation id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE, String externalId, ExternalIdType externalIdType);
+  Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE, String externalId, IdType idType);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
@@ -236,13 +236,13 @@ public interface RecordDao {
    * Searches for {@link SourceRecord} where id in a list of ids defined by external id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids
-   * @param externalIdType external id type on which source record will be searched
+   * @param idType external id type on which source record will be searched
    * @param recordType     record type
    * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition}
@@ -257,11 +257,11 @@ public interface RecordDao {
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
    *
    * @param id             id
-   * @param externalIdType external id type on which source record will be searched
+   * @param idType external id type on which source record will be searched
    * @param tenantId       tenant id
    * @return return future with optional {@link SourceRecord}
    */
-  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, ExternalIdType externalIdType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, IdType idType, String tenantId);
 
   /**
    * Deletes in transaction all records associated with specified snapshot and snapshot itself
@@ -288,12 +288,12 @@ public interface RecordDao {
    * Change suppress from discovery flag for record by external relation id
    *
    * @param id             id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @param suppress       suppress from discovery
    * @param tenantId       tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId);
 
   /**
    * Execute action within transaction.

@@ -39,8 +39,8 @@ import java.util.Map;
 import static io.vertx.core.http.HttpHeaders.CONNECTION;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
@@ -90,8 +90,8 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     HttpServerResponse response = prepareStreamResponse(routingContext);
     Condition condition = filterRecordByRecordId(recordId)
       .and(filterRecordBySnapshotId(snapshotId))
-      .and(filterRecordByInstanceId(instanceId))
-      .and(filterRecordByInstanceHrid(instanceHrid))
+      .and(filterRecordByExternalId(instanceId))
+      .and(filterRecordByExternalHrid(instanceHrid))
       .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
       .and(filterRecordByDeleted(deleted))
       .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))

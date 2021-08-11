@@ -3,6 +3,7 @@ package org.folio.dao.util;
 import static com.google.common.base.CaseFormat.LOWER_CAMEL;
 import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE;
 import static java.lang.String.format;
+
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.time.ZoneOffset;
@@ -17,7 +18,16 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
+
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -29,15 +39,6 @@ import org.folio.rest.jooq.enums.RecordType;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.RecordsLb;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.jooq.SortOrder;
-import org.jooq.impl.DSL;
-
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.Future;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 
 /**
  * Utility class for managing {@link Record}
@@ -53,25 +54,25 @@ public final class RecordDaoUtil {
   private RecordDaoUtil() { }
 
   /**
-   * Get {@link Condition} for provided external id and {@link ExternalIdType}
+   * Get {@link Condition} for provided external id and {@link IdType}
    *
    * @param externalId     external id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @return condition
    */
-  public static Condition getExternalIdCondition(String externalId, ExternalIdType externalIdType) {
-    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).eq(toUUID(externalId));
+  public static Condition getExternalIdCondition(String externalId, IdType idType) {
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idType.getIdField()), UUID.class).eq(toUUID(externalId));
   }
 
   /**
-   * Get {@link Condition} where in external list ids and {@link ExternalIdType}
+   * Get {@link Condition} where in external list ids and {@link IdType}
    *
    * @param externalIds    list of external id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @return condition
    */
-  public static Condition getExternalIdsCondition(List<String> externalIds, ExternalIdType externalIdType) {
-    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, externalIdType.getExternalIdField()), UUID.class).in(toUUIDs(externalIds));
+  public static Condition getExternalIdsCondition(List<String> externalIds, IdType idType) {
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idType.getIdField()), UUID.class).in(toUUIDs(externalIds));
   }
 
   /**
@@ -302,6 +303,32 @@ public final class RecordDaoUtil {
     return Objects.nonNull(row) ? Optional.of(toRecord(row)) : Optional.empty();
   }
 
+  public static String getExternalId(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {
+    if (Objects.isNull(externalIdsHolder)) {
+      return null;
+    }
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return externalIdsHolder.getInstanceId();
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return externalIdsHolder.getHoldingsId();
+    } else {
+      return null;
+    }
+  }
+
+  public static String getExternalHrid(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {
+    if (Objects.isNull(externalIdsHolder)) {
+      return null;
+    }
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return externalIdsHolder.getInstanceHrid();
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return externalIdsHolder.getHoldingsHrid();
+    } else {
+      return null;
+    }
+  }
+
   /**
    * Convert {@link Record} to database record {@link RecordsLbRecord}
    *
@@ -310,6 +337,7 @@ public final class RecordDaoUtil {
    */
   public static RecordsLbRecord toDatabaseRecord(Record record) {
     RecordsLbRecord dbRecord = new RecordsLbRecord();
+    var recordType = record.getRecordType();
     if (StringUtils.isNotEmpty(record.getId())) {
       dbRecord.setId(UUID.fromString(record.getId()));
     }
@@ -319,8 +347,8 @@ public final class RecordDaoUtil {
     if (StringUtils.isNotEmpty(record.getMatchedId())) {
       dbRecord.setMatchedId(UUID.fromString(record.getMatchedId()));
     }
-    if (Objects.nonNull(record.getRecordType())) {
-      dbRecord.setRecordType(RecordType.valueOf(record.getRecordType().toString()));
+    if (Objects.nonNull(recordType)) {
+      dbRecord.setRecordType(RecordType.valueOf(recordType.toString()));
     }
     if (Objects.nonNull(record.getState())) {
       dbRecord.setState(RecordState.valueOf(record.getState().toString()));
@@ -331,11 +359,13 @@ public final class RecordDaoUtil {
     if (Objects.nonNull(record.getAdditionalInfo())) {
       dbRecord.setSuppressDiscovery(record.getAdditionalInfo().getSuppressDiscovery());
     }
-    if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId())) {
-      dbRecord.setInstanceId(UUID.fromString(record.getExternalIdsHolder().getInstanceId()));
+    var externalId = getExternalId(record.getExternalIdsHolder(), recordType);
+    if (StringUtils.isNotEmpty(externalId)) {
+      dbRecord.setExternalId(UUID.fromString(externalId));
     }
-    if (Objects.nonNull(record.getExternalIdsHolder()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) {
-      dbRecord.setInstanceHrid(record.getExternalIdsHolder().getInstanceHrid());
+    var externalHrid = getExternalHrid(record.getExternalIdsHolder(), recordType);
+    if (StringUtils.isNotEmpty(externalHrid)) {
+      dbRecord.setExternalHrid(externalHrid);
     }
     if (Objects.nonNull(record.getMetadata())) {
       if (Objects.nonNull(record.getMetadata().getCreatedByUserId())) {
@@ -373,9 +403,9 @@ public final class RecordDaoUtil {
    * @param instanceId instance id to equal
    * @return condition
    */
-  public static Condition filterRecordByInstanceId(String instanceId) {
+  public static Condition filterRecordByExternalId(String instanceId) {
     if (StringUtils.isNotEmpty(instanceId)) {
-      return RECORDS_LB.INSTANCE_ID.eq(toUUID(instanceId));
+      return RECORDS_LB.EXTERNAL_ID.eq(toUUID(instanceId));
     }
     return DSL.noCondition();
   }
@@ -386,9 +416,9 @@ public final class RecordDaoUtil {
    * @param instanceHrid instance id to equal
    * @return condition
    */
-  public static Condition filterRecordByInstanceHrid(String instanceHrid) {
+  public static Condition filterRecordByExternalHrid(String instanceHrid) {
     if (StringUtils.isNotEmpty(instanceHrid)) {
-      return RECORDS_LB.INSTANCE_HRID.eq(instanceHrid);
+      return RECORDS_LB.EXTERNAL_HRID.eq(instanceHrid);
     }
     return DSL.noCondition();
   }
@@ -580,11 +610,14 @@ public final class RecordDaoUtil {
 
   private static ExternalIdsHolder toExternalIdsHolder(RecordsLb pojo) {
     ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
-    if (Objects.nonNull(pojo.getInstanceId())) {
-      externalIdsHolder.withInstanceId(pojo.getInstanceId().toString());
-    }
-    if (Objects.nonNull(pojo.getInstanceHrid())) {
-      externalIdsHolder.withInstanceHrid(pojo.getInstanceHrid());
+    var externalIdOptional = Optional.ofNullable(pojo.getExternalId()).map(UUID::toString);
+    var externalHridOptional = Optional.ofNullable(pojo.getExternalHrid());
+    if (RecordType.MARC_BIB == pojo.getRecordType()) {
+      externalIdOptional.ifPresent(externalIdsHolder::setInstanceId);
+      externalHridOptional.ifPresent(externalIdsHolder::setInstanceHrid);
+    } else if (RecordType.MARC_HOLDING == pojo.getRecordType()) {
+      externalIdOptional.ifPresent(externalIdsHolder::setHoldingsId);
+      externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
     }
     return externalIdsHolder;
   }

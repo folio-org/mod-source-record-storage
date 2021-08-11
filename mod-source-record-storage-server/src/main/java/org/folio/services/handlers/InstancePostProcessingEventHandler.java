@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
@@ -152,7 +152,7 @@ public class InstancePostProcessingEventHandler implements EventHandler {
 
   private Future<Void> updatePreviousRecords(String instanceId, String snapshotId, String tenantId) {
     Condition condition = filterRecordByNotSnapshotId(snapshotId)
-      .and(filterRecordByInstanceId(instanceId));
+      .and(filterRecordByExternalId(instanceId));
 
     return recordDao.getRecords(condition, RecordType.MARC_BIB, new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {

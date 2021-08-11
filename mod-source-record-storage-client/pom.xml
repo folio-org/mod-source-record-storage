@@ -25,18 +25,6 @@
       <artifactId>domain-models-api-interfaces</artifactId>
       <version>${raml-module-builder.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-configuration-client</artifactId>
-      <version>5.6.0</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-pubsub-client</artifactId>
-      <version>2.0.0</version>
-      <scope>compile</scope>
-    </dependency>
   </dependencies>
 
   <build>
@@ -77,6 +65,17 @@
             <groupId>org.folio</groupId>
             <artifactId>mod-source-record-storage-server</artifactId>
             <version>${project.parent.version}</version>
+            <exclusions>
+              <!-- Exclude unnecessary clients in the final client jar -->
+              <exclusion>
+                <groupId>org.folio</groupId>
+                <artifactId>data-import-processing-core</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.folio</groupId>
+                <artifactId>data-import-utils</artifactId>
+              </exclusion>
+            </exclusions>
           </dependency>
         </dependencies>
         <executions>

@@ -13,6 +13,10 @@ import java.util.UUID;
 
 import static java.lang.String.format;
 
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+
+import org.folio.rest.jooq.tables.RecordsLb;
+
 /**
  * The stream needed to build HTTP response following the pre-defined schema:
  * {
@@ -36,15 +40,15 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
 
   @Override
   public Future<Void> write(Row row) {
-    UUID instanceUUID = row.getUUID("instance_id");
+    UUID externalUUID = row.getUUID(RECORDS_LB.EXTERNAL_ID.getName());
     this.totalCount = row.getInteger("count");
     if (writeIndex == 0) {
       this.writeIndex++;
-      String id = instanceUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + instanceUUID.toString() + DOUBLE_QUOTE;
+      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE;
       return this.delegate.write(format(responseBeginning, id));
     } else {
       this.writeIndex++;
-      return this.delegate.write(COMMA + DOUBLE_QUOTE + instanceUUID.toString() + DOUBLE_QUOTE);
+      return this.delegate.write(COMMA + DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE);
     }
   }
 

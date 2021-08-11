@@ -14,6 +14,7 @@ import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
@@ -38,6 +39,8 @@ public abstract class AbstractLBServiceTest {
   private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String KAFKA_ENV = "ENV";
   private static final String KAFKA_ENV_ID = "test-env";
+  private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
+  private static final int KAFKA_MAX_REQUEST_SIZE_VAL = 1048576;
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
 
@@ -71,12 +74,14 @@ public abstract class AbstractLBServiceTest {
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
+    System.setProperty(KAFKA_MAX_REQUEST_SIZE, String.valueOf(KAFKA_MAX_REQUEST_SIZE_VAL));
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
     kafkaConfig = KafkaConfig.builder()
       .kafkaHost(hostAndPort[0])
       .kafkaPort(hostAndPort[1])
       .envId(KAFKA_ENV_ID)
+      .maxRequestSize(KAFKA_MAX_REQUEST_SIZE_VAL)
       .build();
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
@@ -137,7 +142,7 @@ public abstract class AbstractLBServiceTest {
     Async async = context.async();
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
-      postgresSQLContainer.stop();
+      PostgresClient.stopPostgresTester();
       async.complete();
     }));
   }

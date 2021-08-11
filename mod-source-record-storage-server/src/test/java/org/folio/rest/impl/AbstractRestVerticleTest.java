@@ -124,14 +124,6 @@ public abstract class AbstractRestVerticleTest {
         break;
       case "embedded":
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
-
-        Envs.setEnv(
-          postgresSQLContainer.getHost(),
-          postgresSQLContainer.getFirstMappedPort(),
-          postgresSQLContainer.getUsername(),
-          postgresSQLContainer.getPassword(),
-          postgresSQLContainer.getDatabaseName()
-        );
         break;
       default:
         String message = "No understood database choice made." +
@@ -198,7 +190,7 @@ public abstract class AbstractRestVerticleTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
-        postgresSQLContainer.stop();
+        PostgresClient.stopPostgresTester();
       }
       async.complete();
     }));

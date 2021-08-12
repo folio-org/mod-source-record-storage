@@ -88,7 +88,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
       int chunkNumber = chunkCounter.incrementAndGet();
       LOGGER.debug("RecordCollection has been received, correlationId: {}, starting processing... chunkNumber {}-{}", correlationId, chunkNumber, key);
-      return recordService.saveRecords(recordCollection, tenantId)
+      return recordService.saveRecords(recordCollection, tenantId, kafkaHeaders, jobExecutionId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber),
           th -> {
             LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, th);

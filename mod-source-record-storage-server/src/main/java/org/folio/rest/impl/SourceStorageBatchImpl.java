@@ -41,7 +41,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
     vertxContext.runOnContext(v -> {
       try {
         MetadataUtil.populateMetadata(entity.getRecords(), okapiHeaders);
-        recordService.saveRecords(entity, tenantId)
+        recordService.saveRecords(entity, tenantId, null, tenantId)
           .map(recordsBatchResponse -> {
             if (!recordsBatchResponse.getRecords().isEmpty()) {
               return PostSourceStorageBatchRecordsResponse.respond201WithApplicationJson(recordsBatchResponse);

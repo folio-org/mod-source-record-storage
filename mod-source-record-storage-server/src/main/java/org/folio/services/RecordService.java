@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
@@ -70,10 +71,12 @@ public interface RecordService {
    * Saves collection of records
    *
    * @param recordsCollection records to save
-   * @param tenantId          tenant id
+   * @param id
+   * @param kafkaHeaders
+   * @param jobExecutionId          tenant id
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String tenantId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String id, List<KafkaHeader> kafkaHeaders, String jobExecutionId);
 
   /**
    * Updates record with given id

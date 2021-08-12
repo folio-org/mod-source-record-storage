@@ -9,27 +9,31 @@ import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
-import io.vertx.core.streams.Pump;
-import io.vertx.reactivex.FlowableHelper;
+import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,13 +43,17 @@ import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcReader;
 import org.marc4j.marc.ControlField;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.impl.wrapper.SearchRecordIdsWriteStream;
+import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -57,6 +65,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.util.EventHandlingUtil;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
@@ -66,6 +75,12 @@ public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LogManager.getLogger();
   private static final String TAG_004 = "004";
+  public static final String ERROR_KEY = "ERROR";
+  private static final AtomicInteger chunkCounter = new AtomicInteger();
+  private static final AtomicInteger indexer = new AtomicInteger();
+  private KafkaConfig kafkaConfig;
+  @Value("${srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum:100}")
+  private int maxDistributionNum;
 
   private final RecordDao recordDao;
 
@@ -122,17 +137,17 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String id, List<KafkaHeader> kafkaHeaders, String jobExecutionId) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    recordCollection = filterMarcHoldingsBy004Field(recordCollection, tenantId);
-    return recordDao.saveRecords(recordCollection, tenantId);
+    recordCollection = filterMarcHoldingsBy004Field(recordCollection, jobExecutionId, kafkaHeaders, jobExecutionId);
+    return recordDao.saveRecords(recordCollection, jobExecutionId);
   }
 
-  private RecordCollection filterMarcHoldingsBy004Field(RecordCollection recordCollection, String tenantId) {
+  private RecordCollection filterMarcHoldingsBy004Field(RecordCollection recordCollection, String tenantId, List<KafkaHeader> kafkaHeaders, String jobExecutionId) {
     var records = recordCollection.getRecords();
     var marcHoldingsWithoutMarcBib = records.stream()
       .filter(record -> record.getRecordType() == Record.RecordType.MARC_HOLDING)
@@ -143,8 +158,44 @@ public class RecordServiceImpl implements RecordService {
         return !jsonArray.isEmpty();
         }
       ).collect(Collectors.toList());
+
+    if(!marcHoldingsWithoutMarcBib.isEmpty()){
+      var marcHoldings = new RecordCollection().withRecords(marcHoldingsWithoutMarcBib).withTotalRecords(marcHoldingsWithoutMarcBib.size());
+      LOG.info("The MARC Holdings record collections doesn't save, count of elements: {}", marcHoldings.getTotalRecords());
+      sendErrorRecordsSavingEvents(marcHoldings, "The MARC Holdings record has not MARC Bib", kafkaHeaders, jobExecutionId, tenantId)
+        .compose(v -> Future.failedFuture("The MARC Holdings record has not MARC Bib"));
+    }
+
     records.removeAll(marcHoldingsWithoutMarcBib);
     return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+  }
+
+  private Future<Void> sendErrorRecordsSavingEvents(RecordCollection recordCollection, String message, List<KafkaHeader> kafkaHeaders, String jobExecutionId, String tenantId) {
+    List<Future<Boolean>> sendingFutures = new ArrayList<>();
+    for (Record record : recordCollection.getRecords()) {
+      DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+        .withEventType(DI_ERROR.value())
+        .withJobExecutionId(jobExecutionId)
+        .withEventsChain(List.of(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value()))
+        .withTenant(tenantId)
+        .withContext(new HashMap<>(){{
+          put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+          put(ERROR_KEY, message);
+        }});
+
+      String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
+      sendingFutures.add(EventHandlingUtil.sendEventToKafka(tenantId, Json.encode(dataImportEventPayload), DI_ERROR.value(), kafkaHeaders, kafkaConfig, key));
+    }
+
+    Promise<Void> promise = Promise.promise();
+    GenericCompositeFuture.join(sendingFutures)
+      .onSuccess(v -> promise.complete())
+      .onFailure(th -> {
+        LOG.warn("Failed to send records sending error events" , th);
+        promise.fail(th);
+      });
+
+    return promise.future();
   }
 
   private JsonArray findMarcBibBy004Field(String tenantId, Record record) {

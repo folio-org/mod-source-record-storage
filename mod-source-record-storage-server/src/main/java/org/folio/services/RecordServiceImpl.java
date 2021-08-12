@@ -137,14 +137,14 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String id, List<KafkaHeader> kafkaHeaders, String jobExecutionId) {
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId, List<KafkaHeader> kafkaHeaders, String jobExecutionId) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    recordCollection = filterMarcHoldingsBy004Field(recordCollection, jobExecutionId, kafkaHeaders, jobExecutionId);
-    return recordDao.saveRecords(recordCollection, jobExecutionId);
+    recordCollection = filterMarcHoldingsBy004Field(recordCollection, tenantId, kafkaHeaders, jobExecutionId);
+    return recordDao.saveRecords(recordCollection, tenantId);
   }
 
   private RecordCollection filterMarcHoldingsBy004Field(RecordCollection recordCollection, String tenantId, List<KafkaHeader> kafkaHeaders, String jobExecutionId) {

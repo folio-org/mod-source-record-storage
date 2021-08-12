@@ -1,5 +1,7 @@
 package org.folio.services;
 
+import static org.mockito.ArgumentMatchers.any;
+
 import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
@@ -740,7 +742,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, tenantId, kafkaHeaders, TENANT_ID).onComplete(batch -> {
+    recordService.saveRecords(recordCollection, TENANT_ID, any(), any()).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }

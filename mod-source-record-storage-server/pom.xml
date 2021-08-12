@@ -208,6 +208,11 @@
       <artifactId>postgresql</artifactId>
       <version>42.2.18</version>
     </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.6</version>
+    </dependency>
   </dependencies>
 
   <properties>
@@ -515,6 +520,10 @@
                 <property>
                   <name>log4j.configurationFile</name>
                   <value>${project.baseUri}src/main/resources/log4j2.properties</value>
+                </property>
+                <property>
+                  <name>jsonschema2pojo.config.includeHashcodeAndEquals</name>
+                  <value>true</value>
                 </property>
                 <property>
                   <name>LC_ALL</name>

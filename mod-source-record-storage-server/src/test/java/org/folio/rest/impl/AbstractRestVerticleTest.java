@@ -3,10 +3,8 @@ package org.folio.rest.impl;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 import java.lang.reflect.Type;
-import java.util.Collections;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,16 +14,15 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import org.apache.http.HttpStatus;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -50,6 +47,7 @@ import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
 public abstract class AbstractRestVerticleTest {
 
+  public static final String POSTGRES_DOCKER_IMAGE = "postgres:12-alpine";
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static String useExternalDatabase;
@@ -123,15 +121,15 @@ public abstract class AbstractRestVerticleTest {
         PostgresClientFactory.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
-        PostgresClient.setPostgresTester(new PostgresTesterContainer());
-        JsonObject pgClientConfig = PostgresClient.getInstance(vertx.getDelegate()).getConnectionConfig();
+        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE);
+        postgresSQLContainer.start();
 
         Envs.setEnv(
-          pgClientConfig.getString(PostgresClientFactory.HOST),
-          pgClientConfig.getInteger(PostgresClientFactory.PORT),
-          pgClientConfig.getString(PostgresClientFactory.USERNAME),
-          pgClientConfig.getString(PostgresClientFactory.PASSWORD),
-          pgClientConfig.getString(PostgresClientFactory.DATABASE)
+          postgresSQLContainer.getHost(),
+          postgresSQLContainer.getFirstMappedPort(),
+          postgresSQLContainer.getUsername(),
+          postgresSQLContainer.getPassword(),
+          postgresSQLContainer.getDatabaseName()
         );
         break;
       default:
@@ -146,11 +144,9 @@ public abstract class AbstractRestVerticleTest {
       .setConfig(new JsonObject().put("http.port", okapiPort));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
-        tenantClient.postTenant(new TenantAttributes()
-          .withModuleTo("1.0")
-          .withParameters(Collections.singletonList(new Parameter()
-            .withKey(LOAD_SAMPLE_PARAMETER)
-            .withValue("true"))), res2 -> {
+        TenantAttributes tenantAttributes = new TenantAttributes();
+        tenantAttributes.setModuleTo(ModuleName.getModuleName());
+        tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
             return;
           }

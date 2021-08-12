@@ -1,12 +1,16 @@
 package org.folio.services;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
-
-import java.lang.reflect.Type;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
 import org.folio.postgres.testing.PostgresTesterContainer;
@@ -23,16 +27,10 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import io.restassured.RestAssured;
-import io.restassured.config.ObjectMapperConfig;
-import io.restassured.config.RestAssuredConfig;
-import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import java.lang.reflect.Type;
+
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 
 public abstract class AbstractLBServiceTest {
 
@@ -96,13 +94,14 @@ public abstract class AbstractLBServiceTest {
     ));
 
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
+    JsonObject pgClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();
 
     Envs.setEnv(
-      postgresSQLContainer.getHost(),
-      postgresSQLContainer.getFirstMappedPort(),
-      postgresSQLContainer.getUsername(),
-      postgresSQLContainer.getPassword(),
-      postgresSQLContainer.getDatabaseName()
+      pgClientConfig.getString(PostgresClientFactory.HOST),
+      pgClientConfig.getInteger(PostgresClientFactory.PORT),
+      pgClientConfig.getString(PostgresClientFactory.USERNAME),
+      pgClientConfig.getString(PostgresClientFactory.PASSWORD),
+      pgClientConfig.getString(PostgresClientFactory.DATABASE)
     );
 
     TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, TOKEN);

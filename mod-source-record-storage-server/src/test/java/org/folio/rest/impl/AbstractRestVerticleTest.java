@@ -124,6 +124,15 @@ public abstract class AbstractRestVerticleTest {
         break;
       case "embedded":
         PostgresClient.setPostgresTester(new PostgresTesterContainer());
+        JsonObject pgClientConfig = PostgresClient.getInstance(vertx.getDelegate()).getConnectionConfig();
+
+        Envs.setEnv(
+          pgClientConfig.getString(PostgresClientFactory.HOST),
+          pgClientConfig.getInteger(PostgresClientFactory.PORT),
+          pgClientConfig.getString(PostgresClientFactory.USERNAME),
+          pgClientConfig.getString(PostgresClientFactory.PASSWORD),
+          pgClientConfig.getString(PostgresClientFactory.DATABASE)
+        );
         break;
       default:
         String message = "No understood database choice made." +

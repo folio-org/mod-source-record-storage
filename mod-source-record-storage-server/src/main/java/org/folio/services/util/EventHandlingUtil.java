@@ -79,7 +79,7 @@ public final class EventHandlingUtil {
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)
-        .withPublishedBy(constructModelName()));
+        .withPublishedBy(constructModuleName()));
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
 
@@ -88,7 +88,7 @@ public final class EventHandlingUtil {
     return record;
   }
 
-  public static String constructModelName() {
+  public static String constructModuleName() {
     return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
       ModuleName.getModuleVersion());
   }

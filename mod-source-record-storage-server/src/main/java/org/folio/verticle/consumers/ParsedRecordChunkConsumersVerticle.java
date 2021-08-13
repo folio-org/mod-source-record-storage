@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
-import static org.folio.services.util.EventHandlingUtil.constructModelName;
+import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
   //TODO: get rid of this workaround with global spring context
@@ -53,7 +53,7 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedRecordChunksKafkaHandler, constructModelName() + "_" + getClass().getSimpleName()).onComplete(sar -> {
+    consumerWrapper.start(parsedRecordChunksKafkaHandler, constructModuleName() + "_" + getClass().getSimpleName()).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {

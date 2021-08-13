@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
-import static org.folio.services.util.EventHandlingUtil.constructModelName;
+import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 @Component
 @Qualifier("ParsedRecordChunksKafkaHandler")
@@ -111,7 +111,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
         .withEventMetadata(new EventMetadata()
           .withTenantId(tenantId)
           .withEventTTL(1)
-          .withPublishedBy(constructModelName()));
+          .withPublishedBy(constructModuleName()));
     } catch (IOException e) {
       LOGGER.error("Error constructing event payload", e);
       return Future.failedFuture(e);

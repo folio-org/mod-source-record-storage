@@ -26,10 +26,9 @@
       <version>${raml-module-builder.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>mod-source-record-storage-server</artifactId>
-      <version>${project.parent.version}</version>
-      <scope>test</scope>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.6</version>
     </dependency>
   </dependencies>
 
@@ -42,32 +41,9 @@
     </resources>
 
     <plugins>
-      <!-- Custom compilation mode -->
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version>
-        <configuration>
-          <release>11</release>
-          <encoding>UTF-8</encoding>
-        </configuration>
-        <executions>
-          <execution>
-            <id>default-compile</id>
-            <phase>process-sources</phase>
-          </execution>
-          <execution>
-            <id>build-generated-code</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.2.0</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -76,66 +52,50 @@
             </goals>
             <configuration>
               <sources>
-                <source>${project.build.directory}/generated-sources</source>
+                <!-- Adds client classes generated in current client module-->
+                <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
+                <!-- Adds model classes generated in server module -->
+                <source>../mod-source-record-storage-server/target/generated-sources/raml-jaxrs</source>
               </sources>
             </configuration>
           </execution>
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.6.0</version>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>mod-source-record-storage-server</artifactId>
+            <version>${project.parent.version}</version>
+            <exclusions>
+              <!-- Exclude unnecessary clients in the final client jar -->
+              <exclusion>
+                <groupId>org.folio</groupId>
+                <artifactId>data-import-processing-core</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.folio</groupId>
+                <artifactId>data-import-utils</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>generate_interfaces</id>
-            <phase>generate-sources</phase>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path}</value>
-                </systemProperty>
-              </systemProperties>
-            </configuration>
-          </execution>
-          <execution>
-            <id>generate_client</id>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>client.generate</key>
-                  <value>true</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>json.type</key>
-                  <value>postgres</value>
-                </systemProperty>
-              </systemProperties>
+              <generateInterfaces>false</generateInterfaces>
+              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>
       </plugin>
-
     </plugins>
   </build>
 

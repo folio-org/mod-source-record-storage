@@ -1,7 +1,6 @@
 package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.folio.kafka.AsyncRecordHandler;
@@ -10,9 +9,9 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.EventManager;
 import org.folio.spring.SpringContextUtil;
-import org.folio.util.pubsub.PubSubClientUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,12 +28,13 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTA
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_BIB_FOR_UPDATE_RECEIVED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDING_RECORD_CREATED;
+import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 public class DataImportConsumersVerticle extends AbstractVerticle {
   private static AbstractApplicationContext springGlobalContext;
@@ -91,7 +91,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
     List<Future<Void>> futures = new ArrayList<>();
     consumerWrappersList.forEach(consumerWrapper ->
-      futures.add(consumerWrapper.start(dataImportKafkaHandler, PubSubClientUtils.constructModuleName())));
+      futures.add(consumerWrapper.start(dataImportKafkaHandler, constructModuleName() + "_" + getClass().getSimpleName())));
 
     GenericCompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
   }

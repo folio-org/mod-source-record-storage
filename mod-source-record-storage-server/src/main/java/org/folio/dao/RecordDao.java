@@ -8,6 +8,7 @@ import java.util.function.Function;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -304,4 +305,13 @@ public interface RecordDao {
    * @return future with generic type
    */
   <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
+
+  /**
+   * Search for non-existent mark bib ids
+   *
+   * @param marcBibIds list of invalid marc bib ids
+   * @param tenantId tenant id
+   * @return future with list of invalid marc bib ids
+   */
+  Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
 }

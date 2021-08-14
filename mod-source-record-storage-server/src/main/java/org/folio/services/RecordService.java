@@ -8,6 +8,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.ExternalIdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -71,12 +72,10 @@ public interface RecordService {
    * Saves collection of records
    *
    * @param recordsCollection records to save
-   * @param id
-   * @param kafkaHeaders
-   * @param jobExecutionId          tenant id
+   * @param tenantId          tenant id
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String id, List<KafkaHeader> kafkaHeaders, String jobExecutionId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String tenantId);
 
   /**
    * Updates record with given id
@@ -192,4 +191,13 @@ public interface RecordService {
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
+  /**
+   * Find marc bib ids by incoming arrays and exclude all valid marc bib and return only marc bib ids,
+   * which does not exists in the system
+   *
+   * @param marcBibIds list of invalid marc bib ids
+   * @param tenantId tenant id
+   * @return future with list of invalid marc bib ids
+   */
+  Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
 }

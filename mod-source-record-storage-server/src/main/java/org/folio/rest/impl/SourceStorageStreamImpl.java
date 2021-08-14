@@ -1,5 +1,28 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.http.HttpHeaders.CONNECTION;
+import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
+
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
+import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Pattern;
+import javax.ws.rs.core.Response;
+
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -16,6 +39,10 @@ import io.vertx.sqlclient.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.impl.wrapper.SearchRecordIdsWriteStream;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
@@ -24,31 +51,6 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordSearchParameters;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
-import javax.ws.rs.core.Response;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import static io.vertx.core.http.HttpHeaders.CONNECTION;
-import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
-import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 public class SourceStorageStreamImpl implements SourceStorageStream {
 
@@ -77,6 +79,22 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     processStream(response, flowable, cause -> {
       LOG.error(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
+    });
+  }
+
+  @Override
+  public void postSourceStorageStreamVerify(List<String> marcBibIds, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.verifyMarcBibRecords(marcBibIds, tenantId)
+          .map(PostSourceStorageStreamVerifyResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to get marc bib records", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
     });
   }
 

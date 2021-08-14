@@ -742,7 +742,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, TENANT_ID, any(), any()).onComplete(batch -> {
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }

@@ -1,5 +1,43 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+import static org.jooq.impl.DSL.countDistinct;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
+
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -12,35 +50,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dao.util.ErrorRecordDaoUtil;
-import org.folio.dao.util.ExternalIdType;
-import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.dao.util.RawRecordDaoUtil;
-import org.folio.dao.util.RecordDaoUtil;
-import org.folio.dao.util.RecordType;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.RecordsBatchResponse;
-import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
-import org.folio.rest.jooq.enums.JobExecutionStatus;
-import org.folio.rest.jooq.enums.RecordState;
-import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
-import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
-import org.folio.rest.jooq.tables.records.RecordsLbRecord;
-import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
-import org.folio.services.RecordSearchParameters;
-import org.folio.services.util.parser.ParseFieldsResult;
-import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -61,42 +70,36 @@ import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
-import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
+import org.folio.dao.util.ErrorRecordDaoUtil;
+import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.dao.util.RawRecordDaoUtil;
+import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
+import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jooq.enums.JobExecutionStatus;
+import org.folio.rest.jooq.enums.RecordState;
+import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.RecordsLbRecord;
+import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
+import org.folio.services.RecordSearchParameters;
+import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -761,6 +764,30 @@ public class RecordDaoImpl implements RecordDao {
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, externalIdType, externalId)))))
         .onFailure(v -> txQE.rollback());
+  }
+
+  @Override
+  public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    var field = DSL.field("marc.hrid");
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.select(field).
+      from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
+      .leftJoin(RECORDS_LB.as("lb"))
+      .on("lb.instance_hrid = marc.hrid")
+      .where("lb.instance_hrid IS NULL")
+    )).map(this::toMarcBibCollection);
+  }
+
+
+  private MarcBibCollection toMarcBibCollection(QueryResult result) {
+    MarcBibCollection marcBibCollection = new MarcBibCollection();
+    List<String> ids = new ArrayList<>();
+    result.stream().map(res -> asRow(res.unwrap()))
+      .forEach(row -> ids.add(row.getString("hrid")));
+    if (!ids.isEmpty() && Objects.nonNull(ids.get(0))) {
+      marcBibCollection.withInvalidMarcBibIds(ids);
+    }
+    return marcBibCollection;
   }
 
   @Override

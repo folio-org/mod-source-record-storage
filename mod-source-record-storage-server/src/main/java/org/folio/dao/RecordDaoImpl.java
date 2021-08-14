@@ -778,7 +778,6 @@ public class RecordDaoImpl implements RecordDao {
     )).map(this::toMarcBibCollection);
   }
 
-
   private MarcBibCollection toMarcBibCollection(QueryResult result) {
     MarcBibCollection marcBibCollection = new MarcBibCollection();
     List<String> ids = new ArrayList<>();

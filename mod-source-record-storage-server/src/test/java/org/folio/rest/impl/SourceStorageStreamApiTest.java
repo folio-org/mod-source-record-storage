@@ -236,7 +236,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(ids)
       .when()
-      .post("/source-storage/stream" + "/verify")
+      .post("/source-storage/stream/verify")
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("invalidMarcBibIds", contains("111111", "222222"));

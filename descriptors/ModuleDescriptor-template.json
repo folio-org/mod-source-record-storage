@@ -190,6 +190,15 @@
           "permissionsRequired": [
             "source-storage.records.get"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/stream/verify",
+          "permissionsRequired": [
+
+          ]
         }
       ]
     },

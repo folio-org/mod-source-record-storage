@@ -232,7 +232,7 @@
     <postgres.version>42.2.18</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.20</lombok.version>
-    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers,/source-storage/stream/verify</generate_routing_context>
+    <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 
   <dependencyManagement>

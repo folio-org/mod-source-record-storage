@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
@@ -427,6 +428,37 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("records.size()", is(1))
       .body("errorMessages.size()", is(1))
       .body("totalRecords", is(1));
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnMarcBibIdsWhichDoesNotExistsInDatabase(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+
+    Record recordWithOldStatus = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1)
+      .withState(Record.State.OLD);
+
+    postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
+
+
+    var ids = Arrays.asList("111111", "222222");
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(ids)
+      .when()
+      .post("/source-storage/batch/verify")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("invalidMarcBibIds", contains("111111", "222222"));
+
     async.complete();
   }
 

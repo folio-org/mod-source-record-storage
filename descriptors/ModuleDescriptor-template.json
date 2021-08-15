@@ -190,15 +190,6 @@
           "permissionsRequired": [
             "source-storage.records.get"
           ]
-        },
-        {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/source-storage/stream/verify",
-          "permissionsRequired": [
-
-          ]
         }
       ]
     },
@@ -222,6 +213,15 @@
           "pathPattern": "/source-storage/batch/parsed-records",
           "permissionsRequired": [
             "source-storage.records.put"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/batch/verify",
+          "permissionsRequired": [
+
           ]
         }
       ]

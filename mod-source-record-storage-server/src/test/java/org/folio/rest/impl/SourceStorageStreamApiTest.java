@@ -212,38 +212,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         .subscribe();
   }
 
-
-  @Test
-  public void shouldReturnMarcBibIdsWhichDoesNotExistsInDatabase(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
-
-    Record recordWithOldStatus = new Record()
-      .withId(FOURTH_UUID)
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
-      .withMatchedId(FOURTH_UUID)
-      .withOrder(1)
-      .withState(Record.State.OLD);
-
-    postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, recordWithOldStatus);
-
-
-    var ids = Arrays.asList("111111", "222222");
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .body(ids)
-      .when()
-      .post("/source-storage/stream/verify")
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("invalidMarcBibIds", contains("111111", "222222"));
-
-    async.complete();
-  }
-
   @Test
   public void shouldReturnAllRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);

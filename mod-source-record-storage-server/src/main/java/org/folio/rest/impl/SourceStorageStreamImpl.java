@@ -83,22 +83,6 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   }
 
   @Override
-  public void postSourceStorageStreamVerify(List<String> marcBibIds, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    vertxContext.runOnContext(v -> {
-      try {
-        recordService.verifyMarcBibRecords(marcBibIds, tenantId)
-          .map(PostSourceStorageStreamVerifyResponse::respond200WithApplicationJson)
-          .map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse)
-          .onComplete(asyncResultHandler);
-      } catch (Exception e) {
-        LOG.error("Failed to get marc bib records", e);
-        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
-      }
-    });
-  }
-
-  @Override
   public void getSourceStorageStreamSourceRecords(String recordId, String snapshotId, String instanceId,
       String instanceHrid, String recordType, Boolean suppressFromDiscovery, Boolean deleted,
       @Pattern(regexp = "^[a|c|d|n|p|o|s|x]{1}$") String leaderRecordStatus, Date updatedAfter, Date updatedBefore,

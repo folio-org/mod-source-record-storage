@@ -110,6 +110,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
+  private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
@@ -768,6 +769,10 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    if(marcBibIds.isEmpty())
+    {
+      return Future.succeededFuture(new MarcBibCollection());
+    }
     var field = DSL.field("marc.hrid");
 
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl.select(field).
@@ -781,9 +786,10 @@ public class RecordDaoImpl implements RecordDao {
   private MarcBibCollection toMarcBibCollection(QueryResult result) {
     MarcBibCollection marcBibCollection = new MarcBibCollection();
     List<String> ids = new ArrayList<>();
-    result.stream().map(res -> asRow(res.unwrap()))
-      .forEach(row -> ids.add(row.getString("hrid")));
-    if (!ids.isEmpty() && Objects.nonNull(ids.get(0))) {
+    result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .forEach(row -> ids.add(row.getString(HRID)));
+    if (!ids.isEmpty()) {
       marcBibCollection.withInvalidMarcBibIds(ids);
     }
     return marcBibCollection;

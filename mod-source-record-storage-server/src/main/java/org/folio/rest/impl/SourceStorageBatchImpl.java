@@ -37,11 +37,11 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   }
 
   @Override
-  public void postSourceStorageBatchVerify(List<String> marcBibIds, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageBatchVerifiedRecords(List<String> marcBibIds, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         recordService.verifyMarcBibRecords(marcBibIds, tenantId)
-          .map(PostSourceStorageBatchVerifyResponse::respond200WithApplicationJson)
+          .map(PostSourceStorageBatchVerifiedRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

@@ -28,6 +28,7 @@ import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -36,6 +37,9 @@ import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
+
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -52,6 +56,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   private static final String SOURCE_STORAGE_BATCH_RECORDS_PATH = "/source-storage/batch/records";
+  private static final String SOURCE_STORAGE_BATCH_VERIFIED_RECORDS = "/source-storage/batch/verified-records";
   private static final String SOURCE_STORAGE_BATCH_PARSED_RECORDS_PATH = "/source-storage/batch/parsed-records";
 
   private static final String INVALID_POST_REQUEST = "{\"records\":[{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"snapshotId\":\"7f939c0b-618c-4eab-8276-a14e0bfe5728\",\"matchedId\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"generation\":0,\"recordType\":\"MARC_BIB\",\"rawRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":\"01104cam \"},\"parsedRecord\":{\"id\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"content\":{\"leader\":\"00000cam a2200277   4500\",\"fields\":[{\"001\":\"in00000000007\"},{\"005\":\"20120817205822.0\"},{\"008\":\"690410s1965    dcu          f000 0 eng  \"},{\"010\":{\"subfields\":[{\"a\":\"65062892\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"600\":{\"subfields\":[{\"a\":\"Ross, Arthur M.\"},{\"q\":\"(Arthur Max),\"},{\"d\":\"1916-1970.\"},{\"0\":\"http://id.loc.gov/authorities/names/n50047449\"}],\"ind1\":\"1\",\"ind2\":\"0\"}}],\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"96fbcc07-d67e-47bd-900d-90ae261edb73\",\"i\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"}]}}},\"deleted\":false,\"order\":0,\"externalIdsHolder\":{\"instanceId\":\"5b38b5e6-dfa3-4f51-8b7f-858421310aa7\"},\"additionalInfo\":{\"suppressDiscovery\":false},\"state\":\"ACTUAL\",\"leaderRecordStatus\":\"c\"}],\"totalRecords\":1}";
@@ -60,6 +65,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
+  public static final String VALID_HRID = "12345";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -432,7 +438,60 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldNotReturnIdsWhenMarcBibIsExists(TestContext testContext) {
+    searchMarcBibIdsByMatcher(testContext, Collections.singletonList(VALID_HRID), Matchers.empty());
+  }
+
+  @Test
+  public void shouldReturnIdsWhenOneMarcBibIsExistsAndOthersNot(TestContext testContext) {
+    var ids = Arrays.asList(VALID_HRID, "222222", "333333");
+    searchMarcBibIdsByMatcher(testContext, ids, contains("222222", "333333"));
+  }
+
+  @Test
   public void shouldReturnMarcBibIdsWhichDoesNotExistsInDatabase(TestContext testContext) {
+    var invalidIds = Arrays.asList("111111", "222222");
+    searchMarcBibIdsByMatcher(testContext, invalidIds, contains("111111", "222222"));
+  }
+
+  @Test
+  public void shouldReturnEmptyMarcBibIdsWhenMarcBibIdsAreEmpty(TestContext testContext) {
+    searchMarcBibIdsByMatcher(testContext, Collections.emptyList(), Matchers.empty());
+  }
+
+  public void searchMarcBibIdsByMatcher(TestContext testContext, List<String> ids, Matcher matcher){
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+
+    Record recordWithOldStatus = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(VALID_HRID))
+      .withState(Record.State.OLD);
+
+    postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(ids)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_VERIFIED_RECORDS)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("invalidMarcBibIds", matcher);
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnBadRequestIfMarcBibIdsAreNotDefined(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
     Record recordWithOldStatus = new Record()
@@ -447,17 +506,14 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
 
-
-    var ids = Arrays.asList("111111", "222222");
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
-      .body(ids)
       .when()
-      .post("/source-storage/batch/verify")
+      .post(SOURCE_STORAGE_BATCH_VERIFIED_RECORDS)
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("invalidMarcBibIds", contains("111111", "222222"));
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(containsString("The object to be validated must not be null."));
 
     async.complete();
   }

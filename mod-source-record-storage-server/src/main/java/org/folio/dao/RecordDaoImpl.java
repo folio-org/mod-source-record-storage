@@ -23,6 +23,7 @@ import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -109,6 +110,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
+  private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
@@ -766,6 +768,34 @@ public class RecordDaoImpl implements RecordDao {
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
         .onFailure(v -> txQE.rollback());
+  }
+
+  @Override
+  public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    if (marcBibIds.isEmpty()) {
+      return Future.succeededFuture(new MarcBibCollection());
+    }
+    var marcHrid = DSL.field("marc.hrid");
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
+      dsl.selectDistinct(marcHrid)
+        .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
+        .leftJoin(RECORDS_LB)
+        .on(RECORDS_LB.INSTANCE_HRID.eq(marcHrid.cast(String.class)))
+        .where(RECORDS_LB.INSTANCE_HRID.isNull())
+    )).map(this::toMarcBibCollection);
+  }
+
+  private MarcBibCollection toMarcBibCollection(QueryResult result) {
+    MarcBibCollection marcBibCollection = new MarcBibCollection();
+    List<String> ids = new ArrayList<>();
+    result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .forEach(row -> ids.add(row.getString(HRID)));
+    if (!ids.isEmpty()) {
+      marcBibCollection.withInvalidMarcBibIds(ids);
+    }
+    return marcBibCollection;
   }
 
   @Override

@@ -19,8 +19,13 @@ public class QueryParamUtilTest {
   }
 
   @Test
-  public void shouldReturnInstanceExternalIdType() {
-    assertEquals(IdType.INSTANCE, QueryParamUtil.toExternalIdType("INSTANCE"));
+  public void shouldReturnExternalIdTypeOnInstance() {
+    assertEquals(IdType.EXTERNAL, QueryParamUtil.toExternalIdType("INSTANCE"));
+  }
+
+  @Test
+  public void shouldReturnExternalIdTypeOnHoldings() {
+    assertEquals(IdType.EXTERNAL, QueryParamUtil.toExternalIdType("HOLDINGS"));
   }
 
   @Test

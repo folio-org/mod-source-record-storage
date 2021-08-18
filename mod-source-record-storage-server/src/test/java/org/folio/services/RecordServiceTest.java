@@ -154,14 +154,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
 
-        context.assertEquals(expected.size(), actual.size());
-        compareRecords(context, expected.get(0), actual.get(0));
-        compareRecords(context, expected.get(1), actual.get(1));
-        compareRecords(context, expected.get(2), actual.get(2));
+          context.assertEquals(expected.size(), actual.size());
+          compareRecords(context, expected.get(0), actual.get(0));
+          compareRecords(context, expected.get(1), actual.get(1));
+          compareRecords(context, expected.get(2), actual.get(2));
 
-        async.complete();
+          async.complete();
 
-      }).collect(() -> actual, List::add)
+        }).collect(() -> actual, List::add)
         .subscribe();
     });
   }
@@ -544,7 +544,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           context.fail(get.cause());
         }
         context.assertNotNull(get.result().getParsedRecord());
-        context.assertEquals(expected.getParsedRecord().getFormattedContent(), get.result().getParsedRecord().getFormattedContent());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(),
+          get.result().getParsedRecord().getFormattedContent());
         async.complete();
       });
     });
@@ -603,29 +604,31 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           }
           context.assertTrue(getSnapshot.result().isPresent());
           context.assertNotNull(getSnapshot.result().get().getProcessingStartedDate());
-          recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID).onComplete(getNewRecord -> {
-            if (getNewRecord.failed()) {
-              context.fail(getNewRecord.cause());
-            }
-            context.assertTrue(getNewRecord.result().isPresent());
-            context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
-            context.assertEquals(expected.getGeneration() + 1, getNewRecord.result().get().getGeneration());
-            recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID).onComplete(getOldRecord -> {
-              if (getOldRecord.failed()) {
-                context.fail(getOldRecord.cause());
+          recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId)), TENANT_ID)
+            .onComplete(getNewRecord -> {
+              if (getNewRecord.failed()) {
+                context.fail(getNewRecord.cause());
               }
-              context.assertTrue(getOldRecord.result().isPresent());
-              context.assertEquals(State.OLD, getOldRecord.result().get().getState());
-              async.complete();
+              context.assertTrue(getNewRecord.result().isPresent());
+              context.assertEquals(State.ACTUAL, getNewRecord.result().get().getState());
+              context.assertEquals(expected.getGeneration() + 1, getNewRecord.result().get().getGeneration());
+              recordDao.getRecordByCondition(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(expected.getSnapshotId())), TENANT_ID)
+                .onComplete(getOldRecord -> {
+                  if (getOldRecord.failed()) {
+                    context.fail(getOldRecord.cause());
+                  }
+                  context.assertTrue(getOldRecord.result().isPresent());
+                  context.assertEquals(State.OLD, getOldRecord.result().get().getState());
+                  async.complete();
+                });
             });
-          });
         });
       });
     });
   }
 
   private void getRecordsBySnapshotId(TestContext context, String uuid, RecordType parsedRecordType,
-    Record.RecordType recordType) {
+                                      Record.RecordType recordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -656,7 +659,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void streamRecordsBySnapshotId(TestContext context, String s, RecordType parsedRecordType,
-    Record.RecordType recordType) {
+                                         Record.RecordType recordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -681,12 +684,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
 
-        context.assertEquals(expected.size(), actual.size());
-        compareRecords(context, expected.get(0), actual.get(0));
+          context.assertEquals(expected.size(), actual.size());
+          compareRecords(context, expected.get(0), actual.get(0));
 
-        async.complete();
+          async.complete();
 
-      }).collect(() -> actual, List::add)
+        }).collect(() -> actual, List::add)
         .subscribe();
     });
   }
@@ -818,19 +821,19 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<SourceRecord> actual = new ArrayList<>();
       flowable.doFinally(() -> {
 
-        actual.sort(comparing(SourceRecord::getRecordId));
-        context.assertEquals(expected.size(), actual.size());
-        compareSourceRecords(context, expected, actual);
+          actual.sort(comparing(SourceRecord::getRecordId));
+          context.assertEquals(expected.size(), actual.size());
+          compareSourceRecords(context, expected, actual);
 
-        async.complete();
+          async.complete();
 
-      }).collect(() -> actual, List::add)
+        }).collect(() -> actual, List::add)
         .subscribe();
     });
   }
 
   private void getMarcSourceRecordsByListOfIds(TestContext context, Record.RecordType recordType,
-    RecordType parsedRecordType) {
+                                               RecordType parsedRecordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
@@ -842,11 +845,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       List<String> ids = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
-        .map(record -> record.getExternalIdsHolder().getInstanceId())
+        .map(Record::getMatchedId)
         .collect(Collectors.toList());
 
-      var idType = recordType == Record.RecordType.MARC_AUTHORITY ? IdType.RECORD : IdType.EXTERNAL;
-      recordService.getSourceRecords(ids, idType, parsedRecordType, false, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -868,7 +870,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void getMarcSourceRecordsByListOfIdsThatAreDeleted(TestContext context, Record.RecordType recordType,
-    RecordType parsedRecordType) {
+                                                             RecordType parsedRecordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords().stream()
       .map(record -> {
@@ -903,10 +905,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       List<String> ids = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
-        .map(record -> record.getExternalIdsHolder().getInstanceId())
+        .map(Record::getMatchedId)
         .collect(Collectors.toList());
-      var idType = recordType == Record.RecordType.MARC_AUTHORITY ? IdType.RECORD : IdType.EXTERNAL;;
-      recordService.getSourceRecords(ids, idType, parsedRecordType, true, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -1034,7 +1035,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      var recordType = expected.getRecordType();
       recordService
         .getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
         .onComplete(get -> {
@@ -1078,7 +1078,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void deleteMarcRecordsBySnapshotId(TestContext context, int i, RecordType parsedRecordType,
-    Record.RecordType recordType) {
+                                             Record.RecordType recordType) {
     Async async = context.async();
     List<Record> original = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()

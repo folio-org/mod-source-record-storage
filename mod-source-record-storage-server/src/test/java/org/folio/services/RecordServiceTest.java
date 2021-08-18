@@ -1170,8 +1170,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     } else {
       context.assertNull(actual.getAdditionalInfo());
     }
-    if (Objects.nonNull(expected.getExternalIdsHolder())
-      && (recordType == Record.RecordType.MARC_BIB || recordType == Record.RecordType.MARC_HOLDING)) {
+    if (Objects.nonNull(expected.getExternalIdsHolder())) {
       compareExternalIdsHolder(context, expected.getExternalIdsHolder(), actual.getExternalIdsHolder());
     } else {
       context.assertNull(actual.getExternalIdsHolder());
@@ -1212,8 +1211,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     } else {
       context.assertNull(actual.getAdditionalInfo());
     }
-    if (Objects.nonNull(expected.getExternalIdsHolder())
-      && (recordType == SourceRecord.RecordType.MARC_BIB || recordType == SourceRecord.RecordType.MARC_HOLDING)) {
+    if (Objects.nonNull(expected.getExternalIdsHolder())) {
       compareExternalIdsHolder(context, expected.getExternalIdsHolder(), actual.getExternalIdsHolder());
     } else {
       context.assertNull(actual.getExternalIdsHolder());

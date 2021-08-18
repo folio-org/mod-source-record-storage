@@ -11,6 +11,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.rest.util.QueryParamUtil.firstNonEmpty;
 import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
@@ -120,17 +121,6 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
-  }
-
-  public static String firstNonEmpty(final String... values) {
-    if (values != null) {
-      for (final String val : values) {
-        if (StringUtils.isNotEmpty(val)) {
-          return val;
-        }
-      }
-    }
-    return null;
   }
 
 }

@@ -48,6 +48,7 @@ import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 public final class RecordDaoUtil {
 
   public static final String RECORD_NOT_FOUND_TEMPLATE = "Record with id '%s' was not found";
+
   private static final String COMMA = ",";
   private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
 
@@ -401,12 +402,12 @@ public final class RecordDaoUtil {
   /**
    * Get {@link Condition} to filter by instance id
    *
-   * @param instanceId instance id to equal
+   * @param externalId instance id to equal
    * @return condition
    */
-  public static Condition filterRecordByExternalId(String instanceId) {
-    if (StringUtils.isNotEmpty(instanceId)) {
-      return RECORDS_LB.EXTERNAL_ID.eq(toUUID(instanceId));
+  public static Condition filterRecordByExternalId(String externalId) {
+    if (StringUtils.isNotEmpty(externalId)) {
+      return RECORDS_LB.EXTERNAL_ID.eq(toUUID(externalId));
     }
     return DSL.noCondition();
   }
@@ -414,12 +415,12 @@ public final class RecordDaoUtil {
   /**
    * Get {@link Condition} to filter by instance hrid
    *
-   * @param instanceHrid instance id to equal
+   * @param externalHrid instance id to equal
    * @return condition
    */
-  public static Condition filterRecordByExternalHrid(String instanceHrid) {
-    if (StringUtils.isNotEmpty(instanceHrid)) {
-      return RECORDS_LB.EXTERNAL_HRID.eq(instanceHrid);
+  public static Condition filterRecordByExternalHrid(String externalHrid) {
+    if (StringUtils.isNotEmpty(externalHrid)) {
+      return RECORDS_LB.EXTERNAL_HRID.eq(externalHrid);
     }
     return DSL.noCondition();
   }

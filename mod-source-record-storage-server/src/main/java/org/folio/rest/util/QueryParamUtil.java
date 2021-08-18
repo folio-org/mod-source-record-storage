@@ -5,12 +5,13 @@ import static java.lang.String.format;
 import javax.ws.rs.BadRequestException;
 
 import org.codehaus.plexus.util.StringUtils;
+
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 
 public final class QueryParamUtil {
 
-  private QueryParamUtil() { }
+  private QueryParamUtil() {}
 
   /**
    * Tries to convert string to {@link IdType}. Returns default RECORD if null or empty.
@@ -44,6 +45,24 @@ public final class QueryParamUtil {
       }
     }
     return RecordType.MARC_BIB;
+  }
+
+  /**
+   * Returns the first value in the array which is not null.
+   * If all the values are null or the array is null or empty then null is returned.
+   *
+   * @param values the values to test, may be null or empty
+   * @return the first value from values which is not null, or null if there are no non-null values
+   */
+  public static String firstNonEmpty(final String... values) {
+    if (values != null) {
+      for (final String val : values) {
+        if (org.apache.commons.lang3.StringUtils.isNotEmpty(val)) {
+          return val;
+        }
+      }
+    }
+    return null;
   }
 
 }

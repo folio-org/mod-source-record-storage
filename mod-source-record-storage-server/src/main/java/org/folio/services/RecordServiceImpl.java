@@ -143,14 +143,12 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId) {
-    return validateIdType(idType)
-      .compose(v -> recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId));
+    return recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId);
   }
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, String tenantId) {
-    return validateIdType(idType)
-      .compose(v -> recordDao.getSourceRecordByExternalId(id, idType, tenantId));
+    return recordDao.getSourceRecordByExternalId(id, idType, tenantId);
   }
 
   @Override
@@ -165,16 +163,14 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> getFormattedRecord(String id, IdType idType, String tenantId) {
-    return validateIdType(idType)
-      .compose(v -> recordDao.getRecordByExternalId(id, idType, tenantId))
+    return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
         new NotFoundException(format("Couldn't find record with id type %s and id %s", idType, id)))));
   }
 
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
-    return validateIdType(idType)
-      .compose(v -> recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId));
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
   }
 
   @Override
@@ -218,12 +214,4 @@ public class RecordServiceImpl implements RecordService {
     return record;
   }
 
-
-  private Future<Void> validateIdType(IdType idType) {
-    if (idType != IdType.RECORD && idType != IdType.EXTERNAL) {
-      return Future.failedFuture("IdType should be external or record");
-    } else {
-      return Future.succeededFuture();
-    }
-  }
 }

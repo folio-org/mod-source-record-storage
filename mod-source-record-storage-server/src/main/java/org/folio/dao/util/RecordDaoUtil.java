@@ -61,7 +61,11 @@ public final class RecordDaoUtil {
    * @return condition
    */
   public static Condition getExternalIdCondition(String externalId, IdType idType) {
-    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idType.getIdField()), UUID.class).eq(toUUID(externalId));
+    IdType idTypeToUse = idType;
+    if (idType == IdType.HOLDINGS || idType == IdType.INSTANCE) {
+      idTypeToUse = IdType.EXTERNAL;
+    }
+    return RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idTypeToUse.getIdField()), UUID.class).eq(toUUID(externalId));
   }
 
   /**

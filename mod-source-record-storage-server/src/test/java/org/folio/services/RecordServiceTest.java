@@ -3,7 +3,6 @@ package org.folio.services;
 import static java.util.Comparator.comparing;
 
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -457,17 +456,17 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldGetMarcBibSourceRecordById(TestContext context) {
-    getMarcSourceRecordById(context, "INSTANCE", TestMocks.getMarcBibRecord());
+    getMarcSourceRecordById(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
   public void shouldGetMarcAuthoritySourceRecordById(TestContext context) {
-    getMarcSourceRecordById(context, "RECORD", TestMocks.getMarcAuthorityRecord());
+    getMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
   public void shouldGetMarcHoldingsSourceRecordById(TestContext context) {
-    getMarcSourceRecordById(context, "HOLDINGS", TestMocks.getMarcHoldingsRecord());
+    getMarcSourceRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
 
   // TODO: test get by matched id not equal to id
@@ -519,17 +518,17 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldGetFormattedMarcBibRecord(TestContext context) {
-    getFormattedMarcRecord(context, "INSTANCE", TestMocks.getMarcBibRecord());
+    getFormattedMarcRecord(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
   public void shouldGetFormattedMarcAuthorityRecord(TestContext context) {
-    getFormattedMarcRecord(context, "RECORD", TestMocks.getMarcAuthorityRecord());
+    getFormattedMarcRecord(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
   public void shouldGetFormattedMarcHoldingsRecord(TestContext context) {
-    getFormattedMarcRecord(context, "HOLDINGS", TestMocks.getMarcHoldingsRecord());
+    getFormattedMarcRecord(context, TestMocks.getMarcHoldingsRecord());
   }
 
   @Test
@@ -924,14 +923,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void getMarcSourceRecordById(TestContext context, String idType, Record expected) {
+  private void getMarcSourceRecordById(TestContext context, Record expected) {
     Async async = context.async();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
       recordService
-        .getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), toExternalIdType(idType), TENANT_ID)
+        .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
         .onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
@@ -948,7 +947,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void notGetMarcSourceRecordById(TestContext context, Record expected) {
     Async async = context.async();
     recordService
-      .getSourceRecordById(expected.getExternalIdsHolder().getInstanceId(), toExternalIdType("INSTANCE"), TENANT_ID)
+      .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
       .onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
@@ -990,7 +989,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         update.result().getParsedRecords().sort(comparing(ParsedRecord::getId));
         compareParsedRecords(context, expected, update.result().getParsedRecords());
         GenericCompositeFuture.all(updated.stream().map(record -> recordDao
-          .getRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), toExternalIdType("INSTANCE"), TENANT_ID)
+          .getRecordByMatchedId(record.getMatchedId(), TENANT_ID)
           .onComplete(get -> {
             if (get.failed()) {
               context.fail(get.cause());
@@ -1015,7 +1014,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       expected.setLeaderRecordStatus("a");
       recordService.updateRecord(expected, TENANT_ID);
       recordService
-        .getFormattedRecord(expected.getExternalIdsHolder().getInstanceId(), toExternalIdType("INSTANCE"), TENANT_ID)
+        .getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
         .onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
@@ -1029,23 +1028,15 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void getFormattedMarcRecord(TestContext context, String idType, Record expected) {
+  private void getFormattedMarcRecord(TestContext context, Record expected) {
     Async async = context.async();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
       var recordType = expected.getRecordType();
-      String id;
-      if (recordType == Record.RecordType.MARC_HOLDING) {
-        id = expected.getExternalIdsHolder().getHoldingsId();
-      } else if (recordType == Record.RecordType.MARC_AUTHORITY) {
-        id = expected.getMatchedId();
-      } else {
-        id = expected.getExternalIdsHolder().getInstanceId();
-      }
       recordService
-        .getFormattedRecord(id, toExternalIdType(idType), TENANT_ID)
+        .getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
         .onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
@@ -1064,25 +1055,24 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      String instanceId = expected.getExternalIdsHolder().getInstanceId();
-      Boolean suppress = true;
-      recordService.updateSuppressFromDiscoveryForRecord(instanceId, toExternalIdType("INSTANCE"), suppress, TENANT_ID)
+      recordService.updateSuppressFromDiscoveryForRecord(expected.getMatchedId(), IdType.RECORD, true, TENANT_ID)
         .onComplete(update -> {
           if (update.failed()) {
             context.fail(update.cause());
           }
           context.assertTrue(update.result());
-          recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-            if (get.failed()) {
-              context.fail(get.cause());
-            }
-            context.assertTrue(get.result().isPresent());
-            context.assertNotNull(get.result().get().getRawRecord());
-            context.assertNotNull(get.result().get().getParsedRecord());
-            expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
-            compareRecords(context, expected, get.result().get());
-            async.complete();
-          });
+          recordDao.getRecordById(expected.getMatchedId(), TENANT_ID)
+            .onComplete(get -> {
+              if (get.failed()) {
+                context.fail(get.cause());
+              }
+              context.assertTrue(get.result().isPresent());
+              context.assertNotNull(get.result().get().getRawRecord());
+              context.assertNotNull(get.result().get().getParsedRecord());
+              expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
+              compareRecords(context, expected, get.result().get());
+              async.complete();
+            });
         });
     });
   }
@@ -1202,9 +1192,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void compareSourceRecords(TestContext context, SourceRecord expected, SourceRecord actual) {
     context.assertNotNull(actual);
+    var recordType = expected.getRecordType();
     context.assertEquals(expected.getRecordId(), actual.getRecordId());
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
-    context.assertEquals(expected.getRecordType(), actual.getRecordType());
+    context.assertEquals(recordType, actual.getRecordType());
     context.assertEquals(expected.getOrder(), actual.getOrder());
     if (Objects.nonNull(expected.getRawRecord())) {
       compareRawRecords(context, expected.getRawRecord(), actual.getRawRecord());
@@ -1221,7 +1212,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     } else {
       context.assertNull(actual.getAdditionalInfo());
     }
-    if (Objects.nonNull(expected.getExternalIdsHolder())) {
+    if (Objects.nonNull(expected.getExternalIdsHolder())
+      && (recordType == SourceRecord.RecordType.MARC_BIB || recordType == SourceRecord.RecordType.MARC_HOLDING)) {
       compareExternalIdsHolder(context, expected.getExternalIdsHolder(), actual.getExternalIdsHolder());
     } else {
       context.assertNull(actual.getExternalIdsHolder());

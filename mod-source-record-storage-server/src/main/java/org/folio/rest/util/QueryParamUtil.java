@@ -21,11 +21,7 @@ public final class QueryParamUtil {
   public static IdType toExternalIdType(String externalIdType) {
     if (StringUtils.isNotEmpty(externalIdType)) {
       try {
-        var idType = IdType.valueOf(externalIdType);
-        if (idType == IdType.INSTANCE || idType == IdType.HOLDINGS) {
-          idType = IdType.EXTERNAL;
-        }
-        return idType;
+        return IdType.valueOf(externalIdType);
       } catch (Exception e) {
         throw new BadRequestException(format("Unknown id type %s", externalIdType));
       }

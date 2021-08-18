@@ -60,125 +60,28 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
   private static final String NINTH_UUID = UUID.randomUUID().toString();
 
-  private static RawRecord rawRecord;
-  private static ParsedRecord marcRecord;
+  private static final RawRecord rawRecord;
+  private static final ParsedRecord marcRecord;
+  private static final RawRecord rawEdifactRecord;
+  private static final ParsedRecord parsedEdifactRecord;
+  private static final ParsedRecord invalidParsedRecord;
+  private static final ErrorRecord errorRecord;
 
-  private static RawRecord rawEdifactRecord;
-  private static ParsedRecord parsedEdifactRecord;
-  private static ParsedRecord invalidParsedRecord = new ParsedRecord()
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  private static ErrorRecord errorRecord = new ErrorRecord()
-    .withDescription("Oops... something happened")
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
-  private static Snapshot snapshot_1 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_2 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_3 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_4 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Snapshot snapshot_5 = new Snapshot()
-    .withJobExecutionId(UUID.randomUUID().toString())
-    .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
-  private static Record record_1 = new Record()
-    .withId(FIRST_UUID)
-    .withSnapshotId(snapshot_1.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withMatchedId(FIRST_UUID)
-    .withOrder(0)
-    .withState(Record.State.ACTUAL);
-  private static Record record_2 = new Record()
-    .withId(SECOND_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(SECOND_UUID)
-    .withOrder(11)
-    .withState(Record.State.ACTUAL)
-    .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
-  private static Record record_3 = new Record()
-    .withId(THIRD_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withErrorRecord(errorRecord)
-    .withMatchedId(THIRD_UUID)
-    .withState(Record.State.ACTUAL);
-  private static Record record_4 = new Record()
-    .withId(FOURTH_UUID)
-    .withSnapshotId(snapshot_1.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(FOURTH_UUID)
-    .withOrder(1)
-    .withState(Record.State.ACTUAL)
-    .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
-  private static Record record_5 = new Record()
-    .withId(FIFTH_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withMatchedId(FIFTH_UUID)
-    .withParsedRecord(invalidParsedRecord)
-    .withOrder(101)
-    .withState(Record.State.ACTUAL);
-  private static Record record_6 = new Record()
-    .withId(SIXTH_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withMatchedId(SIXTH_UUID)
-    .withParsedRecord(marcRecord)
-    .withOrder(101)
-    .withState(Record.State.ACTUAL)
-    .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
-  private static Record record_7 = new Record()
-    .withId(SEVENTH_UUID)
-    .withSnapshotId(snapshot_3.getJobExecutionId())
-    .withRecordType(Record.RecordType.EDIFACT)
-    .withRawRecord(rawEdifactRecord)
-    .withParsedRecord(parsedEdifactRecord)
-    .withMatchedId(SEVENTH_UUID)
-    .withOrder(0)
-    .withState(Record.State.ACTUAL);
-  private static Record record_8 = new Record()
-    .withId(EIGHTH_UUID)
-    .withSnapshotId(snapshot_4.getJobExecutionId())
-    .withRecordType(RecordType.MARC_AUTHORITY)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(EIGHTH_UUID)
-    .withOrder(0)
-    .withState(Record.State.ACTUAL)
-    .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
-  private static Record record_9 = new Record()
-    .withId(NINTH_UUID)
-    .withSnapshotId(snapshot_5.getJobExecutionId())
-    .withRecordType(RecordType.MARC_HOLDING)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(NINTH_UUID)
-    .withOrder(0)
-    .withState(Record.State.ACTUAL)
-    .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+  private static final Snapshot snapshot_1;
+  private static final Snapshot snapshot_2;
+  private static final Snapshot snapshot_3;
+  private static final Snapshot snapshot_4;
+  private static final Snapshot snapshot_5;
+
+  private static final Record record_1;
+  private static final Record record_2;
+  private static final Record record_3;
+  private static final Record record_4;
+  private static final Record record_5;
+  private static final Record record_6;
+  private static final Record record_7;
+  private static final Record record_8;
+  private static final Record record_9;
 
   static {
     try {
@@ -195,9 +98,127 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       parsedEdifactRecord = new ParsedRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH),
           JsonObject.class).encode());
+      invalidParsedRecord = new ParsedRecord()
+        .withContent(
+          "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
+      errorRecord = new ErrorRecord()
+        .withDescription("Oops... something happened")
+        .withContent(
+          "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new IllegalArgumentException(e);
     }
+
+    snapshot_1 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    snapshot_2 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    snapshot_3 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    snapshot_4 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+    snapshot_5 = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+
+    record_1 = new Record()
+      .withId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL);
+    record_2 = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
+    record_3 = new Record()
+      .withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withErrorRecord(errorRecord)
+      .withMatchedId(THIRD_UUID)
+      .withState(Record.State.ACTUAL);
+    record_4 = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
+    record_5 = new Record()
+      .withId(FIFTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withMatchedId(FIFTH_UUID)
+      .withParsedRecord(invalidParsedRecord)
+      .withOrder(101)
+      .withState(Record.State.ACTUAL);
+    record_6 = new Record()
+      .withId(SIXTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withMatchedId(SIXTH_UUID)
+      .withParsedRecord(marcRecord)
+      .withOrder(101)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
+    record_7 = new Record()
+      .withId(SEVENTH_UUID)
+      .withSnapshotId(snapshot_3.getJobExecutionId())
+      .withRecordType(RecordType.EDIFACT)
+      .withRawRecord(rawEdifactRecord)
+      .withParsedRecord(parsedEdifactRecord)
+      .withMatchedId(SEVENTH_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL);
+    record_8 = new Record()
+      .withId(EIGHTH_UUID)
+      .withSnapshotId(snapshot_4.getJobExecutionId())
+      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(EIGHTH_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
+    record_9 = new Record()
+      .withId(NINTH_UUID)
+      .withSnapshotId(snapshot_5.getJobExecutionId())
+      .withRecordType(RecordType.MARC_HOLDING)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(NINTH_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
   }
 
   @Before

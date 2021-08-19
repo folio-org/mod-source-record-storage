@@ -1,38 +1,9 @@
 package org.folio.rest.impl;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
-
-import java.lang.reflect.Type;
-import java.util.Collections;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-
-import org.apache.http.HttpStatus;
-import org.folio.dao.PostgresClientFactory;
-import org.folio.rest.RestVerticle;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.testcontainers.containers.PostgreSQLContainer;
-
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
@@ -46,9 +17,38 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.reactivex.core.Vertx;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.apache.http.HttpStatus;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.ModuleName;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.testcontainers.containers.PostgreSQLContainer;
+
+import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.UUID;
+
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public abstract class AbstractRestVerticleTest {
 
+  public static final String POSTGRES_IMAGE = "postgres:12-alpine";
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static String useExternalDatabase;
@@ -122,8 +122,7 @@ public abstract class AbstractRestVerticleTest {
         PostgresClientFactory.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
-        String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
-        postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
+        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
         postgresSQLContainer.start();
 
         Envs.setEnv(
@@ -146,11 +145,12 @@ public abstract class AbstractRestVerticleTest {
       .setConfig(new JsonObject().put("http.port", okapiPort));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
-        tenantClient.postTenant(new TenantAttributes()
-          .withModuleTo("1.0")
-          .withParameters(Collections.singletonList(new Parameter()
-            .withKey(LOAD_SAMPLE_PARAMETER)
-            .withValue("true"))), res2 -> {
+        TenantAttributes tenantAttributes = new TenantAttributes();
+        tenantAttributes.setModuleTo(ModuleName.getModuleName());
+        tenantAttributes.setParameters(Collections.singletonList(new Parameter()
+          .withKey(LOAD_SAMPLE_PARAMETER)
+          .withValue("true")));
+        tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
             return;
           }
@@ -199,7 +199,7 @@ public abstract class AbstractRestVerticleTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
-        postgresSQLContainer.stop();
+        PostgresClient.stopPostgresTester();
       }
       async.complete();
     }));

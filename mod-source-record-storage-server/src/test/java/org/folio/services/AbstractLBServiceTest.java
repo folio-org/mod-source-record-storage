@@ -1,27 +1,6 @@
 package org.folio.services;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
-
-import java.lang.reflect.Type;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.folio.dao.PostgresClientFactory;
-import org.folio.kafka.KafkaConfig;
-import org.folio.rest.RestVerticle;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.testcontainers.containers.PostgreSQLContainer;
-
 import io.restassured.RestAssured;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
@@ -32,6 +11,26 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.kafka.KafkaConfig;
+import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.testcontainers.containers.PostgreSQLContainer;
+
+import java.lang.reflect.Type;
+
+import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 
 public abstract class AbstractLBServiceTest {
 
@@ -39,6 +38,8 @@ public abstract class AbstractLBServiceTest {
   private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String KAFKA_ENV = "ENV";
   private static final String KAFKA_ENV_ID = "test-env";
+  private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
+  private static final int KAFKA_MAX_REQUEST_SIZE_VAL = 1048576;
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
 
@@ -72,12 +73,14 @@ public abstract class AbstractLBServiceTest {
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
+    System.setProperty(KAFKA_MAX_REQUEST_SIZE, String.valueOf(KAFKA_MAX_REQUEST_SIZE_VAL));
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
     kafkaConfig = KafkaConfig.builder()
       .kafkaHost(hostAndPort[0])
       .kafkaPort(hostAndPort[1])
       .envId(KAFKA_ENV_ID)
+      .maxRequestSize(KAFKA_MAX_REQUEST_SIZE_VAL)
       .build();
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
@@ -90,16 +93,15 @@ public abstract class AbstractLBServiceTest {
       }
     ));
 
-    String postgresImage = PomReader.INSTANCE.getProps().getProperty("postgres.image");
-    postgresSQLContainer = new PostgreSQLContainer<>(postgresImage);
-    postgresSQLContainer.start();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+    JsonObject pgClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();
 
     Envs.setEnv(
-      postgresSQLContainer.getHost(),
-      postgresSQLContainer.getFirstMappedPort(),
-      postgresSQLContainer.getUsername(),
-      postgresSQLContainer.getPassword(),
-      postgresSQLContainer.getDatabaseName()
+      pgClientConfig.getString(PostgresClientFactory.HOST),
+      pgClientConfig.getInteger(PostgresClientFactory.PORT),
+      pgClientConfig.getString(PostgresClientFactory.USERNAME),
+      pgClientConfig.getString(PostgresClientFactory.PASSWORD),
+      pgClientConfig.getString(PostgresClientFactory.DATABASE)
     );
 
     TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, TOKEN);
@@ -138,7 +140,7 @@ public abstract class AbstractLBServiceTest {
     Async async = context.async();
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
-      postgresSQLContainer.stop();
+      PostgresClient.stopPostgresTester();
       async.complete();
     }));
   }

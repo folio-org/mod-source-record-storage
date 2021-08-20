@@ -309,7 +309,7 @@ public interface RecordDao {
   /**
    * Search for non-existent mark bib ids in the system
    *
-   * @param marcBibIds list of invalid marc bib ids
+   * @param marcBibIds list of marc bib ids
    * @param tenantId tenant id
    * @return future with list of invalid marc bib ids
    */

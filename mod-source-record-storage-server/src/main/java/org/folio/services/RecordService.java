@@ -195,7 +195,7 @@ public interface RecordService {
    * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,
    * which does not exists in the system
    *
-   * @param marcBibIds list of invalid marc bib ids
+   * @param marcBibIds list of marc bib ids
    * @param tenantId tenant id
    * @return future with list of invalid marc bib ids
    */

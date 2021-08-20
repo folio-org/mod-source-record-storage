@@ -65,7 +65,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
-  public static final String VALID_HRID = "12345";
+  private static final String VALID_HRID = "12345";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -486,6 +486,38 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("invalidMarcBibIds", matcher);
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdWhenRecordTypeIsMarcHoldings(TestContext testContext){
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+
+    Record recordMarcHoldings = new Record()
+      .withId(FOURTH_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(RecordType.MARC_HOLDING)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FOURTH_UUID)
+      .withOrder(1)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(VALID_HRID))
+      .withState(Record.State.OLD);
+
+    postRecords(testContext, record_1, record_2, record_3, recordMarcHoldings);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(Collections.singletonList(VALID_HRID))
+      .when()
+      .post(SOURCE_STORAGE_BATCH_VERIFIED_RECORDS)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("invalidMarcBibIds", contains(VALID_HRID));
 
     async.complete();
   }

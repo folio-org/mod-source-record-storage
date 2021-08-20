@@ -781,7 +781,8 @@ public class RecordDaoImpl implements RecordDao {
       dsl.selectDistinct(marcHrid)
         .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
         .leftJoin(RECORDS_LB)
-        .on(RECORDS_LB.INSTANCE_HRID.eq(marcHrid.cast(String.class)))
+        .on(RECORDS_LB.INSTANCE_HRID.eq(marcHrid.cast(String.class))
+          .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
         .where(RECORDS_LB.INSTANCE_HRID.isNull())
     )).map(this::toMarcBibCollection);
   }

@@ -93,6 +93,7 @@ import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
@@ -781,9 +782,9 @@ public class RecordDaoImpl implements RecordDao {
       dsl.selectDistinct(marcHrid)
         .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
         .leftJoin(RECORDS_LB)
-        .on(RECORDS_LB.INSTANCE_HRID.eq(marcHrid.cast(String.class))
+        .on(RECORDS_LB.EXTERNAL_HRID.eq(marcHrid.cast(String.class))
           .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
-        .where(RECORDS_LB.INSTANCE_HRID.isNull())
+        .where(RECORDS_LB.EXTERNAL_HRID.isNull())
     )).map(this::toMarcBibCollection);
   }
 

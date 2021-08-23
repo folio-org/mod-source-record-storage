@@ -14,7 +14,8 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.services.QuickMarcKafkaHandler;
 import org.folio.spring.SpringContextUtil;
-import org.folio.util.pubsub.PubSubClientUtils;
+
+import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 public class QuickMarcConsumersVerticle extends AbstractVerticle {
 
@@ -62,7 +63,7 @@ public class QuickMarcConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumer.start(kafkaHandler, PubSubClientUtils.constructModuleName())
+    consumer.start(kafkaHandler, constructModuleName() + "_" + getClass().getSimpleName())
       .onComplete(ar -> startPromise.complete());
   }
 

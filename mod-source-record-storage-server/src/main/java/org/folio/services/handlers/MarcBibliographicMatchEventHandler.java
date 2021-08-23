@@ -3,7 +3,6 @@ package org.folio.services.handlers;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang.StringUtils;
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
@@ -35,17 +34,15 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -190,10 +187,10 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
         condition = filterRecordByRecordId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_ID_MARC_FIELD:
-        condition = filterRecordByInstanceId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
+        condition = filterRecordByExternalId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       case INSTANCE_HRID_MARC_FIELD:
-        condition = filterRecordByInstanceHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
+        condition = filterRecordByExternalHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
         break;
       default:
         condition = null;

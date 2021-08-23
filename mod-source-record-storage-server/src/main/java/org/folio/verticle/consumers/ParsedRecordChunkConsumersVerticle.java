@@ -8,7 +8,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
-import org.folio.rest.tools.PomReader;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
+import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
   //TODO: get rid of this workaround with global spring context
@@ -53,7 +53,7 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(parsedRecordChunksKafkaHandler, PomReader.INSTANCE.getModuleName()).onComplete(sar -> {
+    consumerWrapper.start(parsedRecordChunksKafkaHandler, constructModuleName() + "_" + getClass().getSimpleName()).onComplete(sar -> {
       if (sar.succeeded()) {
         startPromise.complete();
       } else {

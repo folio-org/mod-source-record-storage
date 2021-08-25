@@ -13,7 +13,7 @@ import net.mguenther.kafka.junit.SendKeyValues;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
@@ -139,7 +139,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getSourceRecordById(record.getMatchedId(), ExternalIdType.RECORD, TENANT_ID).onComplete(getNew -> {
+      recordService.getSourceRecordById(record.getMatchedId(), IdType.RECORD, TENANT_ID).onComplete(getNew -> {
         if (getNew.failed()) {
           context.fail(getNew.cause());
         }

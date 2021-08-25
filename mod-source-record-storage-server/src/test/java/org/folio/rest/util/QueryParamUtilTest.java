@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import javax.ws.rs.BadRequestException;
 
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,18 +15,23 @@ public class QueryParamUtilTest {
 
   @Test
   public void shouldReturnRecordExternalIdType() {
-    assertEquals(ExternalIdType.RECORD, QueryParamUtil.toExternalIdType("RECORD"));
+    assertEquals(IdType.RECORD, QueryParamUtil.toExternalIdType("RECORD"));
   }
 
   @Test
-  public void shouldReturnInstanceExternalIdType() {
-    assertEquals(ExternalIdType.INSTANCE, QueryParamUtil.toExternalIdType("INSTANCE"));
+  public void shouldReturnExternalIdTypeOnInstance() {
+    assertEquals(IdType.INSTANCE, QueryParamUtil.toExternalIdType("INSTANCE"));
+  }
+
+  @Test
+  public void shouldReturnExternalIdTypeOnHoldings() {
+    assertEquals(IdType.HOLDINGS, QueryParamUtil.toExternalIdType("HOLDINGS"));
   }
 
   @Test
   public void shouldReturnDefaultExternalIdType() {
-    assertEquals(ExternalIdType.RECORD, QueryParamUtil.toExternalIdType(null));
-    assertEquals(ExternalIdType.RECORD, QueryParamUtil.toExternalIdType(""));
+    assertEquals(IdType.RECORD, QueryParamUtil.toExternalIdType(null));
+    assertEquals(IdType.RECORD, QueryParamUtil.toExternalIdType(""));
   }
 
   @Test(expected = BadRequestException.class)

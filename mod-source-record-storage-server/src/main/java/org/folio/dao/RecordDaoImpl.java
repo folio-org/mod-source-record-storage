@@ -13,7 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ErrorRecordDaoUtil;
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
@@ -23,6 +23,7 @@ import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -84,12 +85,15 @@ import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
@@ -107,6 +111,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
+  private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
@@ -122,7 +127,7 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.MATCHED_ID,
     RECORDS_LB.GENERATION,
     RECORDS_LB.RECORD_TYPE,
-    RECORDS_LB.INSTANCE_ID,
+    RECORDS_LB.EXTERNAL_ID,
     RECORDS_LB.STATE,
     RECORDS_LB.LEADER_RECORD_STATUS,
     RECORDS_LB.ORDER,
@@ -131,7 +136,7 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.CREATED_DATE,
     RECORDS_LB.UPDATED_BY_USER_ID,
     RECORDS_LB.UPDATED_DATE,
-    RECORDS_LB.INSTANCE_HRID
+    RECORDS_LB.EXTERNAL_HRID
   };
 
   private final PostgresClientFactory postgresClientFactory;
@@ -195,7 +200,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
     /* Building a search query */
-    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.INSTANCE_ID).from(RECORDS_LB);
+    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
@@ -205,7 +210,7 @@ public class RecordDaoImpl implements RecordDao {
       searchQuery.limit(searchParameters.getLimit());
     }
     /* Building a count query */
-    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.INSTANCE_ID)).from(RECORDS_LB);
+    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
     appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     /* Join both in one query */
@@ -531,8 +536,8 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, externalIdType)
+  public Future<SourceRecordCollection> getSourceRecords(List<String> externalIds, IdType idType, RecordType recordType, Boolean deleted, String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType)
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
@@ -549,8 +554,8 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, ExternalIdType externalIdType, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, IdType idType, String tenantId) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
       .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     return getSourceRecordByCondition(condition, tenantId);
@@ -635,13 +640,16 @@ public class RecordDaoImpl implements RecordDao {
         Metadata metadata = record.getMetadata();
 
         if (Objects.nonNull(externalIdsHolder)) {
-          if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceId())) {
+          var recordType = record.getRecordType();
+          String externalId = getExternalId(externalIdsHolder, recordType);
+          String externalHrid = getExternalHrid(externalIdsHolder, recordType);
+          if (StringUtils.isNotEmpty(externalId)) {
               updateStep = updateFirstStep
-                .set(RECORDS_LB.INSTANCE_ID, UUID.fromString(externalIdsHolder.getInstanceId()));
+                .set(RECORDS_LB.EXTERNAL_ID, UUID.fromString(externalId));
           }
-          if (StringUtils.isNotEmpty(externalIdsHolder.getInstanceHrid())) {
+          if (StringUtils.isNotEmpty(externalHrid)) {
             updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.INSTANCE_HRID, externalIdsHolder.getInstanceHrid());
+              .set(RECORDS_LB.EXTERNAL_HRID, externalHrid);
           }
         }
 
@@ -741,16 +749,16 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, ExternalIdType externalIdType,
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
       String tenantId) {
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> getRecordByExternalId(txQE, externalId, externalIdType));
+      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
   }
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
-      String externalId, ExternalIdType externalIdType) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, externalIdType)
+      String externalId, IdType idType) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(condition)
@@ -759,8 +767,37 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::toOptionalRecord)
         .compose(optionalRecord -> optionalRecord
           .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-          .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, externalIdType, externalId)))))
+          .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
         .onFailure(v -> txQE.rollback());
+  }
+
+  @Override
+  public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    if (marcBibIds.isEmpty()) {
+      return Future.succeededFuture(new MarcBibCollection());
+    }
+    var marcHrid = DSL.field("marc.hrid");
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
+      dsl.selectDistinct(marcHrid)
+        .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
+        .leftJoin(RECORDS_LB)
+        .on(RECORDS_LB.EXTERNAL_HRID.eq(marcHrid.cast(String.class))
+          .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
+        .where(RECORDS_LB.EXTERNAL_HRID.isNull())
+    )).map(this::toMarcBibCollection);
+  }
+
+  private MarcBibCollection toMarcBibCollection(QueryResult result) {
+    MarcBibCollection marcBibCollection = new MarcBibCollection();
+    List<String> ids = new ArrayList<>();
+    result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .forEach(row -> ids.add(row.getString(HRID)));
+    if (!ids.isEmpty()) {
+      marcBibCollection.withInvalidMarcBibIds(ids);
+    }
+    return marcBibCollection;
   }
 
   @Override
@@ -769,11 +806,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, externalIdType)
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, externalIdType, id))))))
+      .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
         .map(u -> true);
   }
 
@@ -812,22 +849,16 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     List<Future<Record>> futures = new ArrayList<>();
     futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
-      if (rr.isPresent()) {
-        record.withRawRecord(rr.get());
-      }
+      rr.ifPresent(record::withRawRecord);
       return record;
     }));
     futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
-      if (pr.isPresent()) {
-        record.withParsedRecord(pr.get());
-      }
+      pr.ifPresent(record::withParsedRecord);
       return record;
     }));
     if (includeErrorRecord) {
       futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
-        if (er.isPresent()) {
-          record.withErrorRecord(er.get());
-        }
+        er.ifPresent(record::withErrorRecord);
         return record;
       }));
     }

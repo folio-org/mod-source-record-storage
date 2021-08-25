@@ -1,15 +1,17 @@
 package org.folio.rest.impl;
 
 import static java.lang.String.format;
+
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByDeleted;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByInstanceId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByLeaderRecordStatus;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySuppressFromDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
+import static org.folio.rest.util.QueryParamUtil.firstNonEmpty;
 import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
@@ -20,23 +22,24 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.resource.SourceStorageSourceRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecords {
 
@@ -55,16 +58,18 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void getSourceStorageSourceRecords(String recordId, String snapshotId, String instanceId, String instanceHrid, String recordType,
-      Boolean suppressFromDiscovery, Boolean deleted, String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
-      List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getSourceStorageSourceRecords(String recordId, String snapshotId, String externalId, String externalHrid,
+                                            String instanceId, String instanceHrid, String holdingsId, String holdingsHrid,
+                                            String recordType, Boolean suppressFromDiscovery, Boolean deleted,
+                                            String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
+                                            List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
+                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         Condition condition = filterRecordByRecordId(recordId)
           .and(filterRecordBySnapshotId(snapshotId))
-          .and(filterRecordByInstanceId(instanceId))
-          .and(filterRecordByInstanceHrid(instanceHrid))
+          .and(filterRecordByExternalId(firstNonEmpty(externalId, instanceId, holdingsId)))
+          .and(filterRecordByExternalHrid(firstNonEmpty(externalHrid, instanceHrid, holdingsHrid)))
           .and(filterRecordBySuppressFromDiscovery(suppressFromDiscovery))
           .and(filterRecordByDeleted(deleted))
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))

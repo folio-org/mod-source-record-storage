@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.Optional;
 
 import io.vertx.sqlclient.Row;
-import org.folio.dao.util.ExternalIdType;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -121,23 +122,23 @@ public interface RecordService {
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids
-   * @param externalIdType id type
+   * @param idType id type
    * @param recordType     record type
    * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, ExternalIdType externalIdType, RecordType recordType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId);
 
   /**
    * Searches for source record by id via specific id type
    *
    * @param id             for searching
-   * @param externalIdType search type
+   * @param idType search type
    * @param tenantId       tenant id
    * @return future with optional source record
    */
-  Future<Optional<SourceRecord>> getSourceRecordById(String id, ExternalIdType externalIdType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, String tenantId);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
@@ -152,22 +153,22 @@ public interface RecordService {
    * Searches for Record either by SRS id or external relation id
    *
    * @param id             either SRS id or external relation id
-   * @param externalIdType specifies of external relation id type
+   * @param idType specifies of external relation id type
    * @param tenantId       tenant id
    * @return future with {@link Record}
    */
-  Future<Record> getFormattedRecord(String id, ExternalIdType externalIdType, String tenantId);
+  Future<Record> getFormattedRecord(String id, IdType idType, String tenantId);
 
   /**
    * Change suppress from discovery flag for record by external relation id
    *
    * @param id             id
-   * @param externalIdType external id type
+   * @param idType external id type
    * @param suppress       suppress from discovery
    * @param tenantId       tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, ExternalIdType externalIdType, Boolean suppress, String tenantId);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId);
 
   /**
    * Deletes records associated with specified snapshot and snapshot itself
@@ -189,4 +190,13 @@ public interface RecordService {
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
+  /**
+   * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,
+   * which does not exists in the system
+   *
+   * @param marcBibIds list of marc bib ids
+   * @param tenantId tenant id
+   * @return future with list of invalid marc bib ids
+   */
+  Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
 }

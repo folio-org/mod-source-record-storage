@@ -1,0 +1,19 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.9.xsd">
+
+  <changeSet id="2021-08-04--16-00-rename-instance-hrid.xml" author="psmahin">
+    <renameColumn tableName="records_lb"
+                  schemaName="${database.defaultSchemaName}"
+                  oldColumnName="instance_hrid"
+                  newColumnName="external_hrid"/>
+  </changeSet>
+
+  <changeSet id="2021-08-04--16-00-rename-instance-hrid-index.xml" author="psmahin">
+    <sql>ALTER INDEX ${database.defaultSchemaName}.idx_records_instance_hrid
+      RENAME TO idx_records_external_hrid;</sql>
+  </changeSet>
+
+</databaseChangeLog>

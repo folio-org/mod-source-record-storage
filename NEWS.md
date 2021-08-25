@@ -1,5 +1,6 @@
 ## xxxx-xx-xx v5.3.0-SNAPSHOT
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
+* [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type
@@ -7,6 +8,7 @@
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record
 * [MODSOURCE-332](https://issues.folio.org/browse/MODSOURCE-332) Improve performance of left-anchored SRS queries
+* [MODSOURCE-343](https://issues.folio.org/browse/MODSOURCE-343) Support MARC Holdings in API
 
 ## xxxx-xx-xx v5.1.4
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages

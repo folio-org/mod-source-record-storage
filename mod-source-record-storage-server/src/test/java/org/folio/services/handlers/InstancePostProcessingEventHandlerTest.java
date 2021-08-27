@@ -1,169 +1,83 @@
-package org.folio.services;
+package org.folio.services.handlers;
 
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.folio.ActionProfile;
-import org.folio.DataImportEventPayload;
-import org.folio.MappingProfile;
-import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
-import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.folio.services.handlers.InstancePostProcessingEventHandler;
-import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
-
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-// TODO: fix @Ignore tests in scope of MODSOURCE-235
+import org.folio.ActionProfile;
+import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
+import org.folio.TestUtil;
+import org.folio.dao.RecordDao;
+import org.folio.kafka.KafkaConfig;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.util.AdditionalFieldsUtil;
+
 @RunWith(VertxUnitRunner.class)
-public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTest {
+public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
 
-  private static final String PARSED_CONTENT_WITH_999_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-  private static final String PARSED_CONTENT_WITHOUT_001_FIELD = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-
-  private RecordDao recordDao;
-  private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
-
-  private static RawRecord rawRecord;
-  private static ParsedRecord parsedRecord;
-
-  private static String recordId = UUID.randomUUID().toString();
-
-  private String snapshotId1 = UUID.randomUUID().toString();
-  private String snapshotId2 = UUID.randomUUID().toString();
-
-  private Record record;
-
-  @BeforeClass
-  public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+  @Override
+  protected Record.RecordType getMarcType() {
+    return MARC_BIB;
   }
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.initMocks(this);
-
-    recordDao = new RecordDaoImpl(postgresClientFactory);
-    instancePostProcessingEventHandler = new InstancePostProcessingEventHandler(recordDao, vertx, kafkaConfig);
-    Async async = context.async();
-
-    Snapshot snapshot1 = new Snapshot()
-      .withJobExecutionId(snapshotId1)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-    Snapshot snapshot2 = new Snapshot()
-      .withJobExecutionId(snapshotId2)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-
-    List<Snapshot> snapshots = new ArrayList<>();
-    snapshots.add(snapshot1);
-    snapshots.add(snapshot2);
-
-    this.record = new Record()
-      .withId(recordId)
-      .withMatchedId(recordId)
-      .withSnapshotId(snapshotId1)
-      .withGeneration(0)
-      .withRecordType(MARC_BIB)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord)
-
-      .withExternalIdsHolder(null);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
-  }
-
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+  @Override
+  protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
+    return new InstancePostProcessingEventHandler(recordDao, kafkaConfig);
   }
 
   @Test
-  @Ignore
   public void shouldSetInstanceIdToRecord(TestContext context) {
     Async async = context.async();
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
-    JsonObject instance = new JsonObject()
-      .put("id", expectedInstanceId)
-      .put("hrid", expectedHrId);
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID)
-      .withOkapiUrl(OKAPI_URL)
-      .withToken(TOKEN);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
-        .thenApply(payload -> future.complete(payload))
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, e) -> {
@@ -188,19 +102,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = null;
-        for (int i = 0; i < fields.size(); i++) {
-          JsonObject field = fields.getJsonObject(i);
-          if (field.containsKey(TAG_999)) {
-            JsonArray subfields = field.getJsonObject(TAG_999).getJsonArray("subfields");
-            for (int j = 0; j < subfields.size(); j++) {
-              JsonObject subfield = subfields.getJsonObject(j);
-              if (subfield.containsKey("i")) {
-                actualInstanceId = subfield.getString("i");
-              }
-            }
-          }
-        }
+        String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
 
         String recordForUdateId = UUID.randomUUID().toString();
@@ -215,14 +117,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
         payloadContextForUpdate.put(INSTANCE.value(), instance.encode());
         payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
 
-        DataImportEventPayload dataImportEventPayloadForUpdate = new DataImportEventPayload()
-          .withContext(payloadContextForUpdate)
-          .withTenant(TENANT_ID);
+        DataImportEventPayload dataImportEventPayloadForUpdate =
+          createDataImportEventPayload(payloadContextForUpdate, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
 
         CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
         recordDao.saveRecord(recordForUpdate, TENANT_ID)
           .onFailure(future2::completeExceptionally)
-          .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayloadForUpdate)
+          .onSuccess(record -> handler.handle(dataImportEventPayloadForUpdate)
             .thenApply(future2::complete)
             .exceptionally(future2::completeExceptionally));
 
@@ -248,15 +149,17 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  @Ignore
   public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
     Async async = context.async();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -270,20 +173,17 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
-    JsonObject instance = new JsonObject()
-      .put("id", expectedInstanceId)
-      .put("hrid", expectedHrId);
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+    handler.handle(dataImportEventPayload)
       .thenApply(future::complete)
       .exceptionally(future::completeExceptionally);
 
@@ -309,19 +209,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = null;
-        for (int i = 0; i < fields.size(); i++) {
-          JsonObject field = fields.getJsonObject(i);
-          if (field.containsKey(TAG_999)) {
-            JsonArray subfields = field.getJsonObject(TAG_999).getJsonArray("subfields");
-            for (int j = 0; j < subfields.size(); j++) {
-              JsonObject subfield = subfields.getJsonObject(j);
-              if (subfield.containsKey("i")) {
-                actualInstanceId = subfield.getString("i");
-              }
-            }
-          }
-        }
+        String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
         async.complete();
       });
@@ -329,7 +217,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  @Ignore
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
 
@@ -342,15 +229,14 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
       .onFailure(future::completeExceptionally)
-      .onSuccess(rec -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
-        .thenApply(payload -> future.complete(payload))
+      .onSuccess(rec -> handler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, throwable) -> {
@@ -373,19 +259,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = null;
-        for (int i = 0; i < fields.size(); i++) {
-          JsonObject field = fields.getJsonObject(i);
-          if (field.containsKey(TAG_999)) {
-            JsonArray subfields = field.getJsonObject(TAG_999).getJsonArray("subfields");
-            for (int j = 0; j < subfields.size(); j++) {
-              JsonObject subfield = subfields.getJsonObject(j);
-              if (subfield.containsKey("i")) {
-                actualInstanceId = subfield.getString("i");
-              }
-            }
-          }
-        }
+        String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
         async.complete();
       });
@@ -393,7 +267,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  @Ignore
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
@@ -402,9 +275,12 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -418,20 +294,17 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
-    JsonObject instance = new JsonObject()
-      .put("id", expectedInstanceId)
-      .put("hrid", expectedHrId);
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+    handler.handle(dataImportEventPayload)
       .thenApply(future::complete)
       .exceptionally(future::completeExceptionally);
 
@@ -457,15 +330,17 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  @Ignore
   public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
     Async async = context.async();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -477,16 +352,14 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withParsedRecord(parsedRecord);
 
     MappingParameters mappingParameters = new MappingParameters()
-      .withMarcFieldProtectionSettings(Arrays.asList(new MarcFieldProtectionSetting()
+      .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
         .withField(TAG_005)
         .withData("*")));
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
-    JsonObject instance = new JsonObject()
-      .put("id", expectedInstanceId)
-      .put("hrid", expectedHrId);
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
@@ -495,12 +368,11 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
 
     String expectedDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    instancePostProcessingEventHandler.handle(dataImportEventPayload)
+    handler.handle(dataImportEventPayload)
       .thenApply(future::complete)
       .exceptionally(future::completeExceptionally);
 
@@ -525,7 +397,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  @Ignore
   public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
     Async async = context.async();
 
@@ -537,18 +408,18 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     String expectedInstanceHrid = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).put("hrid", expectedInstanceHrid).encode());
+    payloadContext.put(INSTANCE.value(),
+      createExternalEntity(expectedInstanceId, expectedInstanceHrid).encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID);
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
       .onFailure(future::completeExceptionally)
-      .onSuccess(rec -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
-        .thenApply(payload -> future.complete(payload))
+      .onSuccess(rec -> handler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, throwable) -> {
@@ -571,13 +442,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceHrid = null;
-        for (int i = 0; i < fields.size(); i++) {
-          JsonObject field = fields.getJsonObject(i);
-          if (field.containsKey("001")) {
-            actualInstanceHrid = field.getString("001");
-          }
-        }
+        String actualInstanceHrid = getInventoryHrid(fields);
         context.assertEquals(expectedInstanceHrid, actualInstanceHrid);
         async.complete();
       });
@@ -589,9 +454,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     Async async = context.async();
     HashMap<String, String> payloadContext = new HashMap<>();
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value())
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
       .withContext(payloadContext);
 
-    CompletableFuture<DataImportEventPayload> future = instancePostProcessingEventHandler.handle(dataImportEventPayload);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
       context.assertNotNull(throwable);
@@ -612,12 +481,16 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext);
+      .withEventType(DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value())
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> instancePostProcessingEventHandler.handle(dataImportEventPayload)
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
@@ -643,11 +516,11 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withEventType("DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING")
+      .withEventType(DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value())
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
 
-    boolean isEligible = instancePostProcessingEventHandler.isEligible(dataImportEventPayload);
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertTrue(isEligible);
   }
@@ -673,7 +546,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractLBServiceTes
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper);
 
-    boolean isEligible = instancePostProcessingEventHandler.isEligible(dataImportEventPayload);
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
   }

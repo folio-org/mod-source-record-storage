@@ -14,11 +14,37 @@ types:
   recordsBatchResponse: !include raml-storage/schemas/dto/recordsBatchResponse.json
   parsedRecordsBatchResponse: !include raml-storage/schemas/dto/parsedRecordsBatchResponse.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
+  marcBibCollection: !include raml-storage/schemas/dto/marcBibCollection.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
 
 /source-storage/batch:
+  /verified-records:
+     displayName: Verify Marc Holdings Records 004 field
+     description: Verify Marc Holdings Records 004 field
+     post:
+       description: Get a list of invalid Marc Bib Record IDs, which doesn't exists in the system
+       is: [validate]
+       body:
+         application/json:
+           description: List of Marc Bib Record IDs
+           type: string[]
+       responses:
+         200:
+           body:
+             application/json:
+               type: marcBibCollection
+         400:
+           description: Bad request
+           body:
+             text/plain:
+               example: "Bad request"
+         500:
+           description: Internal server error
+           body:
+             text/plain:
+               example: "Internal server error"
   /records:
     post:
       description: "Creates records from a record collection. It returns both saved records and error messages for records that were not saved."

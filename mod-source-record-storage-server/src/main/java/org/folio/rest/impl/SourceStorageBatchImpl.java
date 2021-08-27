@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
@@ -33,6 +34,22 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   public SourceStorageBatchImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     this.tenantId = TenantTool.calculateTenantId(tenantId);
+  }
+
+  @Override
+  public void postSourceStorageBatchVerifiedRecords(List<String> marcBibIds, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.verifyMarcBibRecords(marcBibIds, tenantId)
+          .map(PostSourceStorageBatchVerifiedRecordsResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.error("Failed to receive marc bib records", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
   }
 
   @Override

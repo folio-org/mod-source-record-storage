@@ -1,15 +1,40 @@
 package org.folio.services;
 
+import static java.lang.String.format;
+
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -20,31 +45,10 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.services.util.EventHandlingUtil;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-
-import static java.lang.String.format;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -202,6 +206,11 @@ public class RecordServiceImpl implements RecordService {
               .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
+  }
+
+  @Override
+  public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    return recordDao.verifyMarcBibRecords(marcBibIds, tenantId);
   }
 
   private Record formatMarcRecord(Record record) {

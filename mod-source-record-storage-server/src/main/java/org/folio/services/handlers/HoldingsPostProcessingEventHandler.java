@@ -40,4 +40,14 @@ public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEv
     externalIdsHolder.setHoldingsHrid(externalHrid);
   }
 
+  @Override
+  protected String getExternalId(Record record) {
+    return record.getExternalIdsHolder().getHoldingsId();
+  }
+
+  @Override
+  protected String getExternalHrid(Record record) {
+    return record.getExternalIdsHolder().getHoldingsHrid();
+  }
+
 }

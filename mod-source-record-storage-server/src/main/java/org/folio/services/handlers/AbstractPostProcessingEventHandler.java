@@ -135,6 +135,10 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
 
   protected abstract void setExternalIds(ExternalIdsHolder externalIdsHolder, String externalId, String externalHrid);
 
+  protected abstract String getExternalId(Record record);
+
+  protected abstract String getExternalHrid(Record record);
+
   private Record.RecordType getRecordType() {
     return typeConnection().getRecordType();
   }
@@ -179,26 +183,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     context.put(DATA_IMPORT_IDENTIFIER, Boolean.TRUE.toString());
     context.put(getMarcType().value(), Json.encode(record));
     return Json.encode(context);
-  }
-
-  private String getExternalId(Record record) {
-    if (getMarcType() == EntityType.MARC_BIBLIOGRAPHIC) {
-      return record.getExternalIdsHolder().getInstanceId();
-    } else if (getMarcType() == EntityType.MARC_HOLDINGS) {
-      return record.getExternalIdsHolder().getHoldingsHrid();
-    } else {
-      return null;
-    }
-  }
-
-  private String getExternalHrid(Record record) {
-    if (getMarcType() == EntityType.MARC_BIBLIOGRAPHIC) {
-      return record.getExternalIdsHolder().getInstanceHrid();
-    } else if (getMarcType() == EntityType.MARC_HOLDINGS) {
-      return record.getExternalIdsHolder().getHoldingsHrid();
-    } else {
-      return null;
-    }
   }
 
   private void setSuppressFormDiscovery(Record record, boolean suppressFromDiscovery) {

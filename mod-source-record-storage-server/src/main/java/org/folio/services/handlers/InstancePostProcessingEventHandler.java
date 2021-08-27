@@ -49,6 +49,16 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
     externalIdsHolder.setInstanceHrid(externalHrid);
   }
 
+  @Override
+  protected String getExternalId(Record record) {
+    return record.getExternalIdsHolder().getInstanceId();
+  }
+
+  @Override
+  protected String getExternalHrid(Record record) {
+    return record.getExternalIdsHolder().getInstanceHrid();
+  }
+
   // MODSOURMAN-384: sent event to log when record updated implicitly only for INSTANCE_UPDATED case
   private void sendEventToDataImportLog(DataImportEventPayload dataImportEventPayload, Record record) {
     var key = getEventKey();

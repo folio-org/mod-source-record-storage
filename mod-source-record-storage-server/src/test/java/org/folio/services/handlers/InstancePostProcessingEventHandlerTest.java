@@ -69,6 +69,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put("correlationId", "1");
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
@@ -526,6 +527,31 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
+  public void shouldReturnFalseWhenRecordTypeIsNotInstance() {
+    MappingProfile mappingProfile = new MappingProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("Create instance")
+      .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(MARC_BIBLIOGRAPHIC);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(mappingProfile.getId())
+      .withContentType(MAPPING_PROFILE)
+      .withContent(mappingProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType(DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value())
+      .withContext(new HashMap<>())
+      .withCurrentNode(profileSnapshotWrapper);
+
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
+
+    Assert.assertFalse(isEligible);
+  }
+
+  @Test
   public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
@@ -545,6 +571,31 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       .withContext(new HashMap<>())
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper);
+
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
+
+    Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldReturnFalseWhenCurrentNodeIsNull() {
+    ActionProfile actionProfile = new ActionProfile()
+      .withId(UUID.randomUUID().toString())
+      .withName("Create instance")
+      .withAction(ActionProfile.Action.CREATE)
+      .withFolioRecord(ActionProfile.FolioRecord.INSTANCE);
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withProfileId(actionProfile.getId())
+      .withContentType(ACTION_PROFILE)
+      .withContent(actionProfile);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(new HashMap<>())
+      .withProfileSnapshot(profileSnapshotWrapper);
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 

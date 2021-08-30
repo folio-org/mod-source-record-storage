@@ -1,9 +1,9 @@
 package org.folio.services.util;
 
 import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -276,12 +276,12 @@ public final class AdditionalFieldsUtil {
           for (VariableField field : marcRecord.getVariableFields(tag)) {
             if (field instanceof DataField) {
               for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
-                if (org.apache.commons.lang3.StringUtils.isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+                if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
                   return true;
                 }
               }
             } else if (field instanceof ControlField
-              && org.apache.commons.lang3.StringUtils.isNotEmpty(((ControlField) field).getData())
+              && isNotEmpty(((ControlField) field).getData())
               && ((ControlField) field).getData().equals(value.trim())) {
               return true;
             }
@@ -301,21 +301,20 @@ public final class AdditionalFieldsUtil {
    * @param recordInstancePair pair of related instance and record
    */
   public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair) {
-    var record = recordInstancePair.getKey();
     String hrId = recordInstancePair.getValue().getString(HR_ID_FIELD);
-    String valueFrom001 = getValueFromControlledField(record, HR_ID_FROM_FIELD);
-    String originalHrId = valueFrom001;
-    String originalHrIdPrefix = getValueFromControlledField(record, HR_ID_PREFIX_FROM_FIELD);
+    String valueFrom001 = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+    String originalHrId = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+    String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
     originalHrId = mergeFieldsFor035(originalHrIdPrefix, originalHrId);
-    if (isNotEmpty(hrId) && isNotEmpty(originalHrId)) {
-      removeField(record, HR_ID_FROM_FIELD);
-      removeField(record, HR_ID_PREFIX_FROM_FIELD);
-      addControlledFieldToMarcRecord(record, HR_ID_FROM_FIELD, hrId);
-      if (valueFrom001 != null && !isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
-        addDataFieldToMarcRecord(record, HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
+    if (StringUtils.isNotEmpty(hrId) && StringUtils.isNotEmpty(originalHrId)) {
+      removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+      removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
+      addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
+      if (valueFrom001 != null && !isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
+        addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
       }
-    } else if (isNotEmpty(hrId)) {
-      addControlledFieldToMarcRecord(record, HR_ID_FROM_FIELD, hrId);
+    } else if (StringUtils.isNotEmpty(hrId)) {
+      addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
     }
   }
 

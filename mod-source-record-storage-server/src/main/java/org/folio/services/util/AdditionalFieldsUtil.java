@@ -385,7 +385,7 @@ public final class AdditionalFieldsUtil {
         && (id.equals(externalIdsHolder.getInstanceId()) && !hrid.equals(externalIdsHolder.getInstanceHrid()));
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return (isNotEmpty(externalIdsHolder.getHoldingsId()) && isNotEmpty(externalIdsHolder.getHoldingsHrid()))
-        && (id.equals(externalIdsHolder.getInstanceId()) && !hrid.equals(externalIdsHolder.getInstanceHrid()));
+        && (id.equals(externalIdsHolder.getHoldingsId()) && !hrid.equals(externalIdsHolder.getHoldingsHrid()));
     } else {
       return false;
     }

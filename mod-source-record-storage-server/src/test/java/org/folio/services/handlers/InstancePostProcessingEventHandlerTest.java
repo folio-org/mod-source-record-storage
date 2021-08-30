@@ -37,6 +37,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -223,7 +224,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     record.withParsedRecord(new ParsedRecord()
       .withId(recordId)
-      .withContent(PARSED_CONTENT_WITH_999_FIELD));
+      .withContent(PARSED_CONTENT_WITH_999_FIELD))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001"));
 
     String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();

@@ -221,15 +221,16 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   @Test
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
+    String expectedInstanceId = UUID.randomUUID().toString();
+    var expectedHrid = "in0002";
 
     record.withParsedRecord(new ParsedRecord()
       .withId(recordId)
       .withContent(PARSED_CONTENT_WITH_999_FIELD))
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001"));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001").withInstanceId(expectedInstanceId));
 
-    String expectedInstanceId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).encode());
+    payloadContext.put(INSTANCE.value(), new JsonObject().put("id", expectedInstanceId).put("hrid", expectedHrid).encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload =
@@ -264,6 +265,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        var actualInventoryHrid = getInventoryHrid(fields);
+        context.assertEquals(expectedHrid, actualInventoryHrid);
         async.complete();
       });
     });

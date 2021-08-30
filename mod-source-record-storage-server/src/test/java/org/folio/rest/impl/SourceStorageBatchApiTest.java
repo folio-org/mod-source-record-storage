@@ -996,4 +996,30 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldReturnIdsWhenQueryParamListNotExceedMaxSize(TestContext testContext) {
+    String [] ids = new String[32767];
+    for (int i = 0; i < ids.length; i++) {
+      ids[i]= "invalidId";
+    }
+    searchMarcBibIdsByMatcher(testContext, Arrays.asList(ids), contains("invalidId"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenQueryParamListExceedMaxSize(TestContext testContext){
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+    postRecords(testContext, record_1, record_2, record_3);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(Arrays.asList(new String[32768]))
+      .when()
+      .post(SOURCE_STORAGE_BATCH_VERIFIED_RECORDS)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(containsString("The number of IDs should not exceed 32767"));
+
+    async.complete();
+  }
 }

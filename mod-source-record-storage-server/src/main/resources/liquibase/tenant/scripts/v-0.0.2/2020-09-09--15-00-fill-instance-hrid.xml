@@ -14,7 +14,7 @@
       (SELECT fields
       FROM ${database.defaultSchemaName}.marc_records_lb
       CROSS JOIN LATERAL jsonb_array_elements((marc_records_lb.content #>> '{}')::jsonb -> 'fields') AS fields
-      WHERE fields ?? '001' AND records_lb.id = ${database.defaultSchemaName}.marc_records_lb.id) ->> '001'
+      WHERE fields ?? '001' AND records_lb.id = ${database.defaultSchemaName}.marc_records_lb.id LIMIT 1) ->> '001'
       WHERE records_lb.instance_id NOTNULL;
     </sql>
   </changeSet>

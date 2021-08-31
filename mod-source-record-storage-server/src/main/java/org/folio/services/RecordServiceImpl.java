@@ -210,6 +210,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    if (marcBibIds.size() > Short.MAX_VALUE) throw new BadRequestException("The number of IDs should not exceed 32767");
     return recordDao.verifyMarcBibRecords(marcBibIds, tenantId);
   }
 

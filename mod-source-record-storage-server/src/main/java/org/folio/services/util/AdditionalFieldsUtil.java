@@ -375,7 +375,7 @@ public final class AdditionalFieldsUtil {
    * @param externalEntity - source externalEntity.
    * @return - true if need.
    */
-  public static boolean ifFillingFieldsNeeded(Record record, JsonObject externalEntity) {
+  public static boolean isFieldsFillingNeeded(Record record, JsonObject externalEntity) {
     var recordType = record.getRecordType();
     var externalIdsHolder = record.getExternalIdsHolder();
     var id = externalEntity.getString(ID_FIELD);

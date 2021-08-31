@@ -13,7 +13,7 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.ifFillingFieldsNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
@@ -228,7 +228,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       record.setExternalIdsHolder(new ExternalIdsHolder());
     }
     if (isNotEmpty(getExternalId(record)) || isNotEmpty(getExternalHrid(record))) {
-      if (ifFillingFieldsNeeded(record, externalEntity)) {
+      if (isFieldsFillingNeeded(record, externalEntity)) {
         executeHridManipulation(record, externalEntity);
       }
     } else {

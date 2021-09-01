@@ -1,3 +1,6 @@
+## 2021-xx-xx v5.1.5
+* [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
+
 ## 2021-08-04 v5.1.4
 * [MODSOURCE-345](https://issues.folio.org/browse/MODSOURCE-345) Error log for unknown event type
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages

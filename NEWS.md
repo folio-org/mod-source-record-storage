@@ -1,4 +1,4 @@
-## 2021-xx-xx v5.1.5
+## 2021-09-02 v5.1.5
 * [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
 
 ## 2021-08-04 v5.1.4

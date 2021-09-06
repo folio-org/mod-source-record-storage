@@ -80,6 +80,10 @@
                 <groupId>org.folio</groupId>
                 <artifactId>data-import-utils</artifactId>
               </exclusion>
+              <exclusion>
+                <groupId>org.folio</groupId>
+                <artifactId>mod-data-import-converter-storage-client</artifactId>
+              </exclusion>
             </exclusions>
           </dependency>
         </dependencies>

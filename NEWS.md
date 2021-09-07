@@ -1,6 +1,7 @@
 ## xxxx-xx-xx v5.3.0-SNAPSHOT
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
 * [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system
+* [MODSOURCE-342](https://issues.folio.org/browse/MODSOURCE-342) Add HoldingsPostProcessingEventHandler
 * [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT

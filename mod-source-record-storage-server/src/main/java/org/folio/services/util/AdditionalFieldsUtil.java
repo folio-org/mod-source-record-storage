@@ -360,7 +360,7 @@ public final class AdditionalFieldsUtil {
   }
 
   /**
-   * Remove 003 field if hrid is not empty (ffrom instance and marc-record)
+   * Remove 003 field if hrid is not empty (from instance and marc-record)
    * @param record - source record
    * @param instanceHrid - existing instanceHrid
    */

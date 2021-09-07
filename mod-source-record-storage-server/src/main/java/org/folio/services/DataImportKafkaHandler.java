@@ -61,7 +61,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       profileSnapshotCache.get(jobProfileSnapshotId, params)
         .toCompletionStage()
         .thenCompose(snapshotOptional -> snapshotOptional
-          .map(profileSnapshot -> EventManager.handleEvent(eventPayload))
+          .map(profileSnapshot -> EventManager.handleEvent(eventPayload, profileSnapshot))
           .orElse(CompletableFuture.failedFuture(new EventProcessingException(format("Job profile snapshot with id '%s' does not exist", jobProfileSnapshotId)))))
         .whenComplete((processedPayload, throwable) -> {
         if (throwable != null) {

@@ -37,6 +37,7 @@ import org.marc4j.marc.VariableField;
 
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.exceptions.PostProcessingException;
@@ -381,14 +382,16 @@ public final class AdditionalFieldsUtil {
     var id = externalEntity.getString(ID_FIELD);
     var hrid = externalEntity.getString(HR_ID_FIELD);
     if (Record.RecordType.MARC_BIB == recordType) {
-      return (isNotEmpty(externalIdsHolder.getInstanceId()) && isNotEmpty(externalIdsHolder.getInstanceHrid()))
-        && (id.equals(externalIdsHolder.getInstanceId()) && !hrid.equals(externalIdsHolder.getInstanceHrid()));
+      return isValidIdAndHrid(id, hrid, externalIdsHolder.getInstanceId(), externalIdsHolder.getInstanceHrid());
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
-      return (isNotEmpty(externalIdsHolder.getHoldingsId()) && isNotEmpty(externalIdsHolder.getHoldingsHrid()))
-        && (id.equals(externalIdsHolder.getHoldingsId()) && !hrid.equals(externalIdsHolder.getHoldingsHrid()));
+      return isValidIdAndHrid(id, hrid, externalIdsHolder.getHoldingsId(), externalIdsHolder.getHoldingsHrid());
     } else {
       return false;
     }
+  }
+
+  private static boolean isValidIdAndHrid(String id, String hrid, String externalId, String externalHrid) {
+    return (isNotEmpty(externalId) && isNotEmpty(externalHrid)) && (id.equals(externalId) && !hrid.equals(externalHrid));
   }
 
   /**

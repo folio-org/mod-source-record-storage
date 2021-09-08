@@ -20,7 +20,6 @@ import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
@@ -30,6 +29,7 @@ import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.rest.jaxrs.model.MarcField;
 import org.folio.rest.jaxrs.model.MarcMappingDetail;
 import org.folio.rest.jaxrs.model.MarcSubfield;
@@ -72,6 +72,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
   private static final String PROFILE_SNAPSHOT_ID_KEY = "profileSnapshotId";
+  private static final String MAPPING_METADATA__URL = "/mapping-metadata";
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -125,6 +126,10 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(new MappingParameters()))))));
+
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
@@ -147,7 +152,6 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory);
 
-    RecordDaoUtil.save(queryExecutor, record);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
@@ -167,7 +171,6 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withContext(new HashMap<>() {{
         put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
         put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
-        put("MAPPING_PARAMS", Json.encode(new MappingParameters()));
       }});
 
     String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_SRS_MARC_BIB_RECORD_CREATED.value());

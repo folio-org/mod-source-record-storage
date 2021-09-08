@@ -118,7 +118,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     Promise<Boolean> promise = Promise.promise();
     try {
       var producer = producerMap.get(eventType);
-      var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);
+      var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig, true);
       producer.write(record, war -> {
         if (war.succeeded()) {
           log.info("Event with type {} was sent to kafka", eventType);

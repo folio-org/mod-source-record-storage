@@ -3,7 +3,7 @@ package org.folio.services;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.logging.log4j.LogManager;
@@ -14,14 +14,12 @@ import org.folio.dataimport.util.RestUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -52,7 +50,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Promise<String> promise = Promise.promise();
       String correlationId = extractCorrelationId(record.headers());
       Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
-      DataImportEventPayload eventPayload = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(DataImportEventPayload.class);
+      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       LOGGER.debug("Data import event payload has been received with event type: {} and correlationId: {}", eventPayload.getEventType(), correlationId);
       eventPayload.getContext().put(CORRELATION_ID_HEADER, correlationId);
 
@@ -73,7 +71,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
         }
       });
       return promise.future();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);
       return Future.failedFuture(e);
     }

@@ -23,7 +23,6 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
@@ -187,7 +186,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .build());
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
-    DataImportEventPayload dataImportEventPayload = Json.decodeValue(ZIPArchiver.unzip(obtainedEvent.getEventPayload()), DataImportEventPayload.class);
+    DataImportEventPayload dataImportEventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), dataImportEventPayload.getEventType());
 
     Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -196,8 +195,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
   }
 
-  private KeyValue<String, String> buildKafkaRecord(DataImportEventPayload eventPayload) throws IOException {
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(eventPayload)));
+  private KeyValue<String, String> buildKafkaRecord(DataImportEventPayload eventPayload) {
+    Event event = new Event().withEventPayload(Json.encode(eventPayload));
     KeyValue<String, String> record = new KeyValue<>("1", Json.encode(event));
     record.addHeader(RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl(), StandardCharsets.UTF_8);
     record.addHeader(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID, StandardCharsets.UTF_8);

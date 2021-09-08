@@ -25,7 +25,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.lang.reflect.Type;
 
@@ -58,8 +57,6 @@ public abstract class AbstractLBServiceTest {
   protected static KafkaConfig kafkaConfig;
 
   protected static PostgresClientFactory postgresClientFactory;
-
-  private static PostgreSQLContainer<?> postgresSQLContainer;
 
   @ClassRule
   public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());

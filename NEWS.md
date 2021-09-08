@@ -2,6 +2,7 @@
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
 * [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system
 * [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
+* [MODSOURCE-360](https://issues.folio.org/browse/MODSOURCE-360) The DB type MARC did not get updated to MARC_BIB
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type

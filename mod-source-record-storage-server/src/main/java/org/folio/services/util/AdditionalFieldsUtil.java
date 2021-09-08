@@ -19,14 +19,11 @@ import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.exceptions.PostProcessingException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
@@ -38,10 +35,12 @@ import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
-import io.vertx.core.json.JsonObject;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.exceptions.PostProcessingException;
 
 /**
  * Util to work with additional fields
@@ -372,14 +371,27 @@ public final class AdditionalFieldsUtil {
 
   /**
    * Check if record should be filled by specific fields.
-   * @param record - source record.
-   * @param instance - source instance.
+   *
+   * @param record         - source record.
+   * @param externalEntity - source externalEntity.
    * @return - true if need.
    */
-  public static boolean ifFillingFieldsNeeded(Record record, JsonObject instance) {
-    return (StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceId()) && StringUtils.isNotEmpty(record.getExternalIdsHolder().getInstanceHrid())) &&
-      (instance.getString(ID_FIELD).equals(record.getExternalIdsHolder().getInstanceId())
-        && !instance.getString(HR_ID_FIELD).equals(record.getExternalIdsHolder().getInstanceHrid()));
+  public static boolean isFieldsFillingNeeded(Record record, JsonObject externalEntity) {
+    var recordType = record.getRecordType();
+    var externalIdsHolder = record.getExternalIdsHolder();
+    var id = externalEntity.getString(ID_FIELD);
+    var hrid = externalEntity.getString(HR_ID_FIELD);
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return isValidIdAndHrid(id, hrid, externalIdsHolder.getInstanceId(), externalIdsHolder.getInstanceHrid());
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return isValidIdAndHrid(id, hrid, externalIdsHolder.getHoldingsId(), externalIdsHolder.getHoldingsHrid());
+    } else {
+      return false;
+    }
+  }
+
+  private static boolean isValidIdAndHrid(String id, String hrid, String externalId, String externalHrid) {
+    return (isNotEmpty(externalId) && isNotEmpty(externalHrid)) && (id.equals(externalId) && !hrid.equals(externalHrid));
   }
 
   /**

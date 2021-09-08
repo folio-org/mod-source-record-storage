@@ -2,6 +2,8 @@ package org.folio.services.handlers;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
 
+import io.vertx.core.Vertx;
+import org.folio.services.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
@@ -15,8 +17,9 @@ import org.folio.services.util.TypeConnection;
 @Component
 public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEventHandler {
 
-  public HoldingsPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    super(recordDao, kafkaConfig);
+  public HoldingsPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig,
+                                            MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+    super(recordDao, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Override

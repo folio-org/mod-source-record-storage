@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDING_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.EntityType.HOLDINGS;
@@ -19,12 +20,16 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,7 +58,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new HoldingsPostProcessingEventHandler(recordDao, kafkaConfig);
+    return new HoldingsPostProcessingEventHandler(recordDao, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -142,10 +147,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, e) -> {
       if (e != null) {
@@ -263,10 +265,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {
@@ -293,6 +292,15 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
     Async async = context.async();
 
+    MappingParameters mappingParameters = new MappingParameters()
+      .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
+        .withField(TAG_005)
+        .withData("*")));
+
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(mappingParameters))))));
+
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(
@@ -311,11 +319,6 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    MappingParameters mappingParameters = new MappingParameters()
-      .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
-        .withField(TAG_005)
-        .withData("*")));
-
     String expectedHoldingsId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
@@ -325,17 +328,13 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(HOLDINGS.value(), holdings.encode());
     payloadContext.put(MARC_HOLDINGS.value(), Json.encode(defaultRecord));
-    payloadContext.put("MAPPING_PARAMS", Json.encodePrettily(mappingParameters));
 
     String expectedDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {

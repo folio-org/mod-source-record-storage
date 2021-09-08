@@ -1,9 +1,45 @@
 package org.folio.services.handlers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import io.vertx.kafka.client.producer.KafkaHeader;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
+import org.folio.dao.RecordDao;
+import org.folio.dao.util.ParsedRecordDaoUtil;
+import org.folio.dao.util.RecordType;
+import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.processing.events.services.handler.EventHandler;
+import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.DataImportEventTypes;
+import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.exceptions.PostProcessingException;
+import org.folio.services.util.TypeConnection;
+import org.jooq.Condition;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
-
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
@@ -16,41 +52,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRe
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.kafka.client.producer.KafkaHeader;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.jooq.Condition;
-
-import org.folio.DataImportEventPayload;
-import org.folio.MappingProfile;
-import org.folio.dao.RecordDao;
-import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.dao.util.RecordType;
-import org.folio.kafka.KafkaConfig;
-import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.processing.exceptions.EventProcessingException;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
-import org.folio.rest.jaxrs.model.DataImportEventTypes;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.exceptions.PostProcessingException;
-import org.folio.services.util.TypeConnection;
+import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
@@ -60,6 +62,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String FAIL_MSG = "Failed to handle event {}";
   private static final String EVENT_HAS_NO_DATA_MSG =
     "Failed to handle event, cause event payload context does not contain needed data";
+  private static final String MAPPING_PARAMS_NOT_FOUND_MSG = "MappingParameters was not found by jobExecutionId: '%s'";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
   private static final String CORRELATION_ID_HEADER = "correlationId";
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
@@ -69,18 +72,27 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
 
   private final RecordDao recordDao;
   private final KafkaConfig kafkaConfig;
+  private final MappingParametersSnapshotCache mappingParamsCache;
+  private final Vertx vertx;
 
-  public AbstractPostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig) {
+  public AbstractPostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig,
+                                            MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
     this.recordDao = recordDao;
     this.kafkaConfig = kafkaConfig;
+    this.mappingParamsCache = mappingParamsCache;
+    this.vertx = vertx;
   }
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     var eventType = dataImportEventPayload.getEventType();
+    var jobExecutionId = dataImportEventPayload.getJobExecutionId();
     try {
-      prepareRecord(dataImportEventPayload)
+      mappingParamsCache.get(jobExecutionId, retrieveOkapiConnectionParams(dataImportEventPayload, vertx))
+        .compose(parametersOptional -> parametersOptional
+          .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
+          .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
         .compose(record -> saveRecord(record, dataImportEventPayload.getTenant()))
         .compose(record -> {
           sendReplyEvent(dataImportEventPayload, record);
@@ -155,8 +167,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     return typeConnection().getDbType();
   }
 
-  private Future<Record> prepareRecord(DataImportEventPayload dataImportEventPayload)
-    throws IOException {
+  private Future<Record> prepareRecord(DataImportEventPayload dataImportEventPayload, MappingParameters mappingParameters) {
     Promise<Record> recordPromise = Promise.promise();
     var eventContext = dataImportEventPayload.getContext();
     String entityAsString = eventContext.get(getExternalType().value());
@@ -165,8 +176,8 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       LOG.error(EVENT_HAS_NO_DATA_MSG);
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
-      Record record = new ObjectMapper().readValue(recordAsString, Record.class);
-      updateLatestTransactionDate(record, eventContext);
+      Record record = Json.decodeValue(recordAsString, Record.class);
+      updateLatestTransactionDate(record, mappingParameters);
 
       JsonObject externalEntity = new JsonObject(entityAsString);
       setExternalIds(record, externalEntity);

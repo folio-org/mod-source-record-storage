@@ -1,14 +1,33 @@
 package org.folio.services.handlers;
 
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.ActionProfile;
+import org.folio.DataImportEventPayload;
+import org.folio.MappingProfile;
+import org.folio.TestUtil;
+import org.folio.dao.RecordDao;
+import org.folio.kafka.KafkaConfig;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -19,31 +38,16 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import org.folio.ActionProfile;
-import org.folio.DataImportEventPayload;
-import org.folio.MappingProfile;
-import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
-import org.folio.kafka.KafkaConfig;
-import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.util.AdditionalFieldsUtil;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
@@ -55,7 +59,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordDao, kafkaConfig);
+    return new InstancePostProcessingEventHandler(recordDao, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -184,10 +188,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, e) -> {
       if (e != null) {
@@ -309,10 +310,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {
@@ -339,6 +337,15 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
     Async async = context.async();
 
+    MappingParameters mappingParameters = new MappingParameters()
+      .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
+        .withField(TAG_005)
+        .withData("*")));
+
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(mappingParameters))))));
+
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(
@@ -357,11 +364,6 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    MappingParameters mappingParameters = new MappingParameters()
-      .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
-        .withField(TAG_005)
-        .withData("*")));
-
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
@@ -370,17 +372,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
-    payloadContext.put("MAPPING_PARAMS", Json.encodePrettily(mappingParameters));
 
     String expectedDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    handler.handle(dataImportEventPayload)
-      .thenApply(future::complete)
-      .exceptionally(future::completeExceptionally);
+    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {

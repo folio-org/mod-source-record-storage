@@ -6,7 +6,9 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BI
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import org.folio.services.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -24,8 +26,9 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   private final KafkaConfig kafkaConfig;
 
   @Autowired
-  public InstancePostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig) {
-    super(recordDao, kafkaConfig);
+  public InstancePostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig,
+                                            MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+    super(recordDao, kafkaConfig, mappingParametersCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 

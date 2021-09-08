@@ -94,12 +94,11 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
           .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
         .compose(record -> saveRecord(record, dataImportEventPayload.getTenant()))
-        .compose(record -> {
+        .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
           sendAdditionalEvent(dataImportEventPayload, record);
-          return Future.succeededFuture();
+          future.complete(dataImportEventPayload);
         })
-        .onSuccess(record -> future.complete(dataImportEventPayload))
         .onFailure(throwable -> {
           LOG.error(FAIL_MSG, eventType, throwable);
           future.completeExceptionally(throwable);

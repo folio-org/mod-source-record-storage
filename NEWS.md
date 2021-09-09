@@ -1,5 +1,6 @@
 ## 2021-09-08 v5.1.6
 * [MODSOURCE-368](https://issues.folio.org/browse/MODSOURCE-368) Fix "fill-instance-hrid" script for envs where it was applied before
+* [MODSOURCE-360](https://issues.folio.org/browse/MODSOURCE-360) The DB type MARC did not get updated to MARC_BIB
 
 ## 2021-09-02 v5.1.5
 * [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.

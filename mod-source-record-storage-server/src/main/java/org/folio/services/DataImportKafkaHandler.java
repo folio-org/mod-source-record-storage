@@ -32,8 +32,9 @@ import static org.folio.DataImportEventTypes.DI_ERROR;
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
   private static final Logger LOGGER = LogManager.getLogger();
+
+  public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String CORRELATION_ID_HEADER = "correlationId";
-  private static final String PROFILE_SNAPSHOT_ID_KEY = "profileSnapshotId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -62,14 +63,14 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           .map(profileSnapshot -> EventManager.handleEvent(eventPayload, profileSnapshot))
           .orElse(CompletableFuture.failedFuture(new EventProcessingException(format("Job profile snapshot with id '%s' does not exist", jobProfileSnapshotId)))))
         .whenComplete((processedPayload, throwable) -> {
-        if (throwable != null) {
-          promise.fail(throwable);
-        } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-          promise.fail("Failed to process data import event payload");
-        } else {
-          promise.complete(record.key());
-        }
-      });
+          if (throwable != null) {
+            promise.fail(throwable);
+          } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
+            promise.fail("Failed to process data import event payload");
+          } else {
+            promise.complete(record.key());
+          }
+        });
       return promise.future();
     } catch (Exception e) {
       LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);

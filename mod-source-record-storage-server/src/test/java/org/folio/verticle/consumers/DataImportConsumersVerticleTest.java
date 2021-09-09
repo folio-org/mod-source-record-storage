@@ -62,6 +62,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.services.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.services.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.junit.Assert.assertEquals;
 
@@ -70,8 +71,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
-  private static final String PROFILE_SNAPSHOT_ID_KEY = "profileSnapshotId";
-  private static final String MAPPING_METADATA__URL = "/mapping-metadata";
+  private static final String MAPPING_METADATA_URL = "/mapping-metadata";
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -125,7 +125,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 

@@ -107,26 +107,26 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_BIB, rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_AUTHORITY,
       rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.EDIFACT, rawEdifactRecord,
       parsedEdifactRecord);
   }
 
   private void sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType recordType,
-    RawRecord rawRecord, ParsedRecord parsedRecord) throws IOException, InterruptedException {
+    RawRecord rawRecord, ParsedRecord parsedRecord) throws InterruptedException {
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -161,7 +161,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException, IOException {
+  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
 
     Record invalidRecord = new Record()

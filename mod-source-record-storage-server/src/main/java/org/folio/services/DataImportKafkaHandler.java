@@ -10,18 +10,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
@@ -55,7 +54,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       LOGGER.debug("Data import event payload has been received with event type: {} and correlationId: {}", eventPayload.getEventType(), correlationId);
       eventPayload.getContext().put(CORRELATION_ID_HEADER, correlationId);
 
-      OkapiConnectionParams params = retrieveOkapiConnectionParams(eventPayload);
+      OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
       profileSnapshotCache.get(jobProfileSnapshotId, params)
         .toCompletionStage()
@@ -84,14 +83,6 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
-  }
-
-  private OkapiConnectionParams retrieveOkapiConnectionParams(DataImportEventPayload eventPayload) {
-    return new OkapiConnectionParams(Map.of(
-      RestUtil.OKAPI_URL_HEADER, eventPayload.getOkapiUrl(),
-      RestUtil.OKAPI_TENANT_HEADER, eventPayload.getTenant(),
-      RestUtil.OKAPI_TOKEN_HEADER, eventPayload.getToken()
-    ), this.vertx);
   }
 
 }

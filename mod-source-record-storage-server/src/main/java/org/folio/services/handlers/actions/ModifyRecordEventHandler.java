@@ -10,8 +10,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -22,6 +20,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.MappingParametersSnapshotCache;
 import org.folio.services.RecordService;
 import org.folio.services.util.AdditionalFieldsUtil;
+import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -72,11 +71,12 @@ public class ModifyRecordEventHandler implements EventHandler {
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
+
       MappingProfile mappingProfile = retrieveMappingProfile(dataImportEventPayload);
       String hrId = retrieveHrid(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
       preparePayload(dataImportEventPayload);
 
-      mappingParametersCache.get(dataImportEventPayload.getJobExecutionId(), retrieveOkapiConnectionParams(dataImportEventPayload))
+      mappingParametersCache.get(dataImportEventPayload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(dataImportEventPayload, vertx))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(dataImportEventPayload, mappingProfile, mappingParams))
           .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, dataImportEventPayload.getJobExecutionId()))))
@@ -165,11 +165,4 @@ public class ModifyRecordEventHandler implements EventHandler {
     return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
   }
 
-  private OkapiConnectionParams retrieveOkapiConnectionParams(DataImportEventPayload eventPayload) {
-    return new OkapiConnectionParams(Map.of(
-      RestUtil.OKAPI_URL_HEADER, eventPayload.getOkapiUrl(),
-      RestUtil.OKAPI_TENANT_HEADER, eventPayload.getTenant(),
-      RestUtil.OKAPI_TOKEN_HEADER, eventPayload.getToken()
-    ), this.vertx);
-  }
 }

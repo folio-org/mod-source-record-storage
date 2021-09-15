@@ -51,6 +51,7 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
 import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitAfterOffsetStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
 import org.jooq.UpdateConditionStep;
@@ -155,11 +156,12 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
-        .from(RECORDS_LB)
-        .where(condition.and(recordType.getRecordImplicitCondition()))))
-      .select(getAllRecordFieldsWithCount(prt))
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
+      SelectLimitAfterOffsetStep<org.jooq.Record> offsetStep = dsl
+        .with(cte.as(dsl.selectCount()
+          .from(RECORDS_LB)
+          .where(condition.and(recordType.getRecordImplicitCondition()))))
+        .select(getAllRecordFieldsWithCount(prt))
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
@@ -167,9 +169,9 @@ public class RecordDaoImpl implements RecordDao {
         .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
         .where(condition.and(recordType.getRecordImplicitCondition()))
         .orderBy(orderFields)
-        .offset(offset)
-        .limit(limit)
-    )).map(this::toRecordCollection);
+        .offset(offset);
+        return limit > 0 ? offsetStep.limit(limit) : offsetStep;
+      })).map(this::toRecordCollection);
   }
 
   @Override

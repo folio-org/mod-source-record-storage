@@ -51,7 +51,6 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
 import org.jooq.SelectJoinStep;
-import org.jooq.SelectLimitAfterOffsetStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
 import org.jooq.UpdateConditionStep;

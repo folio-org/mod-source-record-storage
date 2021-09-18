@@ -4,10 +4,14 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
 
-  <changeSet id="2021-05-27--14-00-rename-marc-type-to-marc-bib" author="OleksandrDekin" runInTransaction="false">
+  <changeSet id="2021-05-27--14-00-rename-marc-type-to-marc-bib" author="OleksandrDekin" runInTransaction="false" runOnChange="true">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="1">
-        SELECT COUNT(*) FROM pg_enum as p WHERE enumlabel='MARC' ;
+        SELECT COUNT(*)
+        FROM pg_type t
+        JOIN pg_enum e ON t.oid = e.enumtypid
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE e.enumlabel='MARC' AND t.typname = 'record_type' AND n.nspname = '${database.defaultSchemaName}';
       </sqlCheck>
     </preConditions>
     <sql>

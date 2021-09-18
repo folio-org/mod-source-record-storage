@@ -3,6 +3,8 @@
 * [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system
 * [MODSOURCE-342](https://issues.folio.org/browse/MODSOURCE-342) Add HoldingsPostProcessingEventHandler
 * [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
+* [MODSOURCE-368](https://issues.folio.org/browse/MODSOURCE-368) Fix "fill-instance-hrid" script for envs where it was applied before
+* [MODSOURCE-326](https://issues.folio.org/browse/MODSOURCE-326) /source-storage/records?limit=0 returns "totalRecords": 0
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type

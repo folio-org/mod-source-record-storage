@@ -64,6 +64,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     "Failed to handle event, cause event payload context does not contain needed data";
   private static final String MAPPING_PARAMS_NOT_FOUND_MSG = "MappingParameters was not found by jobExecutionId: '%s'";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
+  public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
   private static final String CORRELATION_ID_HEADER = "correlationId";
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
@@ -189,6 +190,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private String prepareReplyEventPayload(DataImportEventPayload dataImportEventPayload, Record record) {
     record.getParsedRecord().setContent(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
     HashMap<String, String> context = dataImportEventPayload.getContext();
+    context.put(JOB_EXECUTION_ID_KEY, dataImportEventPayload.getJobExecutionId());
     context.put(getRecordType().value(), Json.encode(record));
     context.put(DATA_IMPORT_IDENTIFIER, Boolean.TRUE.toString());
     context.put(getMarcType().value(), Json.encode(record));

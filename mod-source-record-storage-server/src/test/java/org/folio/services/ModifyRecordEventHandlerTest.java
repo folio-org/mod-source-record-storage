@@ -33,6 +33,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.After;
 import org.junit.Assert;

@@ -8,7 +8,7 @@ import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

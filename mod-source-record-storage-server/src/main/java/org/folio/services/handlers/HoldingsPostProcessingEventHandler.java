@@ -3,7 +3,7 @@ package org.folio.services.handlers;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
 
 import io.vertx.core.Vertx;
-import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;

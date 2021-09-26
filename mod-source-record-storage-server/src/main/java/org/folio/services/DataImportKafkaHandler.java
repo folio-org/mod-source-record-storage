@@ -15,6 +15,7 @@ import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.services.caches.JobProfileSnapshotCache;
 import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

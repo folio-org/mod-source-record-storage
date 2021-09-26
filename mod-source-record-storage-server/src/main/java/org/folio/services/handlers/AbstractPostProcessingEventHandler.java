@@ -1,6 +1,5 @@
 package org.folio.services.handlers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -25,12 +24,11 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

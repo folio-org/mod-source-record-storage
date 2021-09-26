@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.services.caches;
 
 import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;

@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.services.caches;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
@@ -15,6 +15,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.services.caches.JobProfileSnapshotCache;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

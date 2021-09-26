@@ -24,7 +24,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
-import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;

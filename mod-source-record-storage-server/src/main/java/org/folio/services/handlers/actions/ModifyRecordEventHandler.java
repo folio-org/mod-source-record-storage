@@ -17,7 +17,7 @@ import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.MappingParametersSnapshotCache;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.RecordService;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.RestUtil;

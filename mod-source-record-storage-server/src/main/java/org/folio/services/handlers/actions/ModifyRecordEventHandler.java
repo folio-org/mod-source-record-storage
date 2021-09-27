@@ -1,10 +1,10 @@
 package org.folio.services.handlers.actions;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
@@ -12,12 +12,15 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.RecordService;
 import org.folio.services.util.AdditionalFieldsUtil;
+import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
@@ -41,16 +45,20 @@ public class ModifyRecordEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data to modify MARC record";
+  private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
 
   public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-  private static final String MAPPING_PARAMS_KEY = "MAPPING_PARAMS";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private RecordService recordService;
+  private MappingParametersSnapshotCache mappingParametersCache;
+  private Vertx vertx;
 
   @Autowired
-  public ModifyRecordEventHandler(RecordService recordService) {
+  public ModifyRecordEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
+    this.mappingParametersCache = mappingParametersCache;
+    this.vertx = vertx;
   }
 
   @Override
@@ -58,35 +66,34 @@ public class ModifyRecordEventHandler implements EventHandler {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
       HashMap<String, String> payloadContext = dataImportEventPayload.getContext();
-      if (isNull(payloadContext) || isBlank(payloadContext.get(MARC_BIBLIOGRAPHIC.value()))
-        || isBlank(payloadContext.get(MAPPING_PARAMS_KEY))) {
+      if (isNull(payloadContext) || isBlank(payloadContext.get(MARC_BIBLIOGRAPHIC.value()))) {
         LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
+
       MappingProfile mappingProfile = retrieveMappingProfile(dataImportEventPayload);
       String hrId = retrieveHrid(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
       preparePayload(dataImportEventPayload);
 
-      MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
-      marcRecordModifier.initialize(dataImportEventPayload, mappingProfile);
-      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
-      marcRecordModifier.getResult(dataImportEventPayload);
-      prepareModificationResult(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption());
-
-      Record changedRecord = OBJECT_MAPPER.readValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      AdditionalFieldsUtil.addControlledFieldToMarcRecord(changedRecord, AdditionalFieldsUtil.HR_ID_FROM_FIELD, hrId, true);
-      AdditionalFieldsUtil.remove003FieldIfNeeded(changedRecord, hrId);
-
-      payloadContext.put(MARC_BIBLIOGRAPHIC.value(), OBJECT_MAPPER.writeValueAsString(changedRecord));
-
-      recordService.saveRecord(changedRecord, dataImportEventPayload.getTenant())
+      mappingParametersCache.get(dataImportEventPayload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(dataImportEventPayload, vertx))
+        .compose(parametersOptional -> parametersOptional
+          .map(mappingParams -> modifyRecord(dataImportEventPayload, mappingProfile, mappingParams))
+          .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, dataImportEventPayload.getJobExecutionId()))))
+        .onSuccess(v -> prepareModificationResult(dataImportEventPayload, mappingProfile.getMappingDetails().getMarcMappingOption()))
+        .map(v -> Json.decodeValue(payloadContext.get(MARC_BIBLIOGRAPHIC.value()), Record.class))
+        .onSuccess(changedRecord -> {
+          AdditionalFieldsUtil.addControlledFieldToMarcRecord(changedRecord, AdditionalFieldsUtil.HR_ID_FROM_FIELD, hrId, true);
+          AdditionalFieldsUtil.remove003FieldIfNeeded(changedRecord, hrId);
+          payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(changedRecord));
+        })
+        .compose(changedRecord -> recordService.saveRecord(changedRecord, dataImportEventPayload.getTenant()))
         .onComplete(saveAr -> {
           if (saveAr.succeeded()) {
             dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_MODIFIED.value());
             future.complete(dataImportEventPayload);
           } else {
-            LOG.error("Error saving modified MARC record", saveAr.cause());
+            LOG.error("Error while MARC record modifying", saveAr.cause());
             future.completeExceptionally(saveAr.cause());
           }
         });
@@ -95,6 +102,18 @@ public class ModifyRecordEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile, MappingParameters mappingParameters) {
+    try {
+      MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
+      marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile);
+      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
+      marcRecordModifier.getResult(dataImportEventPayload);
+      return Future.succeededFuture();
+    } catch (IOException e) {
+      return Future.failedFuture(e);
+    }
   }
 
   private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) throws IOException {
@@ -145,4 +164,5 @@ public class ModifyRecordEventHandler implements EventHandler {
   public String getPostProcessingInitializationEventType() {
     return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
   }
+
 }

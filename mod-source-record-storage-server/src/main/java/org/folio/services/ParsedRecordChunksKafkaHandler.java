@@ -4,7 +4,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -18,7 +17,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Event;
@@ -32,7 +30,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,10 +70,9 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
-    Event event = new JsonObject(record.value()).mapTo(Event.class);
-
     try {
-      RecordCollection recordCollection = Json.decodeValue(ZIPArchiver.unzip(event.getEventPayload()), RecordCollection.class);
+      Event event = Json.decodeValue(record.value(), Event.class);
+      RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
       List<KafkaHeader> kafkaHeaders = record.headers();
 
@@ -103,19 +99,14 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, String correlationId, int chunkNumber) {
     Event event;
-    try {
-      event = new Event()
-        .withId(UUID.randomUUID().toString())
-        .withEventType(DI_PARSED_RECORDS_CHUNK_SAVED.value())
-        .withEventPayload(ZIPArchiver.zip(Json.encode(normalize(recordsBatchResponse))))
-        .withEventMetadata(new EventMetadata()
-          .withTenantId(tenantId)
-          .withEventTTL(1)
-          .withPublishedBy(constructModuleName()));
-    } catch (IOException e) {
-      LOGGER.error("Error constructing event payload", e);
-      return Future.failedFuture(e);
-    }
+    event = new Event()
+      .withId(UUID.randomUUID().toString())
+      .withEventType(DI_PARSED_RECORDS_CHUNK_SAVED.value())
+      .withEventPayload(Json.encode(normalize(recordsBatchResponse)))
+      .withEventMetadata(new EventMetadata()
+        .withTenantId(tenantId)
+        .withEventTTL(1)
+        .withPublishedBy(constructModuleName()));
 
     String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
 

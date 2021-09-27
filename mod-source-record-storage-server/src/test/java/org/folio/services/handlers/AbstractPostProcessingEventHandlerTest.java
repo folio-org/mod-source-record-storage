@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import java.io.IOException;
@@ -10,13 +11,24 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.mockito.MockitoAnnotations;
 
 import org.folio.DataImportEventPayload;
@@ -38,6 +50,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
   protected static final String PARSED_CONTENT_WITHOUT_001_FIELD =
     "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
+  protected static final String MAPPING_METADATA__URL = "/mapping-metadata";
   protected static final String recordId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
@@ -45,8 +58,15 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   protected final String snapshotId2 = UUID.randomUUID().toString();
   protected Record record;
   protected RecordDao recordDao;
+  protected MappingParametersSnapshotCache mappingParametersCache;
 
   protected AbstractPostProcessingEventHandler handler;
+
+  @Rule
+  public WireMockRule mockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true)));
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -63,6 +83,11 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
 
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(new MappingParameters()))))));
+
+    mappingParametersCache = new MappingParametersSnapshotCache(vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
     handler = createHandler(recordDao, kafkaConfig);
     Async async = context.async();
@@ -118,8 +143,9 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     return new DataImportEventPayload()
       .withContext(payloadContext)
       .withEventType(diInventoryInstanceCreatedReadyForPostProcessing.value())
+      .withJobExecutionId(record.getSnapshotId())
       .withTenant(TENANT_ID)
-      .withOkapiUrl(OKAPI_URL)
+      .withOkapiUrl(mockServer.baseUrl())
       .withToken(TOKEN);
   }
 

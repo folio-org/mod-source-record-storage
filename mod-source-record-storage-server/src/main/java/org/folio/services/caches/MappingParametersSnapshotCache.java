@@ -4,14 +4,14 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.RestUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.client.MappingMetadataClient;
-import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.services.exceptions.CacheLoadingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,25 +49,22 @@ public class MappingParametersSnapshotCache {
 
   private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {
     LOGGER.debug("Trying to load MappingParametersSnapshot by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, params.getOkapiUrl(), params.getTenantId());
-    MappingMetadataClient client = new MappingMetadataClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
-
-    return client.getMappingMetadataByJobExecutionId(jobExecutionId)
+    return RestUtil.doRequest(params, "/mapping-metadata/"+ jobExecutionId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
           LOGGER.info("MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
-          MappingMetadataDto mappingMetadataDto = httpResponse.bodyAsJson(MappingMetadataDto.class);
-          return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(mappingMetadataDto.getMappingParams(), MappingParameters.class)));
-        } else if (httpResponse.statusCode() == HttpStatus.SC_NOT_FOUND) {
+          return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class)));
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
           LOGGER.warn("MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
           String message = String.format("Error loading MappingParametersSnapshot by jobExecutionId: '%s', status code: %s, response message: %s",
-            jobExecutionId, httpResponse.statusCode(), httpResponse.bodyAsString());
+            jobExecutionId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
           LOGGER.warn(message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));
         }
-      });
+    });
   }
 }

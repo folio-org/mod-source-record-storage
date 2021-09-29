@@ -12,6 +12,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -134,6 +135,9 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     WireMockConfiguration.wireMockConfig()
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
+
+  @Rule
+  public RunTestOnContext rule = new RunTestOnContext();
 
   @BeforeClass
   public static void setUpClass() throws IOException {

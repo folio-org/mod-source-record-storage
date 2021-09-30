@@ -4,11 +4,13 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.Json;
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.rest.client.DataImportProfilesClient;
+import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.services.exceptions.CacheLoadingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,21 +49,20 @@ public class JobProfileSnapshotCache {
 
   private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, OkapiConnectionParams params) {
     LOGGER.debug("Trying to load jobProfileSnapshot by id  '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getOkapiUrl(), params.getTenantId());
-    DataImportProfilesClient client = new DataImportProfilesClient(params.getOkapiUrl(), params.getTenantId(), params.getToken());
 
-    return client.getDataImportProfilesJobProfileSnapshotsById(profileSnapshotId)
+    return RestUtil.doRequest(params, "/data-import-profiles/jobProfileSnapshots/" + profileSnapshotId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
           LOGGER.info("JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
-          return CompletableFuture.completedFuture(Optional.of(httpResponse.bodyAsJson(ProfileSnapshotWrapper.class)));
-        } else if (httpResponse.statusCode() == HttpStatus.SC_NOT_FOUND) {
+          return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
           LOGGER.warn("JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
           String message = String.format("Error loading jobProfileSnapshot by id: '%s', status code: %s, response message: %s",
-            profileSnapshotId, httpResponse.statusCode(), httpResponse.bodyAsString());
+            profileSnapshotId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
           LOGGER.warn(message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));
         }

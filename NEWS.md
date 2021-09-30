@@ -7,6 +7,7 @@
 * [MODSOURCE-326](https://issues.folio.org/browse/MODSOURCE-326) /source-storage/records?limit=0 returns "totalRecords": 0
 * [MODSOURCE-286](https://issues.folio.org/browse/MODSOURCE-286) Remove zipping mechanism for data import event payloads and use cache for params
 * [MODSOURCE-382](https://issues.folio.org/browse/MODSOURCE-382) Remove dependency on SRM client
+* [MODSOURCE-385](https://issues.folio.org/browse/MODSOURCE-385) Remove dependency on converter-storage client
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type

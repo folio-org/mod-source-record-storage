@@ -11,11 +11,11 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.services.caches.JobProfileSnapshotCache;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,6 +38,9 @@ public class JobProfileSnapshotCacheTest {
 
   private Vertx vertx = Vertx.vertx();
   private JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache(vertx);
+
+  @Rule
+  public RunTestOnContext rule = new RunTestOnContext();
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(

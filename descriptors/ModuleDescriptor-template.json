@@ -246,6 +246,16 @@
       ]
     }
   ],
+  "optional": [
+    {
+      "id": "mapping-metadata-provider",
+      "version": "1.0"
+    },
+    {
+      "id": "data-import-converter-storage",
+      "version": "1.2"
+    }
+  ],
   "permissionSets": [
     {
       "permissionName": "source-storage.populate.records",

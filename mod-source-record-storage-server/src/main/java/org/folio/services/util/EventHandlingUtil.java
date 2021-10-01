@@ -29,7 +29,7 @@ public final class EventHandlingUtil {
   private EventHandlingUtil() { }
 
   /**
-   * Prepares and sends event with zipped payload to kafka
+   * Prepares and sends event with payload to kafka
    *
    * @param tenantId     tenant id
    * @param eventPayload eventPayload in String representation
@@ -42,7 +42,7 @@ public final class EventHandlingUtil {
                                                  List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
     KafkaProducerRecord<String, String> record;
     try {
-      record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
+      record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig, false);
     } catch (IOException e) {
       LOGGER.error("Failed to construct an event for eventType {}", eventType, e);
       return Future.failedFuture(e);
@@ -71,11 +71,12 @@ public final class EventHandlingUtil {
   public static KafkaProducerRecord<String, String> createProducerRecord(String eventPayload, String eventType,
                                                                          String key, String tenantId,
                                                                          List<KafkaHeader> kafkaHeaders,
-                                                                         KafkaConfig kafkaConfig) throws IOException {
+                                                                         KafkaConfig kafkaConfig,
+                                                                         boolean zippedPayload) throws IOException {
     Event event = new Event()
       .withId(UUID.randomUUID().toString())
       .withEventType(eventType)
-      .withEventPayload(ZIPArchiver.zip(eventPayload))
+      .withEventPayload(zippedPayload ? ZIPArchiver.zip(eventPayload) : eventPayload)
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)

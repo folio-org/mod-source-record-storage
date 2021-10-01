@@ -116,6 +116,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
+  private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
+
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
 
@@ -168,8 +170,8 @@ public class RecordDaoImpl implements RecordDao {
         .where(condition.and(recordType.getRecordImplicitCondition()))
         .orderBy(orderFields)
         .offset(offset)
-        .limit(limit)
-    )).map(this::toRecordCollection);
+        .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
   @Override
@@ -978,6 +980,19 @@ public class RecordDaoImpl implements RecordDao {
       recordCollection.withRecords(records);
     }
     return recordCollection;
+  }
+
+  /*
+   * Code to avoid the occurrence of records when limit equals to zero
+   */
+  private RecordCollection toRecordCollectionWithLimitCheck(QueryResult result, int limit) {
+    // Validation to ignore records insertion to the returned recordCollection when limit equals zero
+    if (limit == 0) {
+      return new RecordCollection().withTotalRecords(asRow(result.unwrap()).getInteger(COUNT));
+    }
+    else {
+      return toRecordCollection(result);
+    }
   }
 
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {

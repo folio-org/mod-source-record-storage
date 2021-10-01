@@ -627,6 +627,43 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldGetNoRecordsWithLimitEqualsZero(TestContext context) {
+    getTotalRecordsAndRecordsDependsOnLimit(context, 0);
+  }
+
+  @Test
+  public void shouldGetNoRecordsWithLimitNotEqualsZero(TestContext context) {
+    getTotalRecordsAndRecordsDependsOnLimit(context, 1);
+  }
+
+  private void getTotalRecordsAndRecordsDependsOnLimit(TestContext context, int limit) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ID.sort(SortOrder.ASC));
+      recordService.getRecords(condition, RecordType.MARC_BIB, orderFields, 0, limit, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        context.assertEquals(limit, get.result().getRecords().size());
+        async.complete();
+      });
+    });
+  }
+
   private void getRecordsBySnapshotId(TestContext context, String uuid, RecordType parsedRecordType,
                                       Record.RecordType recordType) {
     Async async = context.async();

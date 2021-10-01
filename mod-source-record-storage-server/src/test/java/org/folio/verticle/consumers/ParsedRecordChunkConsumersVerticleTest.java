@@ -13,7 +13,6 @@ import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -108,26 +107,26 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_BIB, rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_AUTHORITY,
       rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.EDIFACT, rawEdifactRecord,
       parsedEdifactRecord);
   }
 
   private void sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType recordType,
-    RawRecord rawRecord, ParsedRecord parsedRecord) throws IOException, InterruptedException {
+    RawRecord rawRecord, ParsedRecord parsedRecord) throws InterruptedException {
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -145,7 +144,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String topic = KafkaTopicNameHelper
       .formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
+    Event event = new Event().withEventPayload(Json.encode(recordCollection));
     KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
@@ -162,7 +161,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException, IOException {
+  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
 
     Record invalidRecord = new Record()
@@ -180,7 +179,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .withTotalRecords(records.size());
 
     String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
+    Event event = new Event().withEventPayload(Json.encode(recordCollection));
     KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
@@ -198,7 +197,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     List<DataImportEventPayload> testedEventsPayLoads = new ArrayList<>();
     for (String observedValue : observedValues) {
       Event obtainedEvent = Json.decodeValue(observedValue, Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(obtainedEvent.getEventPayload()), DataImportEventPayload.class);
+      DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
       if(snapshotId.equals(eventPayload.getJobExecutionId())) {
         testedEventsPayLoads.add(eventPayload);
       }

@@ -10,6 +10,7 @@
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record
 * [MODSOURCE-332](https://issues.folio.org/browse/MODSOURCE-332) Improve performance of left-anchored SRS queries
 * [MODSOURCE-343](https://issues.folio.org/browse/MODSOURCE-343) Support MARC Holdings in API
+* [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
 
 ## 2021-09-08 v5.1.6
 * [MODSOURCE-368](https://issues.folio.org/browse/MODSOURCE-368) Fix "fill-instance-hrid" script for envs where it was applied before

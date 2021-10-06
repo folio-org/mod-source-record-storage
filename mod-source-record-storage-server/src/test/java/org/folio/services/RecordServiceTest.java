@@ -1,33 +1,11 @@
 package org.folio.services;
 
-import static java.util.Comparator.comparing;
-
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.jooq.SortOrder;
-import org.jooq.impl.DSL;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -49,6 +27,25 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static java.util.Comparator.comparing;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
@@ -186,7 +183,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Record.RecordType.EDIFACT);
   }
 
-  // TODO: test get records between two dates
   @Test
   public void shouldGetMarcRecordsBetweenDates(TestContext context) {
     getMarcRecordsBetweenDates(context, OffsetDateTime.now().truncatedTo(ChronoUnit.DAYS),
@@ -207,8 +203,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetMarcHoldingsRecordById(TestContext context) {
     getMarcRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
-
-  // TODO: test get by matched id not equal to id
 
   @Test
   public void shouldNotGetRecordById(TestContext context) {
@@ -243,7 +237,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     saveMarcRecord(context, TestMocks.getEdifactRecord(), Record.RecordType.EDIFACT);
   }
 
-  // TODO: test save record with calculate generation greater than 0
+  @Test
+  public void shouldSaveMarcBibRecordWithGenerationGreaterThanZero(TestContext context) {
+    saveMarcRecordWithGenerationGreaterThanZero(context, TestMocks.getMarcBibRecord(), Record.RecordType.MARC_BIB);
+  }
 
   @Test
   public void shouldFailToSaveRecord(TestContext context) {
@@ -284,7 +281,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     saveMarcRecords(context, Record.RecordType.EDIFACT);
   }
 
-  // TODO: test save records with expected errors
+  @Test
+  public void shouldSaveMarcBibRecordsWithExpectedErrors(TestContext context) {
+    saveMarcRecordsWithExpectedErrors(context, Record.RecordType.MARC_BIB);
+  }
 
   @Test
   public void shouldUpdateMarcRecord(TestContext context) {
@@ -374,8 +374,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // TODO: test update record with calculate generation greater than 0
-
   @Test
   public void shouldFailToUpdateRecord(TestContext context) {
     Async async = context.async();
@@ -459,7 +457,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_HOLDING, RecordType.MARC_HOLDING);
   }
 
-  // TODO: test get source records between two dates
   @Test
   public void shouldGetMarcBibSourceRecordsBetweenDates(TestContext context) {
     getMarcSourceRecordsBetweenDates(context, Record.RecordType.MARC_BIB, RecordType.MARC_BIB,
@@ -481,7 +478,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     getMarcSourceRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
 
-  // TODO: test get by matched id not equal to id
+  @Test
+  public void shouldGetMarcBibSourceRecordByMatchedIdNotEqualToId(TestContext context) {
+    getMarcRecordByMatchedIdNotEqualToId(context, TestMocks.getMarcBibRecord());
+  }
 
   @Test
   public void shouldNotGetMarcBibSourceRecordById(TestContext context) {
@@ -579,13 +579,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  @Ignore
   public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
     deleteMarcRecordsBySnapshotId(context, 3, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
   }
 
   @Test
-  @Ignore
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
     deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
@@ -814,6 +812,31 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  private void saveMarcRecordWithGenerationGreaterThanZero(TestContext context, Record expected, Record.RecordType marcBib) {
+    Async async = context.async();
+    expected.setGeneration(1);
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, expected, save.result());
+      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(marcBib, get.result().get().getRecordType());
+        context.assertTrue(get.result().get().getGeneration() > 0);
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
   private void saveMarcRecords(TestContext context, Record.RecordType marcBib) {
     Async async = context.async();
     List<Record> expected = TestMocks.getRecords().stream()
@@ -841,6 +864,46 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           async.complete();
         });
     });
+  }
+
+  private void saveMarcRecordsWithExpectedErrors(TestContext context, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(recordType))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .map(record -> record.withErrorRecord(TestMocks.getErrorRecord(0)))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      context.assertEquals(0, batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      expected.sort(comparing(Record::getId));
+      batch.result().getRecords().sort(comparing(Record::getId));
+      compareRecords(context, expected, batch.result().getRecords());
+      checkRecordErrorRecords(context, batch.result().getRecords(), TestMocks.getErrorRecord(0).getContent().toString(),
+        TestMocks.getErrorRecord(0).getDescription());
+      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
+        .onComplete(count -> {
+          if (count.failed()) {
+            context.fail(count.cause());
+          }
+          context.assertEquals(expected.size(), count.result());
+          async.complete();
+        });
+    });
+  }
+
+  private void checkRecordErrorRecords(TestContext context, List<Record> actual, String expectedErrorContent,
+                                       String expectedErrorDescription) {
+    for (Record record : actual) {
+      context.assertEquals(expectedErrorContent, record.getErrorRecord().getContent());
+      context.assertEquals(expectedErrorDescription, record.getErrorRecord().getDescription());
+    }
   }
 
   private void getMarcSourceRecords(TestContext context, RecordType parsedRecordType, Record.RecordType recordType) {
@@ -1065,6 +1128,40 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         context.assertFalse(get.result().isPresent());
         async.complete();
+      });
+  }
+
+  private void getMarcRecordByMatchedIdNotEqualToId(TestContext context, Record expected) {
+    Async async = context.async();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(expected.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
+      .withParsedRecord(expected.getParsedRecord())
+      .withAdditionalInfo(expected.getAdditionalInfo())
+      .withExternalIdsHolder(expected.getExternalIdsHolder())
+      .withMetadata(expected.getMetadata());
+
+    recordDao.saveRecord(expected, TENANT_ID)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        recordDao
+          .getRecordByMatchedId(expected.getMatchedId(), TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+            context.assertNotNull(get.result().get().getRawRecord());
+            context.assertNotNull(get.result().get().getParsedRecord());
+            context.assertEquals(expected.getMatchedId(), get.result().get().getMatchedId());
+            context.assertTrue(get.result().get().getGeneration() > 0);
+            context.assertNotEquals(get.result().get().getMatchedId(), get.result().get().getId());
+            async.complete();
+          });
       });
   }
 

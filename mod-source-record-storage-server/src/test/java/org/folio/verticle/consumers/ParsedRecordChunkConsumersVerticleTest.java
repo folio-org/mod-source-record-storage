@@ -44,7 +44,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
-import static org.folio.kafka.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 

@@ -1,4 +1,4 @@
-package org.folio.kafka.consumers;
+package org.folio.consumers;
 
 import static java.lang.String.format;
 

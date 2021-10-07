@@ -62,8 +62,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.kafka.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.kafka.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)

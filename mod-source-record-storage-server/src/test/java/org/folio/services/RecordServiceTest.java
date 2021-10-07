@@ -33,7 +33,6 @@ import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -51,6 +50,8 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
 
+  private static final String MARC_BIB_RECORD_SNAPSHOT_ID = "d787a937-cc4b-49b3-85ef-35bcd643c689";
+  private static final String MARC_AUTHORITY_RECORD_SNAPSHOT_ID = "ee561342-3098-47a8-ab6e-0f3eba120b04";
   private RecordDao recordDao;
 
   private RecordService recordService;
@@ -581,12 +582,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 3, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+    deleteMarcRecordsBySnapshotId(context, MARC_BIB_RECORD_SNAPSHOT_ID, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
   }
 
   @Test
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
+    deleteMarcRecordsBySnapshotId(context, MARC_AUTHORITY_RECORD_SNAPSHOT_ID, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
@@ -1285,7 +1286,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void deleteMarcRecordsBySnapshotId(TestContext context, int i, RecordType parsedRecordType,
+  private void deleteMarcRecordsBySnapshotId(TestContext context, String snapshotId, RecordType parsedRecordType,
                                              Record.RecordType recordType) {
     Async async = context.async();
     List<Record> original = TestMocks.getRecords();
@@ -1296,8 +1297,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
-      //String snapshotId =  "d787a937-cc4b-49b3-85ef-35bcd643c689";
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordDao.getRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {

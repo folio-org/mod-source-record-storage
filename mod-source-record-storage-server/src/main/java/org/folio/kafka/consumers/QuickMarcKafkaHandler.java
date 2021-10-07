@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.kafka.consumers;
 
 import static java.lang.String.format;
 
@@ -25,6 +25,7 @@ import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.services.RecordService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

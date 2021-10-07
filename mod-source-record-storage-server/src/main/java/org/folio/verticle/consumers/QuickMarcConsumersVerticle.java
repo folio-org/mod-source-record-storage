@@ -12,7 +12,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
-import org.folio.services.QuickMarcKafkaHandler;
+import org.folio.kafka.consumers.QuickMarcKafkaHandler;
 import org.folio.spring.SpringContextUtil;
 
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;

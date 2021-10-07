@@ -1296,8 +1296,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      //String snapshotId = TestMocks.getSnapshot(i).getJobExecutionId();
-      String snapshotId =  "d787a937-cc4b-49b3-85ef-35bcd643c689";
+      String snapshotId = TestMocks.getSnapshot(3).getJobExecutionId();
+      //String snapshotId =  "d787a937-cc4b-49b3-85ef-35bcd643c689";
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordDao.getRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {

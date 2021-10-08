@@ -482,7 +482,38 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldGetMarcBibSourceRecordByMatchedIdNotEqualToId(TestContext context) {
-    getMarcRecordByMatchedIdNotEqualToId(context, TestMocks.getMarcBibRecord());
+    Record expected = TestMocks.getMarcBibRecord();
+    Async async = context.async();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(expected.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
+      .withParsedRecord(expected.getParsedRecord())
+      .withAdditionalInfo(expected.getAdditionalInfo())
+      .withExternalIdsHolder(expected.getExternalIdsHolder())
+      .withMetadata(expected.getMetadata());
+
+    recordDao.saveRecord(expected, TENANT_ID)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        recordDao
+          .getRecordByMatchedId(expected.getMatchedId(), TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+            context.assertNotNull(get.result().get().getRawRecord());
+            context.assertNotNull(get.result().get().getParsedRecord());
+            context.assertEquals(expected.getMatchedId(), get.result().get().getMatchedId());
+            context.assertTrue(get.result().get().getGeneration() > 0);
+            context.assertNotEquals(get.result().get().getMatchedId(), get.result().get().getId());
+            async.complete();
+          });
+      });
   }
 
   @Test
@@ -1130,40 +1161,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         context.assertFalse(get.result().isPresent());
         async.complete();
-      });
-  }
-
-  private void getMarcRecordByMatchedIdNotEqualToId(TestContext context, Record expected) {
-    Async async = context.async();
-    String snapshotId = UUID.randomUUID().toString();
-    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
-      .withId(expected.getId())
-      .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
-      .withParsedRecord(expected.getParsedRecord())
-      .withAdditionalInfo(expected.getAdditionalInfo())
-      .withExternalIdsHolder(expected.getExternalIdsHolder())
-      .withMetadata(expected.getMetadata());
-
-    recordDao.saveRecord(expected, TENANT_ID)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
-      .onComplete(update -> {
-        if (update.failed()) {
-          context.fail(update.cause());
-        }
-        recordDao
-          .getRecordByMatchedId(expected.getMatchedId(), TENANT_ID)
-          .onComplete(get -> {
-            if (get.failed()) {
-              context.fail(get.cause());
-            }
-            context.assertTrue(get.result().isPresent());
-            context.assertNotNull(get.result().get().getRawRecord());
-            context.assertNotNull(get.result().get().getParsedRecord());
-            context.assertEquals(expected.getMatchedId(), get.result().get().getMatchedId());
-            context.assertTrue(get.result().get().getGeneration() > 0);
-            context.assertNotEquals(get.result().get().getMatchedId(), get.result().get().getId());
-            async.complete();
-          });
       });
   }
 

@@ -1,5 +1,6 @@
 ## 2021-xx-xx v5.3.0-SNAPSHOT
 * [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
+* [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications
 
 ## 2021-09-30 v5.2.0
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x

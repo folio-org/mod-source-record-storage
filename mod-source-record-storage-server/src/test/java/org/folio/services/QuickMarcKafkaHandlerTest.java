@@ -122,7 +122,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withId(record.getMatchedId())
       .withParsedRecord(new ParsedRecord()
         .withContent(UPDATED_PARSED_RECORD_CONTENT))
-      .withQmRecordVersion("1")
+      .withRelatedRecordVersion("1")
       .withRecordType(ParsedRecordDto.RecordType.MARC_BIB);
 
     var payload = new HashMap<String, String>();

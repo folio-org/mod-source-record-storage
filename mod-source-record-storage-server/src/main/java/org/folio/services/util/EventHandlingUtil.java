@@ -25,6 +25,7 @@ import org.folio.rest.tools.utils.ModuleName;
 public final class EventHandlingUtil {
 
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final String RECORD_ID_HEADER = "recordId";
 
   private EventHandlingUtil() { }
 
@@ -50,18 +51,18 @@ public final class EventHandlingUtil {
 
     Promise<Boolean> promise = Promise.promise();
 
-    String correlationId = extractCorrelationId(kafkaHeaders);
+    String recordId = extractRecordId(kafkaHeaders);
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.info("Event with type {} and correlationId {} was sent to kafka", eventType, correlationId);
+        LOGGER.info("Event with type {} and recordId {} was sent to kafka", eventType, recordId);
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {} with correlationId {}, cause:",  producerName, eventType, correlationId, cause);
+        LOGGER.error("{} write error for event {} with recordId {}, cause:",  producerName, eventType, recordId, cause);
         promise.fail(cause);
       }
     });
@@ -103,9 +104,9 @@ public final class EventHandlingUtil {
     return KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
   }
 
-  private static String extractCorrelationId(List<KafkaHeader> kafkaHeaders) {
+  private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals("correlationId"))
+      .filter(header -> header.key().equals(RECORD_ID_HEADER))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

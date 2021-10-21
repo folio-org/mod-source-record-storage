@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.consumers;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -24,6 +24,7 @@ import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.services.RecordService;
 import org.folio.services.util.EventHandlingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

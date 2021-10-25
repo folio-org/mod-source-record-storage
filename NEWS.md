@@ -2,6 +2,9 @@
 * [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
 * [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications
 
+## 2021-xx-xx v5.2.1-SNAPSHOT
+* [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar
+
 ## 2021-09-30 v5.2.0
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
 * [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system

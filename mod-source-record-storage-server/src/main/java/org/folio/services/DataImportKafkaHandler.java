@@ -34,7 +34,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
-  private static final String CORRELATION_ID_HEADER = "correlationId";
+  private static final String RECORD_ID_HEADER = "recordId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -49,11 +49,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     try {
       Promise<String> promise = Promise.promise();
-      String correlationId = extractCorrelationId(record.headers());
+      String recordId = extractRecordId(record.headers());
       Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and correlationId: {}", eventPayload.getEventType(), correlationId);
-      eventPayload.getContext().put(CORRELATION_ID_HEADER, correlationId);
+      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {}", eventPayload.getEventType(), recordId);
+      eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -78,9 +78,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     }
   }
 
-  private String extractCorrelationId(List<KafkaHeader> headers) {
+  private String extractRecordId(List<KafkaHeader> headers) {
     return headers.stream()
-      .filter(header -> header.key().equals(CORRELATION_ID_HEADER))
+      .filter(header -> header.key().equals(RECORD_ID_HEADER))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

@@ -1,3 +1,6 @@
+## 2021-10-28 v5.1.7
+* [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
+
 ## 2021-09-08 v5.1.6
 * [MODSOURCE-368](https://issues.folio.org/browse/MODSOURCE-368) Fix "fill-instance-hrid" script for envs where it was applied before
 * [MODSOURCE-360](https://issues.folio.org/browse/MODSOURCE-360) The DB type MARC did not get updated to MARC_BIB

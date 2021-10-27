@@ -1,3 +1,6 @@
+## 2021-10-29 v5.2.1-SNAPSHOT
+* [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
+
 ## 2021-09-30 v5.2.0
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
 * [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system

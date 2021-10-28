@@ -36,9 +36,10 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BI
 public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler<String, String> {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String ERROR_KEY = "ERROR";
-  private static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
-  private static final String RECORD_ID_HEADER = "recordId";
+
+  public static final String ERROR_KEY = "ERROR";
+  public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  public static final String RECORD_ID_HEADER = "recordId";
 
   @Autowired
   private KafkaConfig kafkaConfig;

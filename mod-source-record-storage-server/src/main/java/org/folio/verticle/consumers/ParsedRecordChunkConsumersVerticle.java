@@ -2,12 +2,7 @@ package org.folio.verticle.consumers;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import org.folio.kafka.AsyncRecordHandler;
-import org.folio.kafka.GlobalLoadSensor;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.kafka.SubscriptionDefinition;
+import org.folio.kafka.*;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,8 +19,12 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
   private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
 
   @Autowired
-  @Qualifier("ParsedRecordChunksKafkaHandler")
+  @Qualifier("parsedRecordChunksKafkaHandler")
   private AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler;
+
+  @Autowired
+  @Qualifier("parsedRecordChunksErrorHandler")
+  private ProcessRecordErrorHandler<String, String> parsedRecordChunksErrorHandler;
 
   @Autowired
   private KafkaConfig kafkaConfig;
@@ -51,6 +50,7 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
       .loadLimit(loadLimit)
       .globalLoadSensor(globalLoadSensor)
       .subscriptionDefinition(subscriptionDefinition)
+      .processRecordErrorHandler(parsedRecordChunksErrorHandler)
       .build();
 
     consumerWrapper.start(parsedRecordChunksKafkaHandler, constructModuleName() + "_" + getClass().getSimpleName()).onComplete(sar -> {

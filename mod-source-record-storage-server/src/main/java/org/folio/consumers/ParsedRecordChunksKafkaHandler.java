@@ -59,23 +59,24 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+    Event event = Json.decodeValue(record.value(), Event.class);
+    RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
+
+    List<KafkaHeader> kafkaHeaders = record.headers();
+
+    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+    String tenantId = okapiConnectionParams.getTenantId();
+    String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
+    String key = record.key();
+
+    int chunkNumber = chunkCounter.incrementAndGet();
+
     try {
-      Event event = Json.decodeValue(record.value(), Event.class);
-      RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
-
-      List<KafkaHeader> kafkaHeaders = record.headers();
-
-      OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
-      String tenantId = okapiConnectionParams.getTenantId();
-      String correlationId = okapiConnectionParams.getHeaders().get("correlationId");
-      String key = record.key();
-
-      int chunkNumber = chunkCounter.incrementAndGet();
       LOGGER.debug("RecordCollection has been received, correlationId: {}, starting processing... chunkNumber {}-{}", correlationId, chunkNumber, key);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, correlationId, chunkNumber));
     } catch (Exception e) {
-      LOGGER.error("Can't process the kafka record: ", e);
+      LOGGER.error("RecordCollection processing has failed with errors... correlationId: {}, chunkNumber {}-{}", correlationId, chunkNumber, key, e);
       return Future.failedFuture(e);
     }
   }

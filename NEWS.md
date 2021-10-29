@@ -1,8 +1,7 @@
-## 2021-10-29 v5.2.1-SNAPSHOT
-* [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
-
-## 2021-xx-xx v5.2.1-SNAPSHOT
+## 2021-10-29 v5.2.1
+* [MODSOURCE-399](hhttps://issues.folio.org/browse/MODSOURCE-399) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar
+* [MODSOURCE-393](https://issues.folio.org/browse/MODSOURCE-393) Enable fix of duplicate control fields on MARC update (update data-import-processing-core to v3.2.2)
 
 ## 2021-09-30 v5.2.0
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x

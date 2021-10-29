@@ -161,7 +161,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>3.2.0</version>
+      <version>3.2.2</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>

@@ -8,12 +8,14 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
+import net.mguenther.kafka.junit.ReadKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.errorhandlers.ParsedRecordChunksErrorHandler;
 import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -28,16 +30,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.platform.commons.util.StringUtils;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
@@ -45,9 +44,8 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
-import static org.folio.services.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.junit.Assert.*;
 
 @RunWith(VertxUnitRunner.class)
 public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTest {
@@ -108,26 +106,26 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_BIB, rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.MARC_AUTHORITY,
       rawMarcRecord,
       parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException, IOException {
+  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent(TestContext context) throws InterruptedException {
     sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType.EDIFACT, rawEdifactRecord,
       parsedEdifactRecord);
   }
 
   private void sendEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(RecordType recordType,
-    RawRecord rawRecord, ParsedRecord parsedRecord) throws IOException, InterruptedException {
+    RawRecord rawRecord, ParsedRecord parsedRecord) throws InterruptedException {
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
@@ -145,7 +143,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     String topic = KafkaTopicNameHelper
       .formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
+    Event event = new Event().withEventPayload(Json.encode(recordCollection));
     KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
@@ -162,52 +160,110 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException, IOException {
+  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
+    Record additionalRecord = getAdditionalRecord(validRecord, snapshotId, validRecord.getRecordType());
+    List<Record> records = List.of(validRecord, additionalRecord);
+    String jobExecutionId = UUID.randomUUID().toString();
 
-    Record invalidRecord = new Record()
-      .withId(UUID.randomUUID().toString())
-      .withMatchedId(UUID.randomUUID().toString())
-      .withSnapshotId(snapshotId)
-      .withRecordType(validRecord.getRecordType())
-      .withRawRecord(validRecord.getRawRecord())
-      .withParsedRecord(validRecord.getParsedRecord())
-      .withLeaderRecordStatus(WRONG_LEADER_STATUS);
+    sendRecordsToKafka(jobExecutionId, records);
 
-    List<Record> records = List.of(validRecord, invalidRecord);
+    check_DI_ERROR_eventsSent(jobExecutionId, records, "SQL [null]; ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"" );
+  }
+
+  @Test
+  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentSnapshotIds() throws InterruptedException {
+    Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
+    Record secondWithDifferentSnapshotId = getAdditionalRecord(first, UUID.randomUUID().toString(), first.getRecordType());
+    List<Record> records = List.of(first, secondWithDifferentSnapshotId);
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    sendRecordsToKafka(jobExecutionId, records);
+
+    check_DI_ERROR_eventsSent(jobExecutionId, records, "Batch record collection only supports single snapshot" );
+  }
+
+  @Test
+  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentRecordTypes() throws InterruptedException {
+    Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
+    Record secondWithDifferentRecordType = getAdditionalRecord(first, snapshotId, RecordType.MARC_AUTHORITY);
+    List<Record> records = List.of(first, secondWithDifferentRecordType);
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    sendRecordsToKafka(jobExecutionId, records);
+
+    check_DI_ERROR_eventsSent(jobExecutionId, records, "Batch record collection only supports single record type" );
+  }
+
+  @Test
+  public void shouldSendDIErrorEventsWhenSnapshotsNotFound() throws InterruptedException {
+    String snapshotId = UUID.randomUUID().toString();
+    Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
+    Record second = TestMocks.getRecord(0).withSnapshotId(snapshotId);
+    List<Record> records = List.of(first, second);
+    String jobExecutionId = UUID.randomUUID().toString();
+
+    sendRecordsToKafka(jobExecutionId, records);
+
+    check_DI_ERROR_eventsSent(jobExecutionId, records, "Snapshot with id", "was not found" );
+  }
+
+  private void sendRecordsToKafka(String jobExecutionId, List<Record> records) throws InterruptedException {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
 
     String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(recordCollection)));
+    Event event = new Event().withEventPayload(Json.encode(recordCollection));
     KeyValue<String, String> record = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     record.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     record.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
     record.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
-    record.addHeader(JOB_EXECUTION_ID_HEADER, snapshotId, Charset.defaultCharset());
+    record.addHeader(JOB_EXECUTION_ID_HEADER, jobExecutionId, Charset.defaultCharset());
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 
     cluster.send(request);
+  }
 
-    String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
-    List<String> observedValues = cluster.observeValues(ObserveKeyValues.on(observeTopic, records.size())
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+  private Record getAdditionalRecord(Record validRecord, String snapshotId, RecordType recordType) {
+    return new Record()
+      .withId(UUID.randomUUID().toString())
+      .withMatchedId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshotId)
+      .withRecordType(recordType)
+      .withRawRecord(validRecord.getRawRecord())
+      .withParsedRecord(validRecord.getParsedRecord())
+      .withLeaderRecordStatus(WRONG_LEADER_STATUS);
+  }
 
+  private void check_DI_ERROR_eventsSent(String jobExecutionId, List<Record> records, String... errorMessages) throws InterruptedException {
     List<DataImportEventPayload> testedEventsPayLoads = new ArrayList<>();
+    String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
+    List<String> observedValues = cluster.readValues(ReadKeyValues.from(observeTopic).build());
+    if (CollectionUtils.isEmpty(observedValues)) {
+      observedValues = cluster.observeValues(ObserveKeyValues.on(observeTopic, records.size())
+        .observeFor(30, TimeUnit.SECONDS)
+        .build());
+    }
     for (String observedValue : observedValues) {
       Event obtainedEvent = Json.decodeValue(observedValue, Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(obtainedEvent.getEventPayload()), DataImportEventPayload.class);
-      if(snapshotId.equals(eventPayload.getJobExecutionId())) {
+      DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+      if (jobExecutionId.equals(eventPayload.getJobExecutionId())) {
         testedEventsPayLoads.add(eventPayload);
       }
     }
+
     assertEquals(EXPECTED_ERROR_EVENTS_NUMBER, testedEventsPayLoads.size());
 
     for (DataImportEventPayload eventPayload : testedEventsPayLoads) {
+      String recordId = eventPayload.getContext().get(ParsedRecordChunksErrorHandler.RECORD_ID_HEADER);
+      String error = eventPayload.getContext().get(ParsedRecordChunksErrorHandler.ERROR_KEY);
       assertEquals(DI_ERROR.value(), eventPayload.getEventType());
       assertEquals(TENANT_ID, eventPayload.getTenant());
+      assertTrue(StringUtils.isNotBlank(recordId));
+      for (String errorMessage: errorMessages) {
+        assertTrue(error.contains(errorMessage));
+      }
       assertFalse(eventPayload.getEventsChain().isEmpty());
       assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().get(0));
     }

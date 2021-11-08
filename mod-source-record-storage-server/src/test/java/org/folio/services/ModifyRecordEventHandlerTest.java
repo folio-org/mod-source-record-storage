@@ -1,11 +1,18 @@
 package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -16,13 +23,24 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.Data;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.rest.jaxrs.model.MarcField;
+import org.folio.rest.jaxrs.model.MarcMappingDetail;
+import org.folio.rest.jaxrs.model.MarcSubfield;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.handlers.actions.ModifyRecordEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -36,6 +54,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -45,13 +64,13 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.rest.jaxrs.model.Snapshot.Status.COMMITTED;
 import static org.folio.services.handlers.actions.ModifyRecordEventHandler.MATCHED_MARC_BIB_KEY;
 
 @RunWith(VertxUnitRunner.class)
 public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+  private static final String MAPPING_METADATA__URL = "/mapping-metadata";
 
   private static String recordId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
@@ -111,6 +130,15 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
             .withContentType(MAPPING_PROFILE)
             .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
 
+  @Rule
+  public WireMockRule mockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true)));
+
+  @Rule
+  public RunTestOnContext rule = new RunTestOnContext();
+
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
@@ -121,9 +149,13 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(new MappingParameters()))))));
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new ModifyRecordEventHandler(recordService);
+    modifyRecordEventHandler = new ModifyRecordEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -165,7 +197,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-    payloadContext.put("MAPPING_PARAMS", Json.encode(new MappingParameters()));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
@@ -176,6 +207,9 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(record.getSnapshotId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
@@ -208,7 +242,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
-    payloadContext.put("MAPPING_PARAMS", Json.encode(new MappingParameters()));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
@@ -219,6 +252,8 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
@@ -253,7 +288,6 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
-    payloadContext.put("MAPPING_PARAMS", Json.encode(new MappingParameters()));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
@@ -264,6 +298,8 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)

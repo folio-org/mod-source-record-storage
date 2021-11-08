@@ -25,11 +25,12 @@ import org.folio.rest.tools.utils.ModuleName;
 public final class EventHandlingUtil {
 
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final String RECORD_ID_HEADER = "recordId";
 
   private EventHandlingUtil() { }
 
   /**
-   * Prepares and sends event with zipped payload to kafka
+   * Prepares and sends event with payload to kafka
    *
    * @param tenantId     tenant id
    * @param eventPayload eventPayload in String representation
@@ -42,7 +43,7 @@ public final class EventHandlingUtil {
                                                  List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
     KafkaProducerRecord<String, String> record;
     try {
-      record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
+      record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig, false);
     } catch (IOException e) {
       LOGGER.error("Failed to construct an event for eventType {}", eventType, e);
       return Future.failedFuture(e);
@@ -50,18 +51,18 @@ public final class EventHandlingUtil {
 
     Promise<Boolean> promise = Promise.promise();
 
-    String correlationId = extractCorrelationId(kafkaHeaders);
+    String recordId = extractRecordId(kafkaHeaders);
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.info("Event with type {} and correlationId {} was sent to kafka", eventType, correlationId);
+        LOGGER.info("Event with type {} and recordId {} was sent to kafka", eventType, recordId);
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {} with correlationId {}, cause:",  producerName, eventType, correlationId, cause);
+        LOGGER.error("{} write error for event {} with recordId {}, cause:",  producerName, eventType, recordId, cause);
         promise.fail(cause);
       }
     });
@@ -71,11 +72,12 @@ public final class EventHandlingUtil {
   public static KafkaProducerRecord<String, String> createProducerRecord(String eventPayload, String eventType,
                                                                          String key, String tenantId,
                                                                          List<KafkaHeader> kafkaHeaders,
-                                                                         KafkaConfig kafkaConfig) throws IOException {
+                                                                         KafkaConfig kafkaConfig,
+                                                                         boolean zippedPayload) throws IOException {
     Event event = new Event()
       .withId(UUID.randomUUID().toString())
       .withEventType(eventType)
-      .withEventPayload(ZIPArchiver.zip(eventPayload))
+      .withEventPayload(zippedPayload ? ZIPArchiver.zip(eventPayload) : eventPayload)
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)
@@ -102,9 +104,9 @@ public final class EventHandlingUtil {
     return KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
   }
 
-  private static String extractCorrelationId(List<KafkaHeader> kafkaHeaders) {
+  private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals("correlationId"))
+      .filter(header -> header.key().equals(RECORD_ID_HEADER))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

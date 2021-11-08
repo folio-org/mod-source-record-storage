@@ -23,6 +23,7 @@ import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -92,6 +93,7 @@ import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
@@ -109,9 +111,12 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
+  private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
+
+  private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
 
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -165,8 +170,8 @@ public class RecordDaoImpl implements RecordDao {
         .where(condition.and(recordType.getRecordImplicitCondition()))
         .orderBy(orderFields)
         .offset(offset)
-        .limit(limit)
-    )).map(this::toRecordCollection);
+        .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
   @Override
@@ -584,7 +589,7 @@ public class RecordDaoImpl implements RecordDao {
     return txQE.query(dsl -> dsl.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
       .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
       .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
-        .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
+        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR))
         .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
           .from(SNAPSHOTS_LB)
           .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(record.getSnapshotId())))))))
@@ -769,6 +774,35 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
+    if (marcBibIds.isEmpty()) {
+      return Future.succeededFuture(new MarcBibCollection());
+    }
+    var marcHrid = DSL.field("marc.hrid");
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
+      dsl.selectDistinct(marcHrid)
+        .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
+        .leftJoin(RECORDS_LB)
+        .on(RECORDS_LB.EXTERNAL_HRID.eq(marcHrid.cast(String.class))
+          .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
+        .where(RECORDS_LB.EXTERNAL_HRID.isNull())
+    )).map(this::toMarcBibCollection);
+  }
+
+  private MarcBibCollection toMarcBibCollection(QueryResult result) {
+    MarcBibCollection marcBibCollection = new MarcBibCollection();
+    List<String> ids = new ArrayList<>();
+    result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .forEach(row -> ids.add(row.getString(HRID)));
+    if (!ids.isEmpty()) {
+      marcBibCollection.withInvalidMarcBibIds(ids);
+    }
+    return marcBibCollection;
+  }
+
+  @Override
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
@@ -946,6 +980,19 @@ public class RecordDaoImpl implements RecordDao {
       recordCollection.withRecords(records);
     }
     return recordCollection;
+  }
+
+  /*
+   * Code to avoid the occurrence of records when limit equals to zero
+   */
+  private RecordCollection toRecordCollectionWithLimitCheck(QueryResult result, int limit) {
+    // Validation to ignore records insertion to the returned recordCollection when limit equals zero
+    if (limit == 0) {
+      return new RecordCollection().withTotalRecords(asRow(result.unwrap()).getInteger(COUNT));
+    }
+    else {
+      return toRecordCollection(result);
+    }
   }
 
   private SourceRecordCollection toSourceRecordCollection(QueryResult result) {

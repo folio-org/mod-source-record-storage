@@ -7,6 +7,7 @@ import java.util.Optional;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -189,4 +190,13 @@ public interface RecordService {
    */
   Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
 
+  /**
+   * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,
+   * which does not exists in the system
+   *
+   * @param marcBibIds list of marc bib ids (max size - 32767)
+   * @param tenantId tenant id
+   * @return future with list of invalid marc bib ids
+   */
+  Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
 }

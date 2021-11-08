@@ -1,31 +1,11 @@
 package org.folio.services;
 
-import static java.util.Comparator.comparing;
-
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.jooq.SortOrder;
-import org.jooq.impl.DSL;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -47,10 +27,31 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.jooq.SortOrder;
+import org.jooq.impl.DSL;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static java.util.Comparator.comparing;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
 
+  private static final String MARC_BIB_RECORD_SNAPSHOT_ID = "d787a937-cc4b-49b3-85ef-35bcd643c689";
+  private static final String MARC_AUTHORITY_RECORD_SNAPSHOT_ID = "ee561342-3098-47a8-ab6e-0f3eba120b04";
   private RecordDao recordDao;
 
   private RecordService recordService;
@@ -184,7 +185,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       Record.RecordType.EDIFACT);
   }
 
-  // TODO: test get records between two dates
+  @Test
+  public void shouldGetMarcRecordsBetweenDates(TestContext context) {
+    getMarcRecordsBetweenDates(context, OffsetDateTime.now().truncatedTo(ChronoUnit.DAYS),
+      OffsetDateTime.now().truncatedTo(ChronoUnit.DAYS).plusDays(1), RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+  }
 
   @Test
   public void shouldGetMarcBibRecordById(TestContext context) {
@@ -200,8 +205,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetMarcHoldingsRecordById(TestContext context) {
     getMarcRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
-
-  // TODO: test get by matched id not equal to id
 
   @Test
   public void shouldNotGetRecordById(TestContext context) {
@@ -236,7 +239,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     saveMarcRecord(context, TestMocks.getEdifactRecord(), Record.RecordType.EDIFACT);
   }
 
-  // TODO: test save record with calculate generation greater than 0
+  @Test
+  public void shouldSaveMarcBibRecordWithGenerationGreaterThanZero(TestContext context) {
+    saveMarcRecordWithGenerationGreaterThanZero(context, TestMocks.getMarcBibRecord(), Record.RecordType.MARC_BIB);
+  }
 
   @Test
   public void shouldFailToSaveRecord(TestContext context) {
@@ -277,7 +283,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     saveMarcRecords(context, Record.RecordType.EDIFACT);
   }
 
-  // TODO: test save records with expected errors
+  @Test
+  public void shouldSaveMarcBibRecordsWithExpectedErrors(TestContext context) {
+    saveMarcRecordsWithExpectedErrors(context, Record.RecordType.MARC_BIB);
+  }
 
   @Test
   public void shouldUpdateMarcRecord(TestContext context) {
@@ -367,8 +376,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  // TODO: test update record with calculate generation greater than 0
-
   @Test
   public void shouldFailToUpdateRecord(TestContext context) {
     Async async = context.async();
@@ -452,7 +459,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     getMarcSourceRecordsByListOfIdsThatAreDeleted(context, Record.RecordType.MARC_HOLDING, RecordType.MARC_HOLDING);
   }
 
-  // TODO: test get source records between two dates
+  @Test
+  public void shouldGetMarcBibSourceRecordsBetweenDates(TestContext context) {
+    getMarcSourceRecordsBetweenDates(context, Record.RecordType.MARC_BIB, RecordType.MARC_BIB,
+      OffsetDateTime.now().truncatedTo(ChronoUnit.DAYS), OffsetDateTime.now().truncatedTo(ChronoUnit.DAYS).plusDays(1));
+  }
 
   @Test
   public void shouldGetMarcBibSourceRecordById(TestContext context) {
@@ -469,7 +480,41 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     getMarcSourceRecordById(context, TestMocks.getMarcHoldingsRecord());
   }
 
-  // TODO: test get by matched id not equal to id
+  @Test
+  public void shouldGetMarcBibSourceRecordByMatchedIdNotEqualToId(TestContext context) {
+    Record expected = TestMocks.getMarcBibRecord();
+    Async async = context.async();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(expected.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
+      .withParsedRecord(expected.getParsedRecord())
+      .withAdditionalInfo(expected.getAdditionalInfo())
+      .withExternalIdsHolder(expected.getExternalIdsHolder())
+      .withMetadata(expected.getMetadata());
+
+    recordDao.saveRecord(expected, TENANT_ID)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        recordDao
+          .getRecordByMatchedId(expected.getMatchedId(), TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+            context.assertNotNull(get.result().get().getRawRecord());
+            context.assertNotNull(get.result().get().getParsedRecord());
+            context.assertEquals(expected.getMatchedId(), get.result().get().getMatchedId());
+            context.assertTrue(get.result().get().getGeneration() > 0);
+            context.assertNotEquals(get.result().get().getMatchedId(), get.result().get().getId());
+            async.complete();
+          });
+      });
+  }
 
   @Test
   public void shouldNotGetMarcBibSourceRecordById(TestContext context) {
@@ -567,15 +612,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  @Ignore
   public void shouldDeleteMarcBibRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 2, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
+    deleteMarcRecordsBySnapshotId(context, MARC_BIB_RECORD_SNAPSHOT_ID, RecordType.MARC_BIB, Record.RecordType.MARC_BIB);
   }
 
   @Test
-  @Ignore
   public void shouldDeleteMarcAuthorityRecordsBySnapshotId(TestContext context) {
-    deleteMarcRecordsBySnapshotId(context, 1, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
+    deleteMarcRecordsBySnapshotId(context, MARC_AUTHORITY_RECORD_SNAPSHOT_ID, RecordType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY);
   }
 
   @Test
@@ -627,6 +670,43 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldGetNoRecordsWithLimitEqualsZero(TestContext context) {
+    getTotalRecordsAndRecordsDependsOnLimit(context, 0);
+  }
+
+  @Test
+  public void shouldGetNoRecordsWithLimitNotEqualsZero(TestContext context) {
+    getTotalRecordsAndRecordsDependsOnLimit(context, 1);
+  }
+
+  private void getTotalRecordsAndRecordsDependsOnLimit(TestContext context, int limit) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = DSL.trueCondition();
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ID.sort(SortOrder.ASC));
+      recordService.getRecords(condition, RecordType.MARC_BIB, orderFields, 0, limit, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        context.assertEquals(limit, get.result().getRecords().size());
+        async.complete();
+      });
+    });
+  }
+
   private void getRecordsBySnapshotId(TestContext context, String uuid, RecordType parsedRecordType,
                                       Record.RecordType recordType) {
     Async async = context.async();
@@ -653,6 +733,35 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        async.complete();
+      });
+    });
+  }
+
+  private void getMarcRecordsBetweenDates(TestContext context, OffsetDateTime earliestDate, OffsetDateTime latestDate,
+                                          RecordType parsedRecordType, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      Condition condition = RECORDS_LB.CREATED_DATE.between(earliestDate, latestDate);
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+      recordService.getRecords(condition, parsedRecordType, orderFields, 0, 15, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .sorted(comparing(Record::getOrder))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareRecords(context, expected, get.result().getRecords());
         async.complete();
       });
     });
@@ -736,6 +845,31 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
+  private void saveMarcRecordWithGenerationGreaterThanZero(TestContext context, Record expected, Record.RecordType marcBib) {
+    Async async = context.async();
+    expected.setGeneration(1);
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, expected, save.result());
+      recordDao.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(marcBib, get.result().get().getRecordType());
+        context.assertTrue(get.result().get().getGeneration() > 0);
+        compareRecords(context, expected, get.result().get());
+        async.complete();
+      });
+    });
+  }
+
   private void saveMarcRecords(TestContext context, Record.RecordType marcBib) {
     Async async = context.async();
     List<Record> expected = TestMocks.getRecords().stream()
@@ -763,6 +897,46 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           async.complete();
         });
     });
+  }
+
+  private void saveMarcRecordsWithExpectedErrors(TestContext context, Record.RecordType recordType) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(recordType))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .map(record -> record.withErrorRecord(TestMocks.getErrorRecord(0)))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+      context.assertEquals(0, batch.result().getErrorMessages().size());
+      context.assertEquals(expected.size(), batch.result().getTotalRecords());
+      expected.sort(comparing(Record::getId));
+      batch.result().getRecords().sort(comparing(Record::getId));
+      compareRecords(context, expected, batch.result().getRecords());
+      checkRecordErrorRecords(context, batch.result().getRecords(), TestMocks.getErrorRecord(0).getContent().toString(),
+        TestMocks.getErrorRecord(0).getDescription());
+      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
+        .onComplete(count -> {
+          if (count.failed()) {
+            context.fail(count.cause());
+          }
+          context.assertEquals(expected.size(), count.result());
+          async.complete();
+        });
+    });
+  }
+
+  private void checkRecordErrorRecords(TestContext context, List<Record> actual, String expectedErrorContent,
+                                       String expectedErrorDescription) {
+    for (Record record : actual) {
+      context.assertEquals(expectedErrorContent, record.getErrorRecord().getContent());
+      context.assertEquals(expectedErrorDescription, record.getErrorRecord().getDescription());
+    }
   }
 
   private void getMarcSourceRecords(TestContext context, RecordType parsedRecordType, Record.RecordType recordType) {
@@ -867,6 +1041,38 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void sortByRecordId(AsyncResult<SourceRecordCollection> get) {
     get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+  }
+
+  private void getMarcSourceRecordsBetweenDates(TestContext context, Record.RecordType recordType,
+                                                RecordType parsedRecordType, OffsetDateTime earliestDate,
+                                                OffsetDateTime latestDate) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Condition condition = RECORDS_LB.CREATED_DATE.between(earliestDate, latestDate);
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      recordService.getSourceRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<SourceRecord> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(recordType))
+          .map(RecordDaoUtil::toSourceRecord)
+          .sorted(comparing(SourceRecord::getRecordId))
+          .collect(Collectors.toList());
+        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareSourceRecords(context, expected, get.result().getSourceRecords());
+        async.complete();
+      });
+    });
   }
 
   private void getMarcSourceRecordsByListOfIdsThatAreDeleted(TestContext context, Record.RecordType recordType,
@@ -1077,7 +1283,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void deleteMarcRecordsBySnapshotId(TestContext context, int i, RecordType parsedRecordType,
+  private void deleteMarcRecordsBySnapshotId(TestContext context, String snapshotId, RecordType parsedRecordType,
                                              Record.RecordType recordType) {
     Async async = context.async();
     List<Record> original = TestMocks.getRecords();
@@ -1088,7 +1294,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      String snapshotId = TestMocks.getSnapshot(i).getJobExecutionId();
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       recordDao.getRecords(condition, parsedRecordType, orderFields, 0, 10, TENANT_ID).onComplete(getBefore -> {

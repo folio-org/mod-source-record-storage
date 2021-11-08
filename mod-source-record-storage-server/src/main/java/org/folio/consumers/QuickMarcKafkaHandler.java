@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.consumers;
 
 import static java.lang.String.format;
 
@@ -25,6 +25,7 @@ import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.services.RecordService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +47,6 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private static final String PARSED_RECORD_DTO_KEY = "PARSED_RECORD_DTO";
   private static final String SNAPSHOT_ID_KEY = "SNAPSHOT_ID";
   private static final String ERROR_KEY = "ERROR";
-  private static final String MARC_KEY = "MARC_BIB";
 
   private static final AtomicInteger indexer = new AtomicInteger();
 
@@ -86,7 +86,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
           return getRecordDto(eventPayload)
             .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, params.getTenantId()))
             .compose(updatedRecord -> {
-              eventPayload.put(MARC_KEY, Json.encode(updatedRecord));
+              eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
               return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, params.getTenantId(), kafkaHeaders)
                 .map(aBoolean -> record.key());
             })
@@ -118,7 +118,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     Promise<Boolean> promise = Promise.promise();
     try {
       var producer = producerMap.get(eventType);
-      var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);
+      var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig, true);
       producer.write(record, war -> {
         if (war.succeeded()) {
           log.info("Event with type {} was sent to kafka", eventType);

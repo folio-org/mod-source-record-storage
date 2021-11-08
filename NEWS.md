@@ -1,16 +1,37 @@
-## xxxx-xx-xx v5.3.0-SNAPSHOT
-* [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
+## 2021-xx-xx v5.3.0-SNAPSHOT
+* [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
+* [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
+* [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications
+* [MODSOURCE-290](https://issues.folio.org/browse/MODSOURCE-290) Implement ProcessRecordErrorHandler for Kafka Consumers
 
-## xxxx-xx-xx v5.2.0-SNAPSHOT
+## 2021-xx-xx v5.2.1-SNAPSHOT
+* [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar
+
+## 2021-09-30 v5.2.0
+* [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x
+* [MODSOURCE-351](https://issues.folio.org/browse/MODSOURCE-351) Endpoint to verify invalid MARC Bib ids in the system
+* [MODSOURCE-342](https://issues.folio.org/browse/MODSOURCE-342) Add HoldingsPostProcessingEventHandler
+* [MODSOURCE-326](https://issues.folio.org/browse/MODSOURCE-326) /source-storage/records?limit=0 returns "totalRecords": 0
+* [MODSOURCE-286](https://issues.folio.org/browse/MODSOURCE-286) Remove zipping mechanism for data import event payloads and use cache for params
+* [MODSOURCE-382](https://issues.folio.org/browse/MODSOURCE-382) Remove dependency on SRM client
+* [MODSOURCE-385](https://issues.folio.org/browse/MODSOURCE-385) Remove dependency on converter-storage client
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type
-* [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
-* [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
 * [MODSOURCE-341](https://issues.folio.org/browse/MODSOURCE-341) Store MARC Holdings record
 * [MODSOURCE-332](https://issues.folio.org/browse/MODSOURCE-332) Improve performance of left-anchored SRS queries
 * [MODSOURCE-343](https://issues.folio.org/browse/MODSOURCE-343) Support MARC Holdings in API
 
-## xxxx-xx-xx v5.1.4
+## 2021-09-08 v5.1.6
+* [MODSOURCE-368](https://issues.folio.org/browse/MODSOURCE-368) Fix "fill-instance-hrid" script for envs where it was applied before
+* [MODSOURCE-360](https://issues.folio.org/browse/MODSOURCE-360) The DB type MARC did not get updated to MARC_BIB
+
+## 2021-09-02 v5.1.5
+* [MODSOURCE-357](https://issues.folio.org/browse/MODSOURCE-357) Improve "fill-instance-hrid" script for avoid failing if invalid data exists.
+
+## 2021-08-04 v5.1.4
+* [MODSOURCE-345](https://issues.folio.org/browse/MODSOURCE-345) Error log for unknown event type
 * [MODPUBSUB-187](https://issues.folio.org/browse/MODPUBSUB-187) Add support for max.request.size configuration for Kafka messages
+* Update data-import-processing-core dependency to v3.1.4
+* Update folio-kafka-wrapper dependency to v2.3.3
 
 ## 2021-07-21 v5.1.3
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage

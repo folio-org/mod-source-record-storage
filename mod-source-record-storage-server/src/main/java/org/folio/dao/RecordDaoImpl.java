@@ -204,7 +204,7 @@ public class RecordDaoImpl implements RecordDao {
     /* Building a search query */
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters, true);
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
     }
@@ -214,14 +214,9 @@ public class RecordDaoImpl implements RecordDao {
     /* Building a count query */
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
     appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters, false);
     /* Join both in one query */
-    String sql = DSL
-      .select()
-      .from(searchQuery)
-      .rightJoin(countQuery).on(DSL.trueCondition())
-      .where(searchQuery.field(RECORDS_LB.EXTERNAL_ID).isNotNull())
-      .getSQL(ParamType.INLINED);
+    String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
       .rxGetConnection()
@@ -245,7 +240,7 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
+  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, boolean instanceIdNotNull) {
     Condition recordTypeCondition = RecordDaoUtil.filterRecordByType(searchParameters.getRecordType().value());
     Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(searchParameters.isDeleted());
     Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(searchParameters.isSuppressedFromDiscovery());
@@ -255,11 +250,15 @@ public class RecordDaoImpl implements RecordDao {
     Condition fieldsCondition = parseFieldsResult.isEnabled()
       ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
       : DSL.noCondition();
+    Condition instanceIdNotNullCondition = instanceIdNotNull
+      ? RECORDS_LB.EXTERNAL_ID.isNotNull()
+      : DSL.noCondition();
     step.where(leaderCondition)
       .and(fieldsCondition)
       .and(recordStateCondition)
       .and(suppressedFromDiscoveryCondition)
-      .and(recordTypeCondition);
+      .and(recordTypeCondition)
+      .and(instanceIdNotNullCondition);
   }
 
   @Override

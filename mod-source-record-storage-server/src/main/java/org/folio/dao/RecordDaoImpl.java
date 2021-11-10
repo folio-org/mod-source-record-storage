@@ -216,7 +216,12 @@ public class RecordDaoImpl implements RecordDao {
     appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     /* Join both in one query */
-    String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+    String sql = DSL
+      .select()
+      .from(searchQuery)
+      .rightJoin(countQuery).on(DSL.trueCondition())
+      .where(searchQuery.field(RECORDS_LB.EXTERNAL_ID).isNotNull())
+      .getSQL(ParamType.INLINED);
 
     return getCachedPool(tenantId)
       .rxGetConnection()

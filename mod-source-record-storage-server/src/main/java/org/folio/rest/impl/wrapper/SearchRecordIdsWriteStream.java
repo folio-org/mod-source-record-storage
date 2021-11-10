@@ -44,8 +44,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     this.totalCount = row.getInteger("count");
     if (writeIndex == 0) {
       this.writeIndex++;
-      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE;
-      return this.delegate.write(format(responseBeginning, id));
+      return this.delegate.write(format(responseBeginning, DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE));
     } else {
       this.writeIndex++;
       return this.delegate.write(COMMA + DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE);

@@ -931,18 +931,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, marc_bib_record_2);
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression(
-      "001.value = '393893' " +
-      "and 005.value ^= '2014110' " +
-      "and 035.ind1 = '#' " +
-      "and 005.03_02 = '41' " +
-      "and 005.date in '20120101-20190101' " +
-      "and 035.value is 'present' " +
-      "and 999.value is 'absent' " +
-      "and 041.g is 'present' " +
-      "and 041.z is 'absent' " +
-      "and 050.ind1 is 'present' " +
-      "and 050.ind2 is 'absent'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)
@@ -1279,6 +1268,74 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     assertEquals(HttpStatus.SC_OK, response.statusCode());
     assertEquals(0, responseBody.getJsonArray("records").size());
     assertEquals(0, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    Record marc_bib_record_withoutInstanceId = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+    postRecords(testContext, marc_bib_record_withoutInstanceId);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    Record marc_bib_record_withoutInstanceId = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_withoutInstanceId);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     async.complete();
   }
 

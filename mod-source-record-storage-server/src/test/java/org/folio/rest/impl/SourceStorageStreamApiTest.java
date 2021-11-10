@@ -1282,6 +1282,74 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    Record marc_bib_record_withoutInstanceId = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+    postRecords(testContext, marc_bib_record_withoutInstanceId);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(0, responseBody.getJsonArray("records").size());
+    assertEquals(0, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnIdOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
+    // given
+    final Async async = testContext.async();
+    postSnapshots(testContext, snapshot_2);
+    Record marc_bib_record_withoutInstanceId = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_withoutInstanceId);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setFieldsSearchExpression("001.value = '393893'");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {
     return Flowable.create(subscriber -> {
       try (Scanner scanner = new Scanner(inputStream, "UTF-8")) {

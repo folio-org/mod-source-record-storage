@@ -3,6 +3,7 @@
 * [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
 * [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications
 * [MODSOURCE-290](https://issues.folio.org/browse/MODSOURCE-290) Implement ProcessRecordErrorHandler for Kafka Consumers
+* [MODSOURCE-401](https://issues.folio.org/browse/MODSOURCE-401) Left anchored srs api queries don't complete on kiwi bugfest
 
 ## 2021-xx-xx v5.2.1-SNAPSHOT
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar

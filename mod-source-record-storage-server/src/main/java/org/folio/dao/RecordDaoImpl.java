@@ -254,7 +254,8 @@ public class RecordDaoImpl implements RecordDao {
       .and(fieldsCondition)
       .and(recordStateCondition)
       .and(suppressedFromDiscoveryCondition)
-      .and(recordTypeCondition);
+      .and(recordTypeCondition)
+      .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
   }
 
   @Override

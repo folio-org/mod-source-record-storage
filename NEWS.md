@@ -1,3 +1,6 @@
+## 2021-11-11 v5.2.2
+* [MODSOURCE-401](https://issues.folio.org/browse/MODSOURCE-401) Left anchored srs api queries don't complete on kiwi bugfest
+
 ## 2021-10-29 v5.2.1
 * [MODSOURCE-399](hhttps://issues.folio.org/browse/MODSOURCE-399) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar

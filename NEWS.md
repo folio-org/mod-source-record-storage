@@ -1,3 +1,6 @@
+## 2021-11-16 v5.2.3
+* [MODSOURCE-407](https://issues.folio.org/browse/MODSOURCE-407) Fix potential OOM
+
 ## 2021-11-11 v5.2.2
 * [MODSOURCE-401](https://issues.folio.org/browse/MODSOURCE-401) Left anchored srs api queries don't complete on kiwi bugfest
 

@@ -1,3 +1,6 @@
+## 2021-11-18 v5.1.8
+* [MODSOURCE-405](https://issues.folio.org/browse/MODSOURCE-405) Fix potential OOM
+
 ## 2021-10-28 v5.1.7
 * [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 

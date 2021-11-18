@@ -36,7 +36,11 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.UUID;
+import java.util.Date;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
@@ -45,7 +49,9 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BI
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
 import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 @RunWith(VertxUnitRunner.class)
 public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTest {
@@ -206,6 +212,39 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     sendRecordsToKafka(jobExecutionId, records);
 
     check_DI_ERROR_eventsSent(jobExecutionId, records, "Snapshot with id", "was not found" );
+  }
+
+  @Test
+  public void shouldNotSendDIErrorWhenReceivedDuplicateChunksParsedEvent() throws InterruptedException {
+    sendDuplicateEventAndObserveRecords(DI_ERROR.value(), 0);
+  }
+
+  @Test
+  public void shouldNotSendDuplicateChunksSavedEventWhenReceivedDuplicateChunksParsedEvent() throws InterruptedException {
+    sendDuplicateEventAndObserveRecords(DI_PARSED_RECORDS_CHUNK_SAVED.value(), 1);
+  }
+
+  private void sendDuplicateEventAndObserveRecords(String eventTypeValue, int expectedCount) throws InterruptedException {
+    String jobExecutionId = UUID.randomUUID().toString();
+    List<Record> records = new ArrayList<>();
+
+    records.add(new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshotId)
+      .withGeneration(0)
+      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(parsedMarcRecord));
+
+    sendRecordsToKafka(jobExecutionId, records);
+    sendRecordsToKafka(jobExecutionId, records);
+
+    String observeTopic = KafkaTopicNameHelper
+      .formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, eventTypeValue);
+    List<String> observedValues = cluster.observeValues(ObserveKeyValues.on(observeTopic, expectedCount)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
   }
 
   private void sendRecordsToKafka(String jobExecutionId, List<Record> records) throws InterruptedException {

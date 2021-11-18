@@ -8,6 +8,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.exceptions.DuplicateEventException;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
@@ -57,7 +58,11 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
     String tenantId = okapiConnectionParams.getTenantId();
 
-    sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
+    if(throwable instanceof DuplicateEventException) {
+      LOGGER.warn("Error parsing event for jobExecutionId: {} , tenantId: {}, cause: {}", jobExecutionId, tenantId, throwable.getMessage());
+    } else {
+      sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
+    }
   }
 
   private void sendErrorRecordsSavingEvents(RecordCollection recordCollection, String message, List<KafkaHeader> kafkaHeaders, String jobExecutionId, String tenantId) {

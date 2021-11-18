@@ -59,7 +59,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     String tenantId = okapiConnectionParams.getTenantId();
 
     if(throwable instanceof DuplicateEventException) {
-      LOGGER.warn("Error parsing event for jobExecutionId: {} , tenantId: {}, cause: {}", jobExecutionId, tenantId, throwable.getMessage());
+      LOGGER.warn("Duplicate event received, skipping processing fot jobExecutionId: {} , tenantId: {}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, recordCollection.getTotalRecords(), throwable.getMessage());
     } else {
       sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
     }

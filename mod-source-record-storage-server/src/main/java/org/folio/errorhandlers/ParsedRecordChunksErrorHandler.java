@@ -40,6 +40,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
 
   public static final String ERROR_KEY = "ERROR";
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  public static final String CORRELATION_ID_HEADER = "correlationId";
   public static final String RECORD_ID_HEADER = "recordId";
 
   @Autowired
@@ -56,10 +57,11 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
 
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
+    String correlationId = okapiConnectionParams.getHeaders().get(CORRELATION_ID_HEADER);
     String tenantId = okapiConnectionParams.getTenantId();
 
     if(throwable instanceof DuplicateEventException) {
-      LOGGER.warn("Duplicate event received, skipping processing fot jobExecutionId: {} , tenantId: {}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, recordCollection.getTotalRecords(), throwable.getMessage());
+      LOGGER.warn("Duplicate event received, skipping processing for jobExecutionId: {} , tenantId: {}, correlationId:{}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, correlationId, recordCollection.getTotalRecords(), throwable.getMessage());
     } else {
       sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
     }

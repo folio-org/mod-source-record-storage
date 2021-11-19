@@ -304,6 +304,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByDefaultExternalId(TestContext testContext) {
+    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(testContext, snapshot_4, RecordType.MARC_AUTHORITY);
+  }
+
+  @Test
   public void shouldReturnSpecificSourceRecordOnGetByInstanceExternalId(TestContext testContext) {
     returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_2, RecordType.MARC_BIB);
   }
@@ -311,6 +316,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByHoldingsExternalId(TestContext testContext) {
     returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_5, RecordType.MARC_HOLDING);
+  }
+
+  @Test
+  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByHoldingsExternalId(TestContext testContext) {
+    returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_4, RecordType.MARC_AUTHORITY);
   }
 
   @Test
@@ -1324,6 +1334,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     } else if (recordType == RecordType.MARC_HOLDING) {
       validatableResponse
         .body("externalIdsHolder.holdingsId", is(SECOND_UUID));
+    } else if (recordType == RecordType.MARC_AUTHORITY) {
+      validatableResponse
+        .body("externalIdsHolder.authorityId", is(SECOND_UUID));
     }
     async.complete();
   }
@@ -1405,7 +1418,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    var idType = recordType == RecordType.MARC_BIB ? "INSTANCE" : "HOLDINGS";
+    var idType = getIdType(recordType);
     var validatableResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -1419,8 +1432,23 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     } else if (recordType == RecordType.MARC_HOLDING) {
       validatableResponse
         .body("externalIdsHolder.holdingsId", is(externalId));
+    } else if (recordType == RecordType.MARC_AUTHORITY) {
+      validatableResponse
+        .body("externalIdsHolder.authorityId", is(externalId));
     }
     async.complete();
+  }
+
+  private String getIdType(RecordType recordType){
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return Record.RecordType.MARC_BIB.name();
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return Record.RecordType.MARC_HOLDING.name();
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return Record.RecordType.MARC_AUTHORITY.name();
+    } else {
+      return null;
+    }
   }
 
   private void returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(TestContext testContext,
@@ -1529,6 +1557,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       record.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(id).withInstanceHrid(hrid));
     } else if (recordType == RecordType.MARC_HOLDING) {
       record.setExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(id).withHoldingsHrid(hrid));
+    } else if (recordType == RecordType.MARC_AUTHORITY) {
+      record.setExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(id));
     }
   }
 

@@ -312,12 +312,10 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getInstanceId();
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return externalIdsHolder.getHoldingsId();
-    }  else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
       return externalIdsHolder.getAuthorityId();
     }
-    else {
-      return null;
-    }
+    return null;
   }
 
   public static String getExternalHrid(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {

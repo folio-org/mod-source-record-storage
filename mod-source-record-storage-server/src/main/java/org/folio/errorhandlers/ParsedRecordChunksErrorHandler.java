@@ -8,6 +8,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.exceptions.DuplicateEventException;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
@@ -39,6 +40,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
 
   public static final String ERROR_KEY = "ERROR";
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  public static final String CORRELATION_ID_HEADER = "correlationId";
   public static final String RECORD_ID_HEADER = "recordId";
 
   @Autowired
@@ -55,9 +57,14 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
 
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
+    String correlationId = okapiConnectionParams.getHeaders().get(CORRELATION_ID_HEADER);
     String tenantId = okapiConnectionParams.getTenantId();
 
-    sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
+    if(throwable instanceof DuplicateEventException) {
+      LOGGER.warn("Duplicate event received, skipping processing for jobExecutionId: {} , tenantId: {}, correlationId:{}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, correlationId, recordCollection.getTotalRecords(), throwable.getMessage());
+    } else {
+      sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
+    }
   }
 
   private void sendErrorRecordsSavingEvents(RecordCollection recordCollection, String message, List<KafkaHeader> kafkaHeaders, String jobExecutionId, String tenantId) {

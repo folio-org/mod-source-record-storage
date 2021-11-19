@@ -15,7 +15,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -313,9 +312,10 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getInstanceId();
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return externalIdsHolder.getHoldingsId();
-    } else {
-      return null;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return externalIdsHolder.getAuthorityId();
     }
+    return null;
   }
 
   public static String getExternalHrid(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {
@@ -620,6 +620,8 @@ public final class RecordDaoUtil {
     } else if (RecordType.MARC_HOLDING == pojo.getRecordType()) {
       externalIdOptional.ifPresent(externalIdsHolder::setHoldingsId);
       externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
+    } else if (RecordType.MARC_AUTHORITY == pojo.getRecordType()) {
+      externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
     }
     return externalIdsHolder;
   }
@@ -657,6 +659,9 @@ public final class RecordDaoUtil {
     } else if (idType == IdType.INSTANCE) {
       idTypeToUse = IdType.EXTERNAL;
       recordType = RecordType.MARC_BIB;
+    } else if (idType == IdType.AUTHORITY) {
+      idTypeToUse = IdType.EXTERNAL;
+      recordType = RecordType.MARC_AUTHORITY;
     }
     var idField = RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idTypeToUse.getIdField()), UUID.class);
     return idFieldToConditionMapper.apply(idField).and(getRecordTypeCondition(recordType));

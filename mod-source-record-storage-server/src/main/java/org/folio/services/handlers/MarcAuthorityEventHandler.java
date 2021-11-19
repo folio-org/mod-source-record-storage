@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_AUTHORITY;
 
-@Component
+//TODO remove or change this handler after MODSOURCE-409
 public class MarcAuthorityEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_AUTHORITY data";

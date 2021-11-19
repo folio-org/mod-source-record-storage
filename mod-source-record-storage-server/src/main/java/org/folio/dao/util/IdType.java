@@ -4,6 +4,7 @@ public enum IdType {
 
   INSTANCE("instanceId"),
   HOLDINGS("holdingsId"),
+  AUTHORITY("authorityId"),
   EXTERNAL("externalId"),
   // NOTE: not really external id but is default from dto
   RECORD("matchedId");

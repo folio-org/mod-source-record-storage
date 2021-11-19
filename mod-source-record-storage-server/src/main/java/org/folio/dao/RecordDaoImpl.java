@@ -750,7 +750,8 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(parsedRecordsUpdated.size()));
       });
     } catch (SQLException e) {
-      e.printStackTrace();
+      LOG.error("Failed to update records", e);
+      promise.fail(e);
     }
 
     return promise.future();

@@ -1,3 +1,6 @@
+## 2021-11-19 v5.2.4
+* [MODSOURCE-413](https://issues.folio.org/browse/MODSOURCE-413) Update data-import-processing-core to v3.2.5 to enable fix of duplicating values of repeatable control fields on MARC update
+
 ## 2021-11-16 v5.2.3
 * [MODSOURCE-407](https://issues.folio.org/browse/MODSOURCE-407) Fix potential OOM
 

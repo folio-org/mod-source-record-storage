@@ -1441,11 +1441,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
   private String getIdType(RecordType recordType){
     if (Record.RecordType.MARC_BIB == recordType) {
-      return Record.RecordType.MARC_BIB.name();
+      return "INSTANCE";
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
-      return Record.RecordType.MARC_HOLDING.name();
+      return "HOLDINGS";
     } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
-      return Record.RecordType.MARC_AUTHORITY.name();
+      return "AUTHORITY";
     } else {
       return null;
     }

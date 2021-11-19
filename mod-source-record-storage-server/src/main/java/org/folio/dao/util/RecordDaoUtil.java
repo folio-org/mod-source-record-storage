@@ -620,6 +620,8 @@ public final class RecordDaoUtil {
     } else if (RecordType.MARC_HOLDING == pojo.getRecordType()) {
       externalIdOptional.ifPresent(externalIdsHolder::setHoldingsId);
       externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
+    } else if (RecordType.MARC_AUTHORITY == pojo.getRecordType()) {
+      externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
     }
     return externalIdsHolder;
   }

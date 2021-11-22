@@ -8,6 +8,7 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -48,6 +49,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  public static final String RECORD_ID_HEADER = "recordId";
   public static final String ERROR_KEY = "ERROR";
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
@@ -160,6 +162,8 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
           put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
           put(ERROR_KEY, message);
         }});
+
+      kafkaHeaders.add(new KafkaHeaderImpl(RECORD_ID_HEADER, record.getId()));
 
       String key = String.valueOf(indexer.incrementAndGet() % maxDistributionNum);
       sendingFutures.add(EventHandlingUtil.sendEventToKafka(tenantId, Json.encode(dataImportEventPayload), DI_ERROR.value(), kafkaHeaders, kafkaConfig, key));

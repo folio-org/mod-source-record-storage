@@ -1,3 +1,6 @@
+## 2021-11-22 v5.2.5
+* [MODSOURCE-415](https://issues.folio.org/browse/MODSOURCE-415) Fix processing of DI_ERROR messages from SRS
+
 ## 2021-11-19 v5.2.4
 * [MODSOURCE-413](https://issues.folio.org/browse/MODSOURCE-413) Update data-import-processing-core to v3.2.5 to enable fix of duplicating values of repeatable control fields on MARC update
 

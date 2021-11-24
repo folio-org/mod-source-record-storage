@@ -16,7 +16,9 @@ import org.folio.kafka.cache.util.CacheUtil;
 @ComponentScan(basePackages = {
   "org.folio.rest.impl",
   "org.folio.dao",
-  "org.folio.services"})
+  "org.folio.services",
+  "org.folio.consumers",
+  "org.folio.errorhandlers"})
 public class ApplicationConfig {
 
   private static final Logger LOGGER = LogManager.getLogger();

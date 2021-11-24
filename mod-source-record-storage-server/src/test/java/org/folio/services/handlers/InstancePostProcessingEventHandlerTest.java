@@ -79,7 +79,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instance.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-    payloadContext.put("chunkId", "1");
+    payloadContext.put("recordId", record.getId());
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);

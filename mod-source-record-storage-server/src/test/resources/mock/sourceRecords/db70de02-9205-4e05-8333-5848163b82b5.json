@@ -244,6 +244,7 @@
   },
   "deleted" : false,
   "externalIdsHolder" : {
+    "authorityId": "ce00bca2-9270-4c6b-b096-b83a2e56e8e9"
   },
   "additionalInfo" : {
     "suppressDiscovery" : false

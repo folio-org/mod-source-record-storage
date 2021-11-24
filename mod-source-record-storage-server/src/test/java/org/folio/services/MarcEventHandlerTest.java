@@ -19,6 +19,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
@@ -37,7 +38,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.handlers.MarcAuthorityEventHandler;
 
-@RunWith(VertxUnitRunner.class)
+@Ignore("These tests will be changed in scope of story - MODSOURCE-409")
 public class MarcEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String NOT_VALID_ENTITY_TYPE = "notValidEntityType";

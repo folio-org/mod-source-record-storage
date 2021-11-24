@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.consumers;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -34,6 +34,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
+  private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
 
   private Vertx vertx;
@@ -49,10 +50,12 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     try {
       Promise<String> promise = Promise.promise();
-      String chunkId = extractCorrelationId(record.headers());
+      String recordId = extractRecordId(record.headers());
+      String chunkId = extractChunkId(record.headers());
       Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and chunkId: {}", eventPayload.getEventType(), chunkId);
+      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {} and chunkId: {}", eventPayload.getEventType(), recordId, chunkId);
+      eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
@@ -78,7 +81,15 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     }
   }
 
-  private String extractCorrelationId(List<KafkaHeader> headers) {
+  private String extractRecordId(List<KafkaHeader> headers) {
+    return headers.stream()
+      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .findFirst()
+      .map(header -> header.value().toString())
+      .orElse(null);
+  }
+
+  private String extractChunkId(List<KafkaHeader> headers) {
     return headers.stream()
       .filter(header -> header.key().equals(CHUNK_ID_HEADER))
       .findFirst()

@@ -53,6 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
@@ -62,9 +63,10 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.services.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.services.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @RunWith(VertxUnitRunner.class)
 public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
@@ -72,6 +74,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
+  private static final String RECORD_ID_HEADER = "recordId";
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -174,6 +177,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_SRS_MARC_BIB_RECORD_CREATED.value());
     KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord)).useDefaults();
 
     // when
@@ -181,11 +185,11 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     // then
     String observeTopic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value());
-    List<String> observedValues = cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
+    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
-    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
     DataImportEventPayload dataImportEventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), dataImportEventPayload.getEventType());
 
@@ -193,6 +197,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+    assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));
   }
 
   private KeyValue<String, String> buildKafkaRecord(DataImportEventPayload eventPayload) {

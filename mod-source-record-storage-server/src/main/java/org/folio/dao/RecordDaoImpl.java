@@ -12,6 +12,7 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.exceptions.DuplicateEventException;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -118,6 +119,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
 
+  private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
 
@@ -254,7 +256,8 @@ public class RecordDaoImpl implements RecordDao {
       .and(fieldsCondition)
       .and(recordStateCondition)
       .and(suppressedFromDiscoveryCondition)
-      .and(recordTypeCondition);
+      .and(recordTypeCondition)
+      .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
   }
 
   @Override
@@ -438,6 +441,9 @@ public class RecordDaoImpl implements RecordDao {
           .errors();
 
         recordsLoadingErrors.forEach(error -> {
+          if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+            throw new DuplicateEventException("Error when handling duplicate event");
+          }
           LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
           LOG.debug("Failed to execute statement from batch: {}", error.query());
         });
@@ -479,7 +485,7 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
-    } catch (SQLException | DataAccessException e) {
+    } catch (SQLException | DataAccessException | DuplicateEventException e) {
       LOG.error("Failed to save records", e);
       promise.fail(e);
     }
@@ -589,7 +595,7 @@ public class RecordDaoImpl implements RecordDao {
     return txQE.query(dsl -> dsl.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
       .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
       .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
-        .and(SNAPSHOTS_LB.STATUS.eq(JobExecutionStatus.COMMITTED))
+        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR))
         .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
           .from(SNAPSHOTS_LB)
           .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(record.getSnapshotId())))))))
@@ -744,7 +750,8 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(parsedRecordsUpdated.size()));
       });
     } catch (SQLException e) {
-      e.printStackTrace();
+      LOG.error("Failed to update records", e);
+      promise.fail(e);
     }
 
     return promise.future();

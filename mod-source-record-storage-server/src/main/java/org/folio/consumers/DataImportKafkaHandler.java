@@ -47,12 +47,12 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
     try {
       Promise<String> promise = Promise.promise();
-      String recordId = extractRecordId(record.headers());
-      String chunkId = extractChunkId(record.headers());
-      Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
+      String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
+      String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
+      Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {} and chunkId: {}", eventPayload.getEventType(), recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
@@ -71,30 +71,21 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
             promise.fail("Failed to process data import event payload");
           } else {
-            promise.complete(record.key());
+            promise.complete(targetRecord.key());
           }
         });
       return promise.future();
     } catch (Exception e) {
-      LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);
+      LOGGER.error("Failed to process data import kafka record from topic {}", targetRecord.topic(), e);
       return Future.failedFuture(e);
     }
   }
 
-  private String extractRecordId(List<KafkaHeader> headers) {
+  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
     return headers.stream()
-      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .filter(header -> header.key().equals(key))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
   }
-
-  private String extractChunkId(List<KafkaHeader> headers) {
-    return headers.stream()
-      .filter(header -> header.key().equals(CHUNK_ID_HEADER))
-      .findFirst()
-      .map(header -> header.value().toString())
-      .orElse(null);
-  }
-
 }

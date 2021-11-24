@@ -38,6 +38,8 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+  private static final String RECORD_ID_HEADER = "recordId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
@@ -58,16 +60,16 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> record) {
-    Event event = Json.decodeValue(record.value(), Event.class);
+  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+    Event event = Json.decodeValue(targetRecord.value(), Event.class);
     RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
-    List<KafkaHeader> kafkaHeaders = record.headers();
+    List<KafkaHeader> kafkaHeaders = targetRecord.headers();
 
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
     String tenantId = okapiConnectionParams.getTenantId();
-    String chunkId = okapiConnectionParams.getHeaders().get("chunkId");
-    String key = record.key();
+    String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
+    String key = targetRecord.key();
 
     int chunkNumber = chunkCounter.incrementAndGet();
 
@@ -97,10 +99,10 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     String topicName = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, DI_PARSED_RECORDS_CHUNK_SAVED.value());
 
-    KafkaProducerRecord<String, String> record =
+    KafkaProducerRecord<String, String> targetRecord =
       KafkaProducerRecord.create(topicName, key, Json.encode(event));
 
-    record.addHeaders(kafkaHeaders);
+    targetRecord.addHeaders(kafkaHeaders);
 
     Promise<String> writePromise = Promise.promise();
 
@@ -108,11 +110,11 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     KafkaProducer<String, String> producer =
       KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
 
-    producer.write(record, war -> {
+    producer.write(targetRecord, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkId {}, chunkNumber {}-{}", chunkId, chunkNumber, record.key());
-        writePromise.complete(record.key());
+        LOGGER.debug("RecordCollection processing has been completed with response sent... chunkId {}, chunkNumber {}-{}", chunkId, chunkNumber, targetRecord.key());
+        writePromise.complete(targetRecord.key());
       } else {
         Throwable cause = war.cause();
         LOGGER.error("{} write error {}", producerName, cause);
@@ -124,11 +126,19 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   private RecordsBatchResponse normalize(RecordsBatchResponse recordsBatchResponse) {
     return recordsBatchResponse.withRecords(recordsBatchResponse.getRecords()
-      .stream().peek(record -> {
-        if (record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
-          String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
-          record.getParsedRecord().withContent(content);
+      .stream().peek(targetRecord -> {
+        if (targetRecord.getParsedRecord() != null && targetRecord.getParsedRecord().getContent() != null) {
+          String content = ParsedRecordDaoUtil.normalizeContent(targetRecord.getParsedRecord());
+          targetRecord.getParsedRecord().withContent(content);
         }
       }).collect(Collectors.toList()));
+  }
+
+  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
+    return headers.stream()
+      .filter(header -> header.key().equals(key))
+      .findFirst()
+      .map(header -> header.value().toString())
+      .orElse(null);
   }
 }

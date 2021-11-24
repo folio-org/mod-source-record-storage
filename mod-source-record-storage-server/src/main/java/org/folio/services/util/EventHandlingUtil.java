@@ -50,18 +50,18 @@ public final class EventHandlingUtil {
 
     Promise<Boolean> promise = Promise.promise();
 
-    String correlationId = extractCorrelationId(kafkaHeaders);
+    String chunkId = extractChunkId(kafkaHeaders);
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.info("Event with type {} and correlationId {} was sent to kafka", eventType, correlationId);
+        LOGGER.info("Event with type {} and chunkId {} was sent to kafka", eventType, chunkId);
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {} with correlationId {}, cause:",  producerName, eventType, correlationId, cause);
+        LOGGER.error("{} write error for event {} with chunkId {}, cause:",  producerName, eventType, chunkId, cause);
         promise.fail(cause);
       }
     });
@@ -103,9 +103,9 @@ public final class EventHandlingUtil {
     return KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
   }
 
-  private static String extractCorrelationId(List<KafkaHeader> kafkaHeaders) {
+  private static String extractChunkId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals("correlationId"))
+      .filter(header -> header.key().equals("chunkId"))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

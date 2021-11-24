@@ -63,7 +63,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String MAPPING_PARAMS_NOT_FOUND_MSG = "MappingParameters was not found by jobExecutionId: '%s'";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
   public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
-  private static final String CORRELATION_ID_HEADER = "correlationId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
@@ -136,9 +136,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()))
     );
 
-    String correlationId = eventPayload.getContext().get(CORRELATION_ID_HEADER);
-    if (correlationId != null) {
-      kafkaHeaders.add(KafkaHeader.header(CORRELATION_ID_HEADER, correlationId));
+    String chunkId = eventPayload.getContext().get(CHUNK_ID_HEADER);
+    if (chunkId != null) {
+      kafkaHeaders.add(KafkaHeader.header(CHUNK_ID_HEADER, chunkId));
     }
     return kafkaHeaders;
   }

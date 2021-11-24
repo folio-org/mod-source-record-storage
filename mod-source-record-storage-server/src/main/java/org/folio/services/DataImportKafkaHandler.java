@@ -34,7 +34,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
-  private static final String CORRELATION_ID_HEADER = "correlationId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -49,11 +49,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     try {
       Promise<String> promise = Promise.promise();
-      String correlationId = extractCorrelationId(record.headers());
+      String chunkId = extractCorrelationId(record.headers());
       Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and correlationId: {}", eventPayload.getEventType(), correlationId);
-      eventPayload.getContext().put(CORRELATION_ID_HEADER, correlationId);
+      LOGGER.debug("Data import event payload has been received with event type: {} and chunkId: {}", eventPayload.getEventType(), chunkId);
+      eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -80,7 +80,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private String extractCorrelationId(List<KafkaHeader> headers) {
     return headers.stream()
-      .filter(header -> header.key().equals(CORRELATION_ID_HEADER))
+      .filter(header -> header.key().equals(CHUNK_ID_HEADER))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

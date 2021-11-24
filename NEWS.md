@@ -8,6 +8,7 @@
 * [MODSOURCE-286](https://issues.folio.org/browse/MODSOURCE-286) Remove zipping mechanism for data import event payloads and use cache for params
 * [MODSOURCE-382](https://issues.folio.org/browse/MODSOURCE-382) Remove dependency on SRM client
 * [MODSOURCE-385](https://issues.folio.org/browse/MODSOURCE-385) Remove dependency on converter-storage client
+* [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
 
 ## xxxx-xx-xx v5.2.0-SNAPSHOT
 * [MODSOURMAN-515](https://issues.folio.org/browse/MODSOURMAN-515) Error log for unknown event type

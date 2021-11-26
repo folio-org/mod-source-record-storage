@@ -68,7 +68,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail("Failed to process data import event payload from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId,);
+            promise.fail(format("Failed to process data import event payload from topic '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(), recordId, chunkId));
           } else {
             promise.complete(targetRecord.key());
           }

@@ -35,6 +35,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
+    private static final String CHUNK_ID_HEADER = "chunkId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -46,13 +47,14 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+    String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
+    String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     try {
       Promise<String> promise = Promise.promise();
-      String recordId = extractRecordId(record.headers());
-      Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
+      Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {}", eventPayload.getEventType(), recordId);
+      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {} and chunkId: {}", eventPayload.getEventType(), recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
@@ -66,24 +68,23 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail("Failed to process data import event payload");
+            promise.fail(format("Failed to process data import event payload from topic '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(), recordId, chunkId));
           } else {
-            promise.complete(record.key());
+            promise.complete(targetRecord.key());
           }
         });
       return promise.future();
     } catch (Exception e) {
-      LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);
+      LOGGER.error("Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
       return Future.failedFuture(e);
     }
   }
 
-  private String extractRecordId(List<KafkaHeader> headers) {
+  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
     return headers.stream()
-      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .filter(header -> header.key().equals(key))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
   }
-
 }

@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
@@ -35,7 +36,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
-    private static final String CHUNK_ID_HEADER = "chunkId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -54,8 +55,10 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Promise<String> promise = Promise.promise();
       Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {} and chunkId: {}", eventPayload.getEventType(), recordId, chunkId);
+      LOGGER.debug("Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}'", eventPayload.getEventType(),
+        eventPayload.getJobExecutionId(), recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
+      eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -68,7 +71,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail(format("Failed to process data import event payload from topic '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(), recordId, chunkId));
+            promise.fail(format("Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
+              eventPayload.getJobExecutionId(), recordId, chunkId));
           } else {
             promise.complete(targetRecord.key());
           }

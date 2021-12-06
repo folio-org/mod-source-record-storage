@@ -110,7 +110,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.2.0</version>
+      <version>1.4.1</version>
       <type>jar</type>
     </dependency>
     <dependency>

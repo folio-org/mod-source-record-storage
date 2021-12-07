@@ -4,5 +4,6 @@
   "port" : 25432,
   "database" : "test.database",
   "username" : "test.username",
-  "password" : "test.password"
+  "password" : "test.password",
+  "maxPoolSize" : 20
 }

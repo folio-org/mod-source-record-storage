@@ -44,12 +44,13 @@ public class PostgresClientFactory {
   public static final String DATABASE = "database";
   public static final String PASSWORD = "password";
   public static final String USERNAME = "username";
+  public static final String DB_MAXPOOLSIZE = "maxPoolSize";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
 
-  private static final int POOL_SIZE = 5;
+  private static final int DB_MAXPOOLSIZE_DEFAULT_VALUE = 15;
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
@@ -166,9 +167,11 @@ public class PostgresClientFactory {
       LOG.debug("Using existing database connection pool for tenant {}", tenantId);
       return POOL_CACHE.get(tenantId);
     }
-    LOG.info("Creating new database connection pool for tenant {}", tenantId);
+
+    Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
+    LOG.info("Creating new database connection for tenant {} with poolSize {}", tenantId, maxPoolSize);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
-    PoolOptions poolOptions = new PoolOptions().setMaxSize(POOL_SIZE);
+    PoolOptions poolOptions = new PoolOptions().setMaxSize(maxPoolSize);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     POOL_CACHE.put(tenantId, client);
     return client;
@@ -191,10 +194,11 @@ public class PostgresClientFactory {
       LOG.debug("Using existing data source for tenant {}", tenantId);
       return DATA_SOURCE_CACHE.get(tenantId);
     }
-    LOG.info("Creating new data source for tenant {}", tenantId);
+    Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
+    LOG.info("Creating new data source for tenant {} with poolSize {}", tenantId, maxPoolSize);
     PGPoolingDataSource source = new PGPoolingDataSource();
     source.setDataSourceName(format("%s-data-source", tenantId));
-    source.setMaxConnections(POOL_SIZE);
+    source.setMaxConnections(maxPoolSize);
     source.setServerName(postgresConfig.getString(HOST));
     source.setPortNumber(postgresConfig.getInteger(PORT, 5432));
     source.setDatabaseName(postgresConfig.getString(DATABASE));

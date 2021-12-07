@@ -1,4 +1,5 @@
 ## 2021-xx-xx v5.3.0-SNAPSHOT
+* [MODSOURCE-419](https://issues.folio.org/browse/MODSOURCE-419) Upgrade to RAML Module Builder 33.2.x
 * [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 * [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
 * [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications

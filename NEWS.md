@@ -1,9 +1,13 @@
 ## 2021-xx-xx v5.3.0-SNAPSHOT
+* [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added
+* [MODSOURCE-419](https://issues.folio.org/browse/MODSOURCE-419) Upgrade to RAML Module Builder 33.2.x
 * [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 * [MODSOURCE-261](https://issues.folio.org/browse/MODSOURCE-261) Cover kafka handlers with tests and fix ignored
 * [MODSOURCE-387](https://issues.folio.org/browse/MODSOURCE-387) Optimistic locking: mod-source-record-storage modifications
 * [MODSOURCE-290](https://issues.folio.org/browse/MODSOURCE-290) Implement ProcessRecordErrorHandler for Kafka Consumers
 * [MODSOURCE-401](https://issues.folio.org/browse/MODSOURCE-401) Left anchored srs api queries don't complete on kiwi bugfest
+* [MODSOURCE-402](https://issues.folio.org/browse/MODSOURCE-402) Properly handle DB failures during events processing
+* [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
 
 ## 2021-xx-xx v5.2.1-SNAPSHOT
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar

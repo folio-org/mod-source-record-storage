@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
@@ -35,6 +36,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -46,14 +48,17 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+    String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
+    String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     try {
       Promise<String> promise = Promise.promise();
-      String recordId = extractRecordId(record.headers());
-      Event event = ObjectMapperTool.getMapper().readValue(record.value(), Event.class);
+      Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: {} and recordId: {}", eventPayload.getEventType(), recordId);
+      LOGGER.debug("Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}'", eventPayload.getEventType(),
+        eventPayload.getJobExecutionId(), recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
+      eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -66,24 +71,24 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail("Failed to process data import event payload");
+            promise.fail(format("Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
+              eventPayload.getJobExecutionId(), recordId, chunkId));
           } else {
-            promise.complete(record.key());
+            promise.complete(targetRecord.key());
           }
         });
       return promise.future();
     } catch (Exception e) {
-      LOGGER.error("Failed to process data import kafka record from topic {}", record.topic(), e);
+      LOGGER.error("Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
       return Future.failedFuture(e);
     }
   }
 
-  private String extractRecordId(List<KafkaHeader> headers) {
+  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
     return headers.stream()
-      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .filter(header -> header.key().equals(key))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
   }
-
 }

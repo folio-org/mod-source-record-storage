@@ -75,6 +75,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String RECORD_ID_HEADER = "recordId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
+
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -178,6 +180,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     String topic = KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_SRS_MARC_BIB_RECORD_CREATED.value());
     KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
     kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
+
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord)).useDefaults();
 
     // when

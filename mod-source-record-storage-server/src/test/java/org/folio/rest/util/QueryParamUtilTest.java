@@ -29,6 +29,11 @@ public class QueryParamUtilTest {
   }
 
   @Test
+  public void shouldReturnExternalIdTypeOnAuthority() {
+    assertEquals(IdType.AUTHORITY, QueryParamUtil.toExternalIdType("AUTHORITY"));
+  }
+
+  @Test
   public void shouldReturnDefaultExternalIdType() {
     assertEquals(IdType.RECORD, QueryParamUtil.toExternalIdType(null));
     assertEquals(IdType.RECORD, QueryParamUtil.toExternalIdType(""));

@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.reactivex.Flowable;
+import io.vertx.core.Future;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.ext.unit.Async;
@@ -9,6 +10,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.exceptions.DuplicateEventException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
@@ -26,6 +28,7 @@ import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -34,6 +37,7 @@ import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 
 import java.time.OffsetDateTime;
@@ -678,6 +682,26 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetNoRecordsWithLimitNotEqualsZero(TestContext context) {
     getTotalRecordsAndRecordsDependsOnLimit(context, 1);
+  }
+
+  @Test
+  public void shouldThrowExceptionWhenSavedDuplicateRecord(TestContext context) {
+    Async async = context.async();
+    List<Record> expected = TestMocks.getRecords().stream()
+      .filter(record -> record.getRecordType().equals(Record.RecordType.MARC_BIB))
+      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .collect(Collectors.toList());
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(expected)
+      .withTotalRecords(expected.size());
+    List<Future<RecordsBatchResponse>> futures = List.of(recordService.saveRecords(recordCollection, TENANT_ID),
+      recordService.saveRecords(recordCollection, TENANT_ID));
+
+    GenericCompositeFuture.all(futures).onComplete(ar -> {
+      context.assertTrue(ar.failed());
+      Assertions.assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
+      async.complete();
+    });
   }
 
   private void getTotalRecordsAndRecordsDependsOnLimit(TestContext context, int limit) {

@@ -26,6 +26,8 @@ public final class EventHandlingUtil {
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String RECORD_ID_HEADER = "recordId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
+
 
   private EventHandlingUtil() { }
 
@@ -52,17 +54,18 @@ public final class EventHandlingUtil {
     Promise<Boolean> promise = Promise.promise();
 
     String recordId = extractRecordId(kafkaHeaders);
+    String chunkId = extractChunkId(kafkaHeaders);
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.info("Event with type {} and recordId {} was sent to kafka", eventType, recordId);
+        LOGGER.info("Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {} with recordId {}, cause:",  producerName, eventType, recordId, cause);
+        LOGGER.error("{} write error for event {} with recordId {} with chunkId: {}, cause:",  producerName, eventType, recordId, chunkId, cause);
         promise.fail(cause);
       }
     });
@@ -107,6 +110,14 @@ public final class EventHandlingUtil {
   private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
       .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .findFirst()
+      .map(header -> header.value().toString())
+      .orElse(null);
+  }
+
+  private static String extractChunkId(List<KafkaHeader> kafkaHeaders) {
+    return kafkaHeaders.stream()
+      .filter(header -> header.key().equals("chunkId"))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

@@ -1,3 +1,6 @@
+## 2021-12-xx v5.2.6
+* [MODSOURCE-424](https://issues.folio.org/browse/MODSOURCE-424) Fix Log4j vulnerability
+
 ## 2021-11-22 v5.2.5
 * [MODSOURCE-415](https://issues.folio.org/browse/MODSOURCE-415) Fix processing of DI_ERROR messages from SRS
 

@@ -1,4 +1,5 @@
 ## 2021-12-10 v5.1.9
+* [MODSOURCE-425](https://issues.folio.org/browse/MODSOURCE-425) Log4j vulnerability verification and correction
 * [MODSOURCE-421](https://issues.folio.org/browse/MODSOURCE-421) Add possibility to adjust parameter DB_MAXPOOLSIZE for configuring connection pool
 * [MODSOURCE-422](https://issues.folio.org/browse/MODSOURCE-422) Upgrade Vertx from 4.0.0 to 4.1.2
 

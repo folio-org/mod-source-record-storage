@@ -1,27 +1,27 @@
-package org.folio.services.handlers;
+package org.folio.services.handlers.match;
 
-import io.vertx.core.Vertx;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
 import org.folio.dao.RecordDao;
-import org.folio.dao.util.RecordType;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.exceptions.MatchingException;
 import org.folio.processing.matching.reader.util.MarcValueReaderUtil;
 import org.folio.processing.value.Value;
-import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,54 +33,36 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 /**
- * Handler for MARC-MARC matching/not-matching MARC-record by specific fields.
+ * Abstract handler for MARC-MARC matching/not-matching MARC record by specific fields.
  */
-@Component
-public class MarcBibliographicMatchEventHandler implements EventHandler {
-
+public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
-  private static final String MATCHED_ID_MARC_FIELD = "999ffs";
-  private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
-  private static final String INSTANCE_HRID_MARC_FIELD = "001";
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE = "Can`t find records by this MARC-field path: %s";
-  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-
+  private final TypeConnection typeConnection;
   private final RecordDao recordDao;
-  private final Vertx vertx;
+  private final DataImportEventTypes matchedEventType;
+  private final DataImportEventTypes notMatchedEventType;
 
-  @Autowired
-  public MarcBibliographicMatchEventHandler(final RecordDao recordDao, Vertx vertx) {
+  public AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
+    this.typeConnection = typeConnection;
     this.recordDao = recordDao;
-    this.vertx = vertx;
+    this.matchedEventType = matchedEventType;
+    this.notMatchedEventType = notMatchedEventType;
   }
 
-  /**
-   * Handles MARC_BIB_CREATED event.
-   */
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     HashMap<String, String> context = dataImportEventPayload.getContext();
-    if (context == null || context.isEmpty() ||
-      isEmpty(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value())) ||
+
+    if (context == null || context.isEmpty() || isEmpty(dataImportEventPayload.getContext().get(typeConnection.getMarcType().value())) ||
       Objects.isNull(dataImportEventPayload.getCurrentNode()) ||
       Objects.isNull(dataImportEventPayload.getEventsChain())) {
       LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
@@ -89,7 +71,7 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     }
 
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
-    String recordAsString = context.get(MARC_BIBLIOGRAPHIC.value());
+    String recordAsString = context.get(typeConnection.getMarcType().value());
     MatchDetail matchDetail = retrieveMatchDetail(dataImportEventPayload);
     String valueFromField = retrieveValueFromMarcRecord(recordAsString, matchDetail.getIncomingMatchExpression());
     MatchExpression matchExpression = matchDetail.getExistingMatchExpression();
@@ -98,15 +80,14 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
     String marcFieldPath = null;
     if (matchExpression != null && matchExpression.getDataValueType() == VALUE_FROM_RECORD) {
       List<Field> fields = matchExpression.getFields();
-      if (fields != null && matchDetail.getIncomingRecordType() == EntityType.MARC_BIBLIOGRAPHIC
-        && matchDetail.getExistingRecordType() == EntityType.MARC_BIBLIOGRAPHIC) {
+      if (fields != null && matchDetail.getIncomingRecordType() == typeConnection.getMarcType() && matchDetail.getExistingRecordType() == typeConnection.getMarcType()) {
         marcFieldPath = fields.stream().map(field -> field.getValue().trim()).collect(Collectors.joining());
         condition = buildConditionBasedOnMarcField(valueFromField, marcFieldPath);
       }
     }
 
     if (condition != null) {
-      recordDao.getRecords(condition, RecordType.MARC_BIB, new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
+      recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 999, dataImportEventPayload.getTenant())
         .onComplete(ar -> {
           if (ar.succeeded()) {
             processSucceededResult(dataImportEventPayload, future, context, ar);
@@ -125,35 +106,9 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
     if (dataImportEventPayload.getCurrentNode() != null && MATCH_PROFILE == dataImportEventPayload.getCurrentNode().getContentType()) {
       MatchProfile matchProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getContent()).mapTo(MatchProfile.class);
-      return matchProfile.getIncomingRecordType() == MARC_BIBLIOGRAPHIC && matchProfile.getExistingRecordType() == MARC_BIBLIOGRAPHIC;
+      return matchProfile.getIncomingRecordType() == typeConnection.getMarcType() && matchProfile.getExistingRecordType() == typeConnection.getMarcType();
     }
     return false;
-  }
-
-  @Override
-  public boolean isPostProcessingNeeded() {
-    return true;
-  }
-
-  @Override
-  public String getPostProcessingInitializationEventType() {
-    return DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING.value();
-  }
-
-  /**
-   * Read value from MARC-file using di-core library.
-   *
-   * @param recordAsString  - record
-   * @param matchExpression - matchExpression
-   * @return result - string value from MARC-file from specific field.
-   */
-  private String retrieveValueFromMarcRecord(String recordAsString, MatchExpression matchExpression) {
-    String valueFromField = StringUtils.EMPTY;
-    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchExpression);
-    if (value.getType() == Value.ValueType.STRING) {
-      valueFromField = String.valueOf(value.getValue());
-    }
-    return valueFromField;
   }
 
   /**
@@ -174,37 +129,29 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Builds Condition for filtering by specific field.
+   * Read value from MARC-file using di-core library.
    *
-   * @param valueFromField - value by which will be filtered from DB.
-   * @param fieldPath      - resulted fieldPath
-   * @return - built Condition
+   * @param recordAsString  - record
+   * @param matchExpression - matchExpression
+   * @return result - string value from MARC-file from specific field.
    */
-  private Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath) {
-    Condition condition;
-    switch (fieldPath) {
-      case MATCHED_ID_MARC_FIELD:
-        condition = filterRecordByRecordId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      case INSTANCE_ID_MARC_FIELD:
-        condition = filterRecordByExternalId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      case INSTANCE_HRID_MARC_FIELD:
-        condition = filterRecordByExternalHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      default:
-        condition = null;
+  private String retrieveValueFromMarcRecord(String recordAsString, MatchExpression matchExpression) {
+    String valueFromField = StringUtils.EMPTY;
+    Value value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchExpression);
+    if (value.getType() == Value.ValueType.STRING) {
+      valueFromField = String.valueOf(value.getValue());
     }
-    return condition;
+    return valueFromField;
   }
+
 
   /**
    * Process result if it was succeeded.
    */
-  private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, io.vertx.core.AsyncResult<org.folio.rest.jaxrs.model.RecordCollection> ar) {
+  private void processSucceededResult(DataImportEventPayload dataImportEventPayload, CompletableFuture<DataImportEventPayload> future, HashMap<String, String> context, AsyncResult<RecordCollection> ar) {
     if (ar.result().getTotalRecords() == 1) {
-      dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.toString());
-      context.put(MATCHED_MARC_BIB_KEY, Json.encode(ar.result().getRecords().get(0)));
+      dataImportEventPayload.setEventType(matchedEventType.toString());
+      context.put(getMatchedMarcKey(), Json.encode(ar.result().getRecords().get(0)));
       future.complete(dataImportEventPayload);
     } else if (ar.result().getTotalRecords() > 1) {
       constructError(dataImportEventPayload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
@@ -216,10 +163,26 @@ public class MarcBibliographicMatchEventHandler implements EventHandler {
   }
 
   /**
+   * Builds Condition for filtering by specific field.
+   *
+   * @param valueFromField - value by which will be filtered from DB.
+   * @param fieldPath      - resulted fieldPath
+   * @return - built Condition
+   */
+  protected abstract Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath);
+
+  /**
+   *
+   * @return
+   */
+  protected abstract String getMatchedMarcKey();
+
+
+  /**
    * Logic for processing errors.
    */
   private void constructError(DataImportEventPayload dataImportEventPayload, String errorMessage) {
     LOG.error(errorMessage);
-    dataImportEventPayload.setEventType(DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.toString());
+    dataImportEventPayload.setEventType(notMatchedEventType.toString());
   }
 }

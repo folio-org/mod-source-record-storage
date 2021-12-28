@@ -16,6 +16,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Field;
@@ -25,7 +26,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
+import org.folio.services.handlers.match.MarcAuthorityMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,40 +44,31 @@ import java.util.UUID;
 
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 
 @RunWith(VertxUnitRunner.class)
-public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTest {
+public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
 
-  private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-
-  public static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-
-  private RecordDao recordDao;
-
-  private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
-
+  private static final String PARSED_CONTENT = "{ \"leader\": \"01012cz  a2200241n  4500\", \"fields\": [ { \"001\": \"1000649\" }, { \"005\": \"20171119085041.0\" }, { \"008\": \"201001 n acanaaabn           n aaa     d\" }, { \"010\": { \"subfields\": [ { \"a\": \"n   58020553 \" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"024\": { \"subfields\": [ { \"a\": \"0022-0469\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"035\": { \"subfields\": [ { \"a\": \"(CStRLIN)NYCX1604275S\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"100\": { \"subfields\": [ { \"a\": \"Eimermacher, Karl\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"NIC\" }, { \"d\": \"CStRLIN\" }, { \"d\": \"NIC\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"110\": { \"subfields\": [ { \"a\": \"BR140\" }, { \"b\": \".J6\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"111\": { \"subfields\": [ { \"a\": \"270.05\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"130\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"150\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history.\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"151\": { \"subfields\": [ { \"a\": \"London,\" }, { \"b\": \"Cambridge University Press [etc.]\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"155\": { \"subfields\": [ { \"a\": \"32 East 57th St., New York, 10022\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"375\": { \"subfields\": [ { \"a\": \"male\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"377\": { \"subfields\": [ { \"a\": \"ger\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"400\": { \"subfields\": [ { \"a\": \"v.\" }, { \"b\": \"25 cm.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"410\": { \"subfields\": [ { \"a\": \"Quarterly,\" }, { \"b\": \"1970-\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"411\": { \"subfields\": [ { \"a\": \"Semiannual,\" }, { \"b\": \"1950-69\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"430\": { \"subfields\": [ { \"a\": \"v. 1-   Apr. 1950-\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"450\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"u\": \"note$u\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"451\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"455\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"f\": \"note$f\" }, { \"h\": \"note$h\" }, { \"i\": \"note$i\" }, { \"j\": \"note$j\" }, { \"k\": \"note$k\" }, { \"l\": \"note$l\" }, { \"n\": \"note$n\" }, { \"o\": \"note$o\" }, { \"u\": \"note$u\" }, { \"x\": \"note$x\" }, { \"z\": \"note$z\" }, { \"2\": \"note$2\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"500\": { \"subfields\": [ { \"a\": \"Editor:   C. W. Dugmore.\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"510\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"x\": \"Periodicals.\" } ], \"ind1\": \" \", \"ind2\": \"0\" } }, { \"511\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst00860740\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"530\": { \"subfields\": [ { \"a\": \"Periodicals\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst01411641\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"550\": { \"subfields\": [ { \"a\": \"Dugmore, C. W.\" }, { \"q\": \"(Clifford William),\" }, { \"e\": \"ed.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"551\": { \"subfields\": [ { \"k\": \"callNumberPrefix\" }, { \"h\": \"callNumber1\" }, { \"i\": \"callNumber2\" }, { \"m\": \"callNumberSuffix\" }, { \"t\": \"copyNumber\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"555\": { \"subfields\": [ { \"u\": \"uri\" }, { \"y\": \"linkText\" }, { \"3\": \"materialsSpecification\" }, { \"z\": \"publicNote\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"999\": { \"ind1\": \"f\", \"ind2\": \"f\", \"subfields\": [ { \"s\": \"b90cb1bc-601f-45d7-b99e-b11efd281dcd\" } ] } } ] }";
+  private static final String MATCHED_MARC_KEY = "MATCHED_MARC_AUTHORITY";
+  private static final String recordId = "b90cb1bc-601f-45d7-b99e-b11efd281dcd";
   private static RawRecord rawRecord;
-
-  private static String recordId = "acf4f6e2-115c-4509-9d4c-536c758ef917";
-
-  private String snapshotId1 = UUID.randomUUID().toString();
-  private String snapshotId2 = UUID.randomUUID().toString();
-
-  private Record record;
-
-  private Record secondRecord;
+  private final String snapshotId1 = UUID.randomUUID().toString();
+  private final String snapshotId2 = UUID.randomUUID().toString();
+  private RecordDao recordDao;
+  private EventHandler handler;
+  private Record existingRecord;
+  private Record incomingRecord;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    rawRecord = new RawRecord().withId(recordId).withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
   }
 
   @Before
@@ -84,7 +76,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    marcBibliographicMatchEventHandler = new MarcBibliographicMatchEventHandler(recordDao);
+    handler = new MarcAuthorityMatchEventHandler(recordDao);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -100,36 +92,26 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     snapshots.add(snapshot1);
     snapshots.add(snapshot2);
 
-    this.record = new Record()
+    this.existingRecord = new Record()
       .withId(recordId)
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(1)
-      .withRecordType(MARC_BIB)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(new ParsedRecord()
-        .withId(recordId)
-        .withContent(PARSED_CONTENT_WITH_ADDITIONAL_FIELDS))
-      .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119")
-        .withInstanceHrid("12345"))
-    .withState(Record.State.ACTUAL);
-
-    this.secondRecord = new Record()
-      .withId(String.valueOf(UUID.randomUUID()))
-      .withMatchedId(recordId)
-      .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC_BIB)
+      .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
-      .withParsedRecord(new ParsedRecord()
-        .withId(recordId)
-        .withContent(PARSED_CONTENT_WITH_ADDITIONAL_FIELDS))
-      .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119")
-        .withInstanceHrid("12345"))
-    .withState(Record.State.OLD);
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT))
+      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityHrid("1000649"))
+      .withState(Record.State.ACTUAL);
 
+    this.incomingRecord = new Record()
+      .withId(String.valueOf(UUID.randomUUID()))
+      .withMatchedId(existingRecord.getId())
+      .withSnapshotId(snapshotId1)
+      .withGeneration(1)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT))
+      .withState(Record.State.OLD);
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
@@ -137,7 +119,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       }
       async.complete();
     });
-
   }
 
   @After
@@ -152,11 +133,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldMatchByMatchedIdField(TestContext context) {
+  public void shouldMatchBy999sField(TestContext context) {
     Async async = context.async();
 
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
@@ -165,8 +146,99 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
         .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s")
+              )))
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s")
+              )))
+          ))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .compose(ar -> recordDao.saveRecord(incomingRecord, TENANT_ID))
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), record);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldMatchBy001Field(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(existingRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(new Field().withLabel("field").withValue("001"))))
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(new Field().withLabel("field").withValue("001"))))))));
+
+    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), incomingRecord)
+      .compose(v -> recordDao.saveRecord(existingRecord, TENANT_ID))
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), record);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldNotMatchBy999sField(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(existingRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
           .withMatchDetails(singletonList(new MatchDetail()
             .withMatchCriterion(EXACTLY_MATCHES)
             .withExistingMatchExpression(new MatchExpression()
@@ -176,42 +248,33 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator1").withValue("f"),
                 new Field().withLabel("indicator2").withValue("f"),
                 new Field().withLabel("recordSubfield").withValue("s"))))
-            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
             .withIncomingMatchExpression(new MatchExpression()
               .withDataValueType(VALUE_FROM_RECORD)
               .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("field").withValue("035"),
                 new Field().withLabel("indicator1").withValue(""),
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
-
-    recordDao.saveRecord(record, TENANT_ID)
+    recordDao.saveRecord(existingRecord, TENANT_ID)
       .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value());
           async.complete();
         }));
   }
 
   @Test
-  public void shouldMatchByInstanceIdField(TestContext context) {
+  public void shouldNotMatchBy001Field(TestContext context) {
     Async async = context.async();
 
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(existingRecord));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
@@ -220,180 +283,32 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
         .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
           .withMatchDetails(singletonList(new MatchDetail()
             .withMatchCriterion(EXACTLY_MATCHES)
             .withExistingMatchExpression(new MatchExpression()
               .withDataValueType(VALUE_FROM_RECORD)
               .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("999"),
-                new Field().withLabel("indicator1").withValue("f"),
-                new Field().withLabel("indicator2").withValue("f"),
-                new Field().withLabel("recordSubfield").withValue("i"))))
-            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+                new Field().withLabel("field").withValue("001")
+              )))
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
             .withIncomingMatchExpression(new MatchExpression()
               .withDataValueType(VALUE_FROM_RECORD)
               .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("field").withValue("035"),
                 new Field().withLabel("indicator1").withValue(""),
                 new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("b"))))))));
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
-      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
+    recordDao.saveRecord(existingRecord, TENANT_ID)
       .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           context.assertNull(throwable);
           context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
-          async.complete();
-        }));
-  }
-
-  @Test
-  public void shouldMatchByInstanceHridField(TestContext context) {
-    Async async = context.async();
-
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID)
-      .withCurrentNode(new ProfileSnapshotWrapper()
-        .withId(UUID.randomUUID().toString())
-        .withContentType(MATCH_PROFILE)
-        .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withMatchDetails(singletonList(new MatchDetail()
-            .withMatchCriterion(EXACTLY_MATCHES)
-            .withExistingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("001"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue(""))))
-            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("d"))))))));
-
-    RecordDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondRecord)
-      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
-        .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
-          async.complete();
-        }));
-  }
-
-  @Test
-  public void shouldNotMatchByMatchedIdField(TestContext context) {
-    Async async = context.async();
-
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID)
-      .withCurrentNode(new ProfileSnapshotWrapper()
-        .withId(UUID.randomUUID().toString())
-        .withContentType(MATCH_PROFILE)
-        .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withMatchDetails(singletonList(new MatchDetail()
-            .withMatchCriterion(EXACTLY_MATCHES)
-            .withExistingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("999"),
-                new Field().withLabel("indicator1").withValue("f"),
-                new Field().withLabel("indicator2").withValue("f"),
-                new Field().withLabel("recordSubfield").withValue("s"))))
-            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("b"))))))));
-
-    recordDao.saveRecord(record, TENANT_ID)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
-        .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
-          async.complete();
-        }));
-  }
-
-  @Test
-  public void shouldNotMatchByMatchedIdFieldIfNotMatch(TestContext context) {
-    Async async = context.async();
-
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID)
-      .withCurrentNode(new ProfileSnapshotWrapper()
-        .withId(UUID.randomUUID().toString())
-        .withContentType(MATCH_PROFILE)
-        .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withMatchDetails(singletonList(new MatchDetail()
-            .withMatchCriterion(EXACTLY_MATCHES)
-            .withExistingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("999"),
-                new Field().withLabel("indicator1").withValue("f"),
-                new Field().withLabel("indicator2").withValue("f"),
-                new Field().withLabel("recordSubfield").withValue("r"))))
-            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-            .withIncomingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("948"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("d"))))))));
-
-    recordDao.saveRecord(record, TENANT_ID)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> marcBibliographicMatchEventHandler.handle(dataImportEventPayload)
-        .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(),
-            DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value());
           async.complete();
         }));
   }
@@ -403,8 +318,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     MatchProfile matchProfile = new MatchProfile()
       .withId(UUID.randomUUID().toString())
       .withName("MARC-MARC matching")
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC);
+      .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+      .withExistingRecordType(EntityType.MARC_AUTHORITY);
 
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
@@ -414,11 +329,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
+      .withEventType(DI_SRS_MARC_AUTHORITY_RECORD_CREATED.toString())
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
 
-    boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertTrue(isEligible);
   }
@@ -428,7 +343,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     MatchProfile matchProfile = new MatchProfile()
       .withId(UUID.randomUUID().toString())
       .withName("MARC-MARC matching")
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withIncomingRecordType(EntityType.MARC_AUTHORITY)
       .withExistingRecordType(EntityType.HOLDINGS);
 
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
@@ -439,11 +354,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
+      .withEventType(DI_SRS_MARC_AUTHORITY_RECORD_CREATED.toString())
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
 
-    boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
   }
@@ -452,9 +367,9 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   public void shouldReturnFalseWhenNotMatchProfileForProfile() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
-      .withName("Create instance")
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(INSTANCE);
+      .withName("Create authority")
+      .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+      .withExistingRecordType(EntityType.AUTHORITY);
 
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
@@ -464,11 +379,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
+      .withEventType(DI_SRS_MARC_AUTHORITY_RECORD_CREATED.toString())
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
 
-    boolean isEligible = marcBibliographicMatchEventHandler.isEligible(dataImportEventPayload);
+    boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
   }

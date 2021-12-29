@@ -172,8 +172,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   protected abstract Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath);
 
   /**
-   *
-   * @return
+   * @return the key under which a matched record is put into event payload context
    */
   protected abstract String getMatchedMarcKey();
 

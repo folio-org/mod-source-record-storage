@@ -20,10 +20,6 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RE
  */
 @Component
 public class MarcBibliographicMatchEventHandler extends AbstractMarcMatchEventHandler {
-  private static final String MATCHED_MARC_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-  private static final String MATCHED_ID_MARC_FIELD = "999ffs";
-  private static final String INSTANCE_ID_MARC_FIELD = "999ffi";
-  private static final String INSTANCE_HRID_MARC_FIELD = "001";
 
   @Autowired
   public MarcBibliographicMatchEventHandler(RecordDao recordDao) {
@@ -40,34 +36,4 @@ public class MarcBibliographicMatchEventHandler extends AbstractMarcMatchEventHa
     return DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING.value();
   }
 
-  /**
-   * Builds Condition for filtering by specific field.
-   *
-   * @param valueFromField - value by which will be filtered from DB.
-   * @param fieldPath      - resulted fieldPath
-   * @return - built Condition
-   */
-  @Override
-  protected Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath) {
-    Condition condition;
-    switch (fieldPath) {
-      case MATCHED_ID_MARC_FIELD:
-        condition = filterRecordByRecordId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      case INSTANCE_ID_MARC_FIELD:
-        condition = filterRecordByExternalId(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      case INSTANCE_HRID_MARC_FIELD:
-        condition = filterRecordByExternalHrid(valueFromField).and(filterRecordByState(Record.State.ACTUAL.value()));
-        break;
-      default:
-        condition = null;
-    }
-    return condition;
-  }
-
-  @Override
-  protected String getMatchedMarcKey() {
-    return MATCHED_MARC_KEY;
-  }
 }

@@ -18,7 +18,8 @@ import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.services.handlers.HoldingsPostProcessingEventHandler;
 import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
-import org.folio.services.handlers.actions.ModifyRecordEventHandler;
+import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
+import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
@@ -38,7 +39,10 @@ public class InitAPIImpl implements InitAPI {
   private HoldingsPostProcessingEventHandler holdingsPostProcessingEventHandler;
 
   @Autowired
-  private ModifyRecordEventHandler modifyRecordEventHandler;
+  private MarcBibUpdateModifyEventHandler marcBibUpdateModifyEventHandler;
+
+  @Autowired
+  private MarcAuthorityUpdateModifyEventHandler marcAuthorityUpdateModifyEventHandler;
 
   @Autowired
   private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
@@ -74,7 +78,8 @@ public class InitAPIImpl implements InitAPI {
   private void registerEventHandlers() {
     EventManager.registerEventHandler(instancePostProcessingEventHandler);
     EventManager.registerEventHandler(holdingsPostProcessingEventHandler);
-    EventManager.registerEventHandler(modifyRecordEventHandler);
+    EventManager.registerEventHandler(marcBibUpdateModifyEventHandler);
+    EventManager.registerEventHandler(marcAuthorityUpdateModifyEventHandler);
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
   }
 

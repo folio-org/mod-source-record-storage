@@ -7,7 +7,8 @@ import org.folio.rest.jaxrs.model.Record;
 public enum TypeConnection {
 
   MARC_BIB(RecordType.MARC_BIB, EntityType.MARC_BIBLIOGRAPHIC, Record.RecordType.MARC_BIB, EntityType.INSTANCE),
-  MARC_HOLDINGS(RecordType.MARC_HOLDING, EntityType.MARC_HOLDINGS, Record.RecordType.MARC_HOLDING, EntityType.HOLDINGS);
+  MARC_HOLDINGS(RecordType.MARC_HOLDING, EntityType.MARC_HOLDINGS, Record.RecordType.MARC_HOLDING, EntityType.HOLDINGS),
+  MARC_AUTHORITY(RecordType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY, Record.RecordType.MARC_AUTHORITY, EntityType.AUTHORITY);
 
   private final RecordType dbType;
   private final EntityType marcType;

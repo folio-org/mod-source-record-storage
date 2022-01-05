@@ -326,9 +326,10 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getInstanceHrid();
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return externalIdsHolder.getHoldingsHrid();
-    } else {
-      return null;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return externalIdsHolder.getAuthorityHrid();
     }
+    return null;
   }
 
   /**

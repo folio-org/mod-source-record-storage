@@ -25,7 +25,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.services.handlers.MarcBibliographicMatchEventHandler;
+import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -84,7 +84,7 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    marcBibliographicMatchEventHandler = new MarcBibliographicMatchEventHandler(recordDao, vertx);
+    marcBibliographicMatchEventHandler = new MarcBibliographicMatchEventHandler(recordDao);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()

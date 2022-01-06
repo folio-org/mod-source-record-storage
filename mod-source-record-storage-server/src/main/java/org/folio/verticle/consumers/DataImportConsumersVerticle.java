@@ -30,6 +30,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTA
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_UPDATE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -43,6 +44,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
   private final List<String> events = Arrays.asList(DI_SRS_MARC_BIB_RECORD_CREATED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_CREATED.value(),
+    DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(),
     DI_INVENTORY_INSTANCE_CREATED.value(),
     DI_INVENTORY_INSTANCE_UPDATED.value(),
     DI_INVENTORY_HOLDING_CREATED.value(),

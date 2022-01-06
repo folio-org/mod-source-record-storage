@@ -35,7 +35,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.MappingParametersSnapshotCache;
-import org.folio.services.handlers.actions.ModifyRecordEventHandler;
+import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,13 +64,13 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.services.handlers.actions.ModifyRecordEventHandler.MATCHED_MARC_BIB_KEY;
 
 @RunWith(VertxUnitRunner.class)
-public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
+public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
+  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
 
   private static String recordId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
@@ -78,7 +78,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
   private RecordDao recordDao;
   private RecordService recordService;
-  private ModifyRecordEventHandler modifyRecordEventHandler;
+  private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
 
@@ -155,7 +155,7 @@ public class ModifyRecordEventHandlerTest extends AbstractLBServiceTest {
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new ModifyRecordEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
+    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

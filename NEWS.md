@@ -9,7 +9,6 @@
 * [MODSOURCE-402](https://issues.folio.org/browse/MODSOURCE-402) Properly handle DB failures during events processing
 * [MODDATAIMP-491](https://issues.folio.org/browse/MODDATAIMP-491) Improve logging to be able to trace the path of each record and file_chunks
 * [MODSOURCE-429](https://issues.folio.org/browse/MODSOURCE-429) Authority update: Implement match handler
-### 2022-xx-xx
 * [MODSOURCE-434](https://issues.folio.org/browse/MODSOURCE-434) Remove Kafka cache from QuickMarc handlers
 
 ## 2021-xx-xx v5.2.1-SNAPSHOT

@@ -1,7 +1,5 @@
 package org.folio.consumers;
 
-import static java.lang.String.format;
-
 import static org.folio.dao.util.QMEventTypes.QM_ERROR;
 import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
 import static org.folio.kafka.KafkaHeaderUtils.kafkaHeadersToMap;
@@ -32,7 +30,6 @@ import org.springframework.stereotype.Component;
 import org.folio.dao.util.QMEventTypes;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.cache.KafkaInternalCache;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -53,19 +50,17 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private final Vertx vertx;
   private final RecordService recordService;
   private final KafkaConfig kafkaConfig;
-  private final KafkaInternalCache kafkaCache;
 
   private final Map<QMEventTypes, KafkaProducer<String, String>> producerMap = new HashMap<>();
 
   @Value("${srs.kafka.QuickMarcKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
-  public QuickMarcKafkaHandler(Vertx vertx, RecordService recordService, KafkaConfig kafkaConfig,
-                               KafkaInternalCache kafkaCache) {
+  public QuickMarcKafkaHandler(Vertx vertx, RecordService recordService, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.recordService = recordService;
     this.kafkaConfig = kafkaConfig;
-    this.kafkaCache = kafkaCache;
+
     producerMap.put(QM_SRS_MARC_RECORD_UPDATED, createProducer(QM_SRS_MARC_RECORD_UPDATED.name(), kafkaConfig));
     producerMap.put(QM_ERROR, createProducer(QM_SRS_MARC_RECORD_UPDATED.name(), kafkaConfig));
   }
@@ -73,38 +68,32 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
     var event = Json.decodeValue(record.value(), Event.class);
-    var cacheEventId = format("%s-%s", EVENT_ID_PREFIX, event.getId());
 
-    if (!kafkaCache.containsByKey(cacheEventId)) {
-      kafkaCache.putToCache(cacheEventId);
-      var kafkaHeaders = record.headers();
-      var params = new OkapiConnectionParams(kafkaHeadersToMap(kafkaHeaders), vertx);
+    var kafkaHeaders = record.headers();
+    var params = new OkapiConnectionParams(kafkaHeadersToMap(kafkaHeaders), vertx);
 
-      return getEventPayload(event)
-        .compose(eventPayload -> {
-          String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
-          return getRecordDto(eventPayload)
-            .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, params.getTenantId()))
-            .compose(updatedRecord -> {
-              eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
-              return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, params.getTenantId(), kafkaHeaders)
-                .map(aBoolean -> record.key());
-            })
-            .recover(th -> {
-              log.error("Failed to handle QM_RECORD_UPDATED event", th);
-              eventPayload.put(ERROR_KEY, th.getMessage());
-              return sendEvent(eventPayload, QM_ERROR, params.getTenantId(), kafkaHeaders)
-                .map(aBoolean -> th.getMessage());
-            });
-        })
-        .recover(th -> {
+    return getEventPayload(event)
+      .compose(eventPayload -> {
+        String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
+        return getRecordDto(eventPayload)
+          .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, params.getTenantId()))
+          .compose(updatedRecord -> {
+            eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
+            return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, params.getTenantId(), kafkaHeaders)
+              .map(aBoolean -> record.key());
+          })
+          .recover(th -> {
             log.error("Failed to handle QM_RECORD_UPDATED event", th);
-            return Future.failedFuture(th);
-          }
-        );
-    } else {
-      return Future.succeededFuture(record.key());
-    }
+            eventPayload.put(ERROR_KEY, th.getMessage());
+            return sendEvent(eventPayload, QM_ERROR, params.getTenantId(), kafkaHeaders)
+              .map(aBoolean -> th.getMessage());
+          });
+      })
+      .recover(th -> {
+          log.error("Failed to handle QM_RECORD_UPDATED event", th);
+          return Future.failedFuture(th);
+        }
+      );
   }
 
   private Future<Boolean> sendEvent(Object payload, QMEventTypes eventType, String tenantId,

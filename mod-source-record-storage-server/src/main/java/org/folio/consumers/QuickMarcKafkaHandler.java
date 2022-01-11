@@ -40,7 +40,6 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
   private static final Logger log = LogManager.getLogger();
 
-  private static final String EVENT_ID_PREFIX = QuickMarcKafkaHandler.class.getSimpleName();
   private static final String PARSED_RECORD_DTO_KEY = "PARSED_RECORD_DTO";
   private static final String SNAPSHOT_ID_KEY = "SNAPSHOT_ID";
   private static final String ERROR_KEY = "ERROR";

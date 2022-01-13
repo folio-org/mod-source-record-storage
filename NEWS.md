@@ -1,3 +1,6 @@
+## 2022-01-13 v5.2.7
+* [MODSOURCE-444](https://issues.folio.org/browse/MODSOURCE-444) Fix schema migration error
+
 ## 2021-12-15 v5.2.6
 * [MODSOURCE-424](https://issues.folio.org/browse/MODSOURCE-424) Fix Log4j vulnerability
 
@@ -46,31 +49,7 @@
 
 ## 2021-07-21 v5.1.3
 * [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
-* [MODSOURMAN-451](https://issues.folio.org/browse/MODSOURMAN-451) Log details for Inventory single record imports for Overlays
-* [MODSOURMAN-508](https://issues.folio.org/browse/MODSOURMAN-508) Log details for Inventory single record imports for Overlays - Part 2
-* Update data-import-processing-core dependency to v3.1.3
-
-## 2021-06-25 v5.1.2
-* [MODSOURCE-323](https://issues.folio.org/browse/MODSOURCE-323) Change dataType to have common type for MARC related subtypes
-* Update data-import-processing-core dependency to v3.1.2
-
-## 2021-06-22 v5.1.1
-* [MODSOURCE-311](https://issues.folio.org/browse/MODSOURCE-311) Search API: Restrict to search only by marc bib
-
-## 2021-06-11 v5.1.0
-* [MODSOURCE-265](https://issues.folio.org/browse/MODSOURCE-265) Implement presence or absence searches
-* [MODSOURCE-269](https://issues.folio.org/browse/MODSOURCE-269) Implement presence or absence searches for indicators
-* [MODSOURCE-276](https://issues.folio.org/browse/MODSOURCE-276) Add existing records to the SRS Query API table
-* [MODSOURCE-288](https://issues.folio.org/browse/MODSOURCE-288) Migrate QM-flow to Kafka
-* [MODSOURCE-279](https://issues.folio.org/browse/MODSOURCE-279) Store MARC Authority record
-* [MODSOURCE-308](https://issues.folio.org/browse/MODSOURCE-308) Update interfaces version
-* [MODSOURCE-310](https://issues.folio.org/browse/MODSOURCE-310) Handling 001/003/035 handling in SRS for MARC bib records broken
-* [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM
-* [MODSOURCE-301](https://issues.folio.org/browse/MODSOURCE-301) Cannot import GOBI EDIFACT invoice
-* [MODSOURCE-316](https://issues.folio.org/browse/MODSOURCE-316) quickMARC Latency: quickMARC updates are not reflected on Inventory instance record
-
-## 2021-xx-xx v5.0.6
-* [MODSOURCE-329](https://issues.folio.org/browse/MODSOURCE-329) Create script to clean up Snapshot statuses in mod-source-record-storage
+* Update data-import-processing-core to v3.0.4
 
 ## 2021-06-17 v5.0.5
 * [MODSOURCE-318](https://issues.folio.org/browse/MODSOURCE-318) Set processingStartedDate for snapshot when updating via QM

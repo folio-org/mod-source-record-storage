@@ -623,6 +623,7 @@ public final class RecordDaoUtil {
       externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
     } else if (RecordType.MARC_AUTHORITY == pojo.getRecordType()) {
       externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
+      externalHridOptional.ifPresent(externalIdsHolder::setAuthorityHrid);
     }
     return externalIdsHolder;
   }

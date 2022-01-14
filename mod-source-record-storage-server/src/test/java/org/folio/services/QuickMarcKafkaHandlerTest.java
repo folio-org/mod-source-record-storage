@@ -15,7 +15,6 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -111,7 +110,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateParsedRecordAndSendRecordUpdatedEvent(TestContext context) throws IOException, InterruptedException {
+  public void shouldUpdateParsedRecordAndSendRecordUpdatedEvent(TestContext context) throws InterruptedException {
     Async async = context.async();
 
     ParsedRecord parsedRecord = record.getParsedRecord();
@@ -170,7 +169,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSendErrorEventWhenNoDataInPayload() throws IOException, InterruptedException {
+  public void shouldSendErrorEventWhenNoDataInPayload() throws InterruptedException {
     cluster.send(createRequest(new HashMap<>()));
 
     String observeTopic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_ERROR.name());
@@ -179,9 +178,9 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .build());
   }
 
-  private SendKeyValues<String, String> createRequest(HashMap<String, String> payload) throws IOException {
+  private SendKeyValues<String, String> createRequest(HashMap<String, String> payload) {
     String topic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_RECORD_UPDATED.name());
-    Event event = new Event().withId(UUID.randomUUID().toString()).withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
+    Event event = new Event().withId(UUID.randomUUID().toString()).withEventPayload(Json.encode(payload));
     KeyValue<String, String> eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
     eventRecord.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
     eventRecord.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());

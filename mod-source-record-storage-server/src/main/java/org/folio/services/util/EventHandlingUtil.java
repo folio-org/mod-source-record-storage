@@ -1,6 +1,5 @@
 package org.folio.services.util;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.utils.PomReaderUtil;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
@@ -44,12 +42,8 @@ public final class EventHandlingUtil {
   public static Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, String eventType,
                                                  List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
     KafkaProducerRecord<String, String> record;
-    try {
-      record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig, false);
-    } catch (IOException e) {
-      LOGGER.error("Failed to construct an event for eventType {}", eventType, e);
-      return Future.failedFuture(e);
-    }
+
+    record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
 
     Promise<Boolean> promise = Promise.promise();
 
@@ -75,12 +69,11 @@ public final class EventHandlingUtil {
   public static KafkaProducerRecord<String, String> createProducerRecord(String eventPayload, String eventType,
                                                                          String key, String tenantId,
                                                                          List<KafkaHeader> kafkaHeaders,
-                                                                         KafkaConfig kafkaConfig,
-                                                                         boolean zippedPayload) throws IOException {
+                                                                         KafkaConfig kafkaConfig) {
     Event event = new Event()
       .withId(UUID.randomUUID().toString())
       .withEventType(eventType)
-      .withEventPayload(zippedPayload ? ZIPArchiver.zip(eventPayload) : eventPayload)
+      .withEventPayload(eventPayload)
       .withEventMetadata(new EventMetadata()
         .withTenantId(tenantId)
         .withEventTTL(1)

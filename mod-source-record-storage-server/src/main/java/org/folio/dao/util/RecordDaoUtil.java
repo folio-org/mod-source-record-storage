@@ -326,9 +326,10 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getInstanceHrid();
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return externalIdsHolder.getHoldingsHrid();
-    } else {
-      return null;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return externalIdsHolder.getAuthorityHrid();
     }
+    return null;
   }
 
   /**
@@ -622,6 +623,7 @@ public final class RecordDaoUtil {
       externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
     } else if (RecordType.MARC_AUTHORITY == pojo.getRecordType()) {
       externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
+      externalHridOptional.ifPresent(externalIdsHolder::setAuthorityHrid);
     }
     return externalIdsHolder;
   }

@@ -36,6 +36,7 @@ import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
@@ -429,6 +430,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldStreamEdifactSourceRecords(TestContext context) {
     streamMarcSourceRecords(context, RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
@@ -526,6 +528,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldNotGetMarcAuthoritySourceRecordById(TestContext context) {
     notGetMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
@@ -551,16 +554,19 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  @Ignore
   public void shouldUpdateParsedMarcBibRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
+  @Ignore
   public void shouldUpdateParsedMarcAuthorityRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
+  @Ignore
   public void shouldUpdateParsedMarcHoldingsRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcHoldingsRecord());
   }

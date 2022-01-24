@@ -10,7 +10,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.exceptions.DuplicateEventException;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;

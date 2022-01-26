@@ -17,6 +17,8 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.handlers.match.MatchField;
+import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
@@ -43,6 +45,17 @@ public interface RecordDao {
    * @return {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
+
+  /**
+   *
+   * @param matchField
+   * @param recordType
+   * @param offset
+   * @param limit
+   * @param tenantId
+   * @return
+   */
+  Future<RecordCollection> getMatchedRecords(MatchField matchField, TypeConnection recordType, int offset, int limit, String tenantId);
 
   /**
    * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}

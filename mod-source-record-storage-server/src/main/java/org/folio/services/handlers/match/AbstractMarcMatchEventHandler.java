@@ -1,30 +1,20 @@
 package org.folio.services.handlers.match;
 
-import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jooq.Condition;
 
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
@@ -39,7 +29,6 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.util.TypeConnection;
 
@@ -54,12 +43,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
-  private static final String CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE =
-    "Can`t find records by this MARC-field path: %s";
-
-  private static final String MATCHED_ID_MARC_FIELD = "999ffs";
-  private static final String EXTERNAL_ID_MARC_FIELD = "999ffi";
-  private static final String EXTERNAL_HRID_MARC_FIELD = "001";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
@@ -89,67 +72,44 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     }
 
     payload.getEventsChain().add(payload.getEventType());
-    String recordAsString = context.get(typeConnection.getMarcType().value());
+    String record = context.get(typeConnection.getMarcType().value());
     MatchDetail matchDetail = retrieveMatchDetail(payload);
-    String valueFromField = retrieveValueFromMarcRecord(recordAsString, matchDetail.getIncomingMatchExpression());
-    MatchExpression matchExpression = matchDetail.getExistingMatchExpression();
-
-    Condition condition = null;
-    String marcFieldPath = null;
-    if (matchExpression != null && matchExpression.getDataValueType() == VALUE_FROM_RECORD) {
-      List<Field> fields = matchExpression.getFields();
-      if (fields != null && matchDetail.getIncomingRecordType() == typeConnection.getMarcType()
-        && matchDetail.getExistingRecordType() == typeConnection.getMarcType()) {
-        marcFieldPath = fields.stream().map(field -> field.getValue().trim()).collect(Collectors.joining());
-        condition = buildConditionBasedOnMarcField(valueFromField, marcFieldPath);
-      }
-    }
-
-    if (condition != null) {
-      recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 999, payload.getTenant())
+    if (isValidMatchDetail(matchDetail)) {
+      MatchField matchField = prepareMatchField(record, matchDetail);
+      recordDao.getMatchedRecords(matchField, typeConnection, 0, 2, payload.getTenant())
         .onSuccess(recordCollection -> processSucceededResult(recordCollection, payload, future))
         .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
     } else {
-      constructError(payload, format(CANNOT_FIND_RECORDS_FOR_MARC_FIELD_ERROR_MESSAGE, marcFieldPath));
       future.complete(payload);
     }
     return future;
   }
 
-  @Override
-  public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
-    if (dataImportEventPayload.getCurrentNode() != null
-      && MATCH_PROFILE == dataImportEventPayload.getCurrentNode().getContentType()) {
-      var matchProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getContent()).mapTo(MatchProfile.class);
-      return isEligibleMatchProfile(matchProfile);
+  private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
+    List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
+    String field = matchDetailFields.get(0).getValue();
+    String ind1 = matchDetailFields.get(1).getValue();
+    String ind2 = matchDetailFields.get(2).getValue();
+    String subfield = matchDetailFields.get(3).getValue();
+    String value = retrieveValueFromMarcRecord(record, matchDetail.getIncomingMatchExpression());
+    return new MatchField(field, ind1, ind2, subfield, value);
+  }
+
+  private boolean isValidMatchDetail(MatchDetail matchDetail) {
+    if (matchDetail.getExistingMatchExpression() != null && matchDetail.getExistingMatchExpression().getDataValueType() == VALUE_FROM_RECORD) {
+      List<Field> fields = matchDetail.getExistingMatchExpression().getFields();
+      return fields != null && fields.size() == 4 && matchDetail.getIncomingRecordType() == typeConnection.getMarcType() && matchDetail.getExistingRecordType() == typeConnection.getMarcType();
     }
     return false;
   }
 
-  /**
-   * Builds Condition for filtering by specific field.
-   *
-   * @param valueFromField - value by which will be filtered from DB.
-   * @param fieldPath      - resulted fieldPath
-   * @return - built Condition
-   */
-  protected Condition buildConditionBasedOnMarcField(String valueFromField, String fieldPath) {
-    Condition condition = filterRecordByType(typeConnection.getRecordType().value())
-      .and(filterRecordByState(Record.State.ACTUAL.value()));
-    switch (fieldPath) {
-      case MATCHED_ID_MARC_FIELD:
-        condition = condition.and(filterRecordByRecordId(valueFromField));
-        break;
-      case EXTERNAL_ID_MARC_FIELD:
-        condition = condition.and(filterRecordByExternalId(valueFromField));
-        break;
-      case EXTERNAL_HRID_MARC_FIELD:
-        condition = condition.and(filterRecordByExternalHrid(valueFromField));
-        break;
-      default:
-        condition = null;
+  @Override
+  public boolean isEligible(DataImportEventPayload dataImportEventPayload) {
+    if (dataImportEventPayload.getCurrentNode() != null && MATCH_PROFILE == dataImportEventPayload.getCurrentNode().getContentType()) {
+      var matchProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getContent()).mapTo(MatchProfile.class);
+      return isEligibleMatchProfile(matchProfile);
     }
-    return condition;
+    return false;
   }
 
   /**

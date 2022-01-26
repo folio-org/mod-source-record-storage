@@ -9,10 +9,11 @@ import io.vertx.core.Promise;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.kafka.exception.DuplicateEventException;
+//import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -41,6 +42,8 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.handlers.match.MatchField;
+import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
@@ -86,6 +89,8 @@ import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
@@ -96,6 +101,7 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
@@ -119,7 +125,9 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
 
-  private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+  public static final String CONTROL_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}'";
+  public static final String DATA_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}' and \"{partitionName}\".\"ind1\" = '{ind1}' and \"{partitionName}\".\"ind2\" = '{ind2}' and \"{partitionName}\".\"subfield_no\" = '{subfield}'";
+
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
 
@@ -174,6 +182,51 @@ public class RecordDaoImpl implements RecordDao {
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+  }
+
+  public Future<RecordCollection> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
+    Name cte = name(CTE);
+    Name prt = name(typeConnection.getDbType().getTableName());
+    Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
+    Condition whereCondition = filterRecordByType(typeConnection.getRecordType().value())
+      .and(filterRecordByState(Record.State.ACTUAL.value()))
+      .and(typeConnection.getDbType().getRecordImplicitCondition())
+      .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()));
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.selectCount()
+        .from(RECORDS_LB)
+        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .where(whereCondition)))
+      .select(getAllRecordFieldsWithCount(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(whereCondition)
+      .offset(offset)
+      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+  }
+
+  private Condition getMatchedFieldCondition(MatchField matchedField, String partitionName) {
+    if (matchedField.isControlField()) {
+      Map<String, String> params = new HashMap<>();
+      params.put("partitionName", partitionName);
+      params.put("value", matchedField.getValue());
+      String sql = StrSubstitutor.replace(CONTROL_FIELD_PATTERN, params, "{", "}");
+      return condition(sql);
+    } else {
+      Map<String, String> params = new HashMap<>();
+      params.put("partitionName", partitionName);
+      params.put("value", matchedField.getValue());
+      params.put("ind1", matchedField.getInd1().isEmpty() || matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
+      params.put("ind2", matchedField.getInd2().isEmpty() || matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
+      params.put("subfield", matchedField.getSubfield());
+      String sql = StrSubstitutor.replace(DATA_FIELD_PATTERN, params, "{", "}");
+      return condition(sql);
+    }
   }
 
   @Override
@@ -441,9 +494,9 @@ public class RecordDaoImpl implements RecordDao {
           .errors();
 
         recordsLoadingErrors.forEach(error -> {
-          if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
-            throw new DuplicateEventException("Error when handling duplicate event");
-          }
+//          if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+//            throw new DuplicateEventException("Error when handling duplicate event");
+//          }
           LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
           LOG.debug("Failed to execute statement from batch: {}", error.query());
         });
@@ -485,7 +538,7 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
-    } catch (SQLException | DataAccessException | DuplicateEventException e) {
+    } catch (SQLException | DataAccessException  e) {
       LOG.error("Failed to save records", e);
       promise.fail(e);
     }

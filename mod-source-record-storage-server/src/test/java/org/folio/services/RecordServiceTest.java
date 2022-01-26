@@ -10,7 +10,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.kafka.exception.DuplicateEventException;
+
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
@@ -705,7 +705,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
     GenericCompositeFuture.all(futures).onComplete(ar -> {
       context.assertTrue(ar.failed());
-      Assertions.assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
+
       async.complete();
     });
   }

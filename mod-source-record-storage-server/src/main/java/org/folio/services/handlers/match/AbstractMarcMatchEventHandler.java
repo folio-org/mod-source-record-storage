@@ -1,21 +1,10 @@
 package org.folio.services.handlers.match;
 
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
@@ -31,6 +20,16 @@ import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.util.TypeConnection;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
 /**
  * Abstract handler for MARC-MARC matching/not-matching MARC record by specific fields.
@@ -85,6 +84,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return future;
   }
 
+  /* Creates a {@link MatchField} from the given {@link MatchDetail} */
   private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
     List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
     String field = matchDetailFields.get(0).getValue();
@@ -95,6 +95,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return new MatchField(field, ind1, ind2, subfield, value);
   }
 
+  /* Verifies a correctness of the given {@link MatchDetail} */
   private boolean isValidMatchDetail(MatchDetail matchDetail) {
     if (matchDetail.getExistingMatchExpression() != null && matchDetail.getExistingMatchExpression().getDataValueType() == VALUE_FROM_RECORD) {
       List<Field> fields = matchDetail.getExistingMatchExpression().getFields();

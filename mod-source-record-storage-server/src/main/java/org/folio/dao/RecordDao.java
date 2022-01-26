@@ -47,13 +47,14 @@ public interface RecordDao {
   Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   *  Searches for {@link Record} by {@link MatchField}  with offset and limit
    *
-   * @param matchField
-   * @param recordType
-   * @param offset
-   * @param limit
-   * @param tenantId
-   * @return
+   * @param matchField  Marc field that needs to be matched
+   * @param recordType  record type
+   * @param offset      starting index in a list of results
+   * @param limit       limit of records for pagination
+   * @param tenantId    tenant id
+   * @return  {@link Future} of {@link RecordCollection}
    */
   Future<RecordCollection> getMatchedRecords(MatchField matchField, TypeConnection recordType, int offset, int limit, String tenantId);
 

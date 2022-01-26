@@ -2,6 +2,9 @@ package org.folio.services.handlers.match;
 
 import org.marc4j.marc.impl.Verifier;
 
+/**
+ * The model of Marc field that needs to be matched
+ */
 public class MatchField {
   private final String tag;
   private final String ind1;

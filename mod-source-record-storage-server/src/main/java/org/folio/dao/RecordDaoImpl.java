@@ -13,7 +13,7 @@ import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-//import org.folio.kafka.exception.DuplicateEventException;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -124,6 +124,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
+  private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
   public static final String CONTROL_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}'";
   public static final String DATA_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}' and \"{partitionName}\".\"ind1\" = '{ind1}' and \"{partitionName}\".\"ind2\" = '{ind2}' and \"{partitionName}\".\"subfield_no\" = '{subfield}'";
@@ -494,9 +495,9 @@ public class RecordDaoImpl implements RecordDao {
           .errors();
 
         recordsLoadingErrors.forEach(error -> {
-//          if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
-//            throw new DuplicateEventException("Error when handling duplicate event");
-//          }
+          if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+            throw new DuplicateEventException("Error when handling duplicate event");
+          }
           LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
           LOG.debug("Failed to execute statement from batch: {}", error.query());
         });
@@ -538,7 +539,7 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
-    } catch (SQLException | DataAccessException  e) {
+    } catch (SQLException | DataAccessException | DuplicateEventException e) {
       LOG.error("Failed to save records", e);
       promise.fail(e);
     }

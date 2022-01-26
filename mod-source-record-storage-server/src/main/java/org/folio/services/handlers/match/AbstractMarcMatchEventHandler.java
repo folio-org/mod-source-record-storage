@@ -32,14 +32,13 @@ import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FRO
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
 /**
- * Abstract handler for MARC-MARC matching/not-matching MARC record by specific fields.
+ * Abstract handler for MARC-MARC matching/not-matching of record by specific fields
  */
 public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
 
-  private static final String PAYLOAD_HAS_NO_DATA_MSG =
-    "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
+  private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
 
@@ -48,8 +47,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
 
-  public AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao,
-                                       DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
+  public AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
@@ -69,8 +67,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
     }
-
     payload.getEventsChain().add(payload.getEventType());
+
     String record = context.get(typeConnection.getMarcType().value());
     MatchDetail matchDetail = retrieveMatchDetail(payload);
     if (isValidMatchDetail(matchDetail)) {
@@ -120,17 +118,13 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return "MATCHED_" + typeConnection.getMarcType();
   }
 
+  /* Verifies whether the given {@link MatchProfile} is suitable for {@link EventHandler} */
   private boolean isEligibleMatchProfile(MatchProfile matchProfile) {
     return matchProfile.getIncomingRecordType() == typeConnection.getMarcType()
       && matchProfile.getExistingRecordType() == typeConnection.getMarcType();
   }
 
-  /**
-   * Logic for retrieving MatchDetail from eventPayload.
-   *
-   * @param dataImportEventPayload - payload
-   * @return - resulted MatchDetail
-   */
+  /* Retrieves a {@link MatchDetail} from the given {@link DataImportEventPayload} */
   private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
     MatchProfile matchProfile;
     ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
@@ -142,16 +136,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return matchProfile.getMatchDetails().get(0);
   }
 
-  /**
-   * Read value from MARC-file using di-core library.
-   *
-   * @param recordAsString  - record
-   * @param matchExpression - matchExpression
-   * @return result - string value from MARC-file from specific field.
-   */
-  private String retrieveValueFromMarcRecord(String recordAsString, MatchExpression matchExpression) {
+  /* Read value from the Marc record using di-core library */
+  private String retrieveValueFromMarcRecord(String record, MatchExpression matchExpression) {
     String valueFromField = StringUtils.EMPTY;
-    var value = MarcValueReaderUtil.readValueFromRecord(recordAsString, matchExpression);
+    var value = MarcValueReaderUtil.readValueFromRecord(record, matchExpression);
     if (value.getType() == Value.ValueType.STRING) {
       valueFromField = String.valueOf(value.getValue());
     }
@@ -159,28 +147,21 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Process result if it was succeeded.
+   * Prepares {@link DataImportEventPayload} for the further processing based on the number of retrieved records in {@link RecordCollection}
    */
-  private void processSucceededResult(RecordCollection collection, DataImportEventPayload payload,
-                                      CompletableFuture<DataImportEventPayload> future) {
+  private void processSucceededResult(RecordCollection collection, DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
     if (collection.getTotalRecords() == 1) {
       payload.setEventType(matchedEventType.toString());
       payload.getContext().put(getMatchedMarcKey(), Json.encode(collection.getRecords().get(0)));
       future.complete(payload);
     } else if (collection.getTotalRecords() > 1) {
-      constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+      LOG.error(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+      payload.setEventType(notMatchedEventType.toString());
       future.completeExceptionally(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
     } else if (collection.getTotalRecords() == 0) {
-      constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
+      LOG.error(CANNOT_FIND_RECORDS_ERROR_MESSAGE);
+      payload.setEventType(notMatchedEventType.toString());
       future.complete(payload);
     }
-  }
-
-  /**
-   * Logic for processing errors.
-   */
-  private void constructError(DataImportEventPayload payload, String errorMessage) {
-    LOG.error(errorMessage);
-    payload.setEventType(notMatchedEventType.toString());
   }
 }

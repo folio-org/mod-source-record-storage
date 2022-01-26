@@ -32,7 +32,7 @@ import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FRO
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
 /**
- * Abstract handler for MARC-MARC matching/not-matching of record by specific fields
+ * Abstract handler for MARC-MARC matching/not-matching of Marc record by specific fields
  */
 public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
@@ -41,6 +42,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
+  private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
@@ -59,10 +61,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     HashMap<String, String> context = payload.getContext();
 
-    if (context == null || context.isEmpty() || isEmpty(
-      payload.getContext().get(typeConnection.getMarcType().value())) ||
-      Objects.isNull(payload.getCurrentNode()) ||
-      Objects.isNull(payload.getEventsChain())) {
+    if (context == null || context.isEmpty() || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
       LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
       future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
@@ -77,6 +76,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         .onSuccess(recordCollection -> processSucceededResult(recordCollection, payload, future))
         .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
     } else {
+      constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail.toString()));
       future.complete(payload);
     }
     return future;
@@ -155,13 +155,17 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       payload.getContext().put(getMatchedMarcKey(), Json.encode(collection.getRecords().get(0)));
       future.complete(payload);
     } else if (collection.getTotalRecords() > 1) {
-      LOG.error(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
-      payload.setEventType(notMatchedEventType.toString());
+      constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
       future.completeExceptionally(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
     } else if (collection.getTotalRecords() == 0) {
-      LOG.error(CANNOT_FIND_RECORDS_ERROR_MESSAGE);
-      payload.setEventType(notMatchedEventType.toString());
+      constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
       future.complete(payload);
     }
+  }
+
+  /* Logic for processing errors */
+  private void constructError(DataImportEventPayload payload, String errorMessage) {
+    LOG.error(errorMessage);
+    payload.setEventType(notMatchedEventType.toString());
   }
 }

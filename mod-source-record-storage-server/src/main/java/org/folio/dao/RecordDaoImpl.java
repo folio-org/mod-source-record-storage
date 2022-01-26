@@ -126,8 +126,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
-  public static final String CONTROL_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}'";
-  public static final String DATA_FIELD_PATTERN = "\"{partitionName}\".\"value\" = '{value}' and \"{partitionName}\".\"ind1\" = '{ind1}' and \"{partitionName}\".\"ind2\" = '{ind2}' and \"{partitionName}\".\"subfield_no\" = '{subfield}'";
+  public static final String CONTROL_FIELD_PATTERN = "\"{partition}\".\"value\" = '{value}'";
+  public static final String DATA_FIELD_PATTERN = "\"{partition}\".\"value\" = '{value}' and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
 
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -211,16 +211,16 @@ public class RecordDaoImpl implements RecordDao {
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
-  private Condition getMatchedFieldCondition(MatchField matchedField, String partitionName) {
+  private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
     if (matchedField.isControlField()) {
       Map<String, String> params = new HashMap<>();
-      params.put("partitionName", partitionName);
+      params.put("partition", partition);
       params.put("value", matchedField.getValue());
       String sql = StrSubstitutor.replace(CONTROL_FIELD_PATTERN, params, "{", "}");
       return condition(sql);
     } else {
       Map<String, String> params = new HashMap<>();
-      params.put("partitionName", partitionName);
+      params.put("partition", partition);
       params.put("value", matchedField.getValue());
       params.put("ind1", matchedField.getInd1().isEmpty() || matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
       params.put("ind2", matchedField.getInd2().isEmpty() || matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());

@@ -126,8 +126,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
-  public static final String CONTROL_FIELD_PATTERN = "\"{partition}\".\"value\" = '{value}'";
-  public static final String DATA_FIELD_PATTERN = "\"{partition}\".\"value\" = '{value}' and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}' and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
 
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -216,7 +216,7 @@ public class RecordDaoImpl implements RecordDao {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
       params.put("value", matchedField.getValue());
-      String sql = StrSubstitutor.replace(CONTROL_FIELD_PATTERN, params, "{", "}");
+      String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
       Map<String, String> params = new HashMap<>();
@@ -225,7 +225,7 @@ public class RecordDaoImpl implements RecordDao {
       params.put("ind1", matchedField.getInd1().isEmpty() || matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
       params.put("ind2", matchedField.getInd2().isEmpty() || matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
       params.put("subfield", matchedField.getSubfield());
-      String sql = StrSubstitutor.replace(DATA_FIELD_PATTERN, params, "{", "}");
+      String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     }
   }

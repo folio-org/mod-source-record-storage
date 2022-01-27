@@ -188,11 +188,13 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordCollection> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(typeConnection.getDbType().getTableName());
+
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
     Condition whereCondition = filterRecordByType(typeConnection.getRecordType().value())
       .and(filterRecordByState(Record.State.ACTUAL.value()))
       .and(typeConnection.getDbType().getRecordImplicitCondition())
       .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()));
+
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)

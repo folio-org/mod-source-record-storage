@@ -42,7 +42,7 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
-import org.folio.services.handlers.match.MatchField;
+import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;

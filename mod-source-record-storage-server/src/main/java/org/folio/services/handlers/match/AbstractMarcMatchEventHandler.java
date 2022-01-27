@@ -9,6 +9,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
 import org.folio.dao.RecordDao;
+import org.folio.dao.util.MatchField;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.exceptions.MatchingException;

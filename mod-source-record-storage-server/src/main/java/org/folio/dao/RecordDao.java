@@ -17,7 +17,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.RecordSearchParameters;
-import org.folio.services.handlers.match.MatchField;
+import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;

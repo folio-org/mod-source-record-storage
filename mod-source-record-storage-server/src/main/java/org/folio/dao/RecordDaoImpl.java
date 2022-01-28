@@ -491,7 +491,7 @@ public class RecordDaoImpl implements RecordDao {
 
         recordsLoadingErrors.forEach(error -> {
           if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
-            throw new DuplicateEventException("Error when handling duplicate event");
+            throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
           }
           LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
           LOG.debug("Failed to execute statement from batch: {}", error.query());
@@ -534,7 +534,10 @@ public class RecordDaoImpl implements RecordDao {
           .withTotalRecords(recordCollection.getRecords().size())
           .withErrorMessages(errorMessages));
       });
-    } catch (SQLException | DataAccessException | DuplicateEventException e) {
+    } catch (DuplicateEventException e) {
+      LOG.info("Skipped saving records due to duplicate event: {}", e.getMessage());
+      promise.fail(e);
+    } catch (SQLException | DataAccessException e) {
       LOG.error("Failed to save records", e);
       promise.fail(e);
     }

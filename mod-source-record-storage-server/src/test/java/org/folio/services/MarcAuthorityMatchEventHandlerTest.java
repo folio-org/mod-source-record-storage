@@ -132,7 +132,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldMatchBy999sField(TestContext context) {
+  public void shouldMatchBy999ffsField(TestContext context) {
     Async async = context.async();
 
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -231,7 +231,57 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldNotMatchBy999sField(TestContext context) {
+  public void shouldMatchBy010aField(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+          ))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldNotMatchBy999ffsField(TestContext context) {
     Async async = context.async();
 
     HashMap<String, String> payloadContext = new HashMap<>();

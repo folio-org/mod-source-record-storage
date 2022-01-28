@@ -13,14 +13,15 @@ import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.MatchField;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -42,7 +43,6 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
-import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -197,12 +197,12 @@ public class RecordDaoImpl implements RecordDao {
       .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
       .where(
         filterRecordByType(typeConnection.getRecordType().value())
-        .and(filterRecordByState(Record.State.ACTUAL.value()))
-        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
       )
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
-    )).map(queryResult -> toListOfRecordsWithLimitCheck(queryResult, limit));
+    )).map(queryResult -> queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
@@ -1050,19 +1050,6 @@ public class RecordDaoImpl implements RecordDao {
     }
     else {
       return toRecordCollection(result);
-    }
-  }
-
-  /*
-   * Code to avoid the occurrence of records when limit equals to zero
-   */
-  private List<Record> toListOfRecordsWithLimitCheck(QueryResult result, int limit) {
-    // Validation to ignore records insertion to the returned List of records when limit equals zero
-    if (limit == 0) {
-      return new ArrayList<>();
-    }
-    else {
-      return result.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList());
     }
   }
 

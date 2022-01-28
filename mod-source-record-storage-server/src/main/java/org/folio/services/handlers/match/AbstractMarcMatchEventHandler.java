@@ -38,7 +38,6 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
@@ -109,7 +108,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   /* Searches for {@link MatchField} in a separate record properties considering it is matched_id, external_id, or external_hrid */
   private Future<RecordCollection> processDefaultMatchField(MatchField matchField, String tenantId) {
-    Condition condition = filterRecordByType(typeConnection.getRecordType().value()).and(filterRecordByState(Record.State.ACTUAL.value()));
+    Condition condition = filterRecordByState(Record.State.ACTUAL.value());
     if (matchField.isMatchedId()) {
       condition = condition.and(filterRecordByRecordId(matchField.getValue()));
     } else if (matchField.isExternalId()) {

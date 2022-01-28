@@ -198,7 +198,6 @@ public class RecordDaoImpl implements RecordDao {
       .where(
         filterRecordByType(typeConnection.getRecordType().value())
         .and(filterRecordByState(Record.State.ACTUAL.value()))
-        .and(typeConnection.getDbType().getRecordImplicitCondition())
         .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
       )
       .offset(offset)

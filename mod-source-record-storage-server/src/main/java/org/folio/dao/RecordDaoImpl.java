@@ -216,8 +216,8 @@ public class RecordDaoImpl implements RecordDao {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
       params.put("value", matchedField.getValue());
-      params.put("ind1", matchedField.getInd1().isEmpty() || matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
-      params.put("ind2", matchedField.getInd2().isEmpty() || matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
+      params.put("ind1", matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
+      params.put("ind2", matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
       params.put("subfield", matchedField.getSubfield());
       String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);

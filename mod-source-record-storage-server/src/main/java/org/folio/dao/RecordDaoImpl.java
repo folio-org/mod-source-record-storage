@@ -185,32 +185,25 @@ public class RecordDaoImpl implements RecordDao {
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
-  public Future<RecordCollection> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
-    Name cte = name(CTE);
+  public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
-
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
-    Condition whereCondition = filterRecordByType(typeConnection.getRecordType().value())
-      .and(filterRecordByState(Record.State.ACTUAL.value()))
-      .and(typeConnection.getDbType().getRecordImplicitCondition())
-      .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()));
-
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
-        .from(RECORDS_LB)
-        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-        .where(whereCondition)))
-      .select(getAllRecordFieldsWithCount(prt))
+      .select(getAllRecordFields(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
       .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(whereCondition)
+      .where(
+        filterRecordByType(typeConnection.getRecordType().value())
+        .and(filterRecordByState(Record.State.ACTUAL.value()))
+        .and(typeConnection.getDbType().getRecordImplicitCondition())
+        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+      )
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
-    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+    )).map(queryResult -> toListOfRecordsWithLimitCheck(queryResult, limit));
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
@@ -1055,6 +1048,19 @@ public class RecordDaoImpl implements RecordDao {
     }
     else {
       return toRecordCollection(result);
+    }
+  }
+
+  /*
+   * Code to avoid the occurrence of records when limit equals to zero
+   */
+  private List<Record> toListOfRecordsWithLimitCheck(QueryResult result, int limit) {
+    // Validation to ignore records insertion to the returned List of records when limit equals zero
+    if (limit == 0) {
+      return new ArrayList<>();
+    }
+    else {
+      return result.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList());
     }
   }
 

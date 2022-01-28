@@ -56,7 +56,7 @@ public interface RecordDao {
    * @param tenantId    tenant id
    * @return  {@link Future} of {@link RecordCollection}
    */
-  Future<RecordCollection> getMatchedRecords(MatchField matchField, TypeConnection recordType, int offset, int limit, String tenantId);
+  Future<List<Record>> getMatchedRecords(MatchField matchField, TypeConnection recordType, int offset, int limit, String tenantId);
 
   /**
    * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}

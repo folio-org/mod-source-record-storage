@@ -1,5 +1,6 @@
 package org.folio.services.handlers.match;
 
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
@@ -19,9 +20,12 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.util.TypeConnection;
+import org.jooq.Condition;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +34,11 @@ import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 
@@ -37,9 +46,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
  * Abstract handler for MARC-MARC matching/not-matching of Marc record by specific fields
  */
 public abstract class AbstractMarcMatchEventHandler implements EventHandler {
-
   private static final Logger LOG = LogManager.getLogger();
-
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
@@ -73,11 +80,17 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     MatchDetail matchDetail = retrieveMatchDetail(payload);
     if (isValidMatchDetail(matchDetail)) {
       MatchField matchField = prepareMatchField(record, matchDetail);
-      recordDao.getMatchedRecords(matchField, typeConnection, 0, 2, payload.getTenant())
-        .onSuccess(recordCollection -> processSucceededResult(recordCollection, payload, future))
-        .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
+      if (matchField.isDefaultField()) {
+        processDefaultMatchField(matchField, payload.getTenant())
+          .onSuccess(recordCollection -> processSucceededResult(recordCollection.getRecords(), payload, future))
+          .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
+      } else {
+        recordDao.getMatchedRecords(matchField, typeConnection, 0, 2, payload.getTenant())
+          .onSuccess(recordList -> processSucceededResult(recordList, payload, future))
+          .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
+      }
     } else {
-      constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail.toString()));
+      constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail));
       future.complete(payload);
     }
     return future;
@@ -92,6 +105,19 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     String subfield = matchDetailFields.get(3).getValue();
     String value = retrieveValueFromMarcRecord(record, matchDetail.getIncomingMatchExpression());
     return new MatchField(field, ind1, ind2, subfield, value);
+  }
+
+  /* Searches for {@link MatchField} in a separate record properties considering it is matched_id, external_id, or external_hrid */
+  private Future<RecordCollection> processDefaultMatchField(MatchField matchField, String tenantId) {
+    Condition condition = filterRecordByType(typeConnection.getRecordType().value()).and(filterRecordByState(Record.State.ACTUAL.value()));
+    if (matchField.isMatchedId()) {
+      condition = condition.and(filterRecordByRecordId(matchField.getValue()));
+    } else if (matchField.isExternalId()) {
+      condition = condition.and(filterRecordByExternalId(matchField.getValue()));
+    } else if (matchField.isExternalHrid()) {
+      condition = condition.and(filterRecordByExternalHrid(matchField.getValue()));
+    }
+    return recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
   }
 
   /* Verifies a correctness of the given {@link MatchDetail} */
@@ -150,15 +176,15 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   /**
    * Prepares {@link DataImportEventPayload} for the further processing based on the number of retrieved records in {@link RecordCollection}
    */
-  private void processSucceededResult(RecordCollection collection, DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
-    if (collection.getTotalRecords() == 1) {
+  private void processSucceededResult(List<Record> records, DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
+    if (records.size() == 1) {
       payload.setEventType(matchedEventType.toString());
-      payload.getContext().put(getMatchedMarcKey(), Json.encode(collection.getRecords().get(0)));
+      payload.getContext().put(getMatchedMarcKey(), Json.encode(records.get(0)));
       future.complete(payload);
-    } else if (collection.getTotalRecords() > 1) {
+    } else if (records.size() > 1) {
       constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
       future.completeExceptionally(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
-    } else if (collection.getTotalRecords() == 0) {
+    } else {
       constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
       future.complete(payload);
     }

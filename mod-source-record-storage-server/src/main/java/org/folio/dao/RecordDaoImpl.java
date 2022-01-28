@@ -9,17 +9,19 @@ import io.vertx.core.Promise;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.MatchField;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -41,6 +43,7 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
@@ -86,6 +89,8 @@ import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
@@ -96,6 +101,7 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
@@ -118,8 +124,11 @@ public class RecordDaoImpl implements RecordDao {
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
-
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}' and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
 
@@ -174,6 +183,45 @@ public class RecordDaoImpl implements RecordDao {
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+  }
+
+  public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
+    Name prt = name(typeConnection.getDbType().getTableName());
+    Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .select(getAllRecordFields(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+      .where(
+        filterRecordByType(typeConnection.getRecordType().value())
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+      )
+      .offset(offset)
+      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    )).map(queryResult -> queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
+  }
+
+  private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
+    if (matchedField.isControlField()) {
+      Map<String, String> params = new HashMap<>();
+      params.put("partition", partition);
+      params.put("value", matchedField.getValue());
+      String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
+      return condition(sql);
+    } else {
+      Map<String, String> params = new HashMap<>();
+      params.put("partition", partition);
+      params.put("value", matchedField.getValue());
+      params.put("ind1", matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
+      params.put("ind2", matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
+      params.put("subfield", matchedField.getSubfield());
+      String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
+      return condition(sql);
+    }
   }
 
   @Override

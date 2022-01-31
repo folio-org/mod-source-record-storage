@@ -283,11 +283,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   private void sendReplyEvent(DataImportEventPayload dataImportEventPayload, Record record) {
-    var key = getEventKey();
-    var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
-    String replyEventPayload = prepareReplyEventPayload(dataImportEventPayload, record);
-    sendEventToKafka(dataImportEventPayload.getTenant(), replyEventPayload, replyEventType().value(),
-      kafkaHeaders, kafkaConfig, key);
+    var replyEventType = replyEventType();
+    if (replyEventType != null) {
+      var key = getEventKey();
+      var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
+      String replyEventPayload = prepareReplyEventPayload(dataImportEventPayload, record);
+      sendEventToKafka(dataImportEventPayload.getTenant(), replyEventPayload, replyEventType.value(),
+        kafkaHeaders, kafkaConfig, key);
+    }
   }
 
 }

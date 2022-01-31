@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
 import org.folio.processing.events.EventManager;
 import org.folio.rest.resource.interfaces.InitAPI;
+import org.folio.services.handlers.AuthorityPostProcessingEventHandler;
 import org.folio.services.handlers.HoldingsPostProcessingEventHandler;
 import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.handlers.match.MarcAuthorityMatchEventHandler;
@@ -38,6 +39,9 @@ public class InitAPIImpl implements InitAPI {
 
   @Autowired
   private HoldingsPostProcessingEventHandler holdingsPostProcessingEventHandler;
+
+  @Autowired
+  private AuthorityPostProcessingEventHandler authorityPostProcessingEventHandler;
 
   @Autowired
   private MarcBibUpdateModifyEventHandler marcBibUpdateModifyEventHandler;
@@ -82,6 +86,7 @@ public class InitAPIImpl implements InitAPI {
   private void registerEventHandlers() {
     EventManager.registerEventHandler(instancePostProcessingEventHandler);
     EventManager.registerEventHandler(holdingsPostProcessingEventHandler);
+    EventManager.registerEventHandler(authorityPostProcessingEventHandler);
     EventManager.registerEventHandler(marcBibUpdateModifyEventHandler);
     EventManager.registerEventHandler(marcAuthorityUpdateModifyEventHandler);
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);

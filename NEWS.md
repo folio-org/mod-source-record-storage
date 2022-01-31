@@ -11,6 +11,7 @@
 * [MODSOURCE-429](https://issues.folio.org/browse/MODSOURCE-429) Authority update: Implement match handler
 * [MODSOURCE-434](https://issues.folio.org/browse/MODSOURCE-434) Remove Kafka cache from QuickMarc handlers
 * [MODDATAIMP-623](https://issues.folio.org/browse/MODDATAIMP-623) Remove Kafka cache initialization and Maven dependency
+* [MODSOURCE-446](https://issues.folio.org/browse/MODSOURCE-446) Extend MARC-MARC matching to 9xx and 0xx fields
 
 ## 2021-xx-xx v5.2.1-SNAPSHOT
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar

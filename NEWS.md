@@ -1,3 +1,6 @@
+## 2022-02-xx v5.2.8
+* [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import
+
 ## 2022-01-13 v5.2.7
 * [MODSOURCE-444](https://issues.folio.org/browse/MODSOURCE-444) Fix schema migration error
 

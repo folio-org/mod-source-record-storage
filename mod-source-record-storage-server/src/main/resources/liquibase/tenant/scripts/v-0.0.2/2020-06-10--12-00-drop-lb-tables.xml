@@ -2,29 +2,29 @@
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
   <changeSet id="2020-06-10--12-00-drop-error-records-lb-table" author="WilliamWelling">
     <dropTable
-      schemaName="${database.defaultSchemaName}"  
+      schemaName="${database.defaultSchemaName}"
       tableName="error_records_lb"/>
   </changeSet>
 
   <changeSet id="2020-06-10--12-01-drop-marc-records-lb-table" author="WilliamWelling">
     <dropTable
-      schemaName="${database.defaultSchemaName}"  
+      schemaName="${database.defaultSchemaName}"
       tableName="marc_records_lb"/>
   </changeSet>
 
   <changeSet id="2020-06-10--12-02-drop-raw-records-lb-table" author="WilliamWelling">
     <dropTable
-      schemaName="${database.defaultSchemaName}"  
+      schemaName="${database.defaultSchemaName}"
       tableName="raw_records_lb"/>
   </changeSet>
 
   <changeSet id="2020-06-10--12-03-drop-records-lb-table" author="WilliamWelling">
     <dropTable
-      schemaName="${database.defaultSchemaName}"  
+      schemaName="${database.defaultSchemaName}"
       tableName="records_lb"/>
   </changeSet>
 
@@ -54,7 +54,7 @@
 
   <changeSet id="2020-06-10--12-08-drop-snapshots-lb-table" author="WilliamWelling">
     <dropTable
-      schemaName="${database.defaultSchemaName}"  
+      schemaName="${database.defaultSchemaName}"
       tableName="snapshots_lb"/>
   </changeSet>
 

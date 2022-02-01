@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED;
@@ -42,20 +44,24 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
 
   private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
 
-  private final List<String> events = Arrays.asList(DI_SRS_MARC_BIB_RECORD_CREATED.value(),
+  private final List<String> events = Arrays.asList(
+    DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_HOLDING_CREATED.value(),
+    DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_INSTANCE_CREATED.value(),
+    DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_INSTANCE_UPDATED.value(),
+    DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_ITEM_CREATED.value(),
+    DI_MARC_FOR_UPDATE_RECEIVED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_CREATED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(),
-    DI_INVENTORY_INSTANCE_CREATED.value(),
-    DI_INVENTORY_INSTANCE_UPDATED.value(),
-    DI_INVENTORY_HOLDING_CREATED.value(),
-    DI_INVENTORY_ITEM_CREATED.value(),
+    DI_SRS_MARC_BIB_RECORD_CREATED.value(),
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(),
-    DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
     DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
-    DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value(),
-    DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(),
-    DI_MARC_FOR_UPDATE_RECEIVED.value(),
-    DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING.value());
+    DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value()
+  );
 
   @Autowired
   @Qualifier("DataImportKafkaHandler")

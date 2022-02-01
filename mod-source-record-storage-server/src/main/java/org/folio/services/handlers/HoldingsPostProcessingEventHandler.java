@@ -3,6 +3,8 @@ package org.folio.services.handlers;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
@@ -51,6 +53,16 @@ public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEv
   @Override
   protected String getExternalHrid(Record record) {
     return record.getExternalIdsHolder().getHoldingsHrid();
+  }
+
+  @Override
+  protected boolean isHridFillingNeeded() {
+    return true;
+  }
+
+  @Override
+  protected String extractHrid(Record record, JsonObject externalEntity) {
+    return externalEntity.getString(HRID_FIELD);
   }
 
 }

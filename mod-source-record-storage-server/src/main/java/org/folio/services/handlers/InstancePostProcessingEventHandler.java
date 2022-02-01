@@ -8,6 +8,8 @@ import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,16 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   @Override
   protected String getExternalHrid(Record record) {
     return record.getExternalIdsHolder().getInstanceHrid();
+  }
+
+  @Override
+  protected boolean isHridFillingNeeded() {
+    return true;
+  }
+
+  @Override
+  protected String extractHrid(Record record, JsonObject externalEntity) {
+    return externalEntity.getString(HRID_FIELD);
   }
 
   // MODSOURMAN-384: sent event to log when record updated implicitly only for INSTANCE_UPDATED case

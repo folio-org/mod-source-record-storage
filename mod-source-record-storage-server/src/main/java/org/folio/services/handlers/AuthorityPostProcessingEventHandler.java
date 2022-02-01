@@ -1,5 +1,7 @@
 package org.folio.services.handlers;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED;
@@ -94,7 +96,7 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
 
   private boolean isLogNeeded(Record record, String eventType) {
     return record.getGeneration() != null
-      && (DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)
-      || DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType));
+      && (DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)
+      || DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType));
   }
 }

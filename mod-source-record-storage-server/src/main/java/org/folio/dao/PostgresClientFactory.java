@@ -10,7 +10,9 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
+import javax.sql.DataSource;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
@@ -18,7 +20,6 @@ import org.folio.rest.tools.utils.ModuleName;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
-import org.postgresql.PGProperty;
 import org.postgresql.ds.PGPoolingDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -53,7 +54,7 @@ public class PostgresClientFactory {
 
   private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
 
-  private static final Map<String, PGPoolingDataSource> DATA_SOURCE_CACHE = new HashMap<>();
+  private static final Map<String, DataSource> DATA_SOURCE_CACHE = new HashMap<>();
 
   private static JsonObject postgresConfig;
 
@@ -186,24 +187,28 @@ public class PostgresClientFactory {
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
   }
 
-  private static PGPoolingDataSource getDataSource(String tenantId) {
+  private static DataSource getDataSource(String tenantId) {
     if (DATA_SOURCE_CACHE.containsKey(tenantId)) {
       LOG.debug("Using existing data source for tenant {}", tenantId);
       return DATA_SOURCE_CACHE.get(tenantId);
     }
     LOG.info("Creating new data source for tenant {}", tenantId);
-    PGPoolingDataSource source = new PGPoolingDataSource();
-    source.setDataSourceName(format("%s-data-source", tenantId));
-    source.setMaxConnections(POOL_SIZE);
-    source.setServerName(postgresConfig.getString(HOST));
-    source.setPortNumber(postgresConfig.getInteger(PORT, 5432));
-    source.setDatabaseName(postgresConfig.getString(DATABASE));
-    source.setUser(postgresConfig.getString(USERNAME));
-    source.setPassword(postgresConfig.getString(PASSWORD));
-    source.setConnectTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000));
-    source.setProperty(PGProperty.CURRENT_SCHEMA, convertToPsqlStandard(tenantId));
-    DATA_SOURCE_CACHE.put(tenantId, source);
-    return source;
+    HikariDataSource dataSource = new HikariDataSource();
+    dataSource.setPoolName(format("%s-data-source", tenantId));
+    dataSource.setMaximumPoolSize(POOL_SIZE);
+    dataSource.setMinimumIdle(0);
+    dataSource.setJdbcUrl(getJdbcUrl());
+    dataSource.setUsername(postgresConfig.getString(USERNAME));
+    dataSource.setPassword(postgresConfig.getString(PASSWORD));
+    dataSource.setIdleTimeout(postgresConfig.getLong(IDLE_TIMEOUT, 60000L));
+    dataSource.setSchema(convertToPsqlStandard(tenantId));
+    DATA_SOURCE_CACHE.put(tenantId, dataSource);
+    return dataSource;
+  }
+
+  private static String getJdbcUrl() {
+    return String.format("jdbc:postgresql://%s:%s/%s",
+      postgresConfig.getString(HOST), postgresConfig.getInteger(PORT), postgresConfig.getString(DATABASE));
   }
 
   // using RMB convention driven tenant to schema name

@@ -4,12 +4,14 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTA
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
 import java.util.List;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,7 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.TypeConnection;
 
 @Component
@@ -71,6 +74,16 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
   @Override
   protected String getExternalHrid(Record record) {
     return record.getExternalIdsHolder().getAuthorityHrid();
+  }
+
+  @Override
+  protected boolean isHridFillingNeeded() {
+    return false;
+  }
+
+  @Override
+  protected String extractHrid(Record record, JsonObject externalEntity) {
+    return AdditionalFieldsUtil.getValueFromControlledField(record, HR_ID_FROM_FIELD);
   }
 
   private void sendLogEvent(DataImportEventPayload payload, DataImportEventTypes logEventType, String key,

@@ -9,7 +9,6 @@ import static org.folio.rest.jaxrs.model.EntityType.AUTHORITY;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import java.io.IOException;
@@ -74,10 +73,9 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   public void shouldSetAuthorityIdToRecord(TestContext context) {
     Async async = context.async();
 
-    String expectedInstanceId = UUID.randomUUID().toString();
-    String expectedHrId = UUID.randomUUID().toString();
+    String expectedAuthorityId = UUID.randomUUID().toString();
 
-    JsonObject authority = createExternalEntity(expectedInstanceId, expectedHrId);
+    JsonObject authority = createExternalEntity(expectedAuthorityId, null);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(AUTHORITY.value(), authority.encode());
@@ -107,7 +105,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         Record updatedRecord = getAr.result().get();
 
         context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedInstanceId, updatedRecord.getExternalIdsHolder().getInstanceId());
+        context.assertEquals(expectedAuthorityId, updatedRecord.getExternalIdsHolder().getAuthorityId());
 
         context.assertNotNull(updatedRecord.getParsedRecord());
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
@@ -116,8 +114,8 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = getInventoryId(fields);
-        context.assertEquals(expectedInstanceId, actualInstanceId);
+        String actualAuthorityId = getInventoryId(fields);
+        context.assertEquals(expectedAuthorityId, actualAuthorityId);
 
         String recordForUdateId = UUID.randomUUID().toString();
         Record recordForUpdate = JsonObject.mapFrom(record).mapTo(Record.class)
@@ -153,7 +151,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
             Record rec = recordAr.result().get();
             context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
             context.assertNotNull(rec.getExternalIdsHolder());
-            context.assertTrue(expectedInstanceId.equals(rec.getExternalIdsHolder().getInstanceId()));
+            context.assertTrue(expectedAuthorityId.equals(rec.getExternalIdsHolder().getAuthorityId()));
             context.assertNotEquals(rec.getId(), record.getId());
             async.complete();
           });
@@ -180,14 +178,13 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC_BIB)
+      .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    String expectedInstanceId = UUID.randomUUID().toString();
-    String expectedHrId = UUID.randomUUID().toString();
+    String expectedAuthorityId = UUID.randomUUID().toString();
 
-    JsonObject authority = createExternalEntity(expectedInstanceId, expectedHrId);
+    JsonObject authority = createExternalEntity(expectedAuthorityId, null);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(AUTHORITY.value(), authority.encode());
@@ -211,7 +208,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         Record savedRecord = getAr.result().get();
 
         context.assertNotNull(savedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedInstanceId, savedRecord.getExternalIdsHolder().getInstanceId());
+        context.assertEquals(expectedAuthorityId, savedRecord.getExternalIdsHolder().getAuthorityId());
 
         context.assertNotNull(savedRecord.getParsedRecord());
         context.assertNotNull(savedRecord.getParsedRecord().getContent());
@@ -220,26 +217,25 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = getInventoryId(fields);
-        context.assertEquals(expectedInstanceId, actualInstanceId);
+        String actualAuthorityId = getInventoryId(fields);
+        context.assertEquals(expectedAuthorityId, actualAuthorityId);
         async.complete();
       });
     });
   }
 
   @Test
-  public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
+  public void shouldSetAuthorityIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
-    String expectedInstanceId = UUID.randomUUID().toString();
-    var expectedHrid = "in0002";
+    String expectedAuthorityId = UUID.randomUUID().toString();
 
     record.withParsedRecord(new ParsedRecord()
         .withId(recordId)
         .withContent(PARSED_CONTENT_WITH_999_FIELD))
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001").withInstanceId(expectedInstanceId));
+      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(expectedAuthorityId));
 
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(AUTHORITY.value(), new JsonObject().put("id", expectedInstanceId).put("hrid", expectedHrid).encode());
+    payloadContext.put(AUTHORITY.value(), new JsonObject().put("id", expectedAuthorityId).encode());
     payloadContext.put(MARC_AUTHORITY.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload =
@@ -264,7 +260,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         Record updatedRecord = getAr.result().get();
 
         context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertTrue(expectedInstanceId.equals(updatedRecord.getExternalIdsHolder().getInstanceId()));
+        context.assertTrue(expectedAuthorityId.equals(updatedRecord.getExternalIdsHolder().getAuthorityId()));
 
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
@@ -272,10 +268,8 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         JsonArray fields = parsedContent.getJsonArray("fields");
         context.assertTrue(!fields.isEmpty());
 
-        String actualInstanceId = getInventoryId(fields);
-        context.assertEquals(expectedInstanceId, actualInstanceId);
-        var actualInventoryHrid = getInventoryHrid(fields);
-        context.assertEquals(expectedHrid, actualInventoryHrid);
+        String actualAuthorityId = getInventoryId(fields);
+        context.assertEquals(expectedAuthorityId, actualAuthorityId);
         async.complete();
       });
     });
@@ -302,14 +296,13 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC_BIB)
+      .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    String expectedInstanceId = UUID.randomUUID().toString();
-    String expectedHrId = UUID.randomUUID().toString();
+    String expectedAuthorityId = UUID.randomUUID().toString();
 
-    JsonObject authority = createExternalEntity(expectedInstanceId, expectedHrId);
+    JsonObject authority = createExternalEntity(expectedAuthorityId, null);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(AUTHORITY.value(), authority.encode());
@@ -368,14 +361,13 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
-      .withRecordType(MARC_BIB)
+      .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
 
-    String expectedInstanceId = UUID.randomUUID().toString();
-    String expectedHrId = UUID.randomUUID().toString();
+    String expectedAuthorityId = UUID.randomUUID().toString();
 
-    JsonObject authority = createExternalEntity(expectedInstanceId, expectedHrId);
+    JsonObject authority = createExternalEntity(expectedAuthorityId, null);
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(AUTHORITY.value(), authority.encode());
@@ -409,60 +401,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   }
 
   @Test
-  public void shouldSetInstanceHridToParsedRecordWhenContentHasNotField001(TestContext context) {
-    Async async = context.async();
-
-    record.withParsedRecord(new ParsedRecord()
-      .withId(recordId)
-      .withContent(PARSED_CONTENT_WITHOUT_001_FIELD));
-
-    String expectedInstanceId = UUID.randomUUID().toString();
-    String expectedInstanceHrid = UUID.randomUUID().toString();
-
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(AUTHORITY.value(),
-      createExternalEntity(expectedInstanceId, expectedInstanceHrid).encode());
-    payloadContext.put(MARC_AUTHORITY.value(), Json.encode(record));
-
-    DataImportEventPayload dataImportEventPayload =
-      createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
-
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
-      .onFailure(future::completeExceptionally)
-      .onSuccess(rec -> handler.handle(dataImportEventPayload)
-        .thenApply(future::complete)
-        .exceptionally(future::completeExceptionally));
-
-    future.whenComplete((payload, throwable) -> {
-      if (throwable != null) {
-        context.fail(throwable);
-      }
-      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
-        if (getAr.failed()) {
-          context.fail(getAr.cause());
-        }
-        context.assertTrue(getAr.result().isPresent());
-        Record updatedRecord = getAr.result().get();
-
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertTrue(expectedInstanceId.equals(updatedRecord.getExternalIdsHolder().getInstanceId()));
-
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
-
-        JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
-
-        String actualInstanceHrid = getInventoryHrid(fields);
-        context.assertEquals(expectedInstanceHrid, actualInstanceHrid);
-        async.complete();
-      });
-    });
-  }
-
-  @Test
-  public void shouldReturnFailedFutureWhenInstanceOrRecordDoesNotExist(TestContext context) {
+  public void shouldReturnFailedFutureWhenAuthorityOrRecordDoesNotExist(TestContext context) {
     Async async = context.async();
     HashMap<String, String> payloadContext = new HashMap<>();
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
@@ -487,9 +426,9 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withId(record.getId())
       .withContent("{\"leader\":\"01240cas a2200397\"}"));
 
-    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedAuthorityId = UUID.randomUUID().toString();
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(AUTHORITY.value(), new JsonObject().put("id", expectedInstanceId).encode());
+    payloadContext.put(AUTHORITY.value(), new JsonObject().put("id", expectedAuthorityId).encode());
     payloadContext.put(MARC_AUTHORITY.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
@@ -538,7 +477,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   }
 
   @Test
-  public void shouldReturnFalseWhenRecordTypeIsNotInstance() {
+  public void shouldReturnFalseWhenRecordTypeIsNotAuthority() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create authority")

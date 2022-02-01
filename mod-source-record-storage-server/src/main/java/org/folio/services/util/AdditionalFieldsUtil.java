@@ -377,6 +377,8 @@ public final class AdditionalFieldsUtil {
       return isValidIdAndHrid(id, hrid, externalIdsHolder.getInstanceId(), externalIdsHolder.getInstanceHrid());
     } else if (Record.RecordType.MARC_HOLDING == recordType) {
       return isValidIdAndHrid(id, hrid, externalIdsHolder.getHoldingsId(), externalIdsHolder.getHoldingsHrid());
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return isValidId(id, externalIdsHolder.getAuthorityId());
     } else {
       return false;
     }
@@ -384,6 +386,10 @@ public final class AdditionalFieldsUtil {
 
   private static boolean isValidIdAndHrid(String id, String hrid, String externalId, String externalHrid) {
     return (isNotEmpty(externalId) && isNotEmpty(externalHrid)) && (id.equals(externalId) && !hrid.equals(externalHrid));
+  }
+
+  private static boolean isValidId(String id, String externalId) {
+    return isNotEmpty(externalId) && id.equals(externalId);
   }
 
   /**

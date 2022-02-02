@@ -200,7 +200,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.2.18</version>
+      <version>42.2.25</version>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
@@ -226,7 +226,7 @@
     <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
-    <postgres.version>42.2.18</postgres.version>
+    <postgres.version>42.2.25</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.20</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>

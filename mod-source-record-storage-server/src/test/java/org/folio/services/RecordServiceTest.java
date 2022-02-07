@@ -1046,17 +1046,15 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void updateParsedMarcRecordsAndGetOnlyActualRecord(TestContext context, Record expected) {
     Async async = context.async();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
+      context.assertTrue(save.succeeded());
       expected.setLeaderRecordStatus("a");
-      recordService.updateRecord(expected, TENANT_ID);
-      recordService
-        .getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
+      recordService.updateRecord(expected, TENANT_ID)
+        .compose(v -> recordService.getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID))
         .onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
           }
+          context.assertTrue(get.succeeded());
           context.assertNotNull(get.result().getParsedRecord());
           context.assertEquals(expected.getParsedRecord().getFormattedContent(),
             get.result().getParsedRecord().getFormattedContent());

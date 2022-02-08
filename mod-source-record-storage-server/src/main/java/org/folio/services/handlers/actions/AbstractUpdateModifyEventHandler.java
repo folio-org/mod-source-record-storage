@@ -85,6 +85,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(changedRecord -> {
           addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
           remove003FieldIfNeeded(changedRecord, hrId);
+          changedRecord.setGeneration(1);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))

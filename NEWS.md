@@ -1,6 +1,7 @@
-## 2022-02-xx v5.2.8
+## 2022-02-09 v5.2.8
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import
 * [MODSOURCE-452](https://issues.folio.org/browse/MODSOURCE-452) Updated dependencies on liquibase-util, data-import-processing-core and folio-kafka-wrapper
+
 ## 2022-01-13 v5.2.7
 * [MODSOURCE-444](https://issues.folio.org/browse/MODSOURCE-444) Fix schema migration error
 

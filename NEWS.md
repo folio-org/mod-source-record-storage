@@ -1,4 +1,5 @@
 ## 2021-xx-xx v5.3.0-SNAPSHOT
+* [MODSOURCE-461](https://issues.folio.org/browse/MODSOURCE-461) Upgrade RMB and Vertx versions that contain fixes for the connection pool
 * [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added
 * [MODSOURCE-419](https://issues.folio.org/browse/MODSOURCE-419) Upgrade to RAML Module Builder 33.2.x
 * [MODDATAIMP-419](https://issues.folio.org/browse/MODDATAIMP-419) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"

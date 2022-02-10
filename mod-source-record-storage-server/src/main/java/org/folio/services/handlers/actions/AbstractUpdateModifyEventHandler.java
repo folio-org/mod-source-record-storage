@@ -183,6 +183,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   private void increaseGeneration(Record changedRecord) {
-    changedRecord.setGeneration(changedRecord.getGeneration() + 1);
+    var generation= changedRecord.getGeneration();
+    changedRecord.setGeneration(isNull(generation) ? 1 : ++generation);
   }
 }

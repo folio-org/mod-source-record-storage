@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_UPDATED;
@@ -8,6 +9,8 @@ import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -18,6 +21,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.TypeConnection;
 
 @Component
@@ -62,12 +66,22 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
     return record.getExternalIdsHolder().getInstanceHrid();
   }
 
+  @Override
+  protected boolean isHridFillingNeeded() {
+    return true;
+  }
+
+  @Override
+  protected String extractHrid(Record record, JsonObject externalEntity) {
+    return externalEntity.getString(HRID_FIELD);
+  }
+
   // MODSOURMAN-384: sent event to log when record updated implicitly only for INSTANCE_UPDATED case
   private void sendEventToDataImportLog(DataImportEventPayload dataImportEventPayload, Record record) {
     var key = getEventKey();
     var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
-    if (DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value().equals(dataImportEventPayload.getEventType())
-      && record.getGeneration() != null) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (isLogRequired(record, eventType)) {
       if (record.getGeneration() > 0) {
         dataImportEventPayload.setEventType(DI_LOG_SRS_MARC_BIB_RECORD_UPDATED.value());
         sendEventToKafka(dataImportEventPayload.getTenant(), Json.encode(dataImportEventPayload),
@@ -80,5 +94,11 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
           kafkaHeaders, kafkaConfig, key);
       }
     }
+  }
+
+  private boolean isLogRequired(Record record, String eventType) {
+    return record.getGeneration() != null
+      && (DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)
+      || DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType));
   }
 }

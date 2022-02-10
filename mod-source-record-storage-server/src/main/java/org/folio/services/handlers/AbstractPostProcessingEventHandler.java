@@ -1,5 +1,29 @@
 package org.folio.services.handlers;
 
+import static java.lang.String.format;
+import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
+
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -9,6 +33,8 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jooq.Condition;
+
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.RecordDao;
@@ -27,48 +53,22 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
-import org.jooq.Condition;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
+  public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
+  protected static final String HRID_FIELD = "hrid";
   private static final Logger LOG = LogManager.getLogger();
   private static final AtomicInteger indexer = new AtomicInteger();
-
   private static final String FAIL_MSG = "Failed to handle event {}";
   private static final String EVENT_HAS_NO_DATA_MSG =
     "Failed to handle event, cause event payload context does not contain needed data";
   private static final String MAPPING_PARAMS_NOT_FOUND_MSG = "MappingParameters was not found by jobExecutionId: '%s'";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
-  public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
-  private static final String HRID_FIELD = "hrid";
-
   private final RecordDao recordDao;
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
@@ -148,6 +148,10 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   protected abstract String getExternalId(Record record);
 
   protected abstract String getExternalHrid(Record record);
+
+  protected abstract boolean isHridFillingNeeded();
+
+  protected abstract String extractHrid(Record record, JsonObject externalEntity);
 
   private Record.RecordType getRecordType() {
     return typeConnection().getRecordType();
@@ -248,11 +252,13 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
 
   private void executeHridManipulation(Record record, JsonObject externalEntity) {
     var externalId = externalEntity.getString(ID_FIELD);
-    var externalHrid = externalEntity.getString(HRID_FIELD);
+    var externalHrid = extractHrid(record, externalEntity);
     var externalIdsHolder = record.getExternalIdsHolder();
     setExternalIds(externalIdsHolder, externalId, externalHrid);
     boolean isAddedField = addFieldToMarcRecord(record, TAG_999, 'i', externalId);
-    fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity));
+    if (isHridFillingNeeded()) {
+      fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity));
+    }
     if (!isAddedField) {
       throw new PostProcessingException(
         format("Failed to add externalEntity id '%s' to record with id '%s'", externalId, record.getId()));
@@ -283,11 +289,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   private void sendReplyEvent(DataImportEventPayload dataImportEventPayload, Record record) {
-    var key = getEventKey();
-    var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
-    String replyEventPayload = prepareReplyEventPayload(dataImportEventPayload, record);
-    sendEventToKafka(dataImportEventPayload.getTenant(), replyEventPayload, replyEventType().value(),
-      kafkaHeaders, kafkaConfig, key);
+    var replyEventType = replyEventType();
+    if (replyEventType != null) {
+      var key = getEventKey();
+      var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
+      String replyEventPayload = prepareReplyEventPayload(dataImportEventPayload, record);
+      sendEventToKafka(dataImportEventPayload.getTenant(), replyEventPayload, replyEventType.value(),
+        kafkaHeaders, kafkaConfig, key);
+    }
   }
 
 }

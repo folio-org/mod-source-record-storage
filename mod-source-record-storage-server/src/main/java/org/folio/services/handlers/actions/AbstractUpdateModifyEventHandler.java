@@ -85,7 +85,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(changedRecord -> {
           addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
           remove003FieldIfNeeded(changedRecord, hrId);
-          changedRecord.setGeneration(1);
+          increaseGeneration(changedRecord);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
@@ -180,5 +180,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private void preparePayload(DataImportEventPayload dataImportEventPayload) {
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
     dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0));
+  }
+
+  private void increaseGeneration(Record changedRecord) {
+    changedRecord.setGeneration(changedRecord.getGeneration() + 1);
   }
 }

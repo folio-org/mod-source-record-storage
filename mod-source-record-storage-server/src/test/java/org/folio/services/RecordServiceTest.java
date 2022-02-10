@@ -36,7 +36,6 @@ import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
@@ -430,7 +429,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  @Ignore
   public void shouldStreamEdifactSourceRecords(TestContext context) {
     streamMarcSourceRecords(context, RecordType.EDIFACT, Record.RecordType.EDIFACT);
   }
@@ -528,7 +526,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  @Ignore
   public void shouldNotGetMarcAuthoritySourceRecordById(TestContext context) {
     notGetMarcSourceRecordById(context, TestMocks.getMarcAuthorityRecord());
   }
@@ -554,19 +551,16 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  @Ignore
   public void shouldUpdateParsedMarcBibRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcBibRecord());
   }
 
   @Test
-  @Ignore
   public void shouldUpdateParsedMarcAuthorityRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcAuthorityRecord());
   }
 
   @Test
-  @Ignore
   public void shouldUpdateParsedMarcHoldingsRecordsAndGetOnlyActualRecord(TestContext context) {
     updateParsedMarcRecordsAndGetOnlyActualRecord(context, TestMocks.getMarcHoldingsRecord());
   }
@@ -1245,17 +1239,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void updateParsedMarcRecordsAndGetOnlyActualRecord(TestContext context, Record expected) {
     Async async = context.async();
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
+      context.assertTrue(save.succeeded());
       expected.setLeaderRecordStatus("a");
-      recordService.updateRecord(expected, TENANT_ID);
-      recordService
-        .getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
+      recordService.updateRecord(expected, TENANT_ID)
+        .compose(v -> recordService.getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID))
         .onComplete(get -> {
-          if (get.failed()) {
-            context.fail(get.cause());
-          }
+          context.assertTrue(get.succeeded());
           context.assertNotNull(get.result().getParsedRecord());
           context.assertEquals(expected.getParsedRecord().getFormattedContent(),
             get.result().getParsedRecord().getFormattedContent());

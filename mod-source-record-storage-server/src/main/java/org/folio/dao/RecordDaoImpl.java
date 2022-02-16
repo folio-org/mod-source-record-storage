@@ -879,12 +879,6 @@ public class RecordDaoImpl implements RecordDao {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
-  @Override
-  public Future<Boolean> deleteRecordById(String recordId, String tenantId) {
-    return getQueryExecutor(tenantId).execute(dsl -> dsl.deleteFrom(RECORDS_LB)
-        .where(RECORDS_LB.ID.eq(UUID.fromString(recordId))))
-      .map(res -> res == 1);
-  }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);

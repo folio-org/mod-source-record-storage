@@ -288,15 +288,6 @@ public interface RecordDao {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
-   * Deletes a record associated with the given recordId
-   *
-   * @param recordId            id of a record
-   * @param tenantId tenant id  tenant id
-   * @return future with true if deleted successfully
-   */
-  Future<Boolean> deleteRecordById(String recordId, String tenantId);
-
-  /**
    * Creates new Record and updates status of the "old" one,
    * no data is overwritten as a result of update. Creates
    * new snapshot.

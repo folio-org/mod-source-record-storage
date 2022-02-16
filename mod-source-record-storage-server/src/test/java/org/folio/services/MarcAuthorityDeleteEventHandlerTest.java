@@ -7,18 +7,16 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
-import org.folio.MatchProfile;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
-import org.folio.services.util.TypeConnection;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,12 +30,8 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
@@ -62,7 +56,9 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
       .withMatchedId(recordId)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord);
+      .withParsedRecord(parsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityId(UUID.randomUUID().toString()));
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .onComplete(testContext.asyncAssertSuccess());
   }
@@ -94,7 +90,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           context.assertNull(throwable);
           context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), eventPayload.getEventType());
           context.assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
-          context.assertEquals(record.getId(), eventPayload.getContext().get("MARC_AUTHORITY_ID"));
+          context.assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("MARC_AUTHORITY_ID"));
           recordService.getRecordById(record.getId(), TENANT_ID)
             .onSuccess(optionalRecord -> {
               context.assertTrue(optionalRecord.isEmpty());

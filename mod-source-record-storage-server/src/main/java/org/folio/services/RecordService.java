@@ -180,15 +180,6 @@ public interface RecordService {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
-   * Deletes a record associated with the given recordId
-   *
-   * @param recordId            id of a record
-   * @param tenantId tenant id  tenant id
-   * @return future with true if deleted successfully
-   */
-  Future<Boolean> deleteRecordById(String recordId, String tenantId);
-
-  /**
    * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,
    * no data is deleted as a result of the update
    *

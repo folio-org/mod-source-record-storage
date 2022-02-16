@@ -183,11 +183,6 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> deleteRecordById(String recordId, String tenantId) {
-    return recordDao.deleteRecordById(recordId, tenantId);
-  }
-
-  @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())

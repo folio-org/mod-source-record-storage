@@ -27,8 +27,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
  * 1. Validates the event payload
  * 2. Retrieves a matched record from the context
  * 3. Deletes the record passing a matched record and tenant id
- * 4. If successfully deleted - replaces a record on its id in the context,
- *    else completes exceptionally and loggs a cause
+ * 4. If successfully deleted - replaces a record on FOLIO record id in the context,
+ * else completes exceptionally and loggs a cause
  */
 public abstract class AbstractDeleteEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
@@ -57,7 +57,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
           if (isDeleted) {
             payload.setEventType(getNextEventType());
             payload.getContext().remove(getRecordKey());
-            payload.getContext().put(getRecordIdKey(), record.getId());
+            payload.getContext().put(getRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
             future.complete(payload);
           } else {
             completeExceptionally(future, new EventProcessingException(ERROR_WHILE_DELETING_MSG));
@@ -86,7 +86,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   }
 
   /* Returns the string key under which an id of deleted record put into event payload context */
-  private String getRecordIdKey () {
+  private String getRecordIdKey() {
     return typeConnection.getMarcType() + "_ID";
   }
 

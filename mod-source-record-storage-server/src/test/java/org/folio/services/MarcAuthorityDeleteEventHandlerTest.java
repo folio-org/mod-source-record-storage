@@ -64,7 +64,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     Async async = context.async();
     // given
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put("MATCHED_" + TypeConnection.MARC_AUTHORITY.getMarcType(), Json.encode(record));
+    payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
@@ -88,6 +88,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           recordService.getRecordById(record.getId(), TENANT_ID)
             .onSuccess(optionalRecord -> {
               context.assertTrue(optionalRecord.isEmpty());
+              context.assertNotNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
               async.complete();
             });
         })

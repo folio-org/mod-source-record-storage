@@ -22,10 +22,10 @@ import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
 /**
- * The abstraction needed to handle delete action
+ * The abstraction handles the DELETE action
  * The handler does:
- * 1. Validating the event payload
- * 2. Retrieve a matched record from the context
+ * 1. Validates the event payload
+ * 2. Retrieves a matched record from the context
  * 3. Deletes the record passing a matched record and tenant id
  * 4. If successfully deleted - replaces a record on its id in the context,
  *    else completes exceptionally and loggs a cause

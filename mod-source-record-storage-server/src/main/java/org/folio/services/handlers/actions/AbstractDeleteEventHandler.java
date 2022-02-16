@@ -66,7 +66,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       .onSuccess(isDeleted -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());
-        payload.getContext().put(getRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
+        payload.getContext().put(getExternalRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
         future.complete(payload);
       })
       .onFailure(throwable -> completeExceptionally(future, throwable));
@@ -86,9 +86,9 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
     return "MATCHED_" + typeConnection.getMarcType();
   }
 
-  /* Returns the string key under which an id of deleted record put into event payload context */
-  private String getRecordIdKey() {
-    return typeConnection.getMarcType() + "_ID";
+  /* Returns the string key under which an id of external record put into event payload context */
+  private String getExternalRecordIdKey() {
+    return typeConnection.getExternalType() + "_RECORD_ID";
   }
 
   @Override

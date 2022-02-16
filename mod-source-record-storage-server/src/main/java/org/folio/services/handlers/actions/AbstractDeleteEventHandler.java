@@ -42,13 +42,13 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       return future;
     } else {
       payload.getEventsChain().add(payload.getEventType());
-      var matchedRecord = Json.decodeValue(payloadContext.get(getRecordKey()), Record.class);
-      deleteRecord(matchedRecord, payload.getTenant())
+      var record = Json.decodeValue(payloadContext.get(getRecordKey()), Record.class);
+      deleteRecord(record, payload.getTenant())
         .onSuccess(isDeleted -> {
           if (isDeleted) {
             payload.setEventType(getNextEventType());
             payload.getContext().remove(getRecordKey());
-            payload.getContext().put(getRecordIdKey(), matchedRecord.getId());
+            payload.getContext().put(getRecordIdKey(), record.getId());
             future.complete(payload);
           } else {
             completeExceptionally(future, new EventProcessingException(ERROR_WHILE_DELETING_MSG));

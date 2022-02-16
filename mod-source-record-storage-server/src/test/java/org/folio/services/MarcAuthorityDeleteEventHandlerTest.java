@@ -33,6 +33,7 @@ import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
@@ -55,7 +56,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
       .withMatchedId(recordId)
-      .withRecordType(MARC_BIB)
+      .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()

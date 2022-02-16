@@ -1,7 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import io.vertx.core.Future;
-import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.util.TypeConnection;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +12,6 @@ public class MarcAuthorityDeleteEventHandler extends AbstractDeleteEventHandler 
   @Autowired
   public MarcAuthorityDeleteEventHandler(RecordService recordService) {
     super(recordService, TypeConnection.MARC_AUTHORITY);
-  }
-
-  @Override
-  protected Future<Boolean> deleteRecord(Record authorityRecord, String tenantId) {
-    return recordService.updateRecord(authorityRecord.withState(Record.State.DELETED), tenantId).map(r -> true);
   }
 
   @Override

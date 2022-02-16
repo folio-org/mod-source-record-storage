@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
@@ -92,8 +93,10 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           context.assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
           context.assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("MARC_AUTHORITY_ID"));
           recordService.getRecordById(record.getId(), TENANT_ID)
-            .onSuccess(optionalRecord -> {
-              context.assertTrue(optionalRecord.isEmpty());
+            .onSuccess(optionalDeletedRecord -> {
+              context.assertTrue(optionalDeletedRecord.isPresent());
+              Record deletedRecord = optionalDeletedRecord.get();
+              context.assertTrue(deletedRecord.getDeleted());
               async.complete();
             });
         })
@@ -152,7 +155,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNotNull(throwable);
-      context.assertEquals("Error while deleting MARC record, record is not found", throwable.getMessage());
+      context.assertEquals(NotFoundException.class, throwable.getClass());
       async.complete();
     });
   }
@@ -210,7 +213,6 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     boolean isEligible = eventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertTrue(isEligible);
+    Assert.assertFalse(isEligible);
   }
-
 }

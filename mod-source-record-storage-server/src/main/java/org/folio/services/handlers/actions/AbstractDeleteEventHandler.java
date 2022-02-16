@@ -1,6 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +32,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 public abstract class AbstractDeleteEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
-  private static final String ERROR_WHILE_DELETING_MSG = "Error while deleting MARC record, record is not found";
+  private static final String ERROR_WHILE_DELETING_MSG = "Error while deleting MARC record";
   protected final TypeConnection typeConnection;
   protected final RecordService recordService;
 
@@ -51,25 +50,27 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       return future;
     } else {
       payload.getEventsChain().add(payload.getEventType());
-      var record = Json.decodeValue(payloadContext.get(getRecordKey()), Record.class);
-      deleteRecord(record, payload.getTenant())
-        .onSuccess(isDeleted -> {
-          if (isDeleted) {
-            payload.setEventType(getNextEventType());
-            payload.getContext().remove(getRecordKey());
-            payload.getContext().put(getRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
-            future.complete(payload);
-          } else {
-            completeExceptionally(future, new EventProcessingException(ERROR_WHILE_DELETING_MSG));
-          }
-        })
-        .onFailure(throwable -> completeExceptionally(future, throwable));
+      try {
+        handlePayload(payload, future);
+      } catch (Throwable exception) {
+        completeExceptionally(future, exception);
+      }
     }
     return future;
   }
 
-  /* Deletes a record. Returns Future<Boolean> that means record deleted or not */
-  protected abstract Future<Boolean> deleteRecord(Record record, String tenantId);
+  /* Handles DELETE action  */
+  private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
+    var record = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
+    recordService.updateRecord(record.withState(Record.State.DELETED), payload.getTenant())
+      .onSuccess(isDeleted -> {
+        payload.setEventType(getNextEventType());
+        payload.getContext().remove(getRecordKey());
+        payload.getContext().put(getRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
+        future.complete(payload);
+      })
+      .onFailure(throwable -> completeExceptionally(future, throwable));
+  }
 
   /* Completes exceptionally the given future with the given exception, writing a message in a log */
   private void completeExceptionally(CompletableFuture<DataImportEventPayload> future, Throwable throwable) {

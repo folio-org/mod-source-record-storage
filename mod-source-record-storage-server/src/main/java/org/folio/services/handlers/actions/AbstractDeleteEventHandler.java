@@ -32,7 +32,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 public abstract class AbstractDeleteEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
-  private static final String ERROR_WHILE_DELETING_MSG = "Error while deleting MARC record";
+  private static final String ERROR_WHILE_DELETING_MSG = "Error while deleting MARC record, record is not found";
   protected final TypeConnection typeConnection;
   protected final RecordService recordService;
 

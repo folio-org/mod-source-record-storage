@@ -879,7 +879,6 @@ public class RecordDaoImpl implements RecordDao {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
-
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }

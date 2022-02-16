@@ -85,7 +85,8 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
         .whenComplete((eventPayload, throwable) -> {
           context.assertNull(throwable);
           context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), eventPayload.getEventType());
-          context.assertNotNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
+          context.assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
+          context.assertEquals(record.getId(), eventPayload.getContext().get("MARC_AUTHORITY_ID"));
           recordService.getRecordById(record.getId(), TENANT_ID)
             .onSuccess(optionalRecord -> {
               context.assertTrue(optionalRecord.isEmpty());

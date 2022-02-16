@@ -42,11 +42,13 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       return future;
     } else {
       payload.getEventsChain().add(payload.getEventType());
-      var record = Json.decodeValue(payloadContext.get(getMatchedMarcKey()), Record.class);
-      deleteRecord(record, payload.getTenant())
+      var matchedRecord = Json.decodeValue(payloadContext.get(getMatchedMarcKey()), Record.class);
+      deleteRecord(matchedRecord, payload.getTenant())
         .onSuccess(isDeleted -> {
           if (isDeleted) {
             payload.setEventType(getNextEventType());
+            payload.getContext().remove(getMatchedMarcKey());
+            payload.getContext().put(getRecordIdKey(), matchedRecord.getId());
             future.complete(payload);
           } else {
             completeExceptionally(future, new EventProcessingException(ERROR_WHILE_DELETING_MSG));
@@ -69,9 +71,14 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Returns the event type that needs to be thrown when the handler is successfully executed */
   protected abstract String getNextEventType();
 
-  /* Returns the key under which a matched record is put into event payload context */
-  protected String getMatchedMarcKey() {
+  /* Returns the string key under which a matched record put into event payload context */
+  private String getMatchedMarcKey() {
     return "MATCHED_" + typeConnection.getMarcType();
+  }
+
+  /* Returns the string key under which an id of deleted record put into event payload context */
+  private String getRecordIdKey () {
+    return typeConnection.getMarcType() + "_ID";
   }
 
   @Override

@@ -21,6 +21,15 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
+/**
+ * The abstraction needed to handle delete action
+ * The handler does:
+ * 1. Validating the event payload
+ * 2. Retrieve a matched record from the context
+ * 3. Deletes the record passing a matched record and tenant id
+ * 4. If successfully deleted - replaces a record on its id in the context,
+ *    else completes exceptionally and loggs a cause
+ */
 public abstract class AbstractDeleteEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";

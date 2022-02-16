@@ -37,17 +37,17 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     var payloadContext = payload.getContext();
-    if (isNull(payloadContext) || isBlank(payloadContext.get(getMatchedMarcKey()))) {
+    if (isNull(payloadContext) || isBlank(payloadContext.get(getRecordKey()))) {
       completeExceptionally(future, new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
     } else {
       payload.getEventsChain().add(payload.getEventType());
-      var matchedRecord = Json.decodeValue(payloadContext.get(getMatchedMarcKey()), Record.class);
+      var matchedRecord = Json.decodeValue(payloadContext.get(getRecordKey()), Record.class);
       deleteRecord(matchedRecord, payload.getTenant())
         .onSuccess(isDeleted -> {
           if (isDeleted) {
             payload.setEventType(getNextEventType());
-            payload.getContext().remove(getMatchedMarcKey());
+            payload.getContext().remove(getRecordKey());
             payload.getContext().put(getRecordIdKey(), matchedRecord.getId());
             future.complete(payload);
           } else {
@@ -72,7 +72,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   protected abstract String getNextEventType();
 
   /* Returns the string key under which a matched record put into event payload context */
-  private String getMatchedMarcKey() {
+  private String getRecordKey() {
     return "MATCHED_" + typeConnection.getMarcType();
   }
 

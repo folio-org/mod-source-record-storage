@@ -23,7 +23,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 
 /**
  * The abstraction handles the DELETE action
- * The handler does:
+ * The handler:
  * 1. Validates the event payload
  * 2. Retrieves a matched record from the context
  * 3. Deletes the record passing a matched record and tenant id

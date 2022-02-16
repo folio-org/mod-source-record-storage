@@ -18,8 +18,8 @@ public class MarcAuthorityDeleteEventHandler extends AbstractDeleteEventHandler 
   }
 
   @Override
-  protected Future<Boolean> deleteRecord(Record record, String tenantId) {
-    return recordService.deleteRecordById(record.getId(), tenantId);
+  protected Future<Boolean> deleteRecord(Record authorityRecord, String tenantId) {
+    return recordService.deleteRecordById(authorityRecord.getId(), tenantId);
   }
 
   @Override

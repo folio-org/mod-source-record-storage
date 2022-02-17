@@ -26,8 +26,9 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
  * The handler:
  * 1. Validates the event payload
  * 2. Retrieves a matched record from the context
- * 3. Updates the record passing setting 'deleted' = true
- * 4. If successfully updated - replaces a matched record on external record id in the event payload,
+ * 3. Updates the existing record with 'deleted' = true
+ * 4. If successfully updated - removes a matched record form event payload,
+ * and puts external record id to event payload,
  * else completes exceptionally and loggs a cause
  */
 public abstract class AbstractDeleteEventHandler implements EventHandler {
@@ -92,7 +93,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
     return typeConnection.getExternalType() + "_RECORD_ID";
   }
 
-  /* Returns the external id of the given ids holder */
+  /* Returns the external id of the matched record */
   protected abstract String getExternalRecordId(ExternalIdsHolder externalIdsHolder);
 
   @Override

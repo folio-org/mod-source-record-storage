@@ -26,8 +26,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
  * The handler:
  * 1. Validates the event payload
  * 2. Retrieves a matched record from the context
- * 3. Deletes the record passing a matched record and tenant id
- * 4. If successfully deleted - replaces a record on FOLIO record id in the context,
+ * 3. Updates the record passing setting 'deleted' = true
+ * 4. If successfully updated - replaces a matched record on external record id in the event payload,
  * else completes exceptionally and loggs a cause
  */
 public abstract class AbstractDeleteEventHandler implements EventHandler {

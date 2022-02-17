@@ -8,6 +8,7 @@ import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
@@ -66,7 +67,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());
-        payload.getContext().put(getExternalRecordIdKey(), record.getExternalIdsHolder().getAuthorityId());
+        payload.getContext().put(getExternalRecordIdKey(), getExternalRecordId(record.getExternalIdsHolder()));
         future.complete(payload);
       })
       .onFailure(throwable -> completeExceptionally(future, throwable));
@@ -90,6 +91,9 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   private String getExternalRecordIdKey() {
     return typeConnection.getExternalType() + "_RECORD_ID";
   }
+
+  /* Returns the external id of the given ids holder */
+  protected abstract String getExternalRecordId(ExternalIdsHolder externalIdsHolder);
 
   @Override
   public boolean isEligible(DataImportEventPayload payload) {

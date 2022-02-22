@@ -37,7 +37,6 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
-import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
@@ -84,6 +83,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
@@ -99,6 +99,9 @@ import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordState.ACTUAL;
+import static org.folio.rest.jooq.enums.RecordState.DELETED;
+import static org.folio.rest.jooq.enums.RecordState.OLD;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
@@ -327,8 +330,8 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String id) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
-        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+      .and(RECORDS_LB.STATE.eq(ACTUAL)
+        .or(RECORDS_LB.STATE.eq(DELETED)));
     return getRecordByCondition(txQE, condition);
   }
 
@@ -465,7 +468,7 @@ public class RecordDaoImpl implements RecordDao {
 
         // update matching records state
         dsl.update(RECORDS_LB)
-          .set(RECORDS_LB.STATE, RecordState.OLD)
+          .set(RECORDS_LB.STATE, OLD)
           .where(RECORDS_LB.ID.in(ids))
           .execute();
 
@@ -615,7 +618,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, IdType idType, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.STATE.eq(ACTUAL))
       .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     return getSourceRecordByCondition(condition, tenantId);
   }
@@ -637,7 +640,7 @@ public class RecordDaoImpl implements RecordDao {
               return Optional.empty();
             });
         }
-        return Future.succeededFuture(Optional.empty());
+        return succeededFuture(Optional.empty());
       }));
   }
 
@@ -819,7 +822,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
       String externalId, IdType idType) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
+      .and(RECORDS_LB.STATE.eq(ACTUAL));
     return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
       .where(condition)
       .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
@@ -834,7 +837,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
     if (marcBibIds.isEmpty()) {
-      return Future.succeededFuture(new MarcBibCollection());
+      return succeededFuture(new MarcBibCollection());
     }
     var marcHrid = DSL.field("marc.hrid");
 
@@ -879,6 +882,22 @@ public class RecordDaoImpl implements RecordDao {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
+  @Override
+  public Future<Void> cleanRecords(String tenantId) {
+    Promise<Void> promise = Promise.promise();
+    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(DELETED)))));
+    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(DELETED));
+    ReactiveClassicGenericQueryExecutor executor = getQueryExecutor(tenantId);
+    succeededFuture()
+      .compose(ar -> executor.execute(dsl -> purgeOldRecordsQuery))
+      .compose(ar -> executor.execute(dsl -> purgeDeletedRecordsQuery))
+      .onSuccess(succeededAr -> promise.complete())
+      .onFailure(throwableAr -> promise.fail(throwableAr));
+    return promise.future();
+  }
+
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
@@ -903,7 +922,7 @@ public class RecordDaoImpl implements RecordDao {
     if (record.isPresent()) {
       return lookupAssociatedRecords(txQE, record.get(), includeErrorRecord).map(Optional::of);
     }
-    return Future.succeededFuture(record);
+    return succeededFuture(record);
   }
 
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
@@ -931,13 +950,13 @@ public class RecordDaoImpl implements RecordDao {
         if (Objects.nonNull(record.getParsedRecord())) {
           return insertOrUpdateParsedRecord(txQE, record);
         }
-        return Future.succeededFuture(null);
+        return succeededFuture(null);
       })
       .compose(parsedRecord -> {
         if (Objects.nonNull(record.getErrorRecord())) {
           return ErrorRecordDaoUtil.save(txQE, record.getErrorRecord());
         }
-        return Future.succeededFuture(null);
+        return succeededFuture(null);
       })
       .compose(errorRecord -> RecordDaoUtil.save(txQE, record)).map(savedRecord -> {
         if (Objects.nonNull(record.getRawRecord())) {
@@ -971,7 +990,7 @@ public class RecordDaoImpl implements RecordDao {
         .withContent(record.getParsedRecord().getContent()));
       record.withParsedRecord(null)
         .withLeaderRecordStatus(null);
-      return Future.succeededFuture(null);
+      return succeededFuture(null);
     }
   }
 

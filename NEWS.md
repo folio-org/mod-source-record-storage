@@ -1,4 +1,4 @@
-## 2021-xx-xx v5.3.0-SNAPSHOT
+## 2021-02-22 v5.3.0
 * [MODSOURCE-461](https://issues.folio.org/browse/MODSOURCE-461) Upgrade RMB and Vertx versions that contain fixes for the connection pool
 * [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added
 * [MODSOURCE-419](https://issues.folio.org/browse/MODSOURCE-419) Upgrade to RAML Module Builder 33.2.x
@@ -17,8 +17,32 @@
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import 
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Delete authority record via user interface > Determine how to handle deleted authority records 
 
-## 2021-xx-xx v5.2.1-SNAPSHOT
+## 2022-02-09 v5.2.8
+* [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import
+* [MODSOURCE-452](https://issues.folio.org/browse/MODSOURCE-452) Updated dependencies on liquibase-util, data-import-processing-core and folio-kafka-wrapper
+
+## 2022-01-13 v5.2.7
+* [MODSOURCE-444](https://issues.folio.org/browse/MODSOURCE-444) Fix schema migration error
+
+## 2021-12-15 v5.2.6
+* [MODSOURCE-424](https://issues.folio.org/browse/MODSOURCE-424) Fix Log4j vulnerability
+
+## 2021-11-22 v5.2.5
+* [MODSOURCE-415](https://issues.folio.org/browse/MODSOURCE-415) Fix processing of DI_ERROR messages from SRS
+
+## 2021-11-19 v5.2.4
+* [MODSOURCE-413](https://issues.folio.org/browse/MODSOURCE-413) Update data-import-processing-core to v3.2.5 to enable fix of duplicating values of repeatable control fields on MARC update
+
+## 2021-11-16 v5.2.3
+* [MODSOURCE-407](https://issues.folio.org/browse/MODSOURCE-407) Fix potential OOM
+
+## 2021-11-11 v5.2.2
+* [MODSOURCE-401](https://issues.folio.org/browse/MODSOURCE-401) Left anchored srs api queries don't complete on kiwi bugfest
+
+## 2021-10-29 v5.2.1
+* [MODSOURCE-399](hhttps://issues.folio.org/browse/MODSOURCE-399) Fix "'idx_records_matched_id_gen', duplicate key value violates unique constraint"
 * [MODSOURCE-390](https://issues.folio.org/browse/MODSOURCE-390) Fix the effect of DI_ERROR messages when trying to duplicate records on the import job progress bar
+* [MODSOURCE-393](https://issues.folio.org/browse/MODSOURCE-393) Enable fix of duplicate control fields on MARC update (update data-import-processing-core to v3.2.2)
 
 ## 2021-09-30 v5.2.0
 * [MODSOURCE-347](https://issues.folio.org/browse/MODSOURCE-347) Upgrade to RAML Module Builder 33.x

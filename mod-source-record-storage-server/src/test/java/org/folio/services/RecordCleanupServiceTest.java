@@ -131,7 +131,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .onSuccess(ar -> async.complete());
   }
 
-  /* The test verifies whether the DELETED record, and it's related OLD record are purged from DB when cleanup is done */
+  /* The test verifies whether the DELETED record, and its related OLD record, are purged from DB when cleanup is done */
   @Test
   public void shouldPurge_DELETED_and_OLD_records(TestContext context) {
     // given
@@ -142,8 +142,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
           verifyRecordPurged(deletedRecord.getId(), context),
-          verifyRecordPurged(oldRecordForDeletedRecord.getId(), context)
-        )
+          verifyRecordPurged(oldRecordForDeletedRecord.getId(), context))
         .onSuccess(verifyRecordPurged -> {
           vertx.cancelTimer(timerId);
           async.complete();
@@ -153,7 +152,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   }
 
   /*
-      The test verifies whether the DELETED record, and its related OLD record are stay in DB.
+      The test verifies whether the DELETED record, and its related OLD, record are stay in DB.
       The records should stay in DB because of default cleanup delay is long enough to start cleanup process.
   */
   @Test
@@ -175,7 +174,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .onFailure(context::fail);
   }
 
-  /* The test verifies whether the ACTUAL record, and it's related OLD are stay in DB when cleanup is done */
+  /* The test verifies whether the ACTUAL record, and its related OLD, are stay in DB when cleanup is done */
   @Test
   public void shouldNotPurge_ACTUAL_and_OLD_records(TestContext context) {
     // given

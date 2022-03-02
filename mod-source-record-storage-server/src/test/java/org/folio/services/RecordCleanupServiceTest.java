@@ -119,7 +119,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .compose(ar -> recordService.saveRecord(oldRecordForDeletedRecord, TENANT_ID))
       .compose(ar -> recordService.saveRecord(actualRecord, TENANT_ID))
       .compose(ar -> recordService.saveRecord(oldRecordForActualRecord, TENANT_ID))
-      .onSuccess(ar -> async.complete());
+      .onComplete(ar -> async.complete());
   }
 
   @After
@@ -128,7 +128,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.delete(queryExecutor, snapshot.getJobExecutionId())
       .compose(ar -> recordService.deleteRecordsBySnapshotId(snapshot.getJobExecutionId(), TENANT_ID))
-      .onSuccess(ar -> async.complete());
+      .onComplete(ar -> async.complete());
   }
 
   /* The test verifies whether the DELETED record, and its related OLD record, are purged from DB when cleanup is done */

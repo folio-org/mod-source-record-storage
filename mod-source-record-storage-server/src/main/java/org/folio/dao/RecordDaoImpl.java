@@ -886,10 +886,7 @@ public class RecordDaoImpl implements RecordDao {
       .where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.DELETED)))));
     var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
       .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
-    ReactiveClassicGenericQueryExecutor executor = getQueryExecutor(tenantId);
-    Future.succeededFuture()
-      .compose(ar -> executor.execute(dsl -> purgeOldRecordsQuery))
-      .compose(ar -> executor.execute(dsl -> purgeDeletedRecordsQuery))
+    executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(throwableAr -> promise.fail(throwableAr));
     return promise.future();

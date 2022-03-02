@@ -27,11 +27,10 @@ public class RecordCleanupServiceImpl implements RecordCleanupService {
 
   @Override
   public long initialize(Vertx vertx, String tenantId) {
-    return vertx.setPeriodic(cleanupDelay, periodicHandler ->
-      vertx.<Void>executeBlocking(blockingHandler -> cleanup(tenantId)
-        .onFailure(throwable -> LOGGER.error("An error occurred during cleanup process, cause: ", throwable))
-        .onSuccess(ar -> LOGGER.info("Cleanup process has been successfully completed"))
-    ));
+    return vertx.setPeriodic(cleanupDelay, periodicHandler -> cleanup(tenantId)
+      .onFailure(throwable -> LOGGER.error("An error occurred during cleanup process, cause: ", throwable))
+      .onSuccess(ar -> LOGGER.info("Cleanup process has been successfully completed"))
+    );
   }
 
   /* Performs clean & purge a records */

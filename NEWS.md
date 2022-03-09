@@ -18,6 +18,7 @@
 * [MODSOURCE-446](https://issues.folio.org/browse/MODSOURCE-446) Extend MARC-MARC matching to 9xx and 0xx fields
 * [MODSOURCE-450](https://issues.folio.org/browse/MODSOURCE-450) Increase folio-liquibase-util and liquibase schema version
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import 
+* [MODSOURCE-457](https://issues.folio.org/browse/MODSOURCE-457) Delete Authority: Create processor for Delete MARC Authority record
 
 ## 2022-02-09 v5.2.8
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import

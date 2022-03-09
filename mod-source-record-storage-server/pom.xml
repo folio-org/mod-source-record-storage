@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>5.3.0-SNAPSHOT</version>
+    <version>5.4.0-SNAPSHOT</version>
   </parent>
 
   <dependencies>
@@ -116,7 +116,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.3.0</version>
+      <version>1.4.0</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -144,6 +144,10 @@
           <groupId>org.scala-lang</groupId>
           <artifactId>scala-library</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>javax.validation</groupId>
+          <artifactId>validation-api</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -161,7 +165,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>3.3.0-SNAPSHOT</version>
+      <version>3.3.0</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -170,7 +174,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>2.5.0-SNAPSHOT</version>
+      <version>2.5.0</version>
     </dependency>
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
@@ -200,7 +204,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.2.25</version>
+      <version>${postgres.version}</version>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
@@ -226,7 +230,7 @@
     <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
-    <postgres.version>42.2.25</postgres.version>
+    <postgres.version>42.3.3</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.20</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>

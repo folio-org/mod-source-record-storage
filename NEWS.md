@@ -1,3 +1,6 @@
+## xxxx-xx-xx v5.4.0-SNAPSHOT
+* [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records 
+
 ## 2021-02-22 v5.3.0
 * [MODSOURCE-461](https://issues.folio.org/browse/MODSOURCE-461) Upgrade RMB and Vertx versions that contain fixes for the connection pool
 * [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added

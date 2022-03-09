@@ -298,7 +298,7 @@
       "description": "Put Record"
     },
     {
-      "permissionName": "source-storage.record.update",
+      "permissionName": "source-storage.records.update",
       "displayName": "Source Storage - update record",
       "description": "Update Record's fields"
     },
@@ -331,7 +331,7 @@
         "source-storage.records.post",
         "source-storage.records.put",
         "source-storage.records.delete",
-        "source-storage.record.update",
+        "source-storage.records.update",
         "source-storage.sourceRecords.get",
         "source-storage.verified.records"
       ],

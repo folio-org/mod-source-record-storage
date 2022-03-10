@@ -28,7 +28,7 @@ public class ApplicationConfig {
   private String okapiUrl;
   @Value("${REPLICATION_FACTOR:1}")
   private int replicationFactor;
-  @Value("${MAX_REQUEST_SIZE:1048576}")
+  @Value("${MAX_REQUEST_SIZE:4000000}")
   private int maxRequestSize;
   @Value("${ENV:folio}")
   private String envId;

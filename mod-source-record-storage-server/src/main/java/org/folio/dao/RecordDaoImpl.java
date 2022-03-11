@@ -888,7 +888,7 @@ public class RecordDaoImpl implements RecordDao {
       .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
     executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
       .onSuccess(succeededAr -> promise.complete())
-      .onFailure(throwableAr -> promise.fail(throwableAr));
+      .onFailure(promise::fail);
     return promise.future();
   }
 

@@ -288,6 +288,14 @@ public interface RecordDao {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
+   *  Performs purge the 'DELETED' records, and its related 'OLD' records
+   *
+   * @param tenantId tenant id
+   * @return future
+   */
+  Future<Void> cleanRecords(String tenantId);
+
+  /**
    * Creates new Record and updates status of the "old" one,
    * no data is overwritten as a result of update. Creates
    * new snapshot.

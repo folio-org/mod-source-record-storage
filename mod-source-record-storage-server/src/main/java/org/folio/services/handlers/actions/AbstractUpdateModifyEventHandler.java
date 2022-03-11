@@ -2,6 +2,7 @@ package org.folio.services.handlers.actions;
 
 import static java.lang.String.format;
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import static org.folio.ActionProfile.Action.MODIFY;
@@ -184,6 +185,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private void increaseGeneration(Record changedRecord) {
     var generation = changedRecord.getGeneration();
-    changedRecord.setGeneration(isNull(generation) ? 1 : ++generation);
+    if(nonNull(generation)){
+      changedRecord.setGeneration(++generation);
+    }
   }
 }

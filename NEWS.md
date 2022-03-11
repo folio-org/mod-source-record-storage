@@ -1,3 +1,6 @@
+## xxxx-xx-xx v5.4.0-SNAPSHOT
+* [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records 
+
 ## 2021-02-22 v5.3.0
 * [MODSOURCE-461](https://issues.folio.org/browse/MODSOURCE-461) Upgrade RMB and Vertx versions that contain fixes for the connection pool
 * [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added
@@ -15,7 +18,7 @@
 * [MODSOURCE-446](https://issues.folio.org/browse/MODSOURCE-446) Extend MARC-MARC matching to 9xx and 0xx fields
 * [MODSOURCE-450](https://issues.folio.org/browse/MODSOURCE-450) Increase folio-liquibase-util and liquibase schema version
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import 
-* [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Delete authority record via user interface > Determine how to handle deleted authority records 
+* [MODSOURCE-457](https://issues.folio.org/browse/MODSOURCE-457) Delete Authority: Create processor for Delete MARC Authority record
 
 ## 2022-02-09 v5.2.8
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import

@@ -13,14 +13,14 @@ public class RecordCleanupServiceImpl implements RecordCleanupService {
   private static final Logger LOGGER = LogManager.getLogger();
   private final RecordDao recordDao;
   /* The default delay in milliseconds equals 24 hours */
-  private Long cleanupDelay = Long.valueOf(24 * 3600_000);
+  private long cleanupDelay = 24L * 3600_000L;
 
   @Autowired
   public RecordCleanupServiceImpl(RecordDao recordDao) {
     this.recordDao = recordDao;
   }
 
-  public RecordCleanupServiceImpl(RecordDao recordDao, Long cleanupDelay) {
+  public RecordCleanupServiceImpl(RecordDao recordDao, long cleanupDelay) {
     this.recordDao = recordDao;
     this.cleanupDelay = cleanupDelay;
   }

@@ -136,7 +136,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   public void shouldPurge_DELETED_and_OLD_records(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100L);
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100);
     // when
     long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
     // then
@@ -179,7 +179,7 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   public void shouldNotPurge_ACTUAL_and_OLD_records(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100L);
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100);
     // when
     long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
     // then

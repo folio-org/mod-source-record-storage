@@ -879,6 +879,19 @@ public class RecordDaoImpl implements RecordDao {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
+  @Override
+  public Future<Void> cleanRecords(String tenantId) {
+    Promise<Void> promise = Promise.promise();
+    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.DELETED)))));
+    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
+    executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
+      .onSuccess(succeededAr -> promise.complete())
+      .onFailure(promise::fail);
+    return promise.future();
+  }
+
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }

@@ -25,4 +25,14 @@ public class MarcAuthorityDeleteEventHandler extends AbstractDeleteEventHandler 
   protected String getExternalRecordId(ExternalIdsHolder externalIdsHolder) {
     return externalIdsHolder.getAuthorityId();
   }
+
+  @Override
+  public boolean isPostProcessingNeeded() {
+    return true;
+  }
+
+  @Override
+  public String getPostProcessingInitializationEventType() {
+    return DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value();
+  }
 }

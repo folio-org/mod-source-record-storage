@@ -70,6 +70,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -880,12 +881,14 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Void> cleanRecords(String tenantId) {
+  public Future<Void> deleteRecords(String tenantId, int lastUpdatedDays, int limit) {
     Promise<Void> promise = Promise.promise();
-    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB)
-      .where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.DELETED)))));
-    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
-      .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
+    var selectDeletedRecordIdsQuery = DSL
+      .select(RECORDS_LB.ID).from(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.DELETED)).and(RECORDS_LB.UPDATED_DATE.le(OffsetDateTime.now().minusDays(lastUpdatedDays)))
+      .limit(limit);
+    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(selectDeletedRecordIdsQuery)));
+    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB).where(RECORDS_LB.ID.in(selectDeletedRecordIdsQuery));
     executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);

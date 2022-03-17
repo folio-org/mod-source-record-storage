@@ -136,13 +136,16 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   public void shouldPurge_DELETED_and_OLD_records(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100);
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 1000);
     // when
     long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
           verifyRecordPurged(deletedRecord.getId(), context),
-          verifyRecordPurged(oldRecordForDeletedRecord.getId(), context))
+          verifyRecordPurged(oldRecordForDeletedRecord.getId(), context),
+          verifyRecordIsPresent(actualRecord.getId(), context),
+          verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
+        )
         .onSuccess(verifyRecordPurged -> {
           vertx.cancelTimer(timerId);
           async.complete();
@@ -165,7 +168,9 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
     // then
     CompositeFuture.all(
         verifyRecordIsPresent(deletedRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context)
+        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
+        verifyRecordIsPresent(actualRecord.getId(), context),
+        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
       )
       .onSuccess(verifyRecordIsPresent -> {
         vertx.cancelTimer(timerId);
@@ -179,11 +184,13 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   public void shouldNotPurge_ACTUAL_and_OLD_records(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100);
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 1000);
     // when
     long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
+          verifyRecordIsPresent(actualRecord.getId(), context),
+          verifyRecordIsPresent(oldRecordForActualRecord.getId(), context),
           verifyRecordIsPresent(actualRecord.getId(), context),
           verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
         )
@@ -192,6 +199,59 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
           async.complete();
         })
         .onFailure(context::fail)
+    );
+  }
+
+  /*
+      The test verifies whether the DELETED record, and its related OLD record, are stay in DB when cleanup is done.
+      Records stay in DB because the 'limit' = 0, means nothing to delete.
+  */
+  @Test
+  public void shouldNotPurge_DELETED_and_OLD_records_whenLimitEquals_0(TestContext context) {
+    // given
+    Async async = context.async();
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 0);
+    // when
+    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
+    // then
+    vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
+        verifyRecordIsPresent(deletedRecord.getId(), context),
+        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
+        verifyRecordIsPresent(actualRecord.getId(), context),
+        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
+      )
+      .onSuccess(verifyRecordPurged -> {
+        vertx.cancelTimer(timerId);
+        async.complete();
+      })
+      .onFailure(context::fail)
+    );
+  }
+
+  /*
+    The test verifies whether the DELETED record, and its related OLD record, are stay in DB when cleanup is done.
+    Records stay in DB because the 'lastUpdatedDays' = 10, means nothing to delete. The only records updated more than 10
+    days back are getting purged.
+  */
+  @Test
+  public void shouldNotPurge_DELETED_and_OLD_records_whenLastUpdatedDaysEquals_10(TestContext context) {
+    // given
+    Async async = context.async();
+    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 10, 1000);
+    // when
+    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
+    // then
+    vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
+        verifyRecordIsPresent(deletedRecord.getId(), context),
+        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
+        verifyRecordIsPresent(actualRecord.getId(), context),
+        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
+      )
+      .onSuccess(verifyRecordPurged -> {
+        vertx.cancelTimer(timerId);
+        async.complete();
+      })
+      .onFailure(context::fail)
     );
   }
 

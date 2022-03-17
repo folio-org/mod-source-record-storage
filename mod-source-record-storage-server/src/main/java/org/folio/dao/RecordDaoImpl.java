@@ -384,7 +384,8 @@ public class RecordDaoImpl implements RecordDao {
         }
 
         // make sure only one record type
-        recordTypes.add(record.getRecordType().name());
+        Optional.ofNullable(record.getRecordType()).ifPresentOrElse(recordType -> recordTypes.add(recordType.name()),
+          () -> {throw new BadRequestException(StringUtils.defaultIfEmpty(record.getErrorRecord().getDescription(), String.format("Record with id %s has not record type", record.getId())));});
         if (recordTypes.size() > 1) {
           throw new BadRequestException("Batch record collection only supports single record type");
         }

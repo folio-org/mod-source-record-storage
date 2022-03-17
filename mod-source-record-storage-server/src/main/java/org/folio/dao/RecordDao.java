@@ -298,16 +298,16 @@ public interface RecordDao {
    */
   Future<Void> deleteRecords(String tenantId, int lastUpdatedDays, int limit);
 
-    /**
-     * Creates new Record and updates status of the "old" one,
-     * no data is overwritten as a result of update. Creates
-     * new snapshot.
-     *
-     * @param txQE      query execution
-     * @param newRecord new Record to create
-     * @param oldRecord old Record that has to be marked as "old"
-     * @return future with new "updated" Record
-     */
+  /**
+   * Creates new Record and updates status of the "old" one,
+   * no data is overwritten as a result of update. Creates
+   * new snapshot.
+   *
+   * @param txQE      query execution
+   * @param newRecord new Record to create
+   * @param oldRecord old Record that has to be marked as "old"
+   * @return future with new "updated" Record
+   */
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
 
   /**

@@ -14,15 +14,21 @@ public class RecordCleanupServiceImpl implements RecordCleanupService {
   private final RecordDao recordDao;
   /* The default delay in milliseconds equals 24 hours */
   private long cleanupDelay = 24L * 3600_000L;
+  /* The default number of days from the current when a records were 'deleted' */
+  private int lastUpdatedDays = 7;
+  /* The default number of 'deleted' records that has to be cleaned up at once */
+  private int limit = 1000;
 
   @Autowired
   public RecordCleanupServiceImpl(RecordDao recordDao) {
     this.recordDao = recordDao;
   }
 
-  public RecordCleanupServiceImpl(RecordDao recordDao, long cleanupDelay) {
+  public RecordCleanupServiceImpl(RecordDao recordDao, long cleanupDelay, int lastUpdatedDays, int limit) {
     this.recordDao = recordDao;
     this.cleanupDelay = cleanupDelay;
+    this.lastUpdatedDays = lastUpdatedDays;
+    this.limit = limit;
   }
 
   @Override
@@ -35,6 +41,6 @@ public class RecordCleanupServiceImpl implements RecordCleanupService {
 
   /* Performs clean & purge a records */
   private Future<Void> cleanup(String tenantId) {
-    return recordDao.cleanRecords(tenantId);
+    return recordDao.deleteRecords(tenantId, lastUpdatedDays, limit);
   }
 }

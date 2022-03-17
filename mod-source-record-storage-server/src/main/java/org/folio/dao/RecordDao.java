@@ -288,23 +288,26 @@ public interface RecordDao {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
-   *  Performs purge the 'DELETED' records, and its related 'OLD' records
+   *  Performs purge the 'DELETED' records, and its related 'OLD' records.
+   *  Purges a given limited number of 'DELETED' records updated more the than given number of days back.
    *
-   * @param tenantId tenant id
+   * @param tenantId        tenant id
+   * @param lastUpdatedDays a number of days when the records were marked 'DELETED'
+   * @param limit           includes only the number of 'deleted' records to purge
    * @return future
    */
-  Future<Void> cleanRecords(String tenantId);
+  Future<Void> deleteRecords(String tenantId, int lastUpdatedDays, int limit);
 
-  /**
-   * Creates new Record and updates status of the "old" one,
-   * no data is overwritten as a result of update. Creates
-   * new snapshot.
-   *
-   * @param txQE      query execution
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @return future with new "updated" Record
-   */
+    /**
+     * Creates new Record and updates status of the "old" one,
+     * no data is overwritten as a result of update. Creates
+     * new snapshot.
+     *
+     * @param txQE      query execution
+     * @param newRecord new Record to create
+     * @param oldRecord old Record that has to be marked as "old"
+     * @return future with new "updated" Record
+     */
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
 
   /**

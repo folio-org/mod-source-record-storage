@@ -383,8 +383,13 @@ public class RecordDaoImpl implements RecordDao {
           throw new BadRequestException("Batch record collection only supports single snapshot");
         }
 
+        if(Objects.nonNull(record.getRecordType())) {
+          recordTypes.add(record.getRecordType().name());
+        } else {
+          throw new BadRequestException(StringUtils.defaultIfEmpty(record.getErrorRecord().getDescription(), String.format("Record with id %s has not record type", record.getId())));
+        }
+
         // make sure only one record type
-        recordTypes.add(record.getRecordType().name());
         if (recordTypes.size() > 1) {
           throw new BadRequestException("Batch record collection only supports single record type");
         }

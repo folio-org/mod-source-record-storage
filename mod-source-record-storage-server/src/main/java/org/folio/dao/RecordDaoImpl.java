@@ -383,8 +383,13 @@ public class RecordDaoImpl implements RecordDao {
           throw new BadRequestException("Batch record collection only supports single snapshot");
         }
 
+        if(Objects.nonNull(record.getRecordType())) {
+          recordTypes.add(record.getRecordType().name());
+        } else {
+          throw new BadRequestException(StringUtils.defaultIfEmpty(record.getErrorRecord().getDescription(), String.format("Record with id %s has not record type", record.getId())));
+        }
+
         // make sure only one record type
-        recordTypes.add(record.getRecordType().name());
         if (recordTypes.size() > 1) {
           throw new BadRequestException("Batch record collection only supports single record type");
         }
@@ -877,6 +882,19 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
+  }
+
+  @Override
+  public Future<Void> cleanRecords(String tenantId) {
+    Promise<Void> promise = Promise.promise();
+    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.DELETED)))));
+    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
+    executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
+      .onSuccess(succeededAr -> promise.complete())
+      .onFailure(promise::fail);
+    return promise.future();
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {

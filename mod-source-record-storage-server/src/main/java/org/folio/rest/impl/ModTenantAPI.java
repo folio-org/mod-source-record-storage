@@ -12,7 +12,6 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.RecordCleanupService;
 import org.folio.services.SnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +34,6 @@ public class ModTenantAPI extends TenantAPI {
 
   @Autowired
   private SnapshotService snapshotService;
-  @Autowired
-  private RecordCleanupService recordCleanupService;
 
   private String tenantId;
 
@@ -52,7 +49,6 @@ public class ModTenantAPI extends TenantAPI {
       .compose(num -> {
         Vertx vertx = context.owner();
         LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
-        recordCleanupService.initialize(vertx, tenantId);
         return setLoadSampleParameter(attributes, context)
           .compose(v -> createStubSnapshot(attributes)).map(num);
       });

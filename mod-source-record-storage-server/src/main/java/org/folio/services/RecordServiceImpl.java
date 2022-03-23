@@ -25,6 +25,7 @@ import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -211,6 +212,11 @@ public class RecordServiceImpl implements RecordService {
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
     if (marcBibIds.size() > Short.MAX_VALUE) throw new BadRequestException("The number of IDs should not exceed 32767");
     return recordDao.verifyMarcBibRecords(marcBibIds, tenantId);
+  }
+
+  @Override
+  public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
+    return recordDao.updateRecordsState(matchedId, state, tenantId);
   }
 
   private Record formatMarcRecord(Record record) {

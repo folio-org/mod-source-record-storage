@@ -19,6 +19,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.cleanup.RecordCleanupService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,33 +27,28 @@ import org.junit.runner.RunWith;
 
 import java.util.UUID;
 
-import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.DELETED;
-import static org.folio.rest.jaxrs.model.Record.State.OLD;
 
 /**
- * The test creates multiple related records and stores them to DB
- * The related records are:
- * 1) DELETED record generation1 <-- OLD record generation0 (references to DELETED record)
- * 2) ACTUAL record generation1  <-- OLD record generation0 (references to ACTUAL record)
+ * The test creates a several related records and stores them to DB
+ * The records are:
+ * DELETED record generation1 <-- DELETED record generation0 (references to DELETED record)
  */
 @RunWith(VertxUnitRunner.class)
 public class RecordCleanupServiceTest extends AbstractLBServiceTest {
   private final RecordDao recordDao = new RecordDaoImpl(postgresClientFactory);
   private final RecordService recordService = new RecordServiceImpl(recordDao);
   private final Snapshot snapshot;
-  private final Record deletedRecord;
-  private final Record oldRecordForDeletedRecord;
-  private final Record actualRecord;
-  private final Record oldRecordForActualRecord;
+  private final Record deletedRecordGen1;
+  private final Record deletedRecordGen0;
 
   public RecordCleanupServiceTest() {
     this.snapshot = TestMocks.getSnapshot(0);
-    String deletedRecordId = UUID.randomUUID().toString();
-    this.deletedRecord = new Record()
-      .withId(deletedRecordId)
+    String deletedRecordGen1Id = UUID.randomUUID().toString();
+    this.deletedRecordGen1 = new Record()
+      .withId(deletedRecordGen1Id)
       .withState(DELETED)
-      .withMatchedId(deletedRecordId)
+      .withMatchedId(deletedRecordGen1Id)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(1)
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -60,14 +56,14 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .withOrder(1)
       .withExternalIdsHolder(new ExternalIdsHolder())
       .withLeaderRecordStatus("n")
-      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(deletedRecordId))
-      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(deletedRecordId))
-      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(deletedRecordId));
-    String oldRecordForDeletedRecordId = UUID.randomUUID().toString();
-    this.oldRecordForDeletedRecord = new Record()
-      .withId(oldRecordForDeletedRecordId)
-      .withState(OLD)
-      .withMatchedId(deletedRecordId)
+      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(deletedRecordGen1Id))
+      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(deletedRecordGen1Id))
+      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(deletedRecordGen1Id));
+    String deletedRecordGen0Id = UUID.randomUUID().toString();
+    this.deletedRecordGen0 = new Record()
+      .withId(deletedRecordGen0Id)
+      .withState(DELETED)
+      .withMatchedId(deletedRecordGen1Id)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -75,51 +71,20 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .withOrder(0)
       .withExternalIdsHolder(new ExternalIdsHolder())
       .withLeaderRecordStatus("n")
-      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(oldRecordForDeletedRecordId))
-      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(oldRecordForDeletedRecordId))
-      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(oldRecordForDeletedRecordId));
-    String actualRecordId = UUID.randomUUID().toString();
-    this.actualRecord = new Record()
-      .withId(actualRecordId)
-      .withState(ACTUAL)
-      .withMatchedId(actualRecordId)
-      .withSnapshotId(snapshot.getJobExecutionId())
-      .withGeneration(1)
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withDeleted(false)
-      .withOrder(1)
-      .withExternalIdsHolder(new ExternalIdsHolder())
-      .withLeaderRecordStatus("n")
-      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(actualRecordId))
-      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(actualRecordId))
-      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(actualRecordId));
-    String oldRecordForActualRecordId = UUID.randomUUID().toString();
-    this.oldRecordForActualRecord = new Record()
-      .withId(oldRecordForActualRecordId)
-      .withState(ACTUAL)
-      .withMatchedId(actualRecordId)
-      .withSnapshotId(snapshot.getJobExecutionId())
-      .withGeneration(0)
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withDeleted(false)
-      .withOrder(0)
-      .withExternalIdsHolder(new ExternalIdsHolder())
-      .withLeaderRecordStatus("n")
-      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(oldRecordForActualRecordId))
-      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(oldRecordForActualRecordId))
-      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(oldRecordForActualRecordId));
+      .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(deletedRecordGen0Id))
+      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(deletedRecordGen0Id))
+      .withErrorRecord(TestMocks.getRecord(0).getErrorRecord().withId(deletedRecordGen0Id));
   }
 
   @Before
-  public void before(TestContext testContext) throws InterruptedException {
-    Async async = testContext.async();
+  public void before(TestContext context) {
+    Async async = context.async();
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(ar -> recordService.saveRecord(deletedRecord, TENANT_ID))
-      .compose(ar -> recordService.saveRecord(oldRecordForDeletedRecord, TENANT_ID))
-      .compose(ar -> recordService.saveRecord(actualRecord, TENANT_ID))
-      .compose(ar -> recordService.saveRecord(oldRecordForActualRecord, TENANT_ID))
-      .onComplete(ar -> async.complete());
+      .compose(ar -> recordService.saveRecord(deletedRecordGen1, TENANT_ID))
+      .compose(ar -> recordService.saveRecord(deletedRecordGen0, TENANT_ID))
+      .onComplete(ar -> async.complete())
+      .onFailure(throwable -> context.fail(throwable));
   }
 
   @After
@@ -131,131 +96,70 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
       .onComplete(ar -> async.complete());
   }
 
-  /* The test verifies whether the DELETED record, and its related OLD record, are purged from DB when cleanup is done */
+  /*
+      The test verifies whether the records are purged from DB when cleanup is done;
+      If the 'limit' = 0, it means to delete all the records
+  */
   @Test
-  public void shouldPurge_DELETED_and_OLD_records(TestContext context) {
+  public void shouldPurgeRecords_limitIs0(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 1000);
+    RecordCleanupService service = new RecordCleanupService(0, 0, vertx, recordDao);
     // when
-    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
+    service.cleanup();
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
-          verifyRecordPurged(deletedRecord.getId(), context),
-          verifyRecordPurged(oldRecordForDeletedRecord.getId(), context),
-          verifyRecordIsPresent(actualRecord.getId(), context),
-          verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
+          verifyRecordIsPurged(deletedRecordGen1.getId(), context),
+          verifyRecordIsPurged(deletedRecordGen0.getId(), context)
         )
-        .onSuccess(verifyRecordPurged -> {
-          vertx.cancelTimer(timerId);
-          async.complete();
-        })
+        .onSuccess(ar -> async.complete())
         .onFailure(context::fail)
     );
   }
 
   /*
-      The test verifies whether the DELETED record, and its related OLD, record are stay in DB.
-      The records should stay in DB because of default cleanup delay is long enough to start cleanup process.
+      The test verifies whether the DELETED record generation1 is purged, and its related record generation0 is stay in DB when cleanup is done.
+      The record generation0 is present in DB after cleanup because 'limit' = 1, and the record was created later than record of generation1.
   */
   @Test
-  public void shouldNotPurge_DELETED_and_OLD_records(TestContext context) {
+  public void shouldPurgeRecord_limitIs1(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao);
+    RecordCleanupService service = new RecordCleanupService(0, 1, vertx, recordDao);
     // when
-    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
-    // then
-    CompositeFuture.all(
-        verifyRecordIsPresent(deletedRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
-        verifyRecordIsPresent(actualRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
-      )
-      .onSuccess(verifyRecordIsPresent -> {
-        vertx.cancelTimer(timerId);
-        async.complete();
-      })
-      .onFailure(context::fail);
-  }
-
-  /* The test verifies whether the ACTUAL record, and its related OLD, are stay in DB when cleanup is done */
-  @Test
-  public void shouldNotPurge_ACTUAL_and_OLD_records(TestContext context) {
-    // given
-    Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 1000);
-    // when
-    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
+    service.cleanup();
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
-          verifyRecordIsPresent(actualRecord.getId(), context),
-          verifyRecordIsPresent(oldRecordForActualRecord.getId(), context),
-          verifyRecordIsPresent(actualRecord.getId(), context),
-          verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
+          verifyRecordIsPurged(deletedRecordGen1.getId(), context),
+          verifyRecordIsPresent(deletedRecordGen0.getId(), context)
         )
-        .onSuccess(verifyRecordIsPresent -> {
-          vertx.cancelTimer(timerId);
-          async.complete();
-        })
+        .onSuccess(ar -> async.complete())
         .onFailure(context::fail)
     );
   }
 
   /*
-      The test verifies whether the DELETED record, and its related OLD record, are stay in DB when cleanup is done.
-      Records stay in DB because the 'limit' = 0, means nothing to delete.
+      The test verifies whether the records are stay in DB when cleanup is done, because 'lastUpdatedDays' = 10 means
+      the only records updated more than 10 are getting purged.
   */
   @Test
-  public void shouldNotPurge_DELETED_and_OLD_records_whenLimitEquals_0(TestContext context) {
+  public void shouldNotPurgeRecords_lastUpdatedDaysIs10(TestContext context) {
     // given
     Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 0, 0);
+    RecordCleanupService service = new RecordCleanupService(10, 2, vertx, recordDao);
     // when
-    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
+    service.cleanup();
     // then
     vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
-        verifyRecordIsPresent(deletedRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
-        verifyRecordIsPresent(actualRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
-      )
-      .onSuccess(verifyRecordPurged -> {
-        vertx.cancelTimer(timerId);
-        async.complete();
-      })
-      .onFailure(context::fail)
+          verifyRecordIsPresent(deletedRecordGen1.getId(), context),
+          verifyRecordIsPresent(deletedRecordGen0.getId(), context)
+        )
+        .onSuccess(ar -> async.complete())
+        .onFailure(context::fail)
     );
   }
 
-  /*
-    The test verifies whether the DELETED record, and its related OLD record, are stay in DB when cleanup is done.
-    Records stay in DB because the 'lastUpdatedDays' = 10, means nothing to delete. The only records updated more than 10
-    days back are getting purged.
-  */
-  @Test
-  public void shouldNotPurge_DELETED_and_OLD_records_whenLastUpdatedDaysEquals_10(TestContext context) {
-    // given
-    Async async = context.async();
-    RecordCleanupService recordCleanupService = new RecordCleanupServiceImpl(recordDao, 100, 10, 1000);
-    // when
-    long timerId = recordCleanupService.initialize(vertx, TENANT_ID);
-    // then
-    vertx.setTimer(1_000, timerHandler -> CompositeFuture.all(
-        verifyRecordIsPresent(deletedRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForDeletedRecord.getId(), context),
-        verifyRecordIsPresent(actualRecord.getId(), context),
-        verifyRecordIsPresent(oldRecordForActualRecord.getId(), context)
-      )
-      .onSuccess(verifyRecordPurged -> {
-        vertx.cancelTimer(timerId);
-        async.complete();
-      })
-      .onFailure(context::fail)
-    );
-  }
-
-  private Future<Void> verifyRecordPurged(String recordId, TestContext testContext) {
+  private Future<Void> verifyRecordIsPurged(String recordId, TestContext testContext) {
     Promise<Void> promise = Promise.promise();
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     Future.succeededFuture()

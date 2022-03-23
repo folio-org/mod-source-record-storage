@@ -202,11 +202,13 @@ public interface RecordService {
   Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
 
   /**
+   * Updates a multiple records that have same matched id. It's usually the actual record,
+   * and related records of an older generations.
    *
-   * @param id
-   * @param state
-   * @param tenant
-   * @return
+   * @param matchedId matched id
+   * @param state record state
+   * @param tenantId  tenant id
+   * @return void future
    */
-  Future<Void> updateRecordsState(String matchedId, RecordState state, String tenant);
+  Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId);
 }

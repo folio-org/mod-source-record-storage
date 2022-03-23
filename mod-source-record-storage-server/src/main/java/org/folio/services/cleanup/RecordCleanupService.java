@@ -29,9 +29,9 @@ public class RecordCleanupService {
   }
 
   /**
-   * The method is getting run by the Spring Framework's Scheduler at 12am (midnight) every day by default.
-   * The execution starts automatically on ApplicationContext setup.
-   * The schedule is defined by the cron expression, that allows to define a timing by the fixed rules.
+   * The method is getting run by the Spring Framework's Scheduler, at 12 am (midnight) every day by default.
+   * The execution starts automatically on the ApplicationContext setup.
+   * The schedule is defined by the cron expression, which allows defining timing in a fixed format.
    */
   @Scheduled(cron = "${srs.cleanup.cron.expression:0 0 0 * * ?}")
   public void cleanup() {

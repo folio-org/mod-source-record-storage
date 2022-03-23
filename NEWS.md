@@ -1,6 +1,7 @@
 ## xxxx-xx-xx v5.4.0-SNAPSHOT
 * [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Determine how to handle deleted authority records
+* [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
 * [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
 
 ## 2021-02-22 v5.3.0

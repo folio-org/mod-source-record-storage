@@ -75,7 +75,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .and(filterRecordByLeaderRecordStatus(leaderRecordStatus))
           .and(filterRecordByUpdatedDateRange(updatedAfter, updatedBefore));
 
-        boolean forOffset = offset != 0 && limit != 1;
+        boolean forOffset = offset != 0 || limit != 1;
         List<OrderField<?>> orderFields = toRecordOrderFields(orderBy, forOffset);
         recordService.getSourceRecords(condition, toRecordType(recordType), orderFields, offset, limit, tenantId)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)

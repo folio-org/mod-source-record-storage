@@ -133,7 +133,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldCompleteExceptionallyIfNoRecordStored(TestContext context) {
+  public void shouldCompleteIfNoRecordStored(TestContext context) {
     Async async = context.async();
     // given
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -155,8 +155,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     CompletableFuture<DataImportEventPayload> future = eventHandler.handle(dataImportEventPayload);
     // then
     future.whenComplete((eventPayload, throwable) -> {
-      context.assertNotNull(throwable);
-      context.assertEquals(NotFoundException.class, throwable.getClass());
+      context.assertNull(throwable);
       async.complete();
     });
   }

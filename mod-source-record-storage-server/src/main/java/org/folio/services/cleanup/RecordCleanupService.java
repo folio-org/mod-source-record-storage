@@ -40,7 +40,7 @@ public class RecordCleanupService {
       .onSuccess(tenants -> {
         for (String tenantId : tenants) {
           recordDao.deleteRecords(lastUpdatedDays, limit, tenantId)
-            .onFailure(throwable -> LOGGER.error("Failed to delete records, tenant: {}, cause: {}", tenantId, throwable))
+            .onFailure(throwable -> LOGGER.error("Failed to delete records, tenant: {}, cause: {}", tenantId, throwable.getMessage()))
             .onSuccess(ar -> LOGGER.info("Records has been successfully deleted, tenant: {}", tenantId));
         }
       });

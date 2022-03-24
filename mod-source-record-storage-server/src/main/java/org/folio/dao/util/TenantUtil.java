@@ -14,6 +14,9 @@ import java.util.stream.StreamSupport;
 /* The util class helps to work with tenant's data */
 public class TenantUtil {
 
+  private TenantUtil() {
+  }
+
   /* The method returns all the available tenants for whom the mode is deployed */
   public static Future<List<String>> getModuleTenants(Vertx vertx) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx);

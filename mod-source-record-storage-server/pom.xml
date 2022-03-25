@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>5.4.0-SNAPSHOT</version>
+    <version>5.3.1-SNAPSHOT</version>
   </parent>
 
   <dependencies>
@@ -651,6 +651,7 @@
             <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
             <LANG>en_US</LANG>
           </environmentVariables>
+          <testFailureIgnore>true</testFailureIgnore>
         </configuration>
       </plugin>
 

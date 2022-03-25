@@ -30,11 +30,12 @@ public class RecordCleanupService {
 
   /**
    * The method is getting run by the Spring Framework's Scheduler, at 12 am (midnight) every day by default.
-   * The execution starts automatically on the ApplicationContext setup.
-   * The schedule is defined by the cron expression, which allows defining timing in a fixed format.
+   * The execution starts automatically after the ApplicationContext setup.
+   * The schedule is defined by the cron expression, which allows defining time to run in a fixed format.
    */
   @Scheduled(cron = "${srs.cleanup.cron.expression:0 0 0 * * ?}")
   public void cleanup() {
+    LOGGER.info("Starting records cleanup job");
     TenantUtil.getModuleTenants(vertx)
       .onFailure(throwable -> LOGGER.error("Failed to retrieve tenants available for the module, cause: {}", throwable.getMessage()))
       .onSuccess(tenants -> {

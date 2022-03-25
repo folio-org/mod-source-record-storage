@@ -17,6 +17,7 @@ import org.folio.services.util.TypeConnection;
 
 import java.util.concurrent.CompletableFuture;
 
+import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
@@ -65,6 +66,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Handles DELETE action  */
   private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
     var record = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
+    LOG.info(format("Handling 'delete' event for the record id = '%s'", record.getId()));
     recordService.updateRecordsState(record.getMatchedId(), RecordState.DELETED, payload.getTenant())
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());

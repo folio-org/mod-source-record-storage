@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
 import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
@@ -288,12 +289,15 @@ public interface RecordDao {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
-   *  Performs purge the 'DELETED' records, and its related 'OLD' records
+   *  Performs purge the 'DELETED' records.
+   *  Purges a given limited number of 'DELETED' records updated more the than given number of days back.
    *
-   * @param tenantId tenant id
-   * @return future
+   * @param lastUpdatedDays number of days when the records were updated the last time
+   * @param limit           maximum number of records allowed to purge
+   * @param tenantId        tenant id
+   * @return void future
    */
-  Future<Void> cleanRecords(String tenantId);
+  Future<Void> deleteRecords(int lastUpdatedDays, int limit, String tenantId);
 
   /**
    * Creates new Record and updates status of the "old" one,
@@ -336,4 +340,15 @@ public interface RecordDao {
    * @return future with list of invalid marc bib ids
    */
   Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
+
+  /**
+   * Updates a multiple records that have same matched id. It's usually the actual record,
+   * and related records of an older generations.
+   *
+   * @param matchedId matched id
+   * @param recordState record state
+   * @param tenantId  tenant id
+   * @return void future
+   */
+  Future<Void> updateRecordsState(String matchedId, RecordState recordState, String tenantId);
 }

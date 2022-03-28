@@ -11,11 +11,13 @@ import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordService;
 import org.folio.services.util.TypeConnection;
 
 import java.util.concurrent.CompletableFuture;
 
+import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
@@ -64,7 +66,8 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Handles DELETE action  */
   private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
     var record = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
-    recordService.updateRecord(record.withState(Record.State.DELETED), payload.getTenant())
+    LOG.info("Handling 'delete' event for the record id = {}", record.getId());
+    recordService.updateRecordsState(record.getMatchedId(), RecordState.DELETED, payload.getTenant())
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());

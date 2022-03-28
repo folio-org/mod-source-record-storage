@@ -2,6 +2,7 @@
 * [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Determine how to handle deleted authority records
 * [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
+* [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
 
 ## 2022-03-xx v5.3.1-SNAPSHOT
 * [MODSOURCE-482](https://issues.folio.org/browse/MODSOURCE-482) One-record OCLC (Create) Data Import takes over 9 seconds

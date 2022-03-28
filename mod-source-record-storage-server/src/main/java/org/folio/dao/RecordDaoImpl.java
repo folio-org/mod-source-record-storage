@@ -70,6 +70,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -106,6 +107,7 @@ import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
@@ -885,13 +887,28 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Void> cleanRecords(String tenantId) {
+  public Future<Void> deleteRecords(int lastUpdatedDays, int limit, String tenantId) {
     Promise<Void> promise = Promise.promise();
-    var purgeOldRecordsQuery = DSL.deleteFrom(RECORDS_LB)
-      .where(RECORDS_LB.STATE.eq(RecordState.OLD).and(RECORDS_LB.MATCHED_ID.in(DSL.select(RECORDS_LB.ID).from(RECORDS_LB).where(RECORDS_LB.STATE.eq(RecordState.DELETED)))));
-    var purgeDeletedRecordsQuery = DSL.deleteFrom(RECORDS_LB)
-      .where(RECORDS_LB.STATE.eq(RecordState.DELETED));
-    executeInTransaction(txQE -> txQE.execute(dsl -> purgeOldRecordsQuery).compose(ar -> txQE.execute(dsl -> purgeDeletedRecordsQuery)), tenantId)
+    var selectIdsForDeleteQuery = select(RECORDS_LB.ID)
+      .from(RECORDS_LB)
+      .where(RECORDS_LB.STATE.eq(RecordState.DELETED)).and(RECORDS_LB.UPDATED_DATE.le(OffsetDateTime.now().minusDays(lastUpdatedDays)))
+      .orderBy(RECORDS_LB.CREATED_DATE.asc());
+    if (limit > 0) {
+      selectIdsForDeleteQuery.limit(limit);
+    }
+    getQueryExecutor(tenantId).execute(dsl -> dsl.deleteFrom(RECORDS_LB).where(RECORDS_LB.ID.in(selectIdsForDeleteQuery)))
+      .onSuccess(succeededAr -> promise.complete())
+      .onFailure(promise::fail);
+    return promise.future();
+  }
+
+  @Override
+  public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
+    Promise<Void> promise = Promise.promise();
+    getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
+        .set(RECORDS_LB.STATE, state)
+        .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId)))
+      )
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();

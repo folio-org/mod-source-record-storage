@@ -116,6 +116,11 @@ After setup, it is good to check logs in all related modules for errors. Data im
 * Relevant from the **Juniper** release(module version from 5.1.0) to **Kiwi** release (module version from 5.2.0)
   * "_srs.kafka.cache.cleanup.interval.ms_": 3600000
   * "_srs.kafka.cache.expiration.time.hours_": 3
+* Relevant from the **Morning Glory** release(module version from 5.4.0):
+  * "_srs.cleanup.last.updated.days_": 7
+  * "_srs.cleanup.limit_": 100
+  * "_srs.cleanup.cron.expression_": 0 0 0 * * ?
+
 ## Database schemas
 
 The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.

@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -199,4 +200,15 @@ public interface RecordService {
    * @return future with list of invalid marc bib ids
    */
   Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId);
+
+  /**
+   * Updates a multiple records that have same matched id. It's usually the actual record,
+   * and related records of an older generations.
+   *
+   * @param matchedId matched id
+   * @param state record state
+   * @param tenantId  tenant id
+   * @return void future
+   */
+  Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId);
 }

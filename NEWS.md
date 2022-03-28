@@ -4,6 +4,9 @@
 * [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
 * [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
 
+## 2022-03-xx v5.3.1-SNAPSHOT
+* [MODSOURCE-482](https://issues.folio.org/browse/MODSOURCE-482) One-record OCLC (Create) Data Import takes over 9 seconds
+
 ## 2021-02-22 v5.3.0
 * [MODSOURCE-461](https://issues.folio.org/browse/MODSOURCE-461) Upgrade RMB and Vertx versions that contain fixes for the connection pool
 * [MODSOURCE-420](https://issues.folio.org/browse/MODSOURCE-420) The support for 'maxPoolSize' (DB_MAXPOOLSIZE) from RMB was added

@@ -33,7 +33,7 @@ public class TenantUtil {
   private static String mapToTenant(Row row) {
     String nsTenant = row.getString("nspname");
     String suffix = "_mod_source_record_storage";
-    int suffixLength = nsTenant.length() - suffix.length();
-    return nsTenant.substring(0, suffixLength);
+    int tenantNameLength = nsTenant.length() - suffix.length();
+    return nsTenant.substring(0, tenantNameLength);
   }
 }

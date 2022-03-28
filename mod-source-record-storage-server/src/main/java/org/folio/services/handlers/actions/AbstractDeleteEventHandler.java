@@ -66,7 +66,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Handles DELETE action  */
   private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
     var record = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
-    LOG.info(format("Handling 'delete' event for the record id = '%s'", record.getId()));
+    LOG.info("Handling 'delete' event for the record id = {}", record.getId());
     recordService.updateRecordsState(record.getMatchedId(), RecordState.DELETED, payload.getTenant())
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());

@@ -102,7 +102,7 @@ public class RecordServiceImpl implements RecordService {
           return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
             .compose(optionalMatchedRecord -> optionalMatchedRecord
               .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
-              .orElse(recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+              .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
         } else {
           return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
         }

@@ -3,6 +3,7 @@
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Determine how to handle deleted authority records
 * [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
 * [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
+* [MODSOURCE-447](https://issues.folio.org/browse/MODSOURCE-447) 035 created from 001/003 is not working in SRS record when using a MARC Modification action in Data Import Job Profile
 
 ## 2022-03-xx v5.3.1-SNAPSHOT
 * [MODSOURCE-482](https://issues.folio.org/browse/MODSOURCE-482) One-record OCLC (Create) Data Import takes over 9 seconds

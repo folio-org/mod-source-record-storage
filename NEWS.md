@@ -1,3 +1,7 @@
+## 2022-03-xx v5.3.2-SNAPSHOT
+* [MODDATAIMP-645](https://issues.folio.org/browse/MODDATAIMP-645) Fixed update a MARC authority record multiple times
+* [MODSOURCE-489](https://issues.folio.org/browse/MODSOURCE-489) Records that are overlaid multiple times via Inventory Single Record Import can't be overlaid after the second time
+
 ## 2022-03-25 v5.3.1
 * [MODSOURCE-482](https://issues.folio.org/browse/MODSOURCE-482) One-record OCLC (Create) Data Import takes over 9 seconds
 * [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records

@@ -30,7 +30,7 @@ public class MarcAuthorityUpdateModifyEventHandler extends AbstractUpdateModifyE
 
   @Override
   protected boolean isHridFillingNeeded() {
-    return false;
+    return true;
   }
 
   @Override

@@ -27,6 +27,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
+  protected boolean isHridFillingNeeded() {
+    return false;
+  }
+
+  @Override
   public String getPostProcessingInitializationEventType() {
     return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
   }

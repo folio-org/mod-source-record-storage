@@ -83,8 +83,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, getMarcMappingOption(mappingProfile)))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
-          remove003FieldIfNeeded(changedRecord, hrId);
+          if(isHridFillingNeeded()) {
+            addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
+            remove003FieldIfNeeded(changedRecord, hrId);
+          }
           increaseGeneration(changedRecord);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
@@ -112,6 +114,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
     return false;
   }
+
+  protected abstract boolean isHridFillingNeeded();
 
   protected abstract String getNextEventType();
 

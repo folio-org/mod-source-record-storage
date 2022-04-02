@@ -79,8 +79,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
-          .orElseGet(
-            () -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId()))))
+          .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId()))))
         .onSuccess(v -> prepareModificationResult(payload, getMarcMappingOption(mappingProfile)))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -189,7 +188,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private void increaseGeneration(Record changedRecord) {
     var generation = changedRecord.getGeneration();
-    if(nonNull(generation)){
+    if (nonNull(generation)) {
       changedRecord.setGeneration(++generation);
     }
   }

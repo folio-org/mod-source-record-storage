@@ -4,6 +4,7 @@
 * [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
 * [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
 * [MODSOURCE-447](https://issues.folio.org/browse/MODSOURCE-447) 035 created from 001/003 is not working in SRS record when using a MARC Modification action in Data Import Job Profile
+* [MODSOURCE-349](https://issues.folio.org/browse/MODSOURCE-349) Function set_id_in_jsonb is present in migrated Juniper/Kiwi environment
 
 ## 2022-03-xx v5.3.2-SNAPSHOT
 * [MODSOURCE-489](https://issues.folio.org/browse/MODSOURCE-489) Records that are overlaid multiple times via Inventory Single Record Import can't be overlaid after the second time

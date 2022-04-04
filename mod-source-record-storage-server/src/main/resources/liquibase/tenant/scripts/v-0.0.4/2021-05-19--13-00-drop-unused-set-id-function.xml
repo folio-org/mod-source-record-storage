@@ -4,7 +4,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
-  <changeSet id="2021-05-19--13-00-drop-unused-set-id-function" author="VolodymyrRohach">
+  <changeSet id="2021-05-19--13-00-drop-unused-set-id-function" author="VolodymyrRohach" runAlways="true">
     <sql>
       DROP FUNCTION IF EXISTS ${database.defaultSchemaName}.set_id_in_jsonb() CASCADE;
     </sql>

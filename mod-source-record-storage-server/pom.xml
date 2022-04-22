@@ -10,6 +10,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafkaclients.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>postgres-testing</artifactId>
       <version>${raml-module-builder.version}</version>

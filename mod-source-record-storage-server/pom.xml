@@ -184,7 +184,7 @@
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>2.6.0</version>
+      <version>${kafkaclients.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

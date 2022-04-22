@@ -88,7 +88,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             remove003FieldIfNeeded(changedRecord, hrId);
           }
           increaseGeneration(changedRecord);
-          changedRecord.setOrder(0);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
@@ -169,6 +168,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       changedRecord.setSnapshotId(payload.getJobExecutionId());
       changedRecord.setGeneration(null);
       changedRecord.setId(UUID.randomUUID().toString());
+      Record incomingRecord = Json.decodeValue(context.get(modifiedEntityType().value()), Record.class);
+      changedRecord.setOrder(incomingRecord.getOrder());
       context.put(modifiedEntityType().value(), Json.encode(changedRecord));
     }
   }

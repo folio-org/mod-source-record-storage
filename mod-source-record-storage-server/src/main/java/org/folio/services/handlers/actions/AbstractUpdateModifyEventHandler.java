@@ -88,6 +88,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             remove003FieldIfNeeded(changedRecord, hrId);
           }
           increaseGeneration(changedRecord);
+          changedRecord.setOrder(0);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))

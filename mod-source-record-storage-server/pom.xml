@@ -232,7 +232,7 @@
     <testcontainers.version>1.15.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
+    <jackson.jaxb.version>2.12.6.1</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
     <postgres.version>42.3.3</postgres.version>

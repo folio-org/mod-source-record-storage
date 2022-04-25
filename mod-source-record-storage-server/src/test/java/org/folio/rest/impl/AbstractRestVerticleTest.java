@@ -201,6 +201,7 @@ public abstract class AbstractRestVerticleTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
+      cluster.stop();
       async.complete();
     }));
   }

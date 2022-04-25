@@ -138,6 +138,7 @@ public abstract class AbstractLBServiceTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopPostgresTester();
+      cluster.stop();
       async.complete();
     }));
   }

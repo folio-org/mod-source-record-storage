@@ -10,6 +10,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafkaclients.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>postgres-testing</artifactId>
       <version>${raml-module-builder.version}</version>
@@ -179,7 +184,7 @@
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>2.6.0</version>
+      <version>${kafkaclients.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>

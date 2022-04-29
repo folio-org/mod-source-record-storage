@@ -33,7 +33,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -42,7 +41,7 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
@@ -84,13 +83,14 @@ public abstract class AbstractRestVerticleTest {
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
-  @ClassRule
-  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+  public static EmbeddedKafkaCluster cluster;
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
+    cluster = provisionWith(defaultClusterConfig());
+    cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
@@ -201,6 +201,7 @@ public abstract class AbstractRestVerticleTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
+      cluster.stop();
       async.complete();
     }));
   }

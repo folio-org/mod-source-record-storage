@@ -24,12 +24,11 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 
 import java.lang.reflect.Type;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 
 public abstract class AbstractLBServiceTest {
 
@@ -58,14 +57,15 @@ public abstract class AbstractLBServiceTest {
 
   protected static PostgresClientFactory postgresClientFactory;
 
-  @ClassRule
-  public static EmbeddedKafkaCluster cluster = provisionWith(useDefaults());
+  public static EmbeddedKafkaCluster cluster;
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
     Async async = context.async();
     vertx = Vertx.vertx();
 
+    cluster = provisionWith(defaultClusterConfig());
+    cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
@@ -138,6 +138,7 @@ public abstract class AbstractLBServiceTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopPostgresTester();
+      cluster.stop();
       async.complete();
     }));
   }

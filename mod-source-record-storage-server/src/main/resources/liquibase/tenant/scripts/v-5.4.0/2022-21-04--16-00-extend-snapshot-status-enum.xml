@@ -1,0 +1,12 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2022-21-04--16-00-extend-snapshot-status-enum.xml" author="VolodymyrRohach">
+    <sql> ALTER TYPE ${database.defaultSchemaName}.job_execution_status ADD VALUE IF NOT EXISTS 'CANCELLED';
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

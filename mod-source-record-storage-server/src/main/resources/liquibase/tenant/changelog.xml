@@ -60,4 +60,6 @@
   <include file="scripts/v-5.0.6-5.1.3-5.2.0/2021-08-04--16-00-rename-instance-hrid.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.0.6-5.1.3-5.2.0/2021-08-04--16-00-rename-instance-id.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-5.4.0/2022-21-04--16-00-extend-snapshot-status-enum.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

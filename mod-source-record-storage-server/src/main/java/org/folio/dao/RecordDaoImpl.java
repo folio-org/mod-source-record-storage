@@ -361,7 +361,10 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
-    if(context == null) finalPromise.fail("saveRecords must be executed by a Vertx thread");
+    if(context == null) {
+      finalPromise.fail("saveRecords must be executed by a Vertx thread");
+      return finalPromise.future();
+    }
     context.owner().<RecordsBatchResponse>executeBlocking(promise -> {
       Set<UUID> matchedIds = new HashSet<>();
       Set<String> snapshotIds = new HashSet<>();

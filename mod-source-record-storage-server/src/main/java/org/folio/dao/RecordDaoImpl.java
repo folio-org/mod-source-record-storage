@@ -361,10 +361,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
-    if(context == null) {
-      finalPromise.fail("saveRecords must be executed by a Vertx thread");
-      return finalPromise.future();
-    }
+    if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
     context.owner().<RecordsBatchResponse>executeBlocking(promise -> {
       Set<UUID> matchedIds = new HashSet<>();
       Set<String> snapshotIds = new HashSet<>();
@@ -690,14 +687,13 @@ public class RecordDaoImpl implements RecordDao {
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParseRecord must be called by a vertx thread");
 
-    context.owner().<ParsedRecord>executeBlocking(promise -> {
+    context.owner().<ParsedRecord>executeBlocking(promise ->
         getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
             updateExternalIdsForRecord(txQE, record),
             ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
           )).map(res -> record.getParsedRecord()))
-          .onSuccess(parsedRecord -> promise.complete(parsedRecord))
-          .onFailure(th -> promise.fail(th));
-      },
+          .onSuccess(promise::complete)
+          .onFailure(promise::fail),
       false,
       r -> {
         if (r.failed()) {

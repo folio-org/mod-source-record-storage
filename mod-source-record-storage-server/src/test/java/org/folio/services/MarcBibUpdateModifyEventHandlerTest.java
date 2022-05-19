@@ -72,8 +72,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
+  private static final String USER_ID_HEADER = "userId";
 
   private static String recordId = UUID.randomUUID().toString();
+  private static String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
@@ -237,7 +239,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withAdditionalProperty(USER_ID_HEADER, userId);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -250,6 +253,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
       async.complete();
     });
   }

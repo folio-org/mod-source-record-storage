@@ -36,6 +36,7 @@ import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingPa
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
@@ -85,12 +86,12 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, getMarcMappingOption(mappingProfile)))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          if(isHridFillingNeeded()) {
+          if (isHridFillingNeeded()) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
             remove003FieldIfNeeded(changedRecord, hrId);
           }
           increaseGeneration(changedRecord);
-          changedRecord.getMetadata().setUpdatedByUserId(userId);
+          setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
@@ -195,6 +196,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     var generation = changedRecord.getGeneration();
     if (nonNull(generation)) {
       changedRecord.setGeneration(++generation);
+    }
+  }
+
+  private void setUpdatedBy(Record changedRecord, String userId) {
+    if (changedRecord.getMetadata() != null) {
+      changedRecord.getMetadata().setUpdatedByUserId(userId);
+    } else {
+      changedRecord.withMetadata(new Metadata().withUpdatedByUserId(userId));
     }
   }
 }

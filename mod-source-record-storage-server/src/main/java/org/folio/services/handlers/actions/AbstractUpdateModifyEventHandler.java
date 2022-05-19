@@ -45,6 +45,7 @@ import org.folio.services.util.RestUtil;
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG =
@@ -74,6 +75,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
       String hrId = retrieveHrid(payload, getMarcMappingOption(mappingProfile));
+      String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       preparePayload(payload);
 
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
@@ -88,6 +90,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             remove003FieldIfNeeded(changedRecord, hrId);
           }
           increaseGeneration(changedRecord);
+          changedRecord.getMetadata().setUpdatedByUserId(userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))

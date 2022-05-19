@@ -21,7 +21,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.TypeConnection;
 
 @Component

@@ -685,7 +685,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
     Promise<ParsedRecord> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
-    if(context == null) return Future.failedFuture("updateParseRecord must be called by a vertx thread");
+    if(context == null) return Future.failedFuture("updateParsedRecord must be called by a vertx thread");
 
     context.owner().<ParsedRecord>executeBlocking(promise ->
         getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
@@ -709,146 +709,160 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
-    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
+    Promise<ParsedRecordsBatchResponse> finalPromise = Promise.promise();
+    Context context = Vertx.currentContext();
+    if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
 
-    Set<String> recordTypes = new HashSet<>();
+    context.owner().<ParsedRecordsBatchResponse>executeBlocking(promise ->
+      {
+        Set<String> recordTypes = new HashSet<>();
 
-    List<Record> records = new ArrayList<>();
-    List<String> errorMessages = new ArrayList<>();
+        List<Record> records = new ArrayList<>();
+        List<String> errorMessages = new ArrayList<>();
 
-    List<UpdateConditionStep<RecordsLbRecord>> recordUpdates = new ArrayList<>();
-    List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates = new ArrayList<>();
+        List<UpdateConditionStep<RecordsLbRecord>> recordUpdates = new ArrayList<>();
+        List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates = new ArrayList<>();
 
-    Field<UUID> prtId = field(name(ID), UUID.class);
-    Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
+        Field<UUID> prtId = field(name(ID), UUID.class);
+        Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
 
-    List<ParsedRecord> parsedRecords = recordCollection.getRecords()
-      .stream()
-      .map(this::validateParsedRecordId)
-      .peek(record -> {
+        List<ParsedRecord> parsedRecords = recordCollection.getRecords()
+          .stream()
+          .map(this::validateParsedRecordId)
+          .peek(record -> {
 
-        // make sure only one record type
-        recordTypes.add(record.getRecordType().name());
-        if (recordTypes.size() > 1) {
-          throw new BadRequestException("Batch record collection only supports single record type");
-        }
+            // make sure only one record type
+            recordTypes.add(record.getRecordType().name());
+            if (recordTypes.size() > 1) {
+              throw new BadRequestException("Batch record collection only supports single record type");
+            }
 
-        UpdateSetFirstStep<RecordsLbRecord> updateFirstStep = DSL.update(RECORDS_LB);
-        UpdateSetMoreStep<RecordsLbRecord> updateStep = null;
+            UpdateSetFirstStep<RecordsLbRecord> updateFirstStep = DSL.update(RECORDS_LB);
+            UpdateSetMoreStep<RecordsLbRecord> updateStep = null;
 
-        // check for external record properties to update
-        ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
-        AdditionalInfo additionalInfo = record.getAdditionalInfo();
-        Metadata metadata = record.getMetadata();
+            // check for external record properties to update
+            ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
+            AdditionalInfo additionalInfo = record.getAdditionalInfo();
+            Metadata metadata = record.getMetadata();
 
-        if (Objects.nonNull(externalIdsHolder)) {
-          var recordType = record.getRecordType();
-          String externalId = getExternalId(externalIdsHolder, recordType);
-          String externalHrid = getExternalHrid(externalIdsHolder, recordType);
-          if (StringUtils.isNotEmpty(externalId)) {
-              updateStep = updateFirstStep
-                .set(RECORDS_LB.EXTERNAL_ID, UUID.fromString(externalId));
-          }
-          if (StringUtils.isNotEmpty(externalHrid)) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.EXTERNAL_HRID, externalHrid);
-          }
-        }
+            if (Objects.nonNull(externalIdsHolder)) {
+              var recordType = record.getRecordType();
+              String externalId = getExternalId(externalIdsHolder, recordType);
+              String externalHrid = getExternalHrid(externalIdsHolder, recordType);
+              if (StringUtils.isNotEmpty(externalId)) {
+                  updateStep = updateFirstStep
+                    .set(RECORDS_LB.EXTERNAL_ID, UUID.fromString(externalId));
+              }
+              if (StringUtils.isNotEmpty(externalHrid)) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.EXTERNAL_HRID, externalHrid);
+              }
+            }
 
-        if (Objects.nonNull(additionalInfo)) {
-          if (Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
-          }
-        }
+            if (Objects.nonNull(additionalInfo)) {
+              if (Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
+              }
+            }
 
-        if (Objects.nonNull(metadata)) {
-          if (StringUtils.isNotEmpty(metadata.getCreatedByUserId())) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.CREATED_BY_USER_ID, UUID.fromString(metadata.getCreatedByUserId()));
-          }
-          if (Objects.nonNull(metadata.getCreatedDate())) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.CREATED_DATE, metadata.getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
-          }
-          if (StringUtils.isNotEmpty(metadata.getUpdatedByUserId())) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.UPDATED_BY_USER_ID, UUID.fromString(metadata.getUpdatedByUserId()));
-          }
-          if (Objects.nonNull(metadata.getUpdatedDate())) {
-            updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-              .set(RECORDS_LB.UPDATED_DATE, metadata.getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
-          }
-        }
+            if (Objects.nonNull(metadata)) {
+              if (StringUtils.isNotEmpty(metadata.getCreatedByUserId())) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.CREATED_BY_USER_ID, UUID.fromString(metadata.getCreatedByUserId()));
+              }
+              if (Objects.nonNull(metadata.getCreatedDate())) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.CREATED_DATE, metadata.getCreatedDate().toInstant().atOffset(ZoneOffset.UTC));
+              }
+              if (StringUtils.isNotEmpty(metadata.getUpdatedByUserId())) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.UPDATED_BY_USER_ID, UUID.fromString(metadata.getUpdatedByUserId()));
+              }
+              if (Objects.nonNull(metadata.getUpdatedDate())) {
+                updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+                  .set(RECORDS_LB.UPDATED_DATE, metadata.getUpdatedDate().toInstant().atOffset(ZoneOffset.UTC));
+              }
+            }
 
-        // only attempt update if has id and external values to update
-        if (Objects.nonNull(updateStep) && Objects.nonNull(record.getId())) {
-          records.add(record);
-          recordUpdates.add(updateStep.where(RECORDS_LB.ID.eq(UUID.fromString(record.getId()))));
-        }
+            // only attempt update if has id and external values to update
+            if (Objects.nonNull(updateStep) && Objects.nonNull(record.getId())) {
+              records.add(record);
+              recordUpdates.add(updateStep.where(RECORDS_LB.ID.eq(UUID.fromString(record.getId()))));
+            }
 
-        try {
-          RecordType recordType = toRecordType(record.getRecordType().name());
-          recordType.formatRecord(record);
+            try {
+              RecordType recordType = toRecordType(record.getRecordType().name());
+              recordType.formatRecord(record);
 
-          parsedRecordUpdates.add(
-            DSL.update(table(name(recordType.getTableName())))
-              .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
-              .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
-          );
+              parsedRecordUpdates.add(
+                DSL.update(table(name(recordType.getTableName())))
+                  .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
+                  .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
+              );
 
-        } catch (Exception e) {
-          errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
-          // if invalid parsed record, set id to null to filter out
-          record.getParsedRecord()
-            .setId(null);
-        }
+            } catch (Exception e) {
+              errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
+              // if invalid parsed record, set id to null to filter out
+              record.getParsedRecord()
+                .setId(null);
+            }
 
-      }).map(Record::getParsedRecord)
-        .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
-        .collect(Collectors.toList());
+          }).map(Record::getParsedRecord)
+            .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
+            .collect(Collectors.toList());
 
-    try (Connection connection = getConnection(tenantId)) {
-      DSL.using(connection).transaction(ctx -> {
-        DSLContext dsl = DSL.using(ctx);
+        try (Connection connection = getConnection(tenantId)) {
+          DSL.using(connection).transaction(ctx -> {
+            DSLContext dsl = DSL.using(ctx);
 
-        // update records
-        int[] recordUpdateResults = dsl.batch(recordUpdates).execute();
+            // update records
+            int[] recordUpdateResults = dsl.batch(recordUpdates).execute();
 
-        // check record update results
-        for (int i = 0; i < recordUpdateResults.length; i++) {
-          int result = recordUpdateResults[i];
-          if (result == 0) {
-            errorMessages.add(format("Record with id %s was not updated", records.get(i).getId()));
-          }
-        }
+            // check record update results
+            for (int i = 0; i < recordUpdateResults.length; i++) {
+              int result = recordUpdateResults[i];
+              if (result == 0) {
+                errorMessages.add(format("Record with id %s was not updated", records.get(i).getId()));
+              }
+            }
 
-        // update parsed records
-        int[] parsedRecordUpdateResults = dsl.batch(parsedRecordUpdates).execute();
+            // update parsed records
+            int[] parsedRecordUpdateResults = dsl.batch(parsedRecordUpdates).execute();
 
-        // check parsed record update results
-        List<ParsedRecord> parsedRecordsUpdated = new ArrayList<>();
-        for (int i = 0; i < parsedRecordUpdateResults.length; i++) {
-          int result = parsedRecordUpdateResults[i];
-          ParsedRecord parsedRecord = parsedRecords.get(i);
-          if (result == 0) {
-            errorMessages.add(format("Parsed Record with id '%s' was not updated", parsedRecord.getId()));
-          } else {
-            parsedRecordsUpdated.add(parsedRecord);
-          }
-        }
+            // check parsed record update results
+            List<ParsedRecord> parsedRecordsUpdated = new ArrayList<>();
+            for (int i = 0; i < parsedRecordUpdateResults.length; i++) {
+              int result = parsedRecordUpdateResults[i];
+              ParsedRecord parsedRecord = parsedRecords.get(i);
+              if (result == 0) {
+                errorMessages.add(format("Parsed Record with id '%s' was not updated", parsedRecord.getId()));
+              } else {
+                parsedRecordsUpdated.add(parsedRecord);
+              }
+            }
 
-        promise.complete(new ParsedRecordsBatchResponse()
-          .withErrorMessages(errorMessages)
-          .withParsedRecords(parsedRecordsUpdated)
-          .withTotalRecords(parsedRecordsUpdated.size()));
-      });
-    } catch (SQLException e) {
-      LOG.error("Failed to update records", e);
-      promise.fail(e);
-    }
+            promise.complete(new ParsedRecordsBatchResponse()
+              .withErrorMessages(errorMessages)
+              .withParsedRecords(parsedRecordsUpdated)
+              .withTotalRecords(parsedRecordsUpdated.size()));
+          });
+        } catch (SQLException e) {
+          LOG.error("Failed to update records", e);
+          promise.fail(e);
+        }},
+        false,
+          r -> {
+            if (r.failed()) {
+              LOG.error("Error during update of parsed records", r.cause());
+              finalPromise.fail(r.cause());
+            } else {
+              LOG.debug("parsed records update was successful");
+              finalPromise.complete(r.result());
+            }
+          });
 
-    return promise.future();
+    return finalPromise.future();
   }
 
   @Override

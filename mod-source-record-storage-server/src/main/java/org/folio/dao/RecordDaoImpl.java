@@ -358,7 +358,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) { //NOSONAR
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
@@ -708,12 +708,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) { //NOSONAR
-    Promise<ParsedRecordsBatchResponse> finalPromise = Promise.promise();
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
 
-    context.owner().<ParsedRecordsBatchResponse>executeBlocking(promise ->
+    context.owner().<ParsedRecordsBatchResponse>executeBlocking(blockingPromise ->
       {
         Set<String> recordTypes = new HashSet<>();
 
@@ -842,27 +842,27 @@ public class RecordDaoImpl implements RecordDao {
               }
             }
 
-            promise.complete(new ParsedRecordsBatchResponse()
+            blockingPromise.complete(new ParsedRecordsBatchResponse()
               .withErrorMessages(errorMessages)
               .withParsedRecords(parsedRecordsUpdated)
               .withTotalRecords(parsedRecordsUpdated.size()));
           });
         } catch (SQLException e) {
           LOG.error("Failed to update records", e);
-          promise.fail(e);
+          blockingPromise.fail(e);
         }},
         false,
-          r -> {
-            if (r.failed()) {
-              LOG.error("Error during update of parsed records", r.cause());
-              finalPromise.fail(r.cause());
+          result -> {
+            if (result.failed()) {
+              LOG.error("Error during update of parsed records", result.cause());
+              promise.fail(result.cause());
             } else {
               LOG.debug("parsed records update was successful");
-              finalPromise.complete(r.result());
+              promise.complete(result.result());
             }
           });
 
-    return finalPromise.future();
+    return promise.future();
   }
 
   @Override

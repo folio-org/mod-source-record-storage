@@ -708,7 +708,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) { //NOSONAR
     Promise<ParsedRecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
@@ -852,7 +852,7 @@ public class RecordDaoImpl implements RecordDao {
           promise.fail(e);
         }},
         false,
-          r -> { //NOSONAR
+          r -> {
             if (r.failed()) {
               LOG.error("Error during update of parsed records", r.cause());
               finalPromise.fail(r.cause());

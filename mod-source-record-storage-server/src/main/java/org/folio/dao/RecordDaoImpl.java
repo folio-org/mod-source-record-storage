@@ -358,7 +358,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) { //NOSONAR
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");

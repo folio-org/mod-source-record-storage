@@ -852,7 +852,7 @@ public class RecordDaoImpl implements RecordDao {
           promise.fail(e);
         }},
         false,
-          r -> {
+          r -> { //NOSONAR
             if (r.failed()) {
               LOG.error("Error during update of parsed records", r.cause());
               finalPromise.fail(r.cause());

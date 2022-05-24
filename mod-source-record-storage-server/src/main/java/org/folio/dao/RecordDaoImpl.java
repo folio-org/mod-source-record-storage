@@ -683,28 +683,10 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    Promise<ParsedRecord> finalPromise = Promise.promise();
-    Context context = Vertx.currentContext();
-    if(context == null) return Future.failedFuture("updateParsedRecord must be called by a vertx thread");
-
-    context.owner().<ParsedRecord>executeBlocking(promise ->
-        getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
-            updateExternalIdsForRecord(txQE, record),
-            ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-          )).map(res -> record.getParsedRecord()))
-          .onSuccess(promise::complete)
-          .onFailure(promise::fail),
-      false,
-      r -> {
-        if (r.failed()) {
-          LOG.error("Error during update of parsed record", r.cause());
-          finalPromise.fail(r.cause());
-        } else {
-          LOG.debug("parsed record update was successful");
-          finalPromise.complete(r.result());
-        }
-      });
-    return finalPromise.future();
+    return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
+      updateExternalIdsForRecord(txQE, record),
+      ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+    )).map(res -> record.getParsedRecord()));
   }
 
   @Override

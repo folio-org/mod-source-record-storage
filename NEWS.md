@@ -7,6 +7,8 @@
 * [MODSOURCE-349](https://issues.folio.org/browse/MODSOURCE-349) Function set_id_in_jsonb is present in migrated Juniper/Kiwi environment
 * [MODSOURCE-496](https://issues.folio.org/browse/MODSOURCE-496) Single record imports show the incorrect record number in the summary log 1st column
 * [MODSOURMAN-779](https://issues.folio.org/browse/MODSOURMAN-779) Add "CANCELLED" status for Import jobs that are stopped by users.
+* [MODSOURCE-499](https://issues.folio.org/browse/MODSOURCE-499) Alleviate Eventloop Blocking During Batch Save of Records
+
 
 ## 2022-03-xx v5.3.2-SNAPSHOT
 * [MODSOURCE-489](https://issues.folio.org/browse/MODSOURCE-489) Records that are overlaid multiple times via Inventory Single Record Import can't be overlaid after the second time

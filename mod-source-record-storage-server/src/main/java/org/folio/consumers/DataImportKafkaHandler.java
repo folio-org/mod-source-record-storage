@@ -37,6 +37,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
+  private static final String USER_ID_HEADER = "userId";
 
   private Vertx vertx;
   private JobProfileSnapshotCache profileSnapshotCache;
@@ -51,6 +52,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
     String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
     String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
+    String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
     try {
       Promise<String> promise = Promise.promise();
       Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
@@ -59,6 +61,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
         eventPayload.getJobExecutionId(), recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
+      eventPayload.getContext().put(USER_ID_HEADER, userId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);

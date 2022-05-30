@@ -142,7 +142,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional controlled field {) to record {}", field, record.getId(), e);
+      LOGGER.error("Failed to add additional controlled field {} to record {}", field, record.getId(), e);
     }
     return result;
   }
@@ -175,7 +175,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to remove controlled field {) from record {}", field, record.getId(), e);
+      LOGGER.error("Failed to remove controlled field {} from record {}", field, record.getId(), e);
     }
     return result;
   }
@@ -201,7 +201,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to read controlled field {) from record {}", tag, record.getId(), e);
+      LOGGER.error("Failed to read controlled field {} from record {}", tag, record.getId(), e);
       return null;
     }
     return null;
@@ -236,7 +236,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional data field {) to record {}", e, tag, record.getId());
+      LOGGER.error("Failed to add additional data field {} to record {}", e, tag, record.getId());
     }
     return result;
   }

@@ -133,6 +133,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     .withMappingDetails(new MappingDetail()
       .withMarcMappingDetails(Collections.singletonList(marcMappingDetail)));
 
+  private MappingProfile updateMappingProfile = new MappingProfile()
+    .withId(UUID.randomUUID().toString())
+    .withName("Update MARC Bibs")
+    .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+    .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+    .withMappingDetails(new MappingDetail());
+
   private MappingProfile marcBibModifyMappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
@@ -320,12 +327,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
-    mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
+    updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
-        .withProfileId(mappingProfile.getId())
+        .withProfileId(updateMappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
-        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
+        .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -363,7 +370,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
-    mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(marcBibModifyMappingProfile.getId())

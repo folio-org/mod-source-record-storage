@@ -75,7 +75,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       }
 
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
-      String hrId = retrieveHrid(payload, getMarcMappingOption(mappingProfile));
+      MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
+      String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       preparePayload(payload);
 
@@ -83,10 +84,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
           .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId()))))
-        .onSuccess(v -> prepareModificationResult(payload, getMarcMappingOption(mappingProfile)))
+        .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          if (isHridFillingNeeded()) {
+          if(isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
             remove003FieldIfNeeded(changedRecord, hrId);
           }

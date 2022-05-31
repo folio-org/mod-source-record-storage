@@ -8,6 +8,7 @@
 * [MODSOURCE-496](https://issues.folio.org/browse/MODSOURCE-496) Single record imports show the incorrect record number in the summary log 1st column
 * [MODSOURMAN-779](https://issues.folio.org/browse/MODSOURMAN-779) Add "CANCELLED" status for Import jobs that are stopped by users.
 * [MODSOURCE-499](https://issues.folio.org/browse/MODSOURCE-499) Alleviate Eventloop Blocking During Batch Save of Records
+* [MODSOURMAN-801](https://issues.folio.org/browse/MODSOURMAN-801) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't
 
 
 ## 2022-03-xx v5.3.2-SNAPSHOT

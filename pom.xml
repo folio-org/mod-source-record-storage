@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-source-record-storage</artifactId>
-  <version>5.3.3-SNAPSHOT</version>
+  <version>5.3.3</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -176,7 +176,7 @@
     <url>https://github.com/folio-org/mod-source-record-storage</url>
     <connection>scm:git:git://github.com/folio-org/mod-source-record-storage</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-source-record-storage.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v5.3.3</tag>
   </scm>
 
   <pluginRepositories>

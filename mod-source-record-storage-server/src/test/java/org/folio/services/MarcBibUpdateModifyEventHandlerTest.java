@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
@@ -29,6 +30,7 @@ import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.rest.jaxrs.model.MarcField;
 import org.folio.rest.jaxrs.model.MarcMappingDetail;
 import org.folio.rest.jaxrs.model.MarcSubfield;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -72,8 +74,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
+  private static final String USER_ID_HEADER = "userId";
 
   private static String recordId = UUID.randomUUID().toString();
+  private static String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
@@ -128,6 +132,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     .withExistingRecordType(MARC_BIBLIOGRAPHIC)
     .withMappingDetails(new MappingDetail()
       .withMarcMappingDetails(Collections.singletonList(marcMappingDetail)));
+
+  private MappingProfile updateMappingProfile = new MappingProfile()
+    .withId(UUID.randomUUID().toString())
+    .withName("Update MARC Bibs")
+    .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+    .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+    .withMappingDetails(new MappingDetail());
 
   private MappingProfile marcBibModifyMappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())
@@ -197,7 +208,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMatchedId(recordId)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord);
+      .withParsedRecord(parsedRecord)
+      .withMetadata(new Metadata());
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
@@ -237,7 +249,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withAdditionalProperty(USER_ID_HEADER, userId);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -250,6 +263,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
       async.complete();
     });
   }
@@ -313,12 +327,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
-    mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
+    updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
-        .withProfileId(mappingProfile.getId())
+        .withProfileId(updateMappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
-        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
+        .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -356,7 +370,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
 
-    mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(marcBibModifyMappingProfile.getId())
@@ -382,7 +395,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+      ObjectMapper mapper = new ObjectMapper();
+      try {
+        context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+      } catch (JsonProcessingException e) {
+        context.fail(e);
+      }
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       async.complete();
     });

@@ -50,6 +50,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
+  private static final String USER_ID_HEADER = "userId";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
@@ -74,6 +75,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       return future;
     }
     payload.getEventsChain().add(payload.getEventType());
+    payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
 
     String record = context.get(typeConnection.getMarcType().value());
     MatchDetail matchDetail = retrieveMatchDetail(payload);

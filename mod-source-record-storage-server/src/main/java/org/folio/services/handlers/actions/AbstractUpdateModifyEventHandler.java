@@ -36,6 +36,7 @@ import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingPa
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
@@ -45,6 +46,7 @@ import org.folio.services.util.RestUtil;
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG =
@@ -73,21 +75,24 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       }
 
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
-      String hrId = retrieveHrid(payload, getMarcMappingOption(mappingProfile));
+      MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
+      String hrId = retrieveHrid(payload, marcMappingOption);
+      String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       preparePayload(payload);
 
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
           .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId()))))
-        .onSuccess(v -> prepareModificationResult(payload, getMarcMappingOption(mappingProfile)))
+        .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          if(isHridFillingNeeded()) {
+          if(isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
             remove003FieldIfNeeded(changedRecord, hrId);
           }
           increaseGeneration(changedRecord);
+          setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
@@ -192,6 +197,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     var generation = changedRecord.getGeneration();
     if (nonNull(generation)) {
       changedRecord.setGeneration(++generation);
+    }
+  }
+
+  private void setUpdatedBy(Record changedRecord, String userId) {
+    if (changedRecord.getMetadata() != null) {
+      changedRecord.getMetadata().setUpdatedByUserId(userId);
+    } else {
+      changedRecord.withMetadata(new Metadata().withUpdatedByUserId(userId));
     }
   }
 }

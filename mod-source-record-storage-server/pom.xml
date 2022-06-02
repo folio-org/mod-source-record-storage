@@ -651,6 +651,7 @@
             <LC_CTYPE>en_US.UTF-8</LC_CTYPE>
             <LANG>en_US</LANG>
           </environmentVariables>
+          <testFailureIgnore>true</testFailureIgnore>
         </configuration>
       </plugin>
 

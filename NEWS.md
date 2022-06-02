@@ -1,3 +1,6 @@
+## 2022-06-02 v5.3.3
+* [MODSOURCE-508](https://issues.folio.org/browse/MODSOURCE-508) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't
+
 ## 2022-04-04 v5.3.2
 * [MODDATAIMP-645](https://issues.folio.org/browse/MODDATAIMP-645) Fixed update a MARC authority record multiple times
 * [MODSOURCE-489](https://issues.folio.org/browse/MODSOURCE-489) Records that are overlaid multiple times via Inventory Single Record Import can't be overlaid after the second time

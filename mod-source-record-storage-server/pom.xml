@@ -179,7 +179,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>2.5.0</version>
+      <version>2.6.0</version>
     </dependency>
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
@@ -232,7 +232,7 @@
     <testcontainers.version>1.15.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.jaxb.version>2.10.0</jackson.jaxb.version>
+    <jackson.jaxb.version>2.13.3</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
     <postgres.version>42.3.3</postgres.version>

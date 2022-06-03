@@ -77,7 +77,6 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
     String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
-    LOGGER.debug("ChunksHandler, USER_ID: " + userId);
     String key = targetRecord.key();
 
     int chunkNumber = chunkCounter.incrementAndGet();
@@ -86,7 +85,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     try {
       LOGGER.debug("RecordCollection has been received with event: '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
         eventPayload.getEventType(), chunkId, chunkNumber, key, recordId);
-      setCreatedBy(recordCollection, userId);
+      setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, eventPayload.getEventType(), targetRecord));
     } catch (Exception e) {
@@ -150,13 +149,15 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       }).collect(Collectors.toList()));
   }
 
-  private void setCreatedBy(RecordCollection recordCollection, String userId) {
+  private void setUserMetadata(RecordCollection recordCollection, String userId) {
     recordCollection.getRecords()
       .forEach(record -> {
         if (record.getMetadata() != null) {
-          record.getMetadata().setCreatedByUserId(userId);
+          record.getMetadata().setUpdatedByUserId(userId);
         } else {
-          record.withMetadata(new Metadata().withCreatedByUserId(userId));
+          record.withMetadata(new Metadata()
+            .withCreatedByUserId(userId)
+            .withUpdatedByUserId(userId));
         }
       });
   }

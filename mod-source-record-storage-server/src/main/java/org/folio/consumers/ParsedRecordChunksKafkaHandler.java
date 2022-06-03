@@ -77,6 +77,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
     String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
+    LOGGER.debug("ChunksHandler, USER_ID: " + userId);
     String key = targetRecord.key();
 
     int chunkNumber = chunkCounter.incrementAndGet();

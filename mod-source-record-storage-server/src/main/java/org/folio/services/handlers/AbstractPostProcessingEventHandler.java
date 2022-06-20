@@ -33,6 +33,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.services.RecordService;
 import org.jooq.Condition;
 
 import org.folio.DataImportEventPayload;
@@ -73,13 +74,15 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
+  private final RecordService recordService;
 
-  public AbstractPostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig,
+  public AbstractPostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
                                             MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
     this.recordDao = recordDao;
     this.kafkaConfig = kafkaConfig;
     this.mappingParamsCache = mappingParamsCache;
     this.vertx = vertx;
+    this.recordService = recordService;
   }
 
   @Override
@@ -279,7 +282,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           return recordDao.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
-          return recordDao.saveRecord(record, tenantId).map(record);
+          return recordService.saveRecord(record, tenantId).map(record);
         }
       })
       .compose(updatedRecord ->

@@ -5,6 +5,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDIN
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
+import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +20,9 @@ import org.folio.services.util.TypeConnection;
 @Component
 public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEventHandler {
 
-  public HoldingsPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig,
+  public HoldingsPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordDao, kafkaConfig, mappingParametersCache, vertx);
+    super(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
   }
 
   @Override

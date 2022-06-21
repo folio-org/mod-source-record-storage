@@ -68,7 +68,6 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.jaxb.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -90,7 +89,6 @@
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
       <artifactId>jackson-module-jaxb-annotations</artifactId>
-      <version>${jackson.jaxb.version}</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -232,7 +230,6 @@
     <testcontainers.version>1.15.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jackson.jaxb.version>2.13.3</jackson.jaxb.version>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
     <postgres.version>42.3.3</postgres.version>

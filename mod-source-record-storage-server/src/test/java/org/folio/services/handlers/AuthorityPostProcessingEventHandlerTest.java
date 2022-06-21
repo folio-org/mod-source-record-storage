@@ -66,7 +66,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new AuthorityPostProcessingEventHandler(recordDao, kafkaConfig, mappingParametersCache, vertx);
+    return new AuthorityPostProcessingEventHandler(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
   }
 
   @Test

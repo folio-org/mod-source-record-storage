@@ -31,6 +31,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.services.RecordService;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -63,7 +64,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new HoldingsPostProcessingEventHandler(recordDao, kafkaConfig, mappingParametersCache, vertx);
+    return new HoldingsPostProcessingEventHandler(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
   }
 
   @Test

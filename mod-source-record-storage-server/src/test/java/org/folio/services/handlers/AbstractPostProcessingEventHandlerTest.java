@@ -24,6 +24,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.services.RecordService;
+import org.folio.services.RecordServiceImpl;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.junit.After;
 import org.junit.Before;
@@ -58,6 +60,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   protected final String snapshotId2 = UUID.randomUUID().toString();
   protected Record record;
   protected RecordDao recordDao;
+  protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
 
   protected AbstractPostProcessingEventHandler handler;
@@ -89,6 +92,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
     mappingParametersCache = new MappingParametersSnapshotCache(vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordService = new RecordServiceImpl(recordDao);
     handler = createHandler(recordDao, kafkaConfig);
     Async async = context.async();
 
@@ -98,8 +102,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
       .withStatus(Snapshot.Status.COMMITTED);
     Snapshot snapshot2 = new Snapshot()
       .withJobExecutionId(snapshotId2)
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
     List<Snapshot> snapshots = new ArrayList<>();
     snapshots.add(snapshot1);

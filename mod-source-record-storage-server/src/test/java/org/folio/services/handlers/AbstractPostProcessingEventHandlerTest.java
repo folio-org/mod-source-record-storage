@@ -4,6 +4,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -102,7 +105,8 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
       .withStatus(Snapshot.Status.COMMITTED);
     Snapshot snapshot2 = new Snapshot()
       .withJobExecutionId(snapshotId2)
-      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+      .withProcessingStartedDate(Date.from(LocalDateTime.now().plus(1, ChronoUnit.HOURS).atOffset(ZoneOffset.UTC).toInstant()))
+      .withStatus(Snapshot.Status.COMMITTED);
 
     List<Snapshot> snapshots = new ArrayList<>();
     snapshots.add(snapshot1);

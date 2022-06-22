@@ -10,7 +10,6 @@ import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -20,9 +19,9 @@ import org.folio.services.util.TypeConnection;
 @Component
 public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEventHandler {
 
-  public HoldingsPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
+  public HoldingsPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
+    super(recordService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Override

@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -30,9 +29,9 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   private final KafkaConfig kafkaConfig;
 
   @Autowired
-  public InstancePostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
+  public InstancePostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
+    super(recordService, kafkaConfig, mappingParametersCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 

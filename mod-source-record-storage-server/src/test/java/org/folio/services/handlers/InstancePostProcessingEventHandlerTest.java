@@ -17,7 +17,6 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -27,6 +26,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.RecordService;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -65,8 +65,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
+    return new InstancePostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test

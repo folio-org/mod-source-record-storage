@@ -38,7 +38,6 @@ import org.jooq.Condition;
 
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
-import org.folio.dao.RecordDao;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.KafkaConfig;
@@ -70,19 +69,17 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
-  private final RecordDao recordDao;
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
   private final RecordService recordService;
 
-  public AbstractPostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
-                                            MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
-    this.recordDao = recordDao;
+  protected AbstractPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+                                               MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
+    this.recordService = recordService;
     this.kafkaConfig = kafkaConfig;
     this.mappingParamsCache = mappingParamsCache;
     this.vertx = vertx;
-    this.recordService = recordService;
   }
 
   @Override
@@ -215,13 +212,13 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     Condition condition = filterRecordByNotSnapshotId(snapshotId)
       .and(filterRecordByExternalId(externalId));
 
-    return recordDao.getRecords(condition, getDbType(), new ArrayList<>(), 0, 999, tenantId)
+    return recordService.getRecords(condition, getDbType(), new ArrayList<>(), 0, 999, tenantId)
       .compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")
         List<Future<Record>> futures = new ArrayList<>();
         recordCollection.getRecords()
-          .forEach(record -> futures.add(recordDao.updateRecord(record.withState(Record.State.OLD), tenantId)));
+          .forEach(record -> futures.add(recordService.updateRecord(record.withState(Record.State.OLD), tenantId)));
         GenericCompositeFuture.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
@@ -276,10 +273,10 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
    * @return - Future with Record result
    */
   private Future<Record> saveRecord(Record record, String tenantId) {
-    return recordDao.getRecordById(record.getId(), tenantId)
+    return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
-          return recordDao.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
+          return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
           return recordService.saveRecord(record, tenantId).map(record);

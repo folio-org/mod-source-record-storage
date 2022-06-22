@@ -41,7 +41,6 @@ import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
@@ -63,8 +62,8 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new HoldingsPostProcessingEventHandler(recordDao, kafkaConfig, recordService, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
+    return new HoldingsPostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test

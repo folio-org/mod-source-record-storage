@@ -17,7 +17,6 @@ import org.folio.services.RecordService;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -31,10 +30,10 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
 
   private final KafkaConfig kafkaConfig;
 
-  public AuthorityPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig, RecordService recordService,
+  public AuthorityPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                              MappingParametersSnapshotCache mappingParamsCache,
                                              Vertx vertx) {
-    super(recordDao, kafkaConfig, recordService, mappingParamsCache, vertx);
+    super(recordService, kafkaConfig, mappingParamsCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 

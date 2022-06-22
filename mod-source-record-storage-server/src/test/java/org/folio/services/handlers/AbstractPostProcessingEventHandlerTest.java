@@ -96,7 +96,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     mappingParametersCache = new MappingParametersSnapshotCache(vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    handler = createHandler(recordDao, kafkaConfig);
+    handler = createHandler(recordService, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -132,7 +132,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
   protected abstract Record.RecordType getMarcType();
 
-  protected abstract AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig);
+  protected abstract AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig);
 
   @After
   public void cleanUp(TestContext context) {

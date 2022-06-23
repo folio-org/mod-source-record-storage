@@ -11,12 +11,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
+import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -29,9 +29,9 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   private final KafkaConfig kafkaConfig;
 
   @Autowired
-  public InstancePostProcessingEventHandler(final RecordDao recordDao, KafkaConfig kafkaConfig,
+  public InstancePostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordDao, kafkaConfig, mappingParametersCache, vertx);
+    super(recordService, kafkaConfig, mappingParametersCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 

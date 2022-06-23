@@ -8,6 +8,7 @@ import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
+import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
@@ -140,6 +141,15 @@ public interface RecordService {
    * @return future with optional source record
    */
   Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, String tenantId);
+
+  /**
+   * Updates {@link ParsedRecord} in the db
+   *
+   * @param record   record dto from which {@link ParsedRecord} will be updated
+   * @param tenantId tenant id
+   * @return future with updated ParsedRecord
+   */
+  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction

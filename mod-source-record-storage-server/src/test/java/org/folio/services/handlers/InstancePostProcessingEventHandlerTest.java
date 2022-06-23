@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -14,8 +15,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
+import org.folio.TestMocks;
 import org.folio.TestUtil;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -25,6 +26,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.RecordService;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -63,8 +65,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordDao, kafkaConfig, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
+    return new InstancePostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -165,8 +167,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
@@ -219,6 +220,58 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveIncomingRecordAndMarkExistingAsOldWhenIncomingRecordHasSameMatchedId(TestContext context) throws IOException {
+    Async async = context.async();
+    Record existingRecord = TestMocks.getRecord(0);
+    existingRecord.setSnapshotId(snapshotId1);
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
+
+    Record incomingRecord = new Record()
+      .withRawRecord(rawRecord)
+      .withId(recordId)
+      .withMatchedId(existingRecord.getMatchedId())
+      .withSnapshotId(snapshotId2)
+      .withRecordType(MARC_BIB)
+      .withParsedRecord(parsedRecord);
+
+    JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in001");
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instanceJson.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
+
+    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, TENANT_ID)
+      .compose(v -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+
+      recordDao.getRecordById(existingRecord.getId(), TENANT_ID).onComplete(recordAr -> {
+        context.assertTrue(recordAr.succeeded());
+        context.assertTrue(recordAr.result().isPresent());
+        Record existingRec = recordAr.result().get();
+        context.assertEquals(Record.State.OLD, existingRec.getState());
+
+        Record savedIncomingRecord = Json.decodeValue(ar.result().getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        context.assertEquals(Record.State.ACTUAL, savedIncomingRecord.getState());
+        context.assertNotNull(savedIncomingRecord.getGeneration());
+        context.assertTrue(existingRec.getGeneration() < savedIncomingRecord.getGeneration());
+
         async.complete();
       });
     });

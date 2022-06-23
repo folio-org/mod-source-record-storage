@@ -13,10 +13,10 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import org.folio.services.RecordService;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
-import org.folio.dao.RecordDao;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -30,10 +30,10 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
 
   private final KafkaConfig kafkaConfig;
 
-  public AuthorityPostProcessingEventHandler(RecordDao recordDao, KafkaConfig kafkaConfig,
+  public AuthorityPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                              MappingParametersSnapshotCache mappingParamsCache,
                                              Vertx vertx) {
-    super(recordDao, kafkaConfig, mappingParamsCache, vertx);
+    super(recordService, kafkaConfig, mappingParamsCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 

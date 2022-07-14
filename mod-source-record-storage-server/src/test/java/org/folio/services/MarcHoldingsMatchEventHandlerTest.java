@@ -448,4 +448,9 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     Assert.assertFalse(isEligible);
   }
+
+  @Test
+  public void shouldReturnFalseWhenCheckingIsPostProcessingNeeded() {
+    Assert.assertFalse(handler.isPostProcessingNeeded());
+  }
 }

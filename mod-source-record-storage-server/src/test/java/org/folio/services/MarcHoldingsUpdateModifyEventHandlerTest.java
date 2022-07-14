@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
@@ -417,5 +418,16 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
     // then
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldReturnTrueWhenCheckingIsPostProcessingNeeded() {
+    Assert.assertTrue(modifyRecordEventHandler.isPostProcessingNeeded());
+  }
+
+  @Test
+  public void shouldGetPostProcessingInitializationEventType() {
+    var eventType = modifyRecordEventHandler.getPostProcessingInitializationEventType();
+    Assert.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), eventType);
   }
 }

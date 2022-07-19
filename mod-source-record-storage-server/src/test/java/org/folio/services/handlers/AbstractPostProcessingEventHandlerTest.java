@@ -4,6 +4,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -24,6 +27,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.services.RecordService;
+import org.folio.services.RecordServiceImpl;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.junit.After;
 import org.junit.Before;
@@ -58,6 +63,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   protected final String snapshotId2 = UUID.randomUUID().toString();
   protected Record record;
   protected RecordDao recordDao;
+  protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
 
   protected AbstractPostProcessingEventHandler handler;
@@ -89,7 +95,8 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
     mappingParametersCache = new MappingParametersSnapshotCache(vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    handler = createHandler(recordDao, kafkaConfig);
+    recordService = new RecordServiceImpl(recordDao);
+    handler = createHandler(recordService, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -98,7 +105,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
       .withStatus(Snapshot.Status.COMMITTED);
     Snapshot snapshot2 = new Snapshot()
       .withJobExecutionId(snapshotId2)
-      .withProcessingStartedDate(new Date())
+      .withProcessingStartedDate(Date.from(LocalDateTime.now().plus(1, ChronoUnit.HOURS).atOffset(ZoneOffset.UTC).toInstant()))
       .withStatus(Snapshot.Status.COMMITTED);
 
     List<Snapshot> snapshots = new ArrayList<>();
@@ -125,7 +132,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
   protected abstract Record.RecordType getMarcType();
 
-  protected abstract AbstractPostProcessingEventHandler createHandler(RecordDao recordDao, KafkaConfig kafkaConfig);
+  protected abstract AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig);
 
   @After
   public void cleanUp(TestContext context) {

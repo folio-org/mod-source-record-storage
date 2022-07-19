@@ -156,6 +156,11 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
+  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
+    return recordDao.updateParsedRecord(record, tenantId);
+  }
+
+  @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<ParsedRecordsBatchResponse> promise = Promise.promise();

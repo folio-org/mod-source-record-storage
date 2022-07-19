@@ -6,11 +6,13 @@ import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
 
 import io.vertx.core.Vertx;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 
+@Component
 public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEventHandler {
 
   @Autowired

@@ -4,12 +4,12 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 
@@ -24,6 +24,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -79,6 +80,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       String hrId = retrieveHrid(payload, marcMappingOption);
       preparePayload(payload);
 
+      var eventContext = payload.getContext();
+      String entityAsString = eventContext.get(getMatchedMarcKey());
+      String recordAsString = getRecordAsString(payload, marcMappingOption);
+
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
@@ -86,9 +91,15 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          if(isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
+          if (isHridFillingNeeded()) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
             remove003FieldIfNeeded(changedRecord, hrId);
+          }
+          if (isUpdateOption(marcMappingOption)) {
+            Record record = Json.decodeValue(recordAsString, Record.class);
+            JsonObject externalEntity = new JsonObject(entityAsString);
+
+            fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity), true);
           }
           increaseGeneration(changedRecord);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));

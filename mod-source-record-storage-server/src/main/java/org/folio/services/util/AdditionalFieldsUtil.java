@@ -314,7 +314,7 @@ public final class AdditionalFieldsUtil {
     }
   }
 
-  public static void fill035FieldInMarcRecord(Record record, String incoming001) {
+  public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {
     String originalHrIdPrefix = getValueFromControlledField(record, HR_ID_PREFIX_FROM_FIELD);
     String incoming035 = mergeFieldsFor035(originalHrIdPrefix, incoming001);
     if (StringUtils.isNotEmpty(incoming001) && !isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, incoming035)) {

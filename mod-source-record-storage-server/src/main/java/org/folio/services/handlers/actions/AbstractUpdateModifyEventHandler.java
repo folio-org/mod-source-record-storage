@@ -1,30 +1,13 @@
 package org.folio.services.handlers.actions;
 
-import static java.lang.String.format;
-import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.MODIFY;
-import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.services.util.AdditionalFieldsUtil.*;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
@@ -32,14 +15,29 @@ import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.Metadata;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.RestUtil;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+
+import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.ActionProfile.Action.MODIFY;
+import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
+import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -92,7 +90,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
             String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
             if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
-              fill035FieldInMarcRecord(changedRecord, incoming001);
+              fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
             }
             remove003FieldIfNeeded(changedRecord, hrId);
           }

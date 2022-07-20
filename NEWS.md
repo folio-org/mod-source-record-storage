@@ -10,6 +10,7 @@
 * [MODSOURCE-499](https://issues.folio.org/browse/MODSOURCE-499) Alleviate Eventloop Blocking During Batch Save of Records
 * [MODSOURMAN-801](https://issues.folio.org/browse/MODSOURMAN-801) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't
 * [MODSOURCE-495](https://issues.folio.org/browse/MODSOURCE-495) Logs show incorrectly formatted request id
+* [MODSOURCE-509](https://issues.folio.org/browse/MODSOURCE-509) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
 
 ## 2022-06-02 v5.3.3
 * [MODSOURCE-508](https://issues.folio.org/browse/MODSOURCE-508) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't

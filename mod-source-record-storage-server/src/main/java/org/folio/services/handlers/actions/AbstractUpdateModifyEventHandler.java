@@ -7,11 +7,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
-import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.*;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -24,6 +20,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -78,6 +75,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
       String hrId = retrieveHrid(payload, marcMappingOption);
+      String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
+      Record record = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
+      String incoming001 = getValueFromControlledField(record, HR_ID_FROM_FIELD);
       preparePayload(payload);
 
       var eventContext = payload.getContext();
@@ -91,17 +91,18 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          if (isHridFillingNeeded()) {
+          if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
+
+            String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
+            if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
+              fill035FieldInMarcRecord(changedRecord, incoming001);
+            }
             remove003FieldIfNeeded(changedRecord, hrId);
           }
-          if (isUpdateOption(marcMappingOption)) {
-            Record record = Json.decodeValue(recordAsString, Record.class);
-            JsonObject externalEntity = new JsonObject(entityAsString);
 
-            fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity), true);
-          }
           increaseGeneration(changedRecord);
+          setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))

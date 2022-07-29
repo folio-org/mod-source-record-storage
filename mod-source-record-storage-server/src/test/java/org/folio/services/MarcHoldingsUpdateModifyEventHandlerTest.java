@@ -4,10 +4,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_AUTHORITY;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
@@ -67,23 +66,24 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.MappingParametersSnapshotCache;
-import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
-import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
+import org.folio.services.handlers.actions.MarcHoldingsUpdateModifyEventHandler;
 
 @RunWith(VertxUnitRunner.class)
-public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
+public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
-  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_AUTHORITY";
+  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_HOLDINGS";
+  private static final String USER_ID_HEADER = "userId";
 
   private static String recordId = UUID.randomUUID().toString();
+  private static String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
   private RecordDao recordDao;
   private RecordService recordService;
-  private MarcAuthorityUpdateModifyEventHandler modifyRecordEventHandler;
+  private MarcHoldingsUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
 
@@ -96,7 +96,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
     .withAction(MODIFY)
-    .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY);
+    .withFolioRecord(ActionProfile.FolioRecord.MARC_HOLDINGS);
 
   private MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
     .withOrder(0)
@@ -114,8 +114,8 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
   private MappingProfile mappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
-    .withIncomingRecordType(MARC_AUTHORITY)
-    .withExistingRecordType(MARC_AUTHORITY)
+    .withIncomingRecordType(MARC_HOLDINGS)
+    .withExistingRecordType(MARC_HOLDINGS)
     .withMappingDetails(new MappingDetail()
       .withMarcMappingDetails(Collections.singletonList(marcMappingDetail)));
 
@@ -160,7 +160,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
+    modifyRecordEventHandler = new MarcHoldingsUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -201,7 +201,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     String expectedParsedContent = "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
-    payloadContext.put(MARC_AUTHORITY.value(), Json.encode(record));
+    payloadContext.put(MARC_HOLDINGS.value(), Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
@@ -218,7 +218,8 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withAdditionalProperty(USER_ID_HEADER, userId);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -226,11 +227,12 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_AUTHORITY.value()), Record.class);
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
       async.complete();
     });
   }
@@ -245,7 +247,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(MARC_AUTHORITY.value(), Json.encode(incomingRecord));
+    payloadContext.put(MARC_HOLDINGS.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
@@ -271,9 +273,9 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_AUTHORITY.value()), Record.class);
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
@@ -291,7 +293,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(MARC_AUTHORITY.value(), Json.encode(incomingRecord));
+    payloadContext.put(MARC_HOLDINGS.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
@@ -317,9 +319,9 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_AUTHORITY.value()), Record.class);
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       async.complete();
@@ -367,7 +369,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withId(UUID.randomUUID().toString())
       .withName("Update marc bib")
       .withAction(ActionProfile.Action.UPDATE)
-      .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY);
+      .withFolioRecord(ActionProfile.FolioRecord.MARC_HOLDINGS);
 
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
@@ -416,5 +418,16 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
     // then
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldReturnTrueWhenCheckingIsPostProcessingNeeded() {
+    Assert.assertTrue(modifyRecordEventHandler.isPostProcessingNeeded());
+  }
+
+  @Test
+  public void shouldGetPostProcessingInitializationEventType() {
+    var eventType = modifyRecordEventHandler.getPostProcessingInitializationEventType();
+    Assert.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), eventType);
   }
 }

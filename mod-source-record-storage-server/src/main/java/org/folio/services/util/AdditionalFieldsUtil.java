@@ -314,6 +314,14 @@ public final class AdditionalFieldsUtil {
     }
   }
 
+  public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {
+    String originalHrIdPrefix = getValueFromControlledField(record, HR_ID_PREFIX_FROM_FIELD);
+    String incoming035 = mergeFieldsFor035(originalHrIdPrefix, incoming001);
+    if (StringUtils.isNotEmpty(incoming001) && !isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, incoming035)) {
+      addDataFieldToMarcRecord(record, HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, incoming035);
+    }
+  }
+
   private static String mergeFieldsFor035(String valueFrom003, String valueFrom001) {
     if (isBlank(valueFrom003)) {
       return valueFrom001;

@@ -1,3 +1,6 @@
+## 2022-06-27 v5.3.4
+* [MODSOURCE-509](https://issues.folio.org/browse/MODSOURCE-509) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
+
 ## 2022-06-02 v5.3.3
 * [MODSOURCE-508](https://issues.folio.org/browse/MODSOURCE-508) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't
 
@@ -29,6 +32,7 @@
 * [MODSOURCE-446](https://issues.folio.org/browse/MODSOURCE-446) Extend MARC-MARC matching to 9xx and 0xx fields
 * [MODSOURCE-450](https://issues.folio.org/browse/MODSOURCE-450) Increase folio-liquibase-util and liquibase schema version
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import 
+* [MODSOURCE-457](https://issues.folio.org/browse/MODSOURCE-457) Delete Authority: Create processor for Delete MARC Authority record
 
 ## 2022-02-09 v5.2.8
 * [MODSOURCE-438](https://issues.folio.org/browse/MODSOURCE-438) Fix SQL exceptions regarding connection termination when running CREATE import

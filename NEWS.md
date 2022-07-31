@@ -1,4 +1,4 @@
-## 2022-06-27 v5.3.4
+## 2022-07-31 v5.3.4
 * [MODSOURCE-509](https://issues.folio.org/browse/MODSOURCE-509) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
 
 ## 2022-06-02 v5.3.3

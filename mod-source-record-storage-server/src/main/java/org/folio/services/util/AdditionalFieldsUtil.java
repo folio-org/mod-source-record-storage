@@ -301,14 +301,22 @@ public final class AdditionalFieldsUtil {
     String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
     originalHrId = mergeFieldsFor035(originalHrIdPrefix, originalHrId);
     if (StringUtils.isNotEmpty(hrId) && StringUtils.isNotEmpty(originalHrId)) {
-      removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
       removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
-      addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
+        removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+        addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
       if (valueFrom001 != null && !isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
         addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
       }
     } else if (StringUtils.isNotEmpty(hrId)) {
-      addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
+        addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
+    }
+  }
+
+  public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {
+    String originalHrIdPrefix = getValueFromControlledField(record, HR_ID_PREFIX_FROM_FIELD);
+    String incoming035 = mergeFieldsFor035(originalHrIdPrefix, incoming001);
+    if (StringUtils.isNotEmpty(incoming001) && !isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, incoming035)) {
+      addDataFieldToMarcRecord(record, HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, incoming035);
     }
   }
 

@@ -48,7 +48,7 @@ public class AdditionalFieldsUtilTest {
     JsonArray fields = content.getJsonArray("fields");
     String newLeader = content.getString("leader");
     Assert.assertNotEquals(leader, newLeader);
-    Assert.assertTrue(!fields.isEmpty());
+    Assert.assertFalse(fields.isEmpty());
     int totalFieldsCount = 0;
     for (int i = fields.size(); i-- > 0; ) {
       JsonObject targetField = fields.getJsonObject(i);

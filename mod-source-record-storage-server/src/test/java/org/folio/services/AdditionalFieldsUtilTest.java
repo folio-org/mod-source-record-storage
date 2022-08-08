@@ -258,7 +258,7 @@ public class AdditionalFieldsUtilTest {
     JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
     Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
     // when
-    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair, false);
+    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
     // then
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }

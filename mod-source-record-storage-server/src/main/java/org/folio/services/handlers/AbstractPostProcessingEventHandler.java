@@ -257,7 +257,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     setExternalIds(externalIdsHolder, externalId, externalHrid);
     boolean isAddedField = addFieldToMarcRecord(record, TAG_999, 'i', externalId);
     if (isHridFillingNeeded()) {
-      fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity), false);
+      fillHrIdFieldInMarcRecord(Pair.of(record, externalEntity));
     }
     if (!isAddedField) {
       throw new PostProcessingException(

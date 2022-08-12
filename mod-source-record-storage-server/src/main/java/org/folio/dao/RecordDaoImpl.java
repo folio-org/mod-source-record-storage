@@ -460,7 +460,7 @@ public class RecordDaoImpl implements RecordDao {
             .from(RECORDS_LB)
             .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
             .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
-              .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR))
+              .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
               .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
                 .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
                 .from(SNAPSHOTS_LB)

@@ -45,10 +45,10 @@ public final class AdditionalFieldsUtil {
 
   public static final String HR_ID_FROM_FIELD = "001";
   private static final String HR_ID_PREFIX_FROM_FIELD = "003";
-  private static final String HR_ID_TO_FIELD = "035";
+  public static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
   private static final String ID_FIELD = "id";
-  private static final char HR_ID_FIELD_SUB = 'a';
+  public static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
 
@@ -150,11 +150,13 @@ public final class AdditionalFieldsUtil {
   /**
    * remove field from marc record
    *
-   * @param record record that needs to be updated
-   * @param field  tag of the field
+   * @param record   record that needs to be updated
+   * @param field    tag of the field
+   * @param subfield subfield of the field
+   * @param value    value of the field
    * @return true if succeeded, false otherwise
    */
-  public static boolean removeField(Record record, String field) {
+  public static boolean removeField(Record record, String field, char subfield, String value) {
     boolean result = false;
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
@@ -163,21 +165,47 @@ public final class AdditionalFieldsUtil {
         MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
         if (reader.hasNext()) {
           org.marc4j.marc.Record marcRecord = reader.next();
-          VariableField variableField = marcRecord.getVariableField(field);
-          if (variableField != null) {
-            marcRecord.removeVariableField(variableField);
+          List<VariableField> variableFields = marcRecord.getVariableFields(field);
+          for (VariableField variableField : variableFields) {
+            if (StringUtils.isEmpty(value)) {
+              marcRecord.removeVariableField(variableField);
+              result = true;
+              break;
+            } else {
+              if (variableField instanceof DataField) {
+                for (Subfield sub : ((DataField) variableField).getSubfields(subfield)) {
+                  if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+                    marcRecord.removeVariableField(variableField);
+                    result = true;
+                    break;
+                  }
+                }
+              }
+            }
           }
-          // use stream writer to recalculate leader
-          marcStreamWriter.write(marcRecord);
-          marcJsonWriter.write(marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(baos.toString()).encode()));
-          result = true;
+          if (result) {
+            // use stream writer to recalculate leader
+            marcStreamWriter.write(marcRecord);
+            marcJsonWriter.write(marcRecord);
+            record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(baos.toString()).encode()));
+          }
         }
       }
     } catch (Exception e) {
       LOGGER.error("Failed to remove controlled field {} from record {}", field, record.getId(), e);
     }
     return result;
+  }
+
+  /**
+   * remove field from marc record
+   *
+   * @param record record that needs to be updated
+   * @param field  tag of the field
+   * @return true if succeeded, false otherwise
+   */
+  public static boolean removeField(Record record, String field) {
+    return removeField(record, field, '\0', null);
   }
 
   /**
@@ -262,8 +290,8 @@ public final class AdditionalFieldsUtil {
    * @return true if exist
    */
   public static boolean isFieldExist(Record record, String tag, char subfield, String value) {
-    if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
-      MarcReader reader = buildMarcReader(record);
+      if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        MarcReader reader = buildMarcReader(record);
       try {
         if (reader.hasNext()) {
           org.marc4j.marc.Record marcRecord = reader.next();

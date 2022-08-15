@@ -157,7 +157,7 @@ public final class AdditionalFieldsUtil {
    * @return true if succeeded, false otherwise
    */
   public static boolean removeField(Record record, String field, char subfield, String value) {
-    boolean result = false;
+    boolean isFieldRemoveSucceed = false;
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
         MarcReader reader = buildMarcReader(record);
@@ -169,21 +169,17 @@ public final class AdditionalFieldsUtil {
           for (VariableField variableField : variableFields) {
             if (StringUtils.isEmpty(value)) {
               marcRecord.removeVariableField(variableField);
-              result = true;
+              isFieldRemoveSucceed = true;
               break;
             } else {
-              if (variableField instanceof DataField) {
-                for (Subfield sub : ((DataField) variableField).getSubfields(subfield)) {
-                  if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
-                    marcRecord.removeVariableField(variableField);
-                    result = true;
-                    break;
-                  }
-                }
+              if (isFieldContainsValue(variableField, subfield, value)) {
+                marcRecord.removeVariableField(variableField);
+                isFieldRemoveSucceed = true;
+                break;
               }
             }
           }
-          if (result) {
+          if (isFieldRemoveSucceed) {
             // use stream writer to recalculate leader
             marcStreamWriter.write(marcRecord);
             marcJsonWriter.write(marcRecord);
@@ -194,7 +190,28 @@ public final class AdditionalFieldsUtil {
     } catch (Exception e) {
       LOGGER.error("Failed to remove controlled field {} from record {}", field, record.getId(), e);
     }
-    return result;
+    return isFieldRemoveSucceed;
+  }
+
+  /**
+   * Checks if the field contains a certain value in the selected subfield
+   *
+   * @param field    from MARC BIB record
+   * @param subfield subfield of the field
+   * @param value    value of the field
+   * @return true if contains, false otherwise
+   */
+  private static boolean isFieldContainsValue(VariableField field, char subfield, String value) {
+    boolean isContains = false;
+    if (field instanceof DataField) {
+      for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
+        if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+          isContains = true;
+          break;
+        }
+      }
+    }
+    return isContains;
   }
 
   /**

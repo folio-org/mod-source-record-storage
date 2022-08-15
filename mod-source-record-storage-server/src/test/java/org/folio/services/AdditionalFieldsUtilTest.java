@@ -168,6 +168,29 @@ public class AdditionalFieldsUtilTest {
   }
 
   @Test
+  public void shouldRemoveRepeatableSelectedField() throws IOException {
+    String recordId = UUID.randomUUID().toString();
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
+    ParsedRecord parsedRecord = new ParsedRecord();
+    String leader = new JsonObject(parsedRecordContent).getString("leader");
+    parsedRecord.setContent(parsedRecordContent);
+    Record record = new Record().withId(recordId).withParsedRecord(parsedRecord);
+    boolean deleted = AdditionalFieldsUtil.removeField(record, "035", 'a', "(LTSCA)303845");
+    Assert.assertTrue(deleted);
+    JsonObject content = new JsonObject(parsedRecord.getContent().toString());
+    JsonArray fields = content.getJsonArray("fields");
+    String newLeader = content.getString("leader");
+    Assert.assertNotEquals(leader, newLeader);
+    Assert.assertFalse(fields.isEmpty());
+    for (int i = 0; i < fields.size(); i++) {
+      JsonObject targetField = fields.getJsonObject(i);
+      if (targetField.containsKey("035") && targetField.getString("035").equals("(LTSCA)303845")) {
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
   public void shouldAddControlledFieldToMarcRecord() throws IOException {
     String recordId = UUID.randomUUID().toString();
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);

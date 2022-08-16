@@ -294,24 +294,23 @@ public final class AdditionalFieldsUtil {
    *
    * @param recordInstancePair pair of related instance and record
    */
-  public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair, boolean isUpdateOption) {
+  public static void fillHrIdFieldInMarcRecord(Pair<Record, JsonObject> recordInstancePair) {
     String hrId = recordInstancePair.getValue().getString(HR_ID_FIELD);
     String valueFrom001 = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
-    String originalHrId = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
-    String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
-    originalHrId = mergeFieldsFor035(originalHrIdPrefix, originalHrId);
-    if (StringUtils.isNotEmpty(hrId) && StringUtils.isNotEmpty(originalHrId)) {
-      removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
-      if (!isUpdateOption) {
-        removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+    if (!StringUtils.equals(hrId, valueFrom001)) {
+      if (StringUtils.isNotEmpty(valueFrom001)) {
+        String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
+        String originalHrId = mergeFieldsFor035(originalHrIdPrefix, valueFrom001);
+        if (!isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
+          addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
+        }
+      }
+      removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+      if (StringUtils.isNotEmpty(hrId)) {
         addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
       }
-      if (valueFrom001 != null && !isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
-        addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
-      }
-    } else if (StringUtils.isNotEmpty(hrId) && !isUpdateOption) {
-        addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
     }
+    removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
   }
 
   public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {
@@ -347,8 +346,8 @@ public final class AdditionalFieldsUtil {
   /**
    * Updates field 005 for case when this field is not protected.
    *
-   * @param record  record to update
-   * @param mappingParameters  mapping parameters
+   * @param record            record to update
+   * @param mappingParameters mapping parameters
    */
   public static void updateLatestTransactionDate(Record record, MappingParameters mappingParameters) {
     if (isField005NeedToUpdate(record, mappingParameters)) {
@@ -362,7 +361,8 @@ public final class AdditionalFieldsUtil {
 
   /**
    * Remove 003 field if hrid is not empty (from instance and marc-record)
-   * @param record - source record
+   *
+   * @param record       - source record
    * @param instanceHrid - existing instanceHrid
    */
   public static void remove003FieldIfNeeded(Record record, String instanceHrid) {
@@ -405,7 +405,7 @@ public final class AdditionalFieldsUtil {
   /**
    * Checks whether field 005 needs to be updated or this field is protected.
    *
-   * @param record  record to check
+   * @param record            record to check
    * @param mappingParameters
    * @return true for case when field 005 have to updated
    */

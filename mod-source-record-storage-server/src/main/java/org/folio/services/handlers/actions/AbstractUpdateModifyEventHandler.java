@@ -20,14 +20,11 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.RestUtil;
-import org.jooq.Condition;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -39,20 +36,12 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
-import static org.folio.dao.util.RecordType.MARC_BIB;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.util.QueryParamUtil.firstNonEmpty;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FIELD_SUB;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_TO_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.isFieldExist;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.removeField;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -100,27 +89,19 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
-          getExistingRecordsByHrIdAndMatchedId(changedRecord, hrId, payload.getTenant())
-            .onSuccess(sourceRecordCollection -> {
-              if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
-                addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
+          if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
+            addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
-                if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(hrId)
-                  && (sourceRecordCollection.getTotalRecords() == 0)) {
-                  fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
-                } else if ((sourceRecordCollection.getTotalRecords() > 0)
-                  && (isFieldExist(changedRecord, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, hrId))) {
-                  removeField(changedRecord, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, hrId);
-                }
-                remove003FieldIfNeeded(changedRecord, hrId);
-              }
-              increaseGeneration(changedRecord);
-              setUpdatedBy(changedRecord, userId);
-              payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
-            }).onFailure(throwable -> {
-              LOG.error("Error during check MARC record existence", throwable);
-              future.completeExceptionally(throwable);
-            });
+            String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
+            if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
+              fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
+            }
+            remove003FieldIfNeeded(changedRecord, hrId);
+          }
+
+          increaseGeneration(changedRecord);
+          setUpdatedBy(changedRecord, userId);
+          payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
         .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
         .onSuccess(savedRecord -> {
@@ -136,16 +117,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
-  }
-
-  private Future<SourceRecordCollection> getExistingRecordsByHrIdAndMatchedId(Record record, String hrId, String tenantId) {
-    try {
-      Condition condition = filterRecordByRecordId(record.getMatchedId())
-        .and(filterRecordByExternalHrid(firstNonEmpty(hrId)));
-      return recordService.getSourceRecords(condition, MARC_BIB, new ArrayList<>(), 0, 1, tenantId);
-    } catch (Exception e) {
-      return Future.failedFuture(e);
-    }
   }
 
   @Override

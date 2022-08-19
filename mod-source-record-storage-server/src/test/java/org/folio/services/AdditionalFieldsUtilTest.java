@@ -306,4 +306,27 @@ public class AdditionalFieldsUtilTest {
     // then
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
+
+  @Test
+  public void shouldRemove035ifItContainsHRID() {
+    // given
+    String parsedContent = "{\"leader\":\"00118nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"},{\"003\":\"qwerty\"},{\"035\":{\"subfields\":[{\"a\":\"(NhFolYBP)in001\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    ParsedRecord parsedRecord = new ParsedRecord();
+    parsedRecord.setContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+
+    JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
+    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
+    // when
+    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
+    // then
+    Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  }
+
 }

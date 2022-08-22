@@ -33,7 +33,6 @@ import java.util.Optional;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 
 /**
@@ -46,10 +45,10 @@ public final class AdditionalFieldsUtil {
 
   public static final String HR_ID_FROM_FIELD = "001";
   private static final String HR_ID_PREFIX_FROM_FIELD = "003";
-  public static final String HR_ID_TO_FIELD = "035";
+  private static final String HR_ID_TO_FIELD = "035";
   private static final String HR_ID_FIELD = "hrid";
   private static final String ID_FIELD = "id";
-  public static final char HR_ID_FIELD_SUB = 'a';
+  private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
 
@@ -221,7 +220,7 @@ public final class AdditionalFieldsUtil {
     boolean isContains = false;
     if (field instanceof DataField) {
       for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
-        if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
+        if (isNotEmpty(sub.getData()) && sub.getData().contains(value.trim())) {
           isContains = true;
           break;
         }
@@ -371,7 +370,7 @@ public final class AdditionalFieldsUtil {
         addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
       }
     } else {
-      remove035WithActualHrIdIfExists(recordInstancePair.getKey(), hrId);
+      remove035WithActualHrId(recordInstancePair.getKey(), hrId);
     }
     removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
   }
@@ -440,10 +439,8 @@ public final class AdditionalFieldsUtil {
    * @param record       - source record
    * @param actualHrId   - actual HrId
    */
-  public static void remove035WithActualHrIdIfExists(Record record, String actualHrId) {
-    if (isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, actualHrId)) {
+  public static void remove035WithActualHrId(Record record, String actualHrId) {
       removeField(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, actualHrId);
-    }
   }
 
   /**

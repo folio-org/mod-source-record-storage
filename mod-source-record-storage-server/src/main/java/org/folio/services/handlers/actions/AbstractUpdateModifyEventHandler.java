@@ -42,6 +42,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToM
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrIdIfExists;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -96,6 +97,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
               fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
             }
+
+            remove035WithActualHrIdIfExists(changedRecord, hrId);
             remove003FieldIfNeeded(changedRecord, hrId);
           }
 

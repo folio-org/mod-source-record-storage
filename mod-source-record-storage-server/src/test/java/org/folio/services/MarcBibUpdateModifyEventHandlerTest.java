@@ -15,24 +15,43 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
-import org.folio.*;
+import org.folio.JobProfile;
+import org.folio.MappingProfile;
+import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.jaxrs.model.Data;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingMetadataDto;
+import org.folio.rest.jaxrs.model.MarcField;
+import org.folio.rest.jaxrs.model.MarcMappingDetail;
+import org.folio.rest.jaxrs.model.MarcSubfield;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +63,9 @@ import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.*;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
@@ -299,6 +320,51 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     Async async = context.async();
 
     String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"2300089\"},{\"003\":\"LTSCA\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00138nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
+    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+
+    updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
+    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+        .withProfileId(updateMappingProfile.getId())
+        .withContentType(MAPPING_PROFILE)
+        .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(payloadContext)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldUpdateMarcRecordAndCreate035FieldAndRemove035withDuplicateHrIdAndRemove003Field(TestContext context) {
+    // given
+    Async async = context.async();
+
+    String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"2300089\"},{\"003\":\"LTSCA\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406411\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00138nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));

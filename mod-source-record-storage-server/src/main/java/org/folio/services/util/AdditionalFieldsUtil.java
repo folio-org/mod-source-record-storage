@@ -152,12 +152,12 @@ public final class AdditionalFieldsUtil {
    * remove field from marc record
    *
    * @param record   record that needs to be updated
-   * @param field    tag of the field
+   * @param fieldName    tag of the field
    * @param subfield subfield of the field
    * @param value    value of the field
    * @return true if succeeded, false otherwise
    */
-  public static boolean removeField(Record record, String field, char subfield, String value) {
+  public static boolean removeField(Record record, String fieldName, char subfield, String value) {
     boolean isFieldRemoveSucceed = false;
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
@@ -166,20 +166,12 @@ public final class AdditionalFieldsUtil {
         MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
         if (reader.hasNext()) {
           org.marc4j.marc.Record marcRecord = reader.next();
-          List<VariableField> variableFields = marcRecord.getVariableFields(field);
-          for (VariableField variableField : variableFields) {
-            if (StringUtils.isEmpty(value)) {
-              marcRecord.removeVariableField(variableField);
-              isFieldRemoveSucceed = true;
-              break;
-            } else {
-              if (isFieldContainsValue(variableField, subfield, value)) {
-                marcRecord.removeVariableField(variableField);
-                isFieldRemoveSucceed = true;
-                break;
-              }
-            }
+          if (StringUtils.isEmpty(value)) {
+            isFieldRemoveSucceed = removeFirstFoundFieldByName(marcRecord, fieldName);
+          } else {
+            isFieldRemoveSucceed = removeFieldByNameAndValue(marcRecord, fieldName, subfield, value);
           }
+
           if (isFieldRemoveSucceed) {
             // use stream writer to recalculate leader
             marcStreamWriter.write(marcRecord);
@@ -189,9 +181,32 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to remove controlled field {} from record {}", field, record.getId(), e);
+      LOGGER.error("Failed to remove controlled field {} from record {}", fieldName, record.getId(), e);
     }
     return isFieldRemoveSucceed;
+  }
+
+  private static boolean removeFirstFoundFieldByName(org.marc4j.marc.Record marcRecord, String fieldName) {
+    boolean isFieldFound = false;
+    VariableField variableField = marcRecord.getVariableField(fieldName);
+    if (variableField != null) {
+      marcRecord.removeVariableField(variableField);
+      isFieldFound = true;
+    }
+    return isFieldFound;
+  }
+
+  private static boolean removeFieldByNameAndValue(org.marc4j.marc.Record marcRecord, String fieldName, char subfield, String value) {
+    boolean isFieldFound = false;
+    List<VariableField> variableFields = marcRecord.getVariableFields(fieldName);
+    for (VariableField variableField : variableFields) {
+      if (isFieldContainsValue(variableField, subfield, value)) {
+        marcRecord.removeVariableField(variableField);
+        isFieldFound = true;
+        break;
+      }
+    }
+    return isFieldFound;
   }
 
   /**
@@ -224,46 +239,6 @@ public final class AdditionalFieldsUtil {
    */
   public static boolean removeField(Record record, String field) {
     return removeField(record, field, '\0', null);
-  }
-
-  /**
-   * remove data field from marc record containing a value
-   *
-   * @param record record that needs to be updated
-   * @param tag  tag of the field
-   * @param subfield subfield
-   * @param value  value
-   * @return true if succeeded, false otherwise
-   */
-  public static boolean removeDataFieldContainingValue(Record record, String tag, char subfield, String value) {
-    boolean result = false;
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null && !isEmpty(value)) {
-        MarcReader reader = buildMarcReader(record);
-        MarcWriter marcStreamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
-        MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
-        if (reader.hasNext()) {
-          org.marc4j.marc.Record marcRecord = reader.next();
-          for (VariableField field : marcRecord.getVariableFields(tag)) {
-            if (field instanceof DataField) {
-              for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
-                if (isNotEmpty(sub.getData()) && sub.getData().contains(value.trim())) {
-                  marcRecord.removeVariableField(field);
-                  // use stream writer to recalculate leader
-                  marcStreamWriter.write(marcRecord);
-                  marcJsonWriter.write(marcRecord);
-                  record.setParsedRecord(record.getParsedRecord().withContent(new JsonObject(baos.toString()).encode()));
-                  result = true;
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOGGER.error("Failed to remove data field {} from record {}", tag, record.getId(), e);
-    }
-    return result;
   }
 
   /**
@@ -396,7 +371,7 @@ public final class AdditionalFieldsUtil {
         addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
       }
     } else {
-      removeDataFieldContainingValue(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, hrId);
+      remove035WithActualHrIdIfExists(recordInstancePair.getKey(), hrId);
     }
     removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
   }

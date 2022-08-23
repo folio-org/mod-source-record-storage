@@ -10,10 +10,14 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPP
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
@@ -180,6 +184,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
       updateLatestTransactionDate(record, mappingParameters);
+
+      if (Record.RecordType.MARC_BIB.equals(record.getRecordType())) {
+        String hrId = getValueFromControlledField(record, HR_ID_FROM_FIELD);
+        remove035WithActualHrId(record, hrId);
+        remove003FieldIfNeeded(record, hrId);
+      }
 
       JsonObject externalEntity = new JsonObject(entityAsString);
       setExternalIds(record, externalEntity);

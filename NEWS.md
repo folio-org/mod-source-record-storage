@@ -1,3 +1,9 @@
+## 2022-08-25 v5.4.1
+* [MODSOURCE-528](https://issues.folio.org/browse/MODSOURCE-528) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
+* [MODSOURCE-531](https://issues.folio.org/browse/MODSOURCE-531) Can't update "MARC" record, which was created by stopped import job.
+* [MODSOURCE-535](https://issues.folio.org/browse/MODSOURCE-535) Upgrade folio-di-support, folio-liquibase-util, PostgreSQL, Vert.x
+* [MODSOURCE-534](https://issues.folio.org/browse/MODSOURCE-534) Allow matching on created 035 
+
 ## 2022-06-27 v5.4.0
 * [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Determine how to handle deleted authority records
@@ -10,8 +16,6 @@
 * [MODSOURCE-499](https://issues.folio.org/browse/MODSOURCE-499) Alleviate Eventloop Blocking During Batch Save of Records
 * [MODSOURMAN-801](https://issues.folio.org/browse/MODSOURMAN-801) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't
 * [MODSOURCE-495](https://issues.folio.org/browse/MODSOURCE-495) Logs show incorrectly formatted request id
-* [MODSOURCE-509](https://issues.folio.org/browse/MODSOURCE-509) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
-* [MODSOURCE-531](https://issues.folio.org/browse/MODSOURCE-531) Can't update "MARC" record, which was created by stopped import job.
 
 ## 2022-06-02 v5.3.3
 * [MODSOURCE-508](https://issues.folio.org/browse/MODSOURCE-508) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't

@@ -278,6 +278,60 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
+  public void checkGeneration035FiledAfterUpdateMarcBib(TestContext context) throws IOException {
+    Async async = context.async();
+    Record existingRecord = TestMocks.getRecord(0);
+    existingRecord.setSnapshotId(snapshotId1);
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH_035_CHECK));
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(new ObjectMapper().readValue(
+        TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH_035_CHECK), JsonObject.class).encode());
+
+    Record incomingRecord = new Record()
+      .withRawRecord(rawRecord)
+      .withId(recordId)
+      .withMatchedId(existingRecord.getMatchedId())
+      .withSnapshotId(snapshotId2)
+      .withRecordType(MARC_BIB)
+      .withParsedRecord(parsedRecord);
+
+    JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in00000000040");
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instanceJson.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
+
+    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, TENANT_ID)
+      .compose(v -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+
+      recordDao.getRecordById(existingRecord.getId(), TENANT_ID).onComplete(recordAr -> {
+        context.assertTrue(recordAr.succeeded());
+        context.assertTrue(recordAr.result().isPresent());
+
+        Record existingRec = recordAr.result().get();
+        context.assertEquals(Record.State.OLD, existingRec.getState());
+
+        Record savedIncomingRecord = Json.decodeValue(ar.result().getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        context.assertEquals(Record.State.ACTUAL, savedIncomingRecord.getState());
+        context.assertNotNull(savedIncomingRecord.getGeneration());
+        context.assertTrue(existingRec.getGeneration() < savedIncomingRecord.getGeneration());
+        context.assertFalse(((String)savedIncomingRecord.getParsedRecord().getContent()).contains("(LTSA)in00000000040"));
+
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldSetInstanceIdToParsedRecordWhenContentHasField999(TestContext context) {
     Async async = context.async();
     String expectedInstanceId = UUID.randomUUID().toString();

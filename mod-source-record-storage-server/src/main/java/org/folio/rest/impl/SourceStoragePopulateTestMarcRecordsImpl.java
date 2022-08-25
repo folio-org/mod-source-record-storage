@@ -1,7 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.rest.impl.ModTenantAPI.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +27,9 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+import static org.folio.rest.impl.ModTenantAPI.STUB_SNAPSHOT;
 
 public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePopulateTestMarcRecords {
 

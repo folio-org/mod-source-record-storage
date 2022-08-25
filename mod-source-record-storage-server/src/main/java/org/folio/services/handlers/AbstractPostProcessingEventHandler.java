@@ -1,33 +1,5 @@
 package org.folio.services.handlers;
 
-import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
-
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
-import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -37,9 +9,6 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.services.RecordService;
-import org.jooq.Condition;
-
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -54,9 +23,38 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
+import org.jooq.Condition;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.lang.String.format;
+import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
@@ -185,18 +183,21 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       Record record = Json.decodeValue(recordAsString, Record.class);
       updateLatestTransactionDate(record, mappingParameters);
 
-      if (Record.RecordType.MARC_BIB.equals(record.getRecordType())) {
-        String hrId = getValueFromControlledField(record, HR_ID_FROM_FIELD);
-        remove035WithActualHrId(record, hrId);
-        remove003FieldIfNeeded(record, hrId);
-      }
-
       JsonObject externalEntity = new JsonObject(entityAsString);
-      setExternalIds(record, externalEntity);
+      setExternalIds(record, externalEntity); //operations with 001, 003, 035, 999 fields
+      remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
       recordPromise.complete(record);
     }
     return recordPromise.future();
+  }
+
+  private void remove035FieldWhenUpdateAndContainsHrId(Record record, DataImportEventTypes eventType) {
+    if (Record.RecordType.MARC_BIB.equals(record.getRecordType())
+      && (DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING == eventType)) {
+      String hrId = getValueFromControlledField(record, HR_ID_FROM_FIELD);
+      remove035WithActualHrId(record, hrId);
+    }
   }
 
   private String prepareReplyEventPayload(DataImportEventPayload dataImportEventPayload, Record record) {

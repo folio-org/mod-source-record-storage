@@ -113,13 +113,13 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.4.1</version>
+      <version>1.6.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.4.0</version>
+      <version>1.5.0</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -236,7 +236,7 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.13.6</jooq.version>
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
-    <postgres.version>42.3.3</postgres.version>
+    <postgres.version>42.5.0</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.20</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>

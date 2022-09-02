@@ -1,3 +1,6 @@
+## 2022-09-02 v5.4.2
+* [MODDICORE-248](https://issues.folio.org/browse/MODDICORE-248) MARC field protections apply to MARC modifications of incoming records when they should not
+
 ## 2022-08-25 v5.4.1
 * [MODSOURCE-528](https://issues.folio.org/browse/MODSOURCE-528) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
 * [MODSOURCE-531](https://issues.folio.org/browse/MODSOURCE-531) Can't update "MARC" record, which was created by stopped import job.

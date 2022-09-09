@@ -30,6 +30,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTA
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_DELETE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_UPDATE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
@@ -56,6 +57,7 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
     DI_INVENTORY_INSTANCE_UPDATED.value(),
     DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_ITEM_CREATED.value(),
+    DI_INVENTORY_ITEM_UPDATED.value(),
     DI_MARC_FOR_UPDATE_RECEIVED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_CREATED.value(),
     DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(),

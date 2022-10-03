@@ -1,11 +1,13 @@
 package org.folio.services;
 
+import static org.folio.services.util.AdditionalFieldsUtil.*;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.TestUtil;
@@ -152,7 +154,7 @@ public class AdditionalFieldsUtilTest {
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
     Record record = new Record().withId(recordId).withParsedRecord(parsedRecord);
-    boolean deleted = AdditionalFieldsUtil.removeField(record, "001");
+    boolean deleted = removeField(record, "001");
     Assert.assertTrue(deleted);
     JsonObject content = new JsonObject(parsedRecord.getContent().toString());
     JsonArray fields = content.getJsonArray("fields");
@@ -203,7 +205,7 @@ public class AdditionalFieldsUtilTest {
     parsedRecord.setContent(parsedRecordContent);
     Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
     // when
-    boolean added = AdditionalFieldsUtil.addDataFieldToMarcRecord(record, "035", ' ', ' ', 'a', instanceHrId);
+    boolean added = addDataFieldToMarcRecord(record, "035", ' ', ' ', 'a', instanceHrId);
     // then
     Assert.assertTrue(added);
     JsonObject content = new JsonObject(parsedRecord.getContent().toString());
@@ -235,7 +237,7 @@ public class AdditionalFieldsUtilTest {
     parsedRecord.setContent(parsedContent);
     Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
     // when
-    boolean added = AdditionalFieldsUtil.addDataFieldToMarcRecord(record, "999", 'f', 'f', 'i', instanceId);
+    boolean added = addDataFieldToMarcRecord(record, "999", 'f', 'f', 'i', instanceId);
     // then
     Assert.assertTrue(added);
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
@@ -329,4 +331,108 @@ public class AdditionalFieldsUtilTest {
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 
+
+  @Test
+  public void caching() throws IOException {
+    // given
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
+    ParsedRecord parsedRecord = new ParsedRecord();
+    parsedRecord.setContent(parsedRecordContent);
+    Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
+    String instanceId = UUID.randomUUID().toString();
+
+    CacheStats initialCacheStats = getCacheStats();
+
+    // record with null parsed content
+    Assert.assertFalse(
+      isFieldExist(new Record().withId(UUID.randomUUID().toString()), "035", 'a', instanceId));
+    CacheStats cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(0, cacheStats.hitCount());
+    Assert.assertEquals(0, cacheStats.missCount());
+    Assert.assertEquals(0, cacheStats.loadCount());
+    // record with empty parsed content
+    Assert.assertFalse(
+      isFieldExist(
+        new Record()
+          .withId(UUID.randomUUID().toString())
+          .withParsedRecord(new ParsedRecord().withContent("")),
+        "035",
+        'a',
+        instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(0, cacheStats.requestCount());
+    Assert.assertEquals(0, cacheStats.hitCount());
+    Assert.assertEquals(0, cacheStats.missCount());
+    Assert.assertEquals(0, cacheStats.loadCount());
+    // record with bad parsed content
+    Assert.assertFalse(
+      isFieldExist(
+        new Record()
+          .withId(UUID.randomUUID().toString())
+          .withParsedRecord(new ParsedRecord().withContent("test")),
+        "035",
+        'a',
+        instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(1, cacheStats.requestCount());
+    Assert.assertEquals(0, cacheStats.hitCount());
+    Assert.assertEquals(1, cacheStats.missCount());
+    Assert.assertEquals(1, cacheStats.loadCount());
+    // does field exists?
+    Assert.assertFalse(isFieldExist(record, "035", 'a', instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(2, cacheStats.requestCount());
+    Assert.assertEquals(0, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // update field
+    addDataFieldToMarcRecord(record, "035", ' ', ' ', 'a', instanceId);
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(3, cacheStats.requestCount());
+    Assert.assertEquals(1, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // verify that field exists
+    Assert.assertTrue(isFieldExist(record, "035", 'a', instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(4, cacheStats.requestCount());
+    Assert.assertEquals(2, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // verify that field exists again
+    Assert.assertTrue(isFieldExist(record, "035", 'a', instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(5, cacheStats.requestCount());
+    Assert.assertEquals(3, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // remove the field
+    Assert.assertTrue(removeField(record, "035"));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(6, cacheStats.requestCount());
+    Assert.assertEquals(4, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // get value from controlled field
+    Assert.assertEquals(getValueFromControlledField(record,"001"),"ybp7406411");
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(7, cacheStats.requestCount());
+    Assert.assertEquals(5, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // add controlled field to marc record
+    Assert.assertTrue(addControlledFieldToMarcRecord(record, "002", "test"));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(8, cacheStats.requestCount());
+    Assert.assertEquals(6, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+    // add field to marc record
+    Assert.assertTrue(addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId));
+    cacheStats = getCacheStats().minus(initialCacheStats);
+    Assert.assertEquals(9, cacheStats.requestCount());
+    Assert.assertEquals(7, cacheStats.hitCount());
+    Assert.assertEquals(2, cacheStats.missCount());
+    Assert.assertEquals(2, cacheStats.loadCount());
+  }
 }

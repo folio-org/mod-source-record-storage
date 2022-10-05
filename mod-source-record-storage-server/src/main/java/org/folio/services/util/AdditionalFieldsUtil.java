@@ -21,7 +21,11 @@ import org.marc4j.MarcJsonWriter;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamWriter;
 import org.marc4j.MarcWriter;
-import org.marc4j.marc.*;
+import org.marc4j.marc.ControlField;
+import org.marc4j.marc.DataField;
+import org.marc4j.marc.MarcFactory;
+import org.marc4j.marc.Subfield;
+import org.marc4j.marc.VariableField;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -578,7 +582,7 @@ public final class AdditionalFieldsUtil {
       try {
         return parsedRecordContentCache.get(record.getParsedRecord().getContent());
       } catch (Exception e) {
-        LOGGER.error("Error during the transformation to marc record", e);
+        LOGGER.warn("Error during the transformation to marc record", e);
         MarcReader reader = buildMarcReader(record);
         if (reader.hasNext()) {
           return reader.next();

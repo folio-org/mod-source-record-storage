@@ -146,7 +146,7 @@ public abstract class AbstractRestVerticleTest {
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
-        tenantAttributes.setModuleTo(ModuleName.getModuleName());
+        tenantAttributes.setModuleTo(ModuleName.getModuleName() + "-1.0.0");
         tenantAttributes.setParameters(Collections.singletonList(new Parameter()
           .withKey(LOAD_SAMPLE_PARAMETER)
           .withValue("true")));

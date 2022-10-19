@@ -1,8 +1,25 @@
+## 2022-10-19 v5.5.0
+* [MODSOURCE-538](https://issues.folio.org/browse/MODSOURCE-538) Subscribe the module to item updated event.
+* [MODSOURCE-540](https://issues.folio.org/browse/MODSOURCE-540) Upgrade to RMB v35.0.1
+* [MODSOURCE-542](https://issues.folio.org/browse/MODSOURCE-542) scala 2.13.9, kafkaclients 3.1.2, httpclient 4.5.13 fixing vulns
+* [MODSOURCE-554](https://issues.folio.org/browse/MODSOURCE-554) Change registration module in tests
+* [MODSOURCE-507](https://issues.folio.org/browse/MODSOURCE-507) Reduce Computation of MARC4J Records in AdditionalFieldsUtil
+* [MODSOURCE-516](https://issues.folio.org/browse/MODSOURCE-516) Support MARC-MARC Holdings update action
+
+## 2022-09-02 v5.4.2
+* [MODDICORE-248](https://issues.folio.org/browse/MODDICORE-248) MARC field protections apply to MARC modifications of incoming records when they should not
+
+## 2022-08-25 v5.4.1
+* [MODSOURCE-528](https://issues.folio.org/browse/MODSOURCE-528) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
+* [MODSOURCE-531](https://issues.folio.org/browse/MODSOURCE-531) Can't update "MARC" record, which was created by stopped import job.
+* [MODSOURCE-535](https://issues.folio.org/browse/MODSOURCE-535) Upgrade folio-di-support, folio-liquibase-util, PostgreSQL, Vert.x
+* [MODSOURCE-534](https://issues.folio.org/browse/MODSOURCE-534) Allow matching on created 035
+
 ## 2022-06-27 v5.4.0
 * [MODSOURCE-470](https://issues.folio.org/browse/MODSOURCE-470) Fix permission definition for updating records
 * [MODSOURCE-459](https://issues.folio.org/browse/MODSOURCE-459) Determine how to handle deleted authority records
 * [MODSOURMAN-724](https://issues.folio.org/browse/MODSOURMAN-724) SRM does not process and save error records
-* [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records 
+* [MODSOURCE-477](https://issues.folio.org/browse/MODSOURCE-477) Configure job to delete authority records
 * [MODSOURCE-447](https://issues.folio.org/browse/MODSOURCE-447) 035 created from 001/003 is not working in SRS record when using a MARC Modification action in Data Import Job Profile
 * [MODSOURCE-349](https://issues.folio.org/browse/MODSOURCE-349) Function set_id_in_jsonb is present in migrated Juniper/Kiwi environment
 * [MODSOURCE-496](https://issues.folio.org/browse/MODSOURCE-496) Single record imports show the incorrect record number in the summary log 1st column
@@ -12,7 +29,6 @@
 * [MODSOURCE-495](https://issues.folio.org/browse/MODSOURCE-495) Logs show incorrectly formatted request id
 * [MODSOURCE-509](https://issues.folio.org/browse/MODSOURCE-509) Data Import Updates should add 035 field from 001/003, if it's not HRID or already exists
 * [MODSOURCE-531](https://issues.folio.org/browse/MODSOURCE-531) Can't update "MARC" record, which was created by stopped import job.
-* [MODSOURCE-538](https://issues.folio.org/browse/MODSOURCE-8) Subscribe the module to item updated event.
 
 ## 2022-06-02 v5.3.3
 * [MODSOURCE-508](https://issues.folio.org/browse/MODSOURCE-508) Inventory Single Record Import: Overlays for Source=MARC Instances retain 003 when they shouldn't

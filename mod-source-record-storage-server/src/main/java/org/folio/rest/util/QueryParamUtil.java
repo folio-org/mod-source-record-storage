@@ -8,6 +8,7 @@ import org.codehaus.plexus.util.StringUtils;
 
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jooq.enums.RecordState;
 
 public final class QueryParamUtil {
 
@@ -45,6 +46,23 @@ public final class QueryParamUtil {
       }
     }
     return RecordType.MARC_BIB;
+  }
+
+  /**
+   * Tries to convert string to {@link RecordState}. Returns default ACTUAL if null or empty.
+   *
+   * @param state record state as string
+   * @return record state
+   */
+  public static RecordState toRecordState(String state) {
+    if (StringUtils.isNotEmpty(state)) {
+      try {
+        return RecordState.valueOf(state);
+      } catch (Exception e) {
+        throw new BadRequestException(format("Unknown record state %s", state));
+      }
+    }
+    return RecordState.ACTUAL;
   }
 
   /**

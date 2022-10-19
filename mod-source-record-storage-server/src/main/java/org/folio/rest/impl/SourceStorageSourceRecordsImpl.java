@@ -13,6 +13,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByUpdatedDateRange;
 import static org.folio.dao.util.RecordDaoUtil.toRecordOrderFields;
 import static org.folio.rest.util.QueryParamUtil.firstNonEmpty;
 import static org.folio.rest.util.QueryParamUtil.toExternalIdType;
+import static org.folio.rest.util.QueryParamUtil.toRecordState;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.util.Date;
@@ -27,7 +28,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jooq.Condition;
@@ -107,11 +107,10 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void getSourceStorageSourceRecordsById(String id, String idType, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getSourceStorageSourceRecordsById(String id, String idType, String state, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecordById(id, toExternalIdType(idType), tenantId)
+        recordService.getSourceRecordById(id, toExternalIdType(idType), toRecordState(state), tenantId)
           .map(optionalSourceRecord -> optionalSourceRecord.orElseThrow(() ->
             new NotFoundException(format(NOT_FOUND_MESSAGE, SourceRecord.class.getSimpleName(), id))))
           .map(GetSourceStorageSourceRecordsByIdResponse::respond200WithApplicationJson)

@@ -1709,10 +1709,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("recordId", is(FIRST_UUID));
     if (recordType == RecordType.MARC_BIB) {
       validatableResponse
-        .body("externalIdsHolder.instanceId", is(FIRST_UUID));
+        .body("externalIdsHolder.instanceId", is(SECOND_UUID));
     } else if (recordType == RecordType.MARC_HOLDING) {
       validatableResponse
-        .body("externalIdsHolder.holdingsId", is(FIRST_UUID));
+        .body("externalIdsHolder.holdingsId", is(SECOND_UUID));
     } else if (recordType == RecordType.MARC_AUTHORITY) {
       validatableResponse
         .body("externalIdsHolder.instanceId", nullValue())

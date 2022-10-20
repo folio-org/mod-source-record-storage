@@ -274,10 +274,11 @@ public interface RecordDao {
    *
    * @param id             id
    * @param idType external id type on which source record will be searched
+   * @param state external record state on which source record will be searched
    * @param tenantId       tenant id
    * @return return future with optional {@link SourceRecord}
    */
-  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, IdType idType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, IdType idType, RecordState state, String tenantId);
 
   /**
    * Deletes in transaction all records associated with specified snapshot and snapshot itself

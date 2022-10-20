@@ -357,6 +357,21 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_2, RecordType.MARC_BIB, Record.State.DELETED);
+  }
+
+  @Test
+  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_4, RecordType.MARC_AUTHORITY, Record.State.DRAFT);
+  }
+
+  @Test
+  public void shouldReturnSpecificMarcHoldingSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_5, RecordType.MARC_HOLDING, Record.State.OLD);
+  }
+
+  @Test
   public void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
@@ -1657,6 +1672,51 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .body("externalIdsHolder.instanceId", nullValue())
         .body("externalIdsHolder.holdingsId", nullValue());
 
+    }
+    async.complete();
+  }
+
+  private void returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext,
+                                                                                   Snapshot snapshot,
+                                                                                   RecordType recordType,
+                                                                                   Record.State state) {
+    postSnapshots(testContext, snapshot_1, snapshot);
+
+    Record recordWithState = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withRecordType(recordType)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(state);
+    setExternalIds(recordWithState, recordType, SECOND_UUID, null);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordWithState)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
+
+    Async async = testContext.async();
+    var validatableResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + FIRST_UUID + "?idType=RECORD&state=" + state)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(FIRST_UUID));
+    if (recordType == RecordType.MARC_BIB) {
+      validatableResponse
+        .body("externalIdsHolder.instanceId", is(SECOND_UUID));
+    } else if (recordType == RecordType.MARC_HOLDING) {
+      validatableResponse
+        .body("externalIdsHolder.holdingsId", is(SECOND_UUID));
+    } else if (recordType == RecordType.MARC_AUTHORITY) {
+      validatableResponse
+        .body("externalIdsHolder.instanceId", nullValue())
+        .body("externalIdsHolder.holdingsId", nullValue());
     }
     async.complete();
   }

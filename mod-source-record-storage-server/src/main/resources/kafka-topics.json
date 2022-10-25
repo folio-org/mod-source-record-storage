@@ -1,0 +1,8 @@
+{
+  "topics": [
+    {
+      "name": "marc-bib",
+      "numPartitions": 50
+    }
+  ]
+}

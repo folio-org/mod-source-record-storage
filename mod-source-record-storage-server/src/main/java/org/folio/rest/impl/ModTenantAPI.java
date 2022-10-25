@@ -90,7 +90,7 @@ public class ModTenantAPI extends TenantAPI {
       return EMPTY;
     }
     return attributes.getParameters().stream()
-      .filter(p -> p.getKey().equals(ModTenantAPI.LOAD_SAMPLE_PARAMETER))
+      .filter(p -> p.getKey().equals(LOAD_SAMPLE_PARAMETER))
       .findFirst()
       .map(Parameter::getValue)
       .orElse(EMPTY);

@@ -343,7 +343,7 @@
                 <env>
                   <POSTGRES_DB>postgres</POSTGRES_DB>
                   <POSTGRES_USER>postgres</POSTGRES_USER>
-                  <POSTGRES_PASSWORD>3301</POSTGRES_PASSWORD>
+                  <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
                 </env>
                 <ports>
                   <port>${db.port}:5432</port>
@@ -385,7 +385,7 @@
           <driver>org.postgresql.Driver</driver>
           <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
           <username>postgres</username>
-          <password>3301</password>
+          <password>postgres</password>
           <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
         </configuration>
         <dependencies>
@@ -441,7 +441,7 @@
             <driver>org.postgresql.Driver</driver>
             <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
             <user>postgres</user>
-            <password>3301</password>
+            <password>postgres</password>
           </jdbc>
           <generator>
             <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>

@@ -3,7 +3,7 @@ package org.folio;
 import org.folio.kafka.services.KafkaTopic;
 
 public enum RecordStorageKafkaTopic implements KafkaTopic {
-  TOPIC_ONE("marc-bib");
+  MARC_BIB("marc-bib");
 
   private final String topic;
 

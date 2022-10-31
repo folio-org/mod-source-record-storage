@@ -97,6 +97,11 @@
       <type>jar</type>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.12.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
     </dependency>
@@ -157,7 +162,7 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
+      <artifactId>mockito-inline</artifactId>
       <version>4.8.0</version>
       <scope>test</scope>
     </dependency>
@@ -338,7 +343,7 @@
                 <env>
                   <POSTGRES_DB>postgres</POSTGRES_DB>
                   <POSTGRES_USER>postgres</POSTGRES_USER>
-                  <POSTGRES_PASSWORD>postgres</POSTGRES_PASSWORD>
+                  <POSTGRES_PASSWORD>3301</POSTGRES_PASSWORD>
                 </env>
                 <ports>
                   <port>${db.port}:5432</port>
@@ -380,7 +385,7 @@
           <driver>org.postgresql.Driver</driver>
           <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
           <username>postgres</username>
-          <password>postgres</password>
+          <password>3301</password>
           <promptOnNonLocalDatabase>false</promptOnNonLocalDatabase>
         </configuration>
         <dependencies>
@@ -436,7 +441,7 @@
             <driver>org.postgresql.Driver</driver>
             <url>jdbc:postgresql://${docker.host.address}:${db.port},${docker.container.db.ip}:5432/postgres</url>
             <user>postgres</user>
-            <password>postgres</password>
+            <password>3301</password>
           </jdbc>
           <generator>
             <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>

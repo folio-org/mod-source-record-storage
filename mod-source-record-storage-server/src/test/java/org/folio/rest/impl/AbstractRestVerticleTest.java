@@ -9,7 +9,6 @@ import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
-import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonObject;
@@ -36,7 +35,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -67,8 +65,8 @@ public abstract class AbstractRestVerticleTest {
 
   static final String OKAPI_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImNjNWI3MzE3LWYyNDctNTYyMC1hYTJmLWM5ZjYxYjI5M2Q3NCIsImlhdCI6MTU3NzEyMTE4NywidGVuYW50IjoiZGlrdSJ9.0TDnGadsNpFfpsFGVLX9zep5_kIBJII2MU7JhkFrMRw";
 
-  private static final String KAFKA_HOST = "KAFKA_HOST";
-  private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String KAFKA_HOST = "kafka-host";
+  private static final String KAFKA_PORT = "kafka-port";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
@@ -102,14 +100,8 @@ public abstract class AbstractRestVerticleTest {
       "embedded");
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
-      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
-        @Override
-        public ObjectMapper create(Type arg0, String arg1) {
-          ObjectMapper objectMapper = new ObjectMapper();
-          return objectMapper;
-        }
-      }
-    ));
+      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
+      ));
 
     switch (useExternalDatabase) {
       case "environment":

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -25,16 +24,14 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import java.lang.reflect.Type;
-
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 
 public abstract class AbstractLBServiceTest {
 
-  private static final String KAFKA_HOST = "KAFKA_HOST";
-  private static final String KAFKA_PORT = "KAFKA_PORT";
-  private static final String KAFKA_ENV = "ENV";
+  private static final String KAFKA_HOST = "kafka-host";
+  private static final String KAFKA_PORT = "kafka-port";
+  private static final String KAFKA_ENV = "env";
   private static final String KAFKA_ENV_ID = "test-env";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   private static final int KAFKA_MAX_REQUEST_SIZE_VAL = 1048576;
@@ -83,14 +80,8 @@ public abstract class AbstractLBServiceTest {
       .build();
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
-      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
-        @Override
-        public ObjectMapper create(Type arg0, String arg1) {
-          ObjectMapper objectMapper = new ObjectMapper();
-          return objectMapper;
-        }
-      }
-    ));
+      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
+      ));
 
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
     JsonObject pgClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();

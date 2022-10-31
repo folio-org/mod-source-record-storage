@@ -29,9 +29,9 @@ import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultCluste
 
 public abstract class AbstractLBServiceTest {
 
-  private static final String KAFKA_HOST = "kafka-host";
-  private static final String KAFKA_PORT = "kafka-port";
-  private static final String KAFKA_ENV = "env";
+  private static final String KAFKA_HOST = "KAFKA_HOST";
+  private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String KAFKA_ENV = "ENV";
   private static final String KAFKA_ENV_ID = "test-env";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   private static final int KAFKA_MAX_REQUEST_SIZE_VAL = 1048576;
@@ -66,6 +66,10 @@ public abstract class AbstractLBServiceTest {
     cluster = provisionWith(defaultClusterConfig());
     cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");
+    //Property variables
+    System.setProperty("kafka-host", hostAndPort[0]);
+    System.setProperty("kafka-port", hostAndPort[1]);
+    //Env variables
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);

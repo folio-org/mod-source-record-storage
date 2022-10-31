@@ -9,7 +9,6 @@ import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
-import io.restassured.path.json.mapper.factory.Jackson2ObjectMapperFactory;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonObject;
@@ -36,7 +35,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -92,6 +90,10 @@ public abstract class AbstractRestVerticleTest {
     cluster = provisionWith(defaultClusterConfig());
     cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");
+    //Property variables
+    System.setProperty("kafka-host", hostAndPort[0]);
+    System.setProperty("kafka-port", hostAndPort[1]);
+    //Env variables
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
@@ -102,14 +104,8 @@ public abstract class AbstractRestVerticleTest {
       "embedded");
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
-      .jackson2ObjectMapperFactory(new Jackson2ObjectMapperFactory() {
-        @Override
-        public ObjectMapper create(Type arg0, String arg1) {
-          ObjectMapper objectMapper = new ObjectMapper();
-          return objectMapper;
-        }
-      }
-    ));
+      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
+      ));
 
     switch (useExternalDatabase) {
       case "environment":

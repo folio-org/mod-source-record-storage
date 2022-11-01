@@ -1,3 +1,6 @@
+## 2022-11-01 v5.5.2
+* [MODSOURCE-556](https://issues.folio.org/browse/MODSOURCE-556) Fix behaviour of the cache in JobProfileSnapshotCache class
+
 ## 2022-10-19 v5.5.0
 * [MODSOURCE-538](https://issues.folio.org/browse/MODSOURCE-538) Subscribe the module to item updated event.
 * [MODSOURCE-540](https://issues.folio.org/browse/MODSOURCE-540) Upgrade to RMB v35.0.1

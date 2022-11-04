@@ -54,6 +54,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
 
   @Override
   public void handle(Throwable throwable, KafkaConsumerRecord<String, String> record) {
+    LOGGER.trace("handle:: Handling record {}", record);
     Event event = Json.decodeValue(record.value(), Event.class);
     RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
@@ -65,7 +66,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     String tenantId = okapiConnectionParams.getTenantId();
 
     if(throwable instanceof DuplicateEventException) {
-      LOGGER.warn("Duplicate event received, skipping processing for jobExecutionId: {} , tenantId: {}, correlationId:{}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, correlationId, recordCollection.getTotalRecords(), throwable.getMessage());
+      LOGGER.warn("handle:: Duplicate event received, skipping processing for jobExecutionId: {} , tenantId: {}, correlationId:{}, totalRecords: {}, cause: {}", jobExecutionId, tenantId, correlationId, recordCollection.getTotalRecords(), throwable.getMessage());
     } else {
       sendErrorRecordsSavingEvents(recordCollection, throwable.getMessage(), kafkaHeaders, jobExecutionId, tenantId);
     }
@@ -91,6 +92,6 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     }
 
     GenericCompositeFuture.join(sendingFutures)
-      .onFailure(th -> LOGGER.warn("Failed to send DI_ERROR events for failure processed parsed record chunks" , th));
+      .onFailure(th -> LOGGER.warn("sendErrorRecordsSavingEvents:: Failed to send DI_ERROR events for failure processed parsed record chunks" , th));
   }
 }

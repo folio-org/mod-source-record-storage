@@ -101,11 +101,11 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           future.complete(dataImportEventPayload);
         })
         .onFailure(throwable -> {
-          LOG.error(FAIL_MSG, eventType, throwable);
+          LOG.warn(FAIL_MSG, eventType, throwable);
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
-      LOG.error(FAIL_MSG, eventType, e);
+      LOG.warn(FAIL_MSG, eventType, e);
       future.completeExceptionally(e);
     }
     return future;
@@ -177,7 +177,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     String entityAsString = eventContext.get(getExternalType().value());
     String recordAsString = eventContext.get(getMarcType().value());
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
-      LOG.error(EVENT_HAS_NO_DATA_MSG);
+      LOG.warn(EVENT_HAS_NO_DATA_MSG);
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
@@ -235,7 +235,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
             result.complete();
           } else {
             result.fail(ar.cause());
-            LOG.error(FAILED_UPDATE_STATE_MSG, ar.cause());
+            LOG.warn(FAILED_UPDATE_STATE_MSG, ar.cause());
           }
         });
         return result.future();

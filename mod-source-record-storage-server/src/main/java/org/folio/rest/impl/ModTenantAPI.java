@@ -63,7 +63,7 @@ public class ModTenantAPI extends TenantAPI {
   private Future<Void> createStubSnapshot(TenantAttributes attributes) {
     String loadSampleParam = getTenantAttributesParameter(attributes, LOAD_SAMPLE_PARAMETER);
     if (!Boolean.parseBoolean(loadSampleParam)) {
-      LOGGER.info("Module is being deployed in production mode");
+      LOGGER.info("createStubSnapshot:: Module is being deployed in production mode");
       return Future.succeededFuture();
     }
 
@@ -74,7 +74,7 @@ public class ModTenantAPI extends TenantAPI {
       }
       promise.complete();
     });
-    LOGGER.info("Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
+    LOGGER.info("createStubSnapshot:: Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
 
     return promise.future();
   }

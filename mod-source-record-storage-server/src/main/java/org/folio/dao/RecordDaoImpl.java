@@ -359,6 +359,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    LOG.trace("saveRecords:: Saving records for tenant: {}", tenantId);
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
@@ -506,8 +507,8 @@ public class RecordDaoImpl implements RecordDao {
             if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
               throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
             }
-            LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
-            LOG.debug("Failed to execute statement from batch: {}", error.query());
+            LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
+            LOG.debug("saveRecords:: Failed to execute statement from batch: {}", error.query());
           });
 
           // batch insert raw records
@@ -548,20 +549,20 @@ public class RecordDaoImpl implements RecordDao {
             .withErrorMessages(errorMessages));
         });
       } catch (DuplicateEventException e) {
-        LOG.info("Skipped saving records due to duplicate event: {}", e.getMessage());
+        LOG.info("saveRecords:: Skipped saving records due to duplicate event: {}", e.getMessage());
         promise.fail(e);
       } catch (SQLException | DataAccessException e) {
-        LOG.error("Failed to save records", e);
+        LOG.warn("saveRecords:: Failed to save records", e);
         promise.fail(e);
       }
     },
     false,
     r -> {
       if (r.failed()) {
-        LOG.error("Error during batch record save", r.cause());
+        LOG.warn("saveRecords:: Error during batch record save", r.cause());
         finalPromise.fail(r.cause());
       } else {
-        LOG.debug("batch record save was successful");
+        LOG.debug("saveRecords:: batch record save was successful");
         finalPromise.complete(r.result());
       }
     });
@@ -830,16 +831,16 @@ public class RecordDaoImpl implements RecordDao {
               .withTotalRecords(parsedRecordsUpdated.size()));
           });
         } catch (SQLException e) {
-          LOG.error("Failed to update records", e);
+          LOG.warn("updateParsedRecords:: Failed to update records", e);
           blockingPromise.fail(e);
         }},
         false,
           result -> {
             if (result.failed()) {
-              LOG.error("Error during update of parsed records", result.cause());
+              LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
               promise.fail(result.cause());
             } else {
-              LOG.debug("parsed records update was successful");
+              LOG.debug("updateParsedRecords:: Parsed records update was successful");
               promise.complete(result.result());
             }
           });
@@ -1022,6 +1023,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
+      LOG.trace("insertOrUpdateParsedRecord:: Inserting or updating {} parsed record", record.getRecordType());
       // attempt to format record to validate
       RecordType recordType = toRecordType(record.getRecordType().name());
       recordType.formatRecord(record);
@@ -1031,7 +1033,7 @@ public class RecordDaoImpl implements RecordDao {
           return parsedRecord;
         });
     } catch (Exception e) {
-      LOG.error("Couldn't format {} record", record.getRecordType(), e);
+      LOG.warn("insertOrUpdateParsedRecord:: Couldn't format {} record", record.getRecordType(), e);
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())
@@ -1043,6 +1045,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", record.getRecordType());
     return RecordDaoUtil.findById(txQE, record.getId())
       .map(optionalRecord -> {
         if (optionalRecord.isPresent()) {

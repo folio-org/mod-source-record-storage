@@ -164,12 +164,12 @@ public class PostgresClientFactory {
   private static PgPool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
     if (POOL_CACHE.containsKey(tenantId)) {
-      LOG.debug("Using existing database connection pool for tenant {}", tenantId);
+      LOG.debug("getCachedPool:: Using existing database connection pool for tenant {}", tenantId);
       return POOL_CACHE.get(tenantId);
     }
 
     Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
-    LOG.info("Creating new database connection for tenant {} with poolSize {}", tenantId, maxPoolSize);
+    LOG.info("getCachedPool:: Creating new database connection for tenant {} with poolSize {}", tenantId, maxPoolSize);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions().setMaxSize(maxPoolSize);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
@@ -191,11 +191,11 @@ public class PostgresClientFactory {
 
   private static DataSource getDataSource(String tenantId) {
     if (DATA_SOURCE_CACHE.containsKey(tenantId)) {
-      LOG.debug("Using existing data source for tenant {}", tenantId);
+      LOG.debug("getDataSource:: Using existing data source for tenant {}", tenantId);
       return DATA_SOURCE_CACHE.get(tenantId);
     }
     Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
-    LOG.info("Creating new data source for tenant {} with poolSize {}", tenantId, maxPoolSize);
+    LOG.info("getDataSource:: Creating new data source for tenant {} with poolSize {}", tenantId, maxPoolSize);
     HikariDataSource dataSource = new HikariDataSource();
     dataSource.setPoolName(format("%s-data-source", tenantId));
     dataSource.setMaximumPoolSize(maxPoolSize);

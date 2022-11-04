@@ -87,7 +87,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
     try {
       record.setParsedRecord(new ParsedRecord().withContent(MarcUtil.rawMarcToMarcJson(record.getRawRecord().getContent())));
     } catch (Exception e) {
-      LOG.error("Error parsing MARC record", e);
+      LOG.warn("parseRecord:: Error parsing MARC record", e);
       record.setErrorRecord(new ErrorRecord().withContent(record.getRawRecord().getContent()).withDescription("Error parsing marc record"));
     }
   }

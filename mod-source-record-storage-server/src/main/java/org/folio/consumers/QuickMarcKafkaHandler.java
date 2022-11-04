@@ -64,6 +64,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> record) {
+    log.trace("handle:: Handling kafka record {}", record);
     var event = Json.decodeValue(record.value(), Event.class);
 
     var kafkaHeaders = record.headers();
@@ -80,14 +81,14 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
               .map(aBoolean -> record.key());
           })
           .recover(th -> {
-            log.error("Failed to handle QM_RECORD_UPDATED event", th);
+            log.warn("handle:: Failed to handle QM_RECORD_UPDATED event", th);
             eventPayload.put(ERROR_KEY, th.getMessage());
             return sendEvent(eventPayload, QM_ERROR, params.getTenantId(), kafkaHeaders)
               .map(aBoolean -> th.getMessage());
           });
       })
       .recover(th -> {
-          log.error("Failed to handle QM_RECORD_UPDATED event", th);
+          log.warn("handle:: Failed to handle QM_RECORD_UPDATED event", th);
           return Future.failedFuture(th);
         }
       );
@@ -107,16 +108,16 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
       var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);
       producer.write(record, war -> {
         if (war.succeeded()) {
-          log.info("Event with type {} was sent to kafka", eventType);
+          log.info("sendEventToKafka:: Event with type {} was sent to kafka", eventType);
           promise.complete(true);
         } else {
           Throwable cause = war.cause();
-          log.error("Failed to sent event {}, cause: {}", eventType, cause);
+          log.warn("sendEventToKafka:: Failed to sent event {}, cause: {}", eventType, cause);
           promise.fail(cause);
         }
       });
     } catch (Exception e) {
-      log.error("Failed to send an event for eventType {}, cause {}", eventType, e);
+      log.warn("sendEventToKafka:: Failed to send an event for eventType {}, cause {}", eventType, e);
       return Future.failedFuture(e);
     }
     return promise.future();
@@ -128,6 +129,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
       var eventPayload = Json.decodeValue(event.getEventPayload(), HashMap.class);
       return Future.succeededFuture(eventPayload);
     } catch (Exception e) {
+      log.warn("getEventPayload:: Failed to get event payload", e);
       return Future.failedFuture(e);
     }
   }
@@ -135,8 +137,8 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private Future<ParsedRecordDto> getRecordDto(HashMap<String, String> eventPayload) {
     String parsedRecordDtoJson = eventPayload.get(PARSED_RECORD_DTO_KEY);
     if (StringUtils.isEmpty(parsedRecordDtoJson)) {
-      var error = "Event payload does not contain required PARSED_RECORD_DTO data";
-      log.error(error);
+      var error = "sendEventToKafka:: Event payload does not contain required PARSED_RECORD_DTO data";
+      log.warn(error);
       return Future.failedFuture(error);
     } else {
       return Future.succeededFuture(Json.decodeValue(parsedRecordDtoJson, ParsedRecordDto.class));

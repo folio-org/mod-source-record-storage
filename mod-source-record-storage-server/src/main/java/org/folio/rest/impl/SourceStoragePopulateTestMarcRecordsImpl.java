@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
-import static org.folio.rest.impl.ModTenantAPI.*;
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+import static org.folio.rest.impl.ModTenantAPI.STUB_SNAPSHOT;
 
 import java.util.ArrayList;
 import java.util.List;

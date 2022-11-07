@@ -554,8 +554,7 @@ public final class AdditionalFieldsUtil {
       if (reader.hasNext()) {
         org.marc4j.marc.Record marcRecord = reader.next();
         for (VariableField field : marcRecord.getVariableFields(AdditionalFieldsUtil.TAG_005)) {
-          needToUpdate = isNotProtected(fieldProtectionSettings, (ControlField) field);
-          break;
+          return isNotProtected(fieldProtectionSettings, (ControlField) field);
         }
       }
     }

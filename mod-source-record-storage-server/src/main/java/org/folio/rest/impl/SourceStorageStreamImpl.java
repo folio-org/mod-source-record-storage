@@ -80,7 +80,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
     processStream(response, flowable, cause -> {
-      LOG.error(cause.getMessage(), cause);
+      LOG.warn(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
   }
@@ -108,7 +108,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
       .map(Json::encodeToBuffer)
       .map(buffer -> buffer.appendString(StringUtils.LF));
     processStream(response, flowable, cause -> {
-      LOG.error(cause.getMessage(), cause);
+      LOG.warn(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
   }
@@ -121,7 +121,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
     HttpServerResponse response = prepareStreamResponse(routingContext);
     Flowable<Row> flowable = recordService.streamMarcRecordIds(RecordSearchParameters.from(request), tenantId);
     processStream(new SearchRecordIdsWriteStream(response), flowable, cause -> {
-      LOG.error(cause.getMessage(), cause);
+      LOG.warn(cause.getMessage(), cause);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(cause)));
     });
   }

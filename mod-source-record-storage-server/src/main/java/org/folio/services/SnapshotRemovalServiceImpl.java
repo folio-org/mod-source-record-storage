@@ -93,10 +93,10 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
     RestUtil.doRequest(params, instacesUrl, HttpMethod.DELETE, null)
       .onComplete(responseAr -> {
         if (responseAr.failed()) {
-          LOG.error("Error deleting inventory instance by id '{}'", id, responseAr.cause());
+          LOG.warn("deleteInstanceById:: Error deleting inventory instance by id '{}'", id, responseAr.cause());
           promise.complete(false);
         } else if (responseAr.result().getCode() != SC_NO_CONTENT) {
-          LOG.error("Failed to delete inventory instance by id '{}', response status: {}", id, responseAr.result().getCode());
+          LOG.warn("deleteInstanceById:: Failed to delete inventory instance by id '{}', response status: {}", id, responseAr.result().getCode());
           promise.complete(false);
         } else {
           promise.complete(true);

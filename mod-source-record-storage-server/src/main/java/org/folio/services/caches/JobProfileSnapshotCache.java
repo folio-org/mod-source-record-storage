@@ -42,26 +42,26 @@ public class JobProfileSnapshotCache {
     try {
       return Future.fromCompletionStage(cache.get(profileSnapshotId, (key, executor) -> loadJobProfileSnapshot(key, params)));
     } catch (Exception e) {
-      LOGGER.warn("Error loading ProfileSnapshotWrapper by id: '{}'", profileSnapshotId, e);
+      LOGGER.warn("get:: Error loading ProfileSnapshotWrapper by id: '{}'", profileSnapshotId, e);
       return Future.failedFuture(e);
     }
   }
 
   private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, OkapiConnectionParams params) {
-    LOGGER.debug("Trying to load jobProfileSnapshot by id '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getOkapiUrl(), params.getTenantId());
+    LOGGER.debug("loadJobProfileSnapshot:: Trying to load jobProfileSnapshot by id '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getOkapiUrl(), params.getTenantId());
 
     return RestUtil.doRequest(params, "/data-import-profiles/jobProfileSnapshots/" + profileSnapshotId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
         if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
-          LOGGER.info("JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
+          LOGGER.info("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
         } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
-          LOGGER.warn("JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
+          LOGGER.warn("loadJobProfileSnapshot:: JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
-          String message = String.format("Error loading jobProfileSnapshot by id: '%s', status code: %s, response message: %s",
+          String message = String.format("loadJobProfileSnapshot:: Error loading jobProfileSnapshot by id: '%s', status code: %s, response message: %s",
             profileSnapshotId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
           LOGGER.warn(message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));

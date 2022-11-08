@@ -55,11 +55,11 @@ public final class EventHandlingUtil {
     producer.write(record, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
-        LOGGER.info("Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
+        LOGGER.info("sendEventToKafka:: Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
         promise.complete(true);
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error for event {} with recordId {} with chunkId: {}, cause:",  producerName, eventType, recordId, chunkId, cause);
+        LOGGER.warn("sendEventToKafka:: {} write error for event {} with recordId {} with chunkId: {}, cause:",  producerName, eventType, recordId, chunkId, cause);
         promise.fail(cause);
       }
     });

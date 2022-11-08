@@ -42,25 +42,25 @@ public class MappingParametersSnapshotCache {
     try {
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params)));
     } catch (Exception e) {
-      LOGGER.warn("Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
+      LOGGER.warn("get:: Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
       return Future.failedFuture(e);
     }
   }
 
   private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {
-    LOGGER.debug("Trying to load MappingParametersSnapshot by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, params.getOkapiUrl(), params.getTenantId());
+    LOGGER.debug("loadMappingParametersSnapshot:: Trying to load MappingParametersSnapshot by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, params.getOkapiUrl(), params.getTenantId());
     return RestUtil.doRequest(params, "/mapping-metadata/"+ jobExecutionId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
         if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
-          LOGGER.info("MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
+          LOGGER.info("loadMappingParametersSnapshot:: MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class)));
         } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
-          LOGGER.warn("MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
+          LOGGER.warn("loadMappingParametersSnapshot:: MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
-          String message = String.format("Error loading MappingParametersSnapshot by jobExecutionId: '%s', status code: %s, response message: %s",
+          String message = String.format("loadMappingParametersSnapshot:: Error loading MappingParametersSnapshot by jobExecutionId: '%s', status code: %s, response message: %s",
             jobExecutionId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
           LOGGER.warn(message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));

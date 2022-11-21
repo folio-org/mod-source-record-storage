@@ -46,7 +46,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to receive marc bib records", e);
+        LOG.warn("postSourceStorageBatchVerifiedRecords:: Failed to receive marc bib records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -63,7 +63,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
             if (!recordsBatchResponse.getRecords().isEmpty()) {
               return PostSourceStorageBatchRecordsResponse.respond201WithApplicationJson(recordsBatchResponse);
             } else {
-              LOG.error("Batch of records was processed, but records were not saved, error messages: {}", recordsBatchResponse.getErrorMessages());
+              LOG.warn("postSourceStorageBatchRecords:: Batch of records was processed, but records were not saved, error messages: {}", recordsBatchResponse.getErrorMessages());
               return PostSourceStorageBatchRecordsResponse.respond500WithApplicationJson(recordsBatchResponse);
             }
           })
@@ -71,7 +71,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to create records from collection", e);
+        LOG.warn("postSourceStorageBatchRecords:: Failed to create records from collection", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -88,7 +88,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
             if (!parsedRecordsBatchResponse.getParsedRecords().isEmpty()) {
               return PutSourceStorageBatchParsedRecordsResponse.respond200WithApplicationJson(parsedRecordsBatchResponse);
             } else {
-              LOG.error("Batch of parsed records was processed, but records were not updated, error messages: {}", parsedRecordsBatchResponse.getErrorMessages());
+              LOG.warn("putSourceStorageBatchParsedRecords:: Batch of parsed records was processed, but records were not updated, error messages: {}", parsedRecordsBatchResponse.getErrorMessages());
               return PutSourceStorageBatchParsedRecordsResponse.respond500WithApplicationJson(parsedRecordsBatchResponse);
             }
           })
@@ -96,7 +96,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to update parsed records", e);
+        LOG.warn("putSourceStorageBatchParsedRecords:: Failed to update parsed records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

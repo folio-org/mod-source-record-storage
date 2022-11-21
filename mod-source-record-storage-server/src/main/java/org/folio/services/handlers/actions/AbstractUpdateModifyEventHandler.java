@@ -70,7 +70,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     try {
       var payloadContext = payload.getContext();
       if (isNull(payloadContext) || isBlank(payloadContext.get(modifiedEntityType().value()))) {
-        LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
+        LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }
@@ -112,11 +112,11 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           future.complete(payload);
         })
         .onFailure(throwable -> {
-          LOG.error("Error while MARC record modifying", throwable);
+          LOG.warn("handle:: Error while MARC record modifying", throwable);
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
-      LOG.error("Error modifying MARC record", e);
+      LOG.warn("handle:: Error modifying MARC record", e);
       future.completeExceptionally(e);
     }
     return future;

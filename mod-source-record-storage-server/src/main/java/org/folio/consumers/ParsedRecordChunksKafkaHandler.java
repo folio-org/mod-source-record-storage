@@ -67,6 +67,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+    LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     Event event = Json.decodeValue(targetRecord.value(), Event.class);
     RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
@@ -83,13 +84,13 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
 
     try {
-      LOGGER.debug("RecordCollection has been received with event: '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
+      LOGGER.debug("handle:: RecordCollection has been received with event: '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
         eventPayload.getEventType(), chunkId, chunkNumber, key, recordId);
       setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, eventPayload.getEventType(), targetRecord));
     } catch (Exception e) {
-      LOGGER.error("RecordCollection processing has failed with errors with event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}' ",
+      LOGGER.warn("handle:: RecordCollection processing has failed with errors with event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}' ",
         eventPayload.getEventType(), chunkId, chunkNumber, key, recordId);
       return Future.failedFuture(e);
     }
@@ -127,12 +128,12 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       if (war.succeeded()) {
         String recordId = extractValueFromHeaders(commonRecord.headers(), RECORD_ID_HEADER);
         String chunkId = extractValueFromHeaders(commonRecord.headers(), CHUNK_ID_HEADER);
-        LOGGER.debug("RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}'",
+        LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}'",
           eventType, chunkId, chunkNumber, targetRecord.key(), recordId);
         writePromise.complete(targetRecord.key());
       } else {
         Throwable cause = war.cause();
-        LOGGER.error("{} write error {}", producerName, cause);
+        LOGGER.warn("sendBackRecordsBatchResponse:: {} write error {}", producerName, cause);
         writePromise.fail(cause);
       }
     });

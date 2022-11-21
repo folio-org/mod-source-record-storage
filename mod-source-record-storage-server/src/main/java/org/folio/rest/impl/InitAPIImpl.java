@@ -82,7 +82,7 @@ public class InitAPIImpl implements InitAPI {
         }
       });
     } catch (Throwable th) {
-      LOGGER.error("Failed to init module", th);
+      LOGGER.error("init:: Failed to init module", th);
       handler.handle(Future.failedFuture(th));
     }
   }

@@ -23,6 +23,7 @@ import org.folio.services.handlers.match.MarcAuthorityMatchEventHandler;
 import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
+import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
@@ -58,6 +59,9 @@ public class InitAPIImpl implements InitAPI {
 
   @Autowired
   private MarcAuthorityDeleteEventHandler marcAuthorityDeleteEventHandler;
+
+  @Autowired
+  private MarcHoldingsMatchEventHandler marcHoldingsMatchEventHandler;
 
   @Value("${srs.kafka.ParsedMarcChunkConsumer.instancesNumber:1}")
   private int parsedMarcChunkConsumerInstancesNumber;
@@ -96,6 +100,7 @@ public class InitAPIImpl implements InitAPI {
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
     EventManager.registerEventHandler(marcAuthorityMatchEventHandler);
     EventManager.registerEventHandler(marcAuthorityDeleteEventHandler);
+    EventManager.registerEventHandler(marcHoldingsMatchEventHandler);
   }
 
   private Future<?> deployConsumerVerticles(Vertx vertx) {

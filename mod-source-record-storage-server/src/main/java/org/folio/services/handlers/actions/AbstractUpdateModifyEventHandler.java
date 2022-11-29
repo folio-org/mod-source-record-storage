@@ -82,7 +82,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       Record record = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
       String incoming001 = getValueFromControlledField(record, HR_ID_FROM_FIELD);
       preparePayload(payload);
-
+      LOG.info("TEMP DEBUG: handle:------ payload: {}", payload);
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
@@ -90,6 +90,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
+          LOG.info("TEMP DEBUG: handle:------ changedRecord: {}", changedRecord);
           if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
             addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
@@ -126,8 +127,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   public boolean isEligible(DataImportEventPayload payload) {
     if (payload.getCurrentNode() != null && ACTION_PROFILE == payload.getCurrentNode().getContentType()) {
       var actionProfile = JsonObject.mapFrom(payload.getCurrentNode().getContent()).mapTo(ActionProfile.class);
+      LOG.info("TEMP DEBUG: isEligible:------ actionProfile: {}", actionProfile);
       return isEligibleActionProfile(actionProfile);
     }
+    LOG.info("TEMP DEBUG: --------------- isEligible: FALSE");
     return false;
   }
 

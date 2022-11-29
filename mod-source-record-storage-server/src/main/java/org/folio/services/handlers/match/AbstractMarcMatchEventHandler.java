@@ -74,11 +74,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
     }
+    LOG.info("TEMP DEBUG: --------------- payload: {}", payload);
     payload.getEventsChain().add(payload.getEventType());
     payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
 
     String record = context.get(typeConnection.getMarcType().value());
     MatchDetail matchDetail = retrieveMatchDetail(payload);
+    LOG.info("TEMP DEBUG: --------------- record: {}", record);
+    LOG.info("TEMP DEBUG: --------------- matchDetail: {}", matchDetail);
     if (isValidMatchDetail(matchDetail)) {
       MatchField matchField = prepareMatchField(record, matchDetail);
       if (matchField.isDefaultField()) {
@@ -105,6 +108,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     String ind2 = matchDetailFields.get(2).getValue();
     String subfield = matchDetailFields.get(3).getValue();
     String value = retrieveValueFromMarcRecord(record, matchDetail.getIncomingMatchExpression());
+    LOG.info("TEMP DEBUG: prepareMatchField: {} {} {} {} {}", field, ind1, ind2, subfield, value);
     return new MatchField(field, ind1, ind2, subfield, value);
   }
 
@@ -125,8 +129,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private boolean isValidMatchDetail(MatchDetail matchDetail) {
     if (matchDetail.getExistingMatchExpression() != null && matchDetail.getExistingMatchExpression().getDataValueType() == VALUE_FROM_RECORD) {
       List<Field> fields = matchDetail.getExistingMatchExpression().getFields();
+      LOG.info("TEMP DEBUG: isValidMatchDetail: fields {}, size: {}, getIncomingRecordType: {}, getMarcType: {}, getExistingRecordType: {}",
+        fields, fields.size(), matchDetail.getIncomingRecordType(), typeConnection.getMarcType(), matchDetail.getExistingRecordType());
       return fields != null && fields.size() == 4 && matchDetail.getIncomingRecordType() == typeConnection.getMarcType() && matchDetail.getExistingRecordType() == typeConnection.getMarcType();
     }
+    LOG.info("TEMP DEBUG: isValidMatchDetail: FALSE");
     return false;
   }
 

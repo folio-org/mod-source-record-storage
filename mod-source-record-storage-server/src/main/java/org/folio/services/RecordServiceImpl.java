@@ -151,8 +151,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, String tenantId) {
-    return recordDao.getSourceRecordByExternalId(id, idType, tenantId);
+  public Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, RecordState state, String tenantId) {
+    return recordDao.getSourceRecordByExternalId(id, idType, state, tenantId);
   }
 
   @Override

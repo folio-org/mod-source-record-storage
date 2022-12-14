@@ -4,7 +4,6 @@ import io.reactivex.Flowable;
 import io.vertx.core.Future;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
-import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -736,7 +735,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void getRecordsBySnapshotId(TestContext context, String uuid, RecordType parsedRecordType,
+  private void getRecordsBySnapshotId(TestContext context, String snapshotId, RecordType parsedRecordType,
                                       Record.RecordType recordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
@@ -747,7 +746,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      String snapshotId = uuid;
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
@@ -796,7 +794,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     });
   }
 
-  private void streamRecordsBySnapshotId(TestContext context, String s, RecordType parsedRecordType,
+  private void streamRecordsBySnapshotId(TestContext context, String snapshotId, RecordType parsedRecordType,
                                          Record.RecordType recordType) {
     Async async = context.async();
     List<Record> records = TestMocks.getRecords();
@@ -807,7 +805,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
-      String snapshotId = s;
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
@@ -1166,7 +1163,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       recordService
-        .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
+        .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID)
         .onComplete(get -> {
           if (get.failed()) {
             context.fail(get.cause());
@@ -1183,7 +1180,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void notGetMarcSourceRecordById(TestContext context, Record expected) {
     Async async = context.async();
     recordService
-      .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, TENANT_ID)
+      .getSourceRecordById(expected.getMatchedId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID)
       .onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());

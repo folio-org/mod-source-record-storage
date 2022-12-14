@@ -24,6 +24,7 @@ import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.Tables;
+import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
 import org.junit.Before;
@@ -139,7 +140,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getSourceRecordById(record.getMatchedId(), IdType.RECORD, TENANT_ID).onComplete(getNew -> {
+      recordService.getSourceRecordById(record.getMatchedId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID).onComplete(getNew -> {
         if (getNew.failed()) {
           context.fail(getNew.cause());
         }

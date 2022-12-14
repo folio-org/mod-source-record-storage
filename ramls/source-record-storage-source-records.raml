@@ -185,6 +185,11 @@ resourceTypes:
           type: string
           example: INSTANCE
           default: RECORD
+        state:
+          description: State of the looking record
+          type: string
+          example: DELETED
+          default: ACTUAL
       responses:
         200:
           body:

@@ -6,6 +6,7 @@ import javax.ws.rs.BadRequestException;
 
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jooq.enums.RecordState;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
@@ -75,4 +76,34 @@ public class QueryParamUtilTest {
     QueryParamUtil.toRecordType("UNKNOWN");
   }
 
+  @Test
+  public void shouldReturnActualRecordState() {
+    assertEquals(RecordState.ACTUAL, QueryParamUtil.toRecordState("ACTUAL"));
+  }
+
+  @Test
+  public void shouldReturnOldRecordState() {
+    assertEquals(RecordState.OLD, QueryParamUtil.toRecordState("OLD"));
+  }
+
+  @Test
+  public void shouldReturnDeletedRecordState() {
+    assertEquals(RecordState.DELETED, QueryParamUtil.toRecordState("DELETED"));
+  }
+
+  @Test
+  public void shouldReturnDraftRecordState() {
+    assertEquals(RecordState.DRAFT, QueryParamUtil.toRecordState("DRAFT"));
+  }
+
+  @Test
+  public void shouldReturnDefaultRecordState() {
+    assertEquals(RecordState.ACTUAL, QueryParamUtil.toRecordState(null));
+    assertEquals(RecordState.ACTUAL, QueryParamUtil.toRecordState(""));
+  }
+
+  @Test(expected = BadRequestException.class)
+  public void shouldThrowBadRequestExceptionForUnknownRecordState() {
+    QueryParamUtil.toRecordState("UNKNOWN");
+  }
 }

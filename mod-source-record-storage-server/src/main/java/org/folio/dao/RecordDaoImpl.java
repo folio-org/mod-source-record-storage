@@ -639,9 +639,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, IdType idType, String tenantId) {
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, IdType idType, RecordState state, String tenantId) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL))
+      .and(RECORDS_LB.STATE.eq(state))
       .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
     return getSourceRecordByCondition(condition, tenantId);
   }

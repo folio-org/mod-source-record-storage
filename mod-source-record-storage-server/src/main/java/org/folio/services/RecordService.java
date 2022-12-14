@@ -137,10 +137,11 @@ public interface RecordService {
    *
    * @param id             for searching
    * @param idType search type
+   * @param state search record state
    * @param tenantId       tenant id
    * @return future with optional source record
    */
-  Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, String tenantId);
+  Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, RecordState state, String tenantId);
 
   /**
    * Updates {@link ParsedRecord} in the db

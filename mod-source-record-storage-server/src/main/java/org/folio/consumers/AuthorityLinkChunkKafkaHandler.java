@@ -1,19 +1,18 @@
 package org.folio.consumers;
 
 import static java.util.Collections.emptyList;
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
-import static org.folio.dao.util.ParsedRecordDaoUtil.normalize;
+import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToParsedContentJsonString;
+import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
 import static org.folio.services.util.EventHandlingUtil.createTopicName;
 
-import com.google.common.collect.Maps;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -22,8 +21,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -45,6 +42,9 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.RecordService;
+import org.marc4j.marc.Subfield;
+import org.marc4j.marc.impl.DataFieldImpl;
+import org.marc4j.marc.impl.SubfieldImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -53,11 +53,9 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   public static final String SRS_BIB_UPDATE_TOPIC = MARC_BIB.moduleName() + "." + MARC_BIB.topicName();
 
-  private static final Logger log = LogManager.getLogger();
-  private static final String PARSED_RECORD_FIELDS_KEY = "fields";
-  private static final String PARSED_RECORD_SUBFIELDS_KEY = "subfields";
-  private static final String AUTHORITY_ID_SUBFIELD = "9";
+  private static final char AUTHORITY_ID_SUBFIELD = '9';
   private static final AtomicLong INDEXER = new AtomicLong();
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private final RecordService recordService;
   private final KafkaConfig kafkaConfig;
@@ -82,7 +80,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
         .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
       ).recover(th -> {
-          log.error("Failed to handle {} event", SRS_BIB_UPDATE_TOPIC, th);
+          LOGGER.error("Failed to handle {} event", SRS_BIB_UPDATE_TOPIC, th);
           return Future.failedFuture(th);
         }
       );
@@ -91,17 +89,17 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   private Future<BibAuthorityLinksUpdate> mapToEvent(KafkaConsumerRecord<String, String> consumerRecord) {
     try {
       var event = Json.decodeValue(consumerRecord.value(), BibAuthorityLinksUpdate.class);
-      log.info("Decoded {} event for jobId {}, authorityId {}",
+      LOGGER.info("Decoded {} event for jobId {}, authorityId {}",
         BibAuthorityLinksUpdate.class, event.getJobId(), event.getAuthorityId());
       return Future.succeededFuture(event);
     } catch (Exception e) {
-      log.error("Failed to decode event with key {}", consumerRecord.key());
+      LOGGER.error("Failed to decode event with key {}", consumerRecord.key());
       return Future.failedFuture(e);
     }
   }
 
   private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
-    log.trace("Retrieving bibs for jobId {}, authorityId {}",
+    LOGGER.trace("Retrieving bibs for jobId {}, authorityId {}",
       bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
     var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream()
@@ -116,7 +114,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
                                                           RecordCollection recordCollection) {
-    log.debug("Retrieved {} bib records for jobId {}, authorityId {}",
+    LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
     return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
@@ -124,50 +122,42 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         var newRecordId = UUID.randomUUID().toString();
         var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
         var parsedRecord = bibRecord.getParsedRecord();
-        var parsedRecordContent = normalize(parsedRecord.getContent());
-        var fieldsArray = parsedRecordContent.getJsonArray(PARSED_RECORD_FIELDS_KEY);
-
+        var parsedRecordContent = readParsedContentToObjectRepresentation(bibRecord);
+        var fields = new LinkedList<>(parsedRecordContent.getDataFields());
 
         var updateTargetFieldCodes = extractUpdateTargetFieldCodesForInstance(bibAuthorityLinksUpdate, instanceId);
         var subfieldChanges = bibAuthorityLinksUpdate.getSubfieldsChanges().stream()
           .filter(subfieldsChange -> updateTargetFieldCodes.contains(subfieldsChange.getField()))
-          .collect(Collectors.toList());
+          .collect(Collectors.toMap(SubfieldsChange::getField, SubfieldsChange::getSubfields));
 
-        var fieldsList = fieldsArray.stream()
-          .map(JsonObject::mapFrom)
-          .map(fieldJson -> fieldJson.getMap().entrySet().stream().findFirst().orElse(null))
-          .filter(Objects::nonNull)
-          .map(field -> {
-            var fieldCode = field.getKey();
-            if (!updateTargetFieldCodes.contains(fieldCode)) {
-              return field;
-            }
+        fields.forEach(field -> {
+          if (!updateTargetFieldCodes.contains(field.getTag())) {
+            return;
+          }
 
-            var fieldValueJson = JsonObject.mapFrom(field.getValue());
-            var subfieldsJson = fieldValueJson.getJsonArray(PARSED_RECORD_SUBFIELDS_KEY);
-            if (subfieldsJson == null) {
-              return field;
-            }
-            var subfields = extractSubfields(subfieldsJson);
+          var subfields = field.getSubfields();
+          if (isEmpty(subfields)) {
+            return;
+          }
 
-            var authorityId = extractAuthorityId(subfields);
-            if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get())) {
-              return field;
-            }
+          var authorityId = getAuthorityIdSubfield(subfields);
+          if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get().getData())) {
+            return;
+          }
 
-            var newSubfields = linkProcessor.process(fieldCode, subfieldChanges, subfields);
-            log.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
-              bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
-              instanceId, fieldCode, subfieldsJson, newSubfields);
+          var newSubfields = linkProcessor.process(field.getTag(), subfieldChanges.get(field.getTag()), subfields);
+          LOGGER.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
+            bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
+            instanceId, field.getTag(), subfields, newSubfields);
 
-            fieldValueJson.put(PARSED_RECORD_SUBFIELDS_KEY, newSubfields);
-            field.setValue(fieldValueJson);
-            return field;
-          })
-          .collect(Collectors.toList());
+          var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
+          newSubfields.forEach(newField::addSubfield);
 
-        parsedRecordContent.put(PARSED_RECORD_FIELDS_KEY, fieldsList);
-        parsedRecord.setContent(parsedRecordContent.encode());
+          parsedRecordContent.removeVariableField(field);
+          parsedRecordContent.addVariableField(newField);
+        });
+
+        parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
         parsedRecord.setFormattedContent(EMPTY);
         parsedRecord.setId(newRecordId);
         bibRecord.setId(newRecordId);
@@ -180,16 +170,15 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private Future<LinkProcessor> getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
-
     var eventType = bibAuthorityLinksUpdate.getType();
     switch (eventType) {
       case DELETE: {
-        log.debug("Precessing DELETE event for jobId {}, authorityId {}",
+        LOGGER.debug("Precessing DELETE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
         return Future.succeededFuture(deleteLinkProcessor());
       }
       case UPDATE: {
-        log.debug("Precessing UPDATE event for jobId {}, authorityId {}",
+        LOGGER.debug("Precessing UPDATE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
         return Future.succeededFuture(updateLinkProcessor());
       }
@@ -209,28 +198,19 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .collect(Collectors.toList());
   }
 
-  private List<Map.Entry<String, Object>> extractSubfields(JsonArray subfields) {
+  private Optional<Subfield> getAuthorityIdSubfield(List<Subfield> subfields) {
     return subfields.stream()
-      .map(JsonObject::mapFrom)
-      .map(subfieldJson -> subfieldJson.getMap().entrySet().stream().findFirst().orElse(null))
-      .filter(Objects::nonNull)
-      .collect(Collectors.toList());
-  }
-
-  private Optional<Object> extractAuthorityId(List<Map.Entry<String, Object>> subfields) {
-    return subfields.stream()
-      .filter(entry -> entry.getKey().equals(AUTHORITY_ID_SUBFIELD))
-      .map(Map.Entry::getValue)
+      .filter(subfield -> subfield.getCode() == AUTHORITY_ID_SUBFIELD)
       .findFirst();
   }
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event) {
-    log.debug("Updated {} bibs for jobId {}, authorityId {}",
+    LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
     var errors = batchResponse.getErrorMessages();
     if (!errors.isEmpty()) {
-      log.error("Unable to batch update some of linked bib records for jobId {}, authorityId {}."
+      LOGGER.error("Unable to batch update some of linked bib records for jobId {}, authorityId {}."
           + " Total number of records: {}, successful: {}, failures: {}",
         event.getJobId(), event.getAuthorityId(),
         batchResponse.getTotalRecords(), batchResponse.getRecords().size(), errors);
@@ -260,13 +240,13 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents, BibAuthorityLinksUpdate event,
                                     KafkaConsumerRecord<String, String> consumerRecord) {
-    log.info("Sending {} bib update events for jobId {}, authorityId {}",
+    LOGGER.info("Sending {} bib update events for jobId {}, authorityId {}",
       marcBibUpdateEvents.size(), event.getJobId(), event.getAuthorityId());
     return Future.fromCompletionStage(
       CompletableFuture.allOf(
         marcBibUpdateEvents.stream()
           .map(marcBibUpdate -> sendEventToKafka(marcBibUpdate, consumerRecord.headers())
-            .onFailure(th -> log.error("Failed to send {} event for jobId {}.",
+            .onFailure(th -> LOGGER.error("Failed to send {} event for jobId {}.",
               SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId(), th)))
           .map(Future::toCompletionStage)
           .map(CompletionStage::toCompletableFuture)
@@ -281,16 +261,16 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       var kafkaRecord = createKafkaProducerRecord(marcBibUpdate, kafkaHeaders);
       producer.write(kafkaRecord, war -> {
         if (war.succeeded()) {
-          log.debug("Event with type {}, jobId {} was sent to kafka", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId());
+          LOGGER.debug("Event with type {}, jobId {} was sent to kafka", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId());
           promise.complete(true);
         } else {
           var cause = war.cause();
-          log.error("Failed to sent event {} for jobId {}, cause: {}", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId(), cause);
+          LOGGER.error("Failed to sent event {} for jobId {}, cause: {}", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId(), cause);
           promise.fail(cause);
         }
       });
     } catch (Exception e) {
-      log.error("Failed to send an event for eventType {}, jobId {}, cause {}", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId(), e);
+      LOGGER.error("Failed to send an event for eventType {}, jobId {}, cause {}", SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getJobId(), e);
       return Future.failedFuture(e);
     }
     return promise.future();
@@ -308,22 +288,20 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private LinkProcessor updateLinkProcessor() {
     return (fieldCode, subfieldsChanges, oldSubfields) -> {
-      var newSubfields = new HashMap<String, Map.Entry<String, Object>>();
+      var newSubfields = new HashMap<Character, Subfield>();
 
       //add old subfields
-      oldSubfields.forEach(subfield -> newSubfields.put(subfield.getKey(), subfield));
+      oldSubfields.forEach(subfield -> newSubfields.put(subfield.getCode(), subfield));
 
       //add subfields from incoming event, removing ones with empty value
-      subfieldsChanges.stream()
-        .filter(updateFieldValue -> updateFieldValue.getField().equals(fieldCode))
-        .flatMap(subfieldsChange -> subfieldsChange.getSubfields().stream())
-        .forEach(subfield -> {
-          if (isBlank(subfield.getValue())) {
-            newSubfields.remove(subfield.getCode());
-            return;
-          }
-          newSubfields.put(subfield.getCode(), Maps.immutableEntry(subfield.getCode(), subfield.getValue()));
-        });
+      subfieldsChanges.forEach(subfield -> {
+        var code = subfield.getCode().charAt(0);
+        if (isBlank(subfield.getValue())) {
+          newSubfields.remove(code);
+          return;
+        }
+        newSubfields.put(code, new SubfieldImpl(code, subfield.getValue()));
+      });
 
       return newSubfields.values();
     };
@@ -333,16 +311,16 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     return (fieldCode, subfieldsChanges, oldSubfields) -> {
       var newSubfields = new LinkedList<>(oldSubfields);
 
-      newSubfields.removeIf(subfield -> subfield.getKey().equals(AUTHORITY_ID_SUBFIELD));
+      newSubfields.removeIf(subfield -> subfield.getCode() == AUTHORITY_ID_SUBFIELD);
 
       return newSubfields;
     };
   }
 
   private interface LinkProcessor {
-    Collection<Map.Entry<String, Object>> process(String fieldCode,
-                                                  List<SubfieldsChange> subfieldsChanges,
-                                                  List<Map.Entry<String, Object>> oldSubfields);
+    Collection<Subfield> process(String fieldCode,
+                                 List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges,
+                                 List<Subfield> oldSubfields);
   }
 
 }

@@ -297,7 +297,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
         .withSubfields(List.of(
           new Subfield().withCode("a").withValue("The fundamentals of typography updated"),//update
           new Subfield().withCode("b").withValue("new subfield"),//add new
-          new Subfield().withCode("h").withValue("[electronic resource] / updated"))),//update
+          new Subfield().withCode("h").withValue(""))),//remove subfield on update (for empty subfields)
       new SubfieldsChange().withField("100")//controlled by different authority, should remain as is
         .withSubfields(singletonList(new Subfield().withCode("a").withValue("Ambrose, Gavin. updated"))),
       new SubfieldsChange().withField("123")//doesn't exist, should be ignored

@@ -349,17 +349,19 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
+    LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
   }
 
   @Override
   public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    LOG.trace("saveRecord:: Saving {} record {}", record.getRecordType(), record.getId());
     return insertOrUpdateRecord(txQE, record);
   }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
-    LOG.trace("saveRecords:: Saving records for tenant: {}", tenantId);
+    logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
@@ -572,6 +574,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
+    LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
         .map(r -> saveRecord(txQE, record))
@@ -684,6 +687,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
+    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
@@ -692,6 +696,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
@@ -902,11 +907,13 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+    LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
 
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
+    LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
@@ -916,11 +923,13 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
+    LOG.trace("deleteRecordsBySnapshotId:: Deleting records by snapshotId {} for tenant {}", snapshotId, tenantId);
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
   @Override
   public Future<Void> deleteRecords(int lastUpdatedDays, int limit, String tenantId) {
+    LOG.trace("deleteRecords:: Deleting record by last {} days for tenant {}", lastUpdatedDays, tenantId);
     Promise<Void> promise = Promise.promise();
     var selectIdsForDeleteQuery = select(RECORDS_LB.ID)
       .from(RECORDS_LB)
@@ -937,6 +946,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
+    LOG.trace("updateRecordsState:: Updating records state with value {} by matchedId {} for tenant {}", state, matchedId, tenantId);
     Promise<Void> promise = Promise.promise();
     getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, state)
@@ -1160,6 +1170,12 @@ public class RecordDaoImpl implements RecordDao {
       record.setErrorRecord(errorRecord);
     }
     return record;
+  }
+
+  private void logRecordCollection(String msg, RecordCollection recordCollection, String tenantId) {
+    if (LOG.isTraceEnabled()) {
+      recordCollection.getRecords().forEach(e -> LOG.trace("{} {} record {} for tenant {}", msg, e.getRecordType(), e.getId(), tenantId));
+    }
   }
 
 }

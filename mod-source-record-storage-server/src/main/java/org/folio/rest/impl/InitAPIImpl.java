@@ -19,10 +19,12 @@ import org.folio.services.handlers.AuthorityPostProcessingEventHandler;
 import org.folio.services.handlers.HoldingsPostProcessingEventHandler;
 import org.folio.services.handlers.InstancePostProcessingEventHandler;
 import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
+import org.folio.services.handlers.actions.MarcHoldingsUpdateModifyEventHandler;
 import org.folio.services.handlers.match.MarcAuthorityMatchEventHandler;
 import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
+import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
@@ -61,6 +63,12 @@ public class InitAPIImpl implements InitAPI {
   @Autowired
   private MarcAuthorityDeleteEventHandler marcAuthorityDeleteEventHandler;
 
+  @Autowired
+  private MarcHoldingsMatchEventHandler marcHoldingsMatchEventHandler;
+
+  @Autowired
+  private MarcHoldingsUpdateModifyEventHandler marcHoldingsUpdateModifyEventHandler;
+
   @Value("${srs.kafka.ParsedMarcChunkConsumer.instancesNumber:1}")
   private int parsedMarcChunkConsumerInstancesNumber;
 
@@ -87,7 +95,7 @@ public class InitAPIImpl implements InitAPI {
         }
       });
     } catch (Throwable th) {
-      LOGGER.error("Failed to init module", th);
+      LOGGER.error("init:: Failed to init module", th);
       handler.handle(Future.failedFuture(th));
     }
   }
@@ -101,6 +109,8 @@ public class InitAPIImpl implements InitAPI {
     EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
     EventManager.registerEventHandler(marcAuthorityMatchEventHandler);
     EventManager.registerEventHandler(marcAuthorityDeleteEventHandler);
+    EventManager.registerEventHandler(marcHoldingsMatchEventHandler) ;
+    EventManager.registerEventHandler(marcHoldingsUpdateModifyEventHandler);
   }
 
   private Future<?> deployConsumerVerticles(Vertx vertx) {

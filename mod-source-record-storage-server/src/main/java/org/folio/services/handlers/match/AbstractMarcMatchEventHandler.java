@@ -70,7 +70,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     HashMap<String, String> context = payload.getContext();
 
     if (context == null || context.isEmpty() || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
-      LOG.error(PAYLOAD_HAS_NO_DATA_MSG);
+      LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
       future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       return future;
     }
@@ -193,7 +193,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   /* Logic for processing errors */
   private void constructError(DataImportEventPayload payload, String errorMessage) {
-    LOG.error(errorMessage);
+    LOG.warn(errorMessage);
     payload.setEventType(notMatchedEventType.toString());
   }
 }

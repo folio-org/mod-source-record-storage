@@ -57,7 +57,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map((Response) PostSourceStorageRecordsResponse.respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to create record", e);
+        LOG.warn("postSourceStorageRecords:: Failed to create record", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -76,7 +76,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map(GetSourceStorageRecordsResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get all records", e);
+        LOG.warn("getSourceStorageRecords:: Failed to get all records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -93,7 +93,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to update record {}", e, id);
+        LOG.warn("putSourceStorageRecordsById:: Failed to update record by id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -111,7 +111,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
             .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204()).map(Response.class::cast)
             .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to delete record {}", e, id);
+        LOG.warn("deleteSourceStorageRecordsById:: Failed to delete record by id {}", id, e );
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -127,7 +127,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get record by id {}", e, id);
+        LOG.warn("getSourceStorageRecordsById:: Failed to get record by id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -142,7 +142,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get record by {} id {}", e, idType, id);
+        LOG.warn("getSourceStorageRecordsFormattedById:: Failed to get record by {} id {}", idType, id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -158,7 +158,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to update record's SuppressFromDiscovery flag", e);
+        LOG.warn("putSourceStorageRecordsSuppressFromDiscoveryById:: Failed to update record's SuppressFromDiscovery flag", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

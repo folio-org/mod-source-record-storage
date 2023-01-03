@@ -161,7 +161,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional subfield {} for field {} to record {}", subfield, field, record.getId(), e);
+      LOGGER.warn("addFieldToMarcRecord:: Failed to add additional subfield {} for field {} to record {}", subfield, field, record.getId(), e);
     }
     return result;
   }
@@ -205,7 +205,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional controlled field {} to record {}", field, record.getId(), e);
+      LOGGER.warn("addControlledFieldToMarcRecord:: Failed to add additional controlled field {} to record {}", field, record.getId(), e);
     }
     return result;
   }
@@ -246,7 +246,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to remove controlled field {} from record {}", fieldName, record.getId(), e);
+      LOGGER.warn("removeField:: Failed to remove controlled field {} from record {}", fieldName, record.getId(), e);
     }
     return isFieldRemoveSucceed;
   }
@@ -326,7 +326,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to read controlled field {} from record {}", tag, record.getId(), e);
+      LOGGER.warn("getValueFromControlledField:: Failed to read controlled field {} from record {}", tag, record.getId(), e);
       return null;
     }
     return null;
@@ -364,7 +364,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Failed to add additional data field {} to record {}", e, tag, record.getId());
+      LOGGER.warn("addDataFieldToMarcRecord:: Failed to add additional data field {} to record {}", tag, record.getId(), e);
     }
     return result;
   }
@@ -408,7 +408,7 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.error("Error during the search a field in the record", e);
+      LOGGER.warn("isFieldExist:: Error during the search a field in the record", e);
       return false;
     }
     return false;
@@ -582,7 +582,7 @@ public final class AdditionalFieldsUtil {
       try {
         return parsedRecordContentCache.get(record.getParsedRecord().getContent());
       } catch (Exception e) {
-        LOGGER.warn("Error during the transformation to marc record", e);
+        LOGGER.warn("computeMarcRecord:: Error during the transformation to marc record", e);
         MarcReader reader = buildMarcReader(record);
         if (reader.hasNext()) {
           return reader.next();

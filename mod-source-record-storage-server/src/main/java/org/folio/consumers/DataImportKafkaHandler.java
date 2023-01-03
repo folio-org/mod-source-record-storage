@@ -50,6 +50,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+    LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
     String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
@@ -57,7 +58,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Promise<String> promise = Promise.promise();
       Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      LOGGER.debug("Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}' and userId: '{}'",
+      LOGGER.debug("handle:: Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}' and userId: '{}'",
         eventPayload.getEventType(), eventPayload.getJobExecutionId(), recordId, chunkId, userId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
@@ -74,7 +75,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail(format("Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
+            promise.fail(format("handle:: Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
               eventPayload.getJobExecutionId(), recordId, chunkId));
           } else {
             promise.complete(targetRecord.key());
@@ -82,7 +83,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
         });
       return promise.future();
     } catch (Exception e) {
-      LOGGER.error("Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
+      LOGGER.warn("handle:: Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
       return Future.failedFuture(e);
     }
   }

@@ -349,16 +349,19 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
+    LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
   }
 
   @Override
   public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    LOG.trace("saveRecord:: Saving {} record {}", record.getRecordType(), record.getId());
     return insertOrUpdateRecord(txQE, record);
   }
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
@@ -506,8 +509,8 @@ public class RecordDaoImpl implements RecordDao {
             if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
               throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
             }
-            LOG.warn("Error occurred on batch execution: {}", error.exception().getCause().getMessage());
-            LOG.debug("Failed to execute statement from batch: {}", error.query());
+            LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
+            LOG.debug("saveRecords:: Failed to execute statement from batch: {}", error.query());
           });
 
           // batch insert raw records
@@ -548,20 +551,20 @@ public class RecordDaoImpl implements RecordDao {
             .withErrorMessages(errorMessages));
         });
       } catch (DuplicateEventException e) {
-        LOG.info("Skipped saving records due to duplicate event: {}", e.getMessage());
+        LOG.info("saveRecords:: Skipped saving records due to duplicate event: {}", e.getMessage());
         promise.fail(e);
       } catch (SQLException | DataAccessException e) {
-        LOG.error("Failed to save records", e);
+        LOG.warn("saveRecords:: Failed to save records", e);
         promise.fail(e);
       }
     },
     false,
     r -> {
       if (r.failed()) {
-        LOG.error("Error during batch record save", r.cause());
+        LOG.warn("saveRecords:: Error during batch record save", r.cause());
         finalPromise.fail(r.cause());
       } else {
-        LOG.debug("batch record save was successful");
+        LOG.debug("saveRecords:: batch record save was successful");
         finalPromise.complete(r.result());
       }
     });
@@ -571,6 +574,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
+    LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
         .map(r -> saveRecord(txQE, record))
@@ -683,6 +687,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
+    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
@@ -691,6 +696,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+    logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
@@ -830,16 +836,16 @@ public class RecordDaoImpl implements RecordDao {
               .withTotalRecords(parsedRecordsUpdated.size()));
           });
         } catch (SQLException e) {
-          LOG.error("Failed to update records", e);
+          LOG.warn("updateParsedRecords:: Failed to update records", e);
           blockingPromise.fail(e);
         }},
         false,
           result -> {
             if (result.failed()) {
-              LOG.error("Error during update of parsed records", result.cause());
+              LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
               promise.fail(result.cause());
             } else {
-              LOG.debug("parsed records update was successful");
+              LOG.debug("updateParsedRecords:: Parsed records update was successful");
               promise.complete(result.result());
             }
           });
@@ -901,11 +907,13 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+    LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
 
   @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
+    LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
       .compose(optionalRecord -> optionalRecord
         .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
@@ -915,11 +923,13 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
+    LOG.trace("deleteRecordsBySnapshotId:: Deleting records by snapshotId {} for tenant {}", snapshotId, tenantId);
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
   }
 
   @Override
   public Future<Void> deleteRecords(int lastUpdatedDays, int limit, String tenantId) {
+    LOG.trace("deleteRecords:: Deleting record by last {} days for tenant {}", lastUpdatedDays, tenantId);
     Promise<Void> promise = Promise.promise();
     var selectIdsForDeleteQuery = select(RECORDS_LB.ID)
       .from(RECORDS_LB)
@@ -936,6 +946,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
+    LOG.trace("updateRecordsState:: Updating records state with value {} by matchedId {} for tenant {}", state, matchedId, tenantId);
     Promise<Void> promise = Promise.promise();
     getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, state)
@@ -1022,6 +1033,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
+      LOG.trace("insertOrUpdateParsedRecord:: Inserting or updating {} parsed record", record.getRecordType());
       // attempt to format record to validate
       RecordType recordType = toRecordType(record.getRecordType().name());
       recordType.formatRecord(record);
@@ -1031,7 +1043,7 @@ public class RecordDaoImpl implements RecordDao {
           return parsedRecord;
         });
     } catch (Exception e) {
-      LOG.error("Couldn't format {} record", record.getRecordType(), e);
+      LOG.warn("insertOrUpdateParsedRecord:: Couldn't format {} record", record.getRecordType(), e);
       record.withErrorRecord(new ErrorRecord()
         .withId(record.getId())
         .withDescription(e.getMessage())
@@ -1043,6 +1055,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", record.getRecordType());
     return RecordDaoUtil.findById(txQE, record.getId())
       .map(optionalRecord -> {
         if (optionalRecord.isPresent()) {
@@ -1157,6 +1170,12 @@ public class RecordDaoImpl implements RecordDao {
       record.setErrorRecord(errorRecord);
     }
     return record;
+  }
+
+  private void logRecordCollection(String msg, RecordCollection recordCollection, String tenantId) {
+    if (LOG.isTraceEnabled()) {
+      recordCollection.getRecords().forEach(e -> LOG.trace("{} {} record {} for tenant {}", msg, e.getRecordType(), e.getId(), tenantId));
+    }
   }
 
 }

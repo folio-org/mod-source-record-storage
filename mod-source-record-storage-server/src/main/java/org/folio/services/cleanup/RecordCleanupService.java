@@ -35,14 +35,14 @@ public class RecordCleanupService {
    */
   @Scheduled(cron = "${srs.cleanup.cron.expression:0 0 0 * * ?}")
   public void cleanup() {
-    LOGGER.info("Starting records cleanup job");
+    LOGGER.info("cleanup:: Starting records cleanup job");
     TenantUtil.getModuleTenants(vertx)
-      .onFailure(throwable -> LOGGER.error("Failed to retrieve tenants available for the module, cause: {}", throwable.getMessage()))
+      .onFailure(throwable -> LOGGER.warn("cleanup:: Failed to retrieve tenants available for the module, cause: {}", throwable.getMessage()))
       .onSuccess(tenants -> {
         for (String tenantId : tenants) {
           recordDao.deleteRecords(lastUpdatedDays, limit, tenantId)
-            .onFailure(throwable -> LOGGER.error("Failed to delete records, tenant: {}, cause: {}", tenantId, throwable.getMessage()))
-            .onSuccess(ar -> LOGGER.info("Records has been successfully deleted, tenant: {}", tenantId));
+            .onFailure(throwable -> LOGGER.warn("cleanup:: Failed to delete records, tenant: {}, cause: {}", tenantId, throwable.getMessage()))
+            .onSuccess(ar -> LOGGER.info("cleanup:: Records has been successfully deleted, tenant: {}", tenantId));
         }
       });
   }

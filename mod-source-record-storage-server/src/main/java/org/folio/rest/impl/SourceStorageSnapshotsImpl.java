@@ -58,7 +58,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to create snapshot", e);
+        LOG.warn("postSourceStorageSnapshots:: Failed to create snapshot", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -77,7 +77,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get all snapshots", e);
+        LOG.warn("getSourceStorageSnapshots:: Failed to get all snapshots", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -95,7 +95,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to update snapshot {}", e, jobExecutionId);
+        LOG.warn("putSourceStorageSnapshotsByJobExecutionId:: Failed to update snapshot {}", jobExecutionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -115,7 +115,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to delete snapshot {}", e, jobExecutionId);
+        LOG.warn("deleteSourceStorageSnapshotsByJobExecutionId:: Failed to delete snapshot {}", jobExecutionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -134,7 +134,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get snapshot by jobExecutionId {}", e, jobExecutionId);
+        LOG.warn("getSourceStorageSnapshotsByJobExecutionId:: Failed to get snapshot by jobExecutionId {}", jobExecutionId, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

@@ -83,7 +83,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get source records", e);
+        LOG.warn("getSourceStorageSourceRecords:: Failed to get source records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -100,7 +100,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get source records", e);
+        LOG.warn("postSourceStorageSourceRecords:: Failed to get source records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -118,7 +118,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.error("Failed to get source record by id: {}", id, e);
+        LOG.warn("getSourceStorageSourceRecordsById:: Failed to get source record by id: {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

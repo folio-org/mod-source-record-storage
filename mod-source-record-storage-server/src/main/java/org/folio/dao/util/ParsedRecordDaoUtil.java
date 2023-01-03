@@ -221,17 +221,17 @@ public final class ParsedRecordDaoUtil {
   /**
    * Convinience method to get {@link RecordType} from {@link Record}
    *
-   * @param record record
+   * @param r record
    * @return record type defaulting to MARC
    */
-  public static RecordType toRecordType(Record record) {
-    if (Objects.nonNull(record.getRecordType())) {
-      return RecordType.valueOf(record.getRecordType().toString());
+  public static RecordType toRecordType(Record r) {
+    if (Objects.nonNull(r.getRecordType())) {
+      return RecordType.valueOf(r.getRecordType().toString());
     }
     return RecordType.MARC_BIB;
   }
 
-  private static JsonObject normalize(Object content) {
+  public static JsonObject normalize(Object content) {
     return (content instanceof String)
       ? new JsonObject((String) content)
       : JsonObject.mapFrom(content);

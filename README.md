@@ -120,6 +120,9 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * "_srs.cleanup.last.updated.days_": 7
   * "_srs.cleanup.limit_": 100
   * "_srs.cleanup.cron.expression_": 0 0 0 * * ?
+* Relevant from the **Orchid** release, module versions from 5.6.0:
+  * "_srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum_": 100
+  * "_srs.kafka.AuthorityLinkChunkConsumer.loadLimit_": 2
 
 ## Database schemas
 

@@ -26,6 +26,7 @@ import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
 import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
 import org.folio.spring.SpringContextUtil;
+import org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
 import org.folio.verticle.consumers.QuickMarcConsumersVerticle;
@@ -35,6 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class InitAPIImpl implements InitAPI {
 
+  private static final String SPRING_CONTEXT = "springContext";
   private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
@@ -76,6 +78,9 @@ public class InitAPIImpl implements InitAPI {
   @Value("${srs.kafka.QuickMarcConsumer.instancesNumber:1}")
   private int quickMarcConsumerInstancesNumber;
 
+  @Value("${srs.kafka.AuthorityLinkChunkConsumer.instancesNumber:1}")
+  private int authorityLinkChunkConsumerInstancesNumber;
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
     try {
@@ -110,13 +115,15 @@ public class InitAPIImpl implements InitAPI {
 
   private Future<?> deployConsumerVerticles(Vertx vertx) {
     //TODO: get rid of this workaround with global spring context
-    ParsedRecordChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
-    DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
-    QuickMarcConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
+    ParsedRecordChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
+    DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
+    QuickMarcConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
+    AuthorityLinkChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
 
     Promise<String> deployConsumer1 = Promise.promise();
     Promise<String> deployConsumer2 = Promise.promise();
     Promise<String> deployConsumer3 = Promise.promise();
+    Promise<String> deployConsumer4 = Promise.promise();
 
     vertx.deployVerticle(ParsedRecordChunkConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
@@ -127,7 +134,14 @@ public class InitAPIImpl implements InitAPI {
     vertx.deployVerticle(QuickMarcConsumersVerticle.class.getCanonicalName(),
       new DeploymentOptions().setWorker(true).setInstances(quickMarcConsumerInstancesNumber), deployConsumer3);
 
-    return GenericCompositeFuture.all(List.of(deployConsumer1.future(), deployConsumer2.future(), deployConsumer3.future()));
+    vertx.deployVerticle(AuthorityLinkChunkConsumersVerticle.class.getCanonicalName(),
+      new DeploymentOptions().setWorker(true).setInstances(authorityLinkChunkConsumerInstancesNumber), deployConsumer4);
+
+    return GenericCompositeFuture.all(List.of(
+      deployConsumer1.future(),
+      deployConsumer2.future(),
+      deployConsumer3.future(),
+      deployConsumer4.future()));
   }
 
 }

@@ -66,8 +66,8 @@ public final class AdditionalFieldsUtil {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final char INDICATOR = 'f';
 
-  private final static CacheLoader<String, org.marc4j.marc.Record> parsedRecordContentCacheLoader;
-  private final static LoadingCache<String, org.marc4j.marc.Record> parsedRecordContentCache;
+  private static final CacheLoader<String, org.marc4j.marc.Record> parsedRecordContentCacheLoader;
+  private static final LoadingCache<String, org.marc4j.marc.Record> parsedRecordContentCache;
 
   static {
     // this function is executed when creating a new item to be saved in the cache.

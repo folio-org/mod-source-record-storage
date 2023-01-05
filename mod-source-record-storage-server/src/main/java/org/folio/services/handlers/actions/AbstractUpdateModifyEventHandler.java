@@ -1,6 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -52,7 +51,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG =
     "MappingParameters snapshot was not found by jobExecutionId '%s'";
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
@@ -159,11 +157,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
   }
 
-  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption)
-    throws IOException {
+  private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
     String recordAsString = getRecordAsString(eventPayload, marcMappingOption);
 
-    Record recordWithHrid = OBJECT_MAPPER.readValue(recordAsString, Record.class);
+    Record recordWithHrid = Json.decodeValue(recordAsString, Record.class);
     return getValueFromControlledField(recordWithHrid, HR_ID_FROM_FIELD);
   }
 

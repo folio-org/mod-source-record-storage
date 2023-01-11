@@ -8,7 +8,7 @@ import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToParsedContentJsonString;
 import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
-import static org.folio.services.util.EventHandlingUtil.createTopicName;
+import static org.folio.services.util.EventHandlingUtil.createTopicNameNoNamespace;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -278,7 +278,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(MarcBibUpdate marcBibUpdate,
                                                                         List<KafkaHeader> kafkaHeaders) {
-    var topicName = createTopicName(SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getTenant(), kafkaConfig);
+    var topicName = createTopicNameNoNamespace(SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getTenant(), kafkaConfig);
     var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
     var kafkaRecord = KafkaProducerRecord.create(topicName, key,Json.encode(marcBibUpdate));
     kafkaRecord.addHeaders(kafkaHeaders);

@@ -41,9 +41,9 @@ public final class EventHandlingUtil {
    */
   public static Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, String eventType,
                                                  List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
-    KafkaProducerRecord<String, String> record;
+    KafkaProducerRecord<String, String> producerRecord;
 
-    record = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
+    producerRecord = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
 
     Promise<Boolean> promise = Promise.promise();
 
@@ -52,7 +52,7 @@ public final class EventHandlingUtil {
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
-    producer.write(record, war -> {
+    producer.write(producerRecord, war -> {
       producer.end(ear -> producer.close());
       if (war.succeeded()) {
         LOGGER.info("sendEventToKafka:: Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
@@ -81,9 +81,9 @@ public final class EventHandlingUtil {
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
 
-    KafkaProducerRecord<String, String> record = KafkaProducerRecord.create(topicName, key, Json.encode(event));
-    record.addHeaders(kafkaHeaders);
-    return record;
+    KafkaProducerRecord<String, String> producerRecord = KafkaProducerRecord.create(topicName, key, Json.encode(event));
+    producerRecord.addHeaders(kafkaHeaders);
+    return producerRecord;
   }
 
   public static String constructModuleName() {
@@ -93,6 +93,14 @@ public final class EventHandlingUtil {
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, eventType);
+  }
+
+  public static String createTopicNameNoNamespace(String eventType, String tenantId, KafkaConfig kafkaConfig) {
+    return String.join(".", kafkaConfig.getEnvId(), tenantId, eventType);
+  }
+
+  public static String createSubscriptionPattern(String env, String eventType) {
+    return String.join("\\.", env, "\\w{1,}", eventType);
   }
 
   public static KafkaProducer<String, String> createProducer(String eventType, KafkaConfig kafkaConfig) {
@@ -110,7 +118,7 @@ public final class EventHandlingUtil {
 
   private static String extractChunkId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals("chunkId"))
+      .filter(header -> header.key().equals(CHUNK_ID_HEADER))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

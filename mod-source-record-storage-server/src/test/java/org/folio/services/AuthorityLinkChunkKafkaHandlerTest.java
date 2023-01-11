@@ -2,9 +2,8 @@ package org.folio.services;
 
 import static java.util.Collections.singletonList;
 import static org.folio.consumers.AuthorityLinkChunkKafkaHandler.SRS_BIB_UPDATE_TOPIC;
-import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.services.util.EventHandlingUtil.createTopicNameNoNamespace;
 import static org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle.AUTHORITY_INSTANCE_LINKS_TOPIC;
 
 import io.vertx.core.AsyncResult;
@@ -261,7 +260,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   private static String getTopicName(String name) {
-    return formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, name);
+    return createTopicNameNoNamespace(name, TENANT_ID, kafkaConfig);
   }
 
   private List<String> readValuesFromKafka(String traceHeader, int limit) throws InterruptedException {

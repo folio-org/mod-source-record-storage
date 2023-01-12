@@ -79,7 +79,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static String updatedParsedRecordContent;
   private static String unlinkedParsedRecordContent;
 
-  private final String authorityJobId = UUID.randomUUID().toString();
+  private final String linkedBibUpdateJobId = UUID.randomUUID().toString();
   private final String recordId = UUID.randomUUID().toString();
   private final String instanceId = UUID.randomUUID().toString();
   private final RawRecord rawRecord = new RawRecord().withId(recordId)
@@ -118,10 +118,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
 
-    var authoritySnapshot = new Snapshot()
-      .withJobExecutionId(authorityJobId)
-      .withProcessingStartedDate(new Date(System.currentTimeMillis() + TimeUnit.HOURS.toMillis(1)))
-      .withStatus(Snapshot.Status.COMMITTED);
     var secondParsedRecord = new ParsedRecord().withId(SECOND_RECORD_ID)
       .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
     secondRecord = new Record()
@@ -136,8 +132,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
-      .compose(savedRecord -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), authoritySnapshot))
-      .compose(savedSnapshot -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(savedRecord -> recordService.saveRecord(secondRecord, TENANT_ID))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
   }
@@ -304,7 +299,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     );
 
     return new BibAuthorityLinksUpdate()
-      .withJobId(authorityJobId)
+      .withJobId(linkedBibUpdateJobId)
       .withAuthorityId(LINKED_AUTHORITY_ID)
       .withTenant(TENANT_ID)
       .withTs("123")

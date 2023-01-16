@@ -161,8 +161,10 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
           newSubfields.forEach(newField::addSubfield);
 
-          parsedRecordContent.removeVariableField(field);
-          parsedRecordContent.addVariableField(newField);
+          var dataFields = parsedRecordContent.getDataFields();
+          var fieldPosition = dataFields.indexOf(field);
+          dataFields.remove(fieldPosition);
+          dataFields.add(fieldPosition, newField);
         });
 
         parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));

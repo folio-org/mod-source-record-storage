@@ -5,6 +5,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RE
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 
 import io.vertx.core.Vertx;
+import org.folio.client.InstanceLinkClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -15,10 +16,17 @@ import org.folio.services.caches.MappingParametersSnapshotCache;
 @Component
 public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHandler {
 
-  @Autowired
+  /*@Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,
                                          Vertx vertx) {
     super(recordService, mappingParametersCache, vertx);
+  }*/
+
+  @Autowired
+  public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,
+                                         Vertx vertx, InstanceLinkClient instanceLinkClient) {
+    super(recordService, mappingParametersCache, vertx);
+    this.instanceLinkClient = instanceLinkClient;
   }
 
   @Override

@@ -20,6 +20,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
+import org.folio.client.InstanceLinkClient;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -83,6 +84,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private RecordDao recordDao;
   private RecordService recordService;
+  private InstanceLinkClient instanceLinkClient;
   private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
@@ -190,7 +192,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
+    instanceLinkClient = new InstanceLinkClient(vertx);
+    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx, instanceLinkClient);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

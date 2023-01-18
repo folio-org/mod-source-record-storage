@@ -69,6 +69,7 @@ public abstract class AbstractLBServiceTest {
     //Property variables
     System.setProperty("kafka-host", hostAndPort[0]);
     System.setProperty("kafka-port", hostAndPort[1]);
+    System.setProperty("env", KAFKA_ENV_ID);
     //Env variables
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);

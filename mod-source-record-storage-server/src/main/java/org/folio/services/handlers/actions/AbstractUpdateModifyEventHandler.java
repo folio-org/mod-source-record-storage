@@ -221,9 +221,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           instanceLinkClient.updateInstanceLinks(instanceId, instanceLinkDtoCollection, context)
             .whenComplete((v, throwable) -> {
               if (throwable != null) {
-                promise.complete();
-              } else {
                 promise.fail(throwable);
+              } else {
+               promise.complete();
               }
             });
         } else {

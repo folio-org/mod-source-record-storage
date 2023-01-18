@@ -8,7 +8,7 @@ import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToParsedContentJsonString;
 import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
-import static org.folio.services.util.EventHandlingUtil.createTopicName;
+import static org.folio.services.util.EventHandlingUtil.createTopicNameNoNamespace;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -18,6 +18,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,11 +38,14 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.BibAuthorityLinksUpdate;
 import org.folio.rest.jaxrs.model.Link;
 import org.folio.rest.jaxrs.model.MarcBibUpdate;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.impl.DataFieldImpl;
 import org.marc4j.marc.impl.SubfieldImpl;
@@ -59,14 +63,17 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private final RecordService recordService;
   private final KafkaConfig kafkaConfig;
+  private final SnapshotService snapshotService;
   private final KafkaProducer<String, String> producer;
 
   @Value("${srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
-  public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig) {
+  public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig,
+                                        SnapshotService snapshotService) {
     this.recordService = recordService;
     this.kafkaConfig = kafkaConfig;
+    this.snapshotService = snapshotService;
 
     producer = createProducer(SRS_BIB_UPDATE_TOPIC, kafkaConfig);
   }
@@ -74,6 +81,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
     return mapToEvent(consumerRecord)
+      .compose(this::createSnapshot)
       .compose(event -> retrieveRecords(event, event.getTenant())
         .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection))
         .compose(recordCollection -> recordService.saveRecords(recordCollection, event.getTenant()))
@@ -153,8 +161,10 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
           newSubfields.forEach(newField::addSubfield);
 
-          parsedRecordContent.removeVariableField(field);
-          parsedRecordContent.addVariableField(newField);
+          var dataFields = parsedRecordContent.getDataFields();
+          var fieldPosition = dataFields.indexOf(field);
+          dataFields.remove(fieldPosition);
+          dataFields.add(fieldPosition, newField);
         });
 
         parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
@@ -238,6 +248,20 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .collect(Collectors.toList());
   }
 
+  private Future<BibAuthorityLinksUpdate> createSnapshot(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+    var now = new Date();
+    var snapshot = new Snapshot()
+      .withJobExecutionId(bibAuthorityLinksUpdate.getJobId())
+      .withStatus(Snapshot.Status.COMMITTED)
+      .withProcessingStartedDate(now)
+      .withMetadata(new Metadata()
+        .withCreatedDate(now)
+        .withUpdatedDate(now));
+
+    return snapshotService.saveSnapshot(snapshot, bibAuthorityLinksUpdate.getTenant())
+      .map(result -> bibAuthorityLinksUpdate);
+  }
+
   private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents, BibAuthorityLinksUpdate event,
                                     KafkaConsumerRecord<String, String> consumerRecord) {
     LOGGER.info("Sending {} bib update events for jobId {}, authorityId {}",
@@ -278,7 +302,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(MarcBibUpdate marcBibUpdate,
                                                                         List<KafkaHeader> kafkaHeaders) {
-    var topicName = createTopicName(SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getTenant(), kafkaConfig);
+    var topicName = createTopicNameNoNamespace(SRS_BIB_UPDATE_TOPIC, marcBibUpdate.getTenant(), kafkaConfig);
     var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
     var kafkaRecord = KafkaProducerRecord.create(topicName, key,Json.encode(marcBibUpdate));
     kafkaRecord.addHeaders(kafkaHeaders);

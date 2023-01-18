@@ -1,6 +1,7 @@
 package org.folio.verticle.consumers;
 
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
+import static org.folio.services.util.EventHandlingUtil.createSubscriptionPattern;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
@@ -8,7 +9,6 @@ import org.folio.consumers.AuthorityLinkChunkKafkaHandler;
 import org.folio.kafka.GlobalLoadSensor;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,10 +46,10 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractVerticle {
 
     SpringContextUtil.autowireDependencies(this, context);
 
-    SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper
-      .createSubscriptionDefinition(kafkaConfig.getEnvId(),
-        KafkaTopicNameHelper.getDefaultNameSpace(),
-        AUTHORITY_INSTANCE_LINKS_TOPIC);
+    SubscriptionDefinition subscriptionDefinition = SubscriptionDefinition.builder()
+      .eventType(AUTHORITY_INSTANCE_LINKS_TOPIC)
+      .subscriptionPattern(createSubscriptionPattern(kafkaConfig.getEnvId(), AUTHORITY_INSTANCE_LINKS_TOPIC))
+      .build();
 
     consumer = KafkaConsumerWrapper.<String, String>builder()
       .context(context)

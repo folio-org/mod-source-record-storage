@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Configuration
 @EnableScheduling
 @ComponentScan(basePackages = {
+  "org.folio.client",
   "org.folio.rest.impl",
   "org.folio.dao",
   "org.folio.services",

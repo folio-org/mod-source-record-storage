@@ -91,14 +91,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       Record newRecord = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
-      String instanceId = newRecord.getExternalIdsHolder().getHoldingsId();
+      String instanceId = (newRecord.getExternalIdsHolder() != null) ? newRecord.getExternalIdsHolder().getInstanceId() : null;
       preparePayload(payload);
 
       mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
         .compose(mappingParameters -> (modifiedEntityType() != MARC_BIBLIOGRAPHIC) ?
           modifyRecord(payload, mappingProfile, mappingParameters) :
-          resolveModifyRecord(newRecord, payload, userId, mappingProfile, mappingParameters, instanceId))
+          modifyMarcBibRecord(newRecord, payload, userId, mappingProfile, mappingParameters, instanceId))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -171,7 +171,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
   }
 
-  private void modifyBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+  private void modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
     MappingParameters mappingParameters, InstanceLinkDtoCollection links, Promise<InstanceLinkDtoCollection> promise) {
     try {
       MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
@@ -184,7 +184,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
   }
 
-  private Future<Void> resolveModifyRecord(Record newRecord, DataImportEventPayload payload, String userId,
+  private Future<Void> modifyMarcBibRecord(Record newRecord, DataImportEventPayload payload, String userId,
     MappingProfile mappingProfile, MappingParameters mappingParameters, String instanceId) {
     Context context = new Context(payload.getTenant(), payload.getToken(), payload.getOkapiUrl(), userId);
     return recordService.getRecordById(newRecord.getId(), payload.getTenant())
@@ -199,7 +199,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
                 LOG.error(throwable.getMessage());
                 promise.fail(throwable);
               } else {
-                modifyBibRecord(payload, mappingProfile, mappingParameters, instanceLinkDtoCollection.get(), promise);
+                modifyMarcBibRecord(payload, mappingProfile, mappingParameters, instanceLinkDtoCollection.get(), promise);
               }
             });
         } else {
@@ -223,7 +223,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
               if (throwable != null) {
                 promise.fail(throwable);
               } else {
-               promise.complete();
+                promise.complete();
               }
             });
         } else {

@@ -1,10 +1,10 @@
 package org.folio.services;
 
 import static java.util.Collections.singletonList;
-import static org.folio.consumers.AuthorityLinkChunkKafkaHandler.SRS_BIB_UPDATE_TOPIC;
+import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
+import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
+import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.services.util.EventHandlingUtil.createTopicNameNoNamespace;
-import static org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle.AUTHORITY_INSTANCE_LINKS_TOPIC;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -35,9 +35,11 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.services.KafkaTopic;
 import org.folio.rest.jaxrs.model.BibAuthorityLinksUpdate;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Link;
+import org.folio.rest.jaxrs.model.LinkUpdateReport;
 import org.folio.rest.jaxrs.model.MarcBibUpdate;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -63,8 +65,9 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String PARSED_MARC_RECORD_UNLINKED = "src/test/resources/parsedMarcRecordUnlinked.json";
   private static final String KAFKA_KEY_NAME = "test-key";
   private static final String KAFKA_TEST_HEADER = "test";
-  private static final String KAFKA_CONSUMER_TOPIC = getTopicName(AUTHORITY_INSTANCE_LINKS_TOPIC);
-  private static final String KAFKA_PRODUCER_TOPIC = getTopicName(SRS_BIB_UPDATE_TOPIC);
+  private static final String KAFKA_CONSUMER_TOPIC = getTopicName(INSTANCE_AUTHORITY);
+  private static final String KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC = getTopicName(MARC_BIB);
+  private static final String KAFKA_LINK_STATS_PRODUCER_TOPIC = getTopicName(LINKS_STATS);
   private static final String LINKED_AUTHORITY_ID = "6d19a8e8-2b71-482e-bfda-2b97f8722a2f";
   private static final String SECOND_RECORD_ID = UUID.randomUUID().toString();
   private static final String SECOND_INSTANCE_ID = UUID.randomUUID().toString();
@@ -159,7 +162,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var keyValues = cluster.read(ReadKeyValues.from(KAFKA_PRODUCER_TOPIC)
+    var keyValues = cluster.read(ReadKeyValues.from(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC)
       .withMaxTotalPollTime(60, TimeUnit.SECONDS)
       .filterOnHeaders(headers -> Arrays.equals(headers.lastHeader(KAFKA_TEST_HEADER).value(),
         traceHeader.getBytes(StandardCharsets.UTF_8)))
@@ -194,7 +197,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var values = readValuesFromKafka(traceHeader, 2);
+    var values = readValuesFromKafka(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 2);
     context.assertEquals(2, values.size());
 
     var eventsInstanceIds = values.stream()
@@ -224,7 +227,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var values = readValuesFromKafka(traceHeader, 1);
+    var values = readValuesFromKafka(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
     var actualOutgoingEvent = objectMapper.readValue(values.get(0), MarcBibUpdate.class);
 
@@ -243,6 +246,31 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldUpdateMultipleRecordsAndSendLinkUpdateReports(TestContext context) throws InterruptedException {
+    var updateTargets = buildUpdateTargets(instanceId, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
+    var event = buildLinkEventForUpdate(updateTargets);
+
+    var traceHeader = UUID.randomUUID().toString();
+    cluster.send(createRequest(event, traceHeader));
+    var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 2);
+    context.assertEquals(2, values.size());
+
+    var eventsInstanceIds = values.stream()
+      .map(value -> {
+        try {
+          var report = objectMapper.readValue(value, LinkUpdateReport.class);
+          context.assertEquals(SUCCESS, report.getStatus());
+          return report.getInstanceId();
+        } catch (IOException e) {
+          return null;
+        }})
+      .filter(Objects::nonNull)
+      .collect(Collectors.toList());
+
+    context.assertTrue(List.of(instanceId, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+  }
+
   private SendKeyValues<String, String> createRequest(Object payload, String traceValue) {
     var eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(payload));
     OKAPI_HEADERS.forEach((key, value) -> {
@@ -254,12 +282,12 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     return SendKeyValues.to(KAFKA_CONSUMER_TOPIC, singletonList(eventRecord)).useDefaults();
   }
 
-  private static String getTopicName(String name) {
-    return createTopicNameNoNamespace(name, TENANT_ID, kafkaConfig);
+  private static String getTopicName(KafkaTopic topic) {
+    return topic.fullTopicName(kafkaConfig, topic);
   }
 
-  private List<String> readValuesFromKafka(String traceHeader, int limit) throws InterruptedException {
-    return cluster.readValues(ReadKeyValues.from(KAFKA_PRODUCER_TOPIC)
+  private List<String> readValuesFromKafka(String topic, String traceHeader, int limit) throws InterruptedException {
+    return cluster.readValues(ReadKeyValues.from(topic)
       .withMaxTotalPollTime(60, TimeUnit.SECONDS)
       .filterOnHeaders(headers -> Arrays.equals(headers.lastHeader(KAFKA_TEST_HEADER).value(),
         traceHeader.getBytes(StandardCharsets.UTF_8)))

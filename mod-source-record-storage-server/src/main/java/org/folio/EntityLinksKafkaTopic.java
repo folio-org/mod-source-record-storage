@@ -22,8 +22,4 @@ public enum EntityLinksKafkaTopic implements KafkaTopic {
   public String topicName() {
     return topic;
   }
-
-  public String moduleTopicName() {
-    return moduleName() + '.' + topicName();
-  }
 }

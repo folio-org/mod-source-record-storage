@@ -60,13 +60,11 @@ import java.util.stream.Collectors;
 
 @Component
 public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String, String> {
-
-  public static final String SRS_BIB_UPDATE_TOPIC = MARC_BIB.moduleTopicName();
-  public static final String LINKS_STATS_TOPIC = LINKS_STATS.moduleTopicName();
   private static final char AUTHORITY_ID_SUBFIELD = '9';
   private static final AtomicLong INDEXER = new AtomicLong();
   private static final Logger LOGGER = LogManager.getLogger();
   private final Map<KafkaTopic, KafkaProducer<String, String>> producers = new HashMap<>();
+  private final KafkaConfig kafkaConfig;
   private final RecordService recordService;
   private final SnapshotService snapshotService;
 
@@ -75,11 +73,12 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                         SnapshotService snapshotService) {
+    this.kafkaConfig = kafkaConfig;
     this.recordService = recordService;
     this.snapshotService = snapshotService;
 
-    producers.put(MARC_BIB, createProducer(SRS_BIB_UPDATE_TOPIC, kafkaConfig));
-    producers.put(LINKS_STATS, createProducer(LINKS_STATS_TOPIC, kafkaConfig));
+    producers.put(MARC_BIB, createProducer(MARC_BIB.moduleTopicName(), kafkaConfig));
+    producers.put(LINKS_STATS, createProducer(LINKS_STATS.moduleTopicName(), kafkaConfig));
   }
 
   @Override
@@ -93,7 +92,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
         .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
       ).recover(th -> {
-          LOGGER.error("Failed to handle {} event", SRS_BIB_UPDATE_TOPIC, th);
+          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
           return Future.failedFuture(th);
         }
       );
@@ -341,7 +340,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(KafkaTopic topic, String tenant, Object record,
                                                                         List<KafkaHeader> kafkaHeaders) {
-    var topicName = topic.fullTopicName(tenant);
+    var topicName = topic.fullTopicName(kafkaConfig, tenant);
     var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
     var kafkaRecord = KafkaProducerRecord.create(topicName, key, Json.encode(record));
     kafkaRecord.addHeaders(kafkaHeaders);

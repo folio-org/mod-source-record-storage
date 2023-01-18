@@ -55,7 +55,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String, String> {
 
-  public static final String SRS_BIB_UPDATE_TOPIC = MARC_BIB.moduleName() + "." + MARC_BIB.topicName();
+  public static final String SRS_BIB_UPDATE_TOPIC = MARC_BIB.moduleTopicName();
 
   private static final char AUTHORITY_ID_SUBFIELD = '9';
   private static final AtomicLong INDEXER = new AtomicLong();
@@ -222,6 +222,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           + " Total number of records: {}, successful: {}, failures: {}",
         event.getJobId(), event.getAuthorityId(),
         batchResponse.getTotalRecords(), batchResponse.getRecords().size(), errors);
+      // send report
     }
 
     return toMarcBibUpdateEvents(batchResponse, event);

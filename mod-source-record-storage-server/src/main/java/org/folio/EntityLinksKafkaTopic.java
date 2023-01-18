@@ -1,19 +1,21 @@
 package org.folio;
 
+
 import org.folio.kafka.services.KafkaTopic;
 
-public enum RecordStorageKafkaTopic implements KafkaTopic {
-  MARC_BIB("marc-bib");
+public enum EntityLinksKafkaTopic implements KafkaTopic {
+  LINKS_STATS("instance-authority-stats"),
+  INSTANCE_AUTHORITY("instance-authority");
 
   private final String topic;
 
-  RecordStorageKafkaTopic(String topic) {
+  EntityLinksKafkaTopic(String topic) {
     this.topic = topic;
   }
 
   @Override
   public String moduleName() {
-    return "srs";
+    return "links";
   }
 
   @Override

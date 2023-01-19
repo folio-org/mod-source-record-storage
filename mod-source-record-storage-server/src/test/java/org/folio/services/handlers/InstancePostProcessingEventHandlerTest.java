@@ -43,6 +43,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
@@ -715,6 +716,101 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldFillEventPayloadWithPostProcessingFlagIfOrderEventExists(TestContext context) {
+    Async async = context.async();
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put("recordId", record.getId());
+
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
+        .exceptionally(future::completeExceptionally));
+
+    future.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record updatedRecord = getAr.result().get();
+
+        context.assertNotNull(updatedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, updatedRecord.getExternalIdsHolder().getInstanceId());
+
+        context.assertNotNull(updatedRecord.getParsedRecord());
+        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceId = getInventoryId(fields);
+        context.assertEquals(expectedInstanceId, actualInstanceId);
+
+        String recordForUdateId = UUID.randomUUID().toString();
+        Record recordForUpdate = JsonObject.mapFrom(record).mapTo(Record.class)
+          .withId(recordForUdateId)
+          .withSnapshotId(snapshotId2)
+          .withRawRecord(record.getRawRecord().withId(recordForUdateId))
+          .withParsedRecord(record.getParsedRecord().withId(recordForUdateId))
+          .withGeneration(1);
+
+        HashMap<String, String> payloadContextForUpdate = new HashMap<>();
+        payloadContextForUpdate.put(INSTANCE.value(), instance.encode());
+        payloadContextForUpdate.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(recordForUpdate));
+
+        DataImportEventPayload dataImportEventPayloadForUpdate =
+          createDataImportEventPayload(payloadContextForUpdate, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
+
+        dataImportEventPayloadForUpdate.setEventType(DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value());
+
+        CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
+        recordDao.saveRecord(recordForUpdate, TENANT_ID)
+          .onFailure(future2::completeExceptionally)
+          .onSuccess(record -> handler.handle(dataImportEventPayloadForUpdate)
+            .thenApply(future2::complete)
+            .exceptionally(future2::completeExceptionally));
+
+        future2.whenComplete((payload2, ex) -> {
+          if (ex != null) {
+            context.fail(ex);
+          }
+          context.assertEquals(payload2.getContext().get("POST_PROCESSING"),"true");
+          recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
+            if (recordAr.failed()) {
+              context.fail(recordAr.cause());
+            }
+            Record rec = recordAr.result().get();
+            context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
+            context.assertNotNull(rec.getExternalIdsHolder());
+            context.assertTrue(expectedInstanceId.equals(rec.getExternalIdsHolder().getInstanceId()));
+            context.assertNotEquals(rec.getId(), record.getId());
+            context.assertTrue(recordAr.result().isPresent());
+            async.complete();
+          });
+        });
+      });
+    });
   }
 
 }

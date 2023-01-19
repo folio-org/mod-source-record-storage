@@ -192,7 +192,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    instanceLinkClient = new InstanceLinkClient(vertx);
+    instanceLinkClient = new InstanceLinkClient();
     modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx, instanceLinkClient);
 
     Snapshot snapshot = new Snapshot()

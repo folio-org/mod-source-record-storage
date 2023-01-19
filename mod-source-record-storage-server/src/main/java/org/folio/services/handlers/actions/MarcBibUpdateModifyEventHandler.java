@@ -16,12 +16,6 @@ import org.folio.services.caches.MappingParametersSnapshotCache;
 @Component
 public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHandler {
 
-  /*@Autowired
-  public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,
-                                         Vertx vertx) {
-    super(recordService, mappingParametersCache, vertx);
-  }*/
-
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,
                                          Vertx vertx, InstanceLinkClient instanceLinkClient) {

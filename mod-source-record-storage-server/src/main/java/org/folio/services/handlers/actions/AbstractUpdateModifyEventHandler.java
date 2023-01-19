@@ -15,8 +15,8 @@ import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.MappingProfile;
-import org.folio.client.support.Context;
 import org.folio.client.InstanceLinkClient;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -92,13 +92,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       Record newRecord = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
       String instanceId = (newRecord.getExternalIdsHolder() != null) ? newRecord.getExternalIdsHolder().getInstanceId() : null;
+      OkapiConnectionParams okapiParams = RestUtil.retrieveOkapiConnectionParams(payload, vertx);
       preparePayload(payload);
 
-      mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
+      mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
         .compose(mappingParameters -> (modifiedEntityType() != MARC_BIBLIOGRAPHIC) ?
           modifyRecord(payload, mappingProfile, mappingParameters) :
-          modifyMarcBibRecord(newRecord, payload, userId, mappingProfile, mappingParameters, instanceId))
+          modifyMarcBibRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -184,16 +185,15 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
   }
 
-  private Future<Void> modifyMarcBibRecord(Record newRecord, DataImportEventPayload payload, String userId,
-    MappingProfile mappingProfile, MappingParameters mappingParameters, String instanceId) {
-    Context context = new Context(payload.getTenant(), payload.getToken(), payload.getOkapiUrl(), userId);
+  private Future<Void> modifyMarcBibRecord(Record newRecord, DataImportEventPayload payload, MappingProfile mappingProfile,
+                                           MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
+
     return recordService.getRecordById(newRecord.getId(), payload.getTenant())
-      .map(optionalRecord -> optionalRecord.orElseThrow(
-        () -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
+      .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
       .compose(oldRecord -> {
         Promise<InstanceLinkDtoCollection> promise = Promise.promise();
         if (isSubfieldExist(oldRecord, SUB_FIELD_9)) {
-          instanceLinkClient.getLinksByInstanceId(instanceId, context)
+          instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
             .whenComplete((instanceLinkDtoCollection, throwable) -> {
               if (throwable != null) {
                 LOG.error(throwable.getMessage());
@@ -218,7 +218,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       .compose(instanceLinkDtoCollection -> {
         Promise<Void> promise = Promise.promise();
         if (instanceLinkDtoCollection != null && !instanceLinkDtoCollection.getLinks().isEmpty()) {
-          instanceLinkClient.updateInstanceLinks(instanceId, instanceLinkDtoCollection, context)
+          instanceLinkClient.updateInstanceLinks(instanceId, instanceLinkDtoCollection, okapiParams)
             .whenComplete((v, throwable) -> {
               if (throwable != null) {
                 promise.fail(throwable);

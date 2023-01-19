@@ -606,13 +606,13 @@ public final class AdditionalFieldsUtil {
   /**
    * Check if any field with the subfield code exists.
    *
-   * @param record  - source record.
+   * @param sourceRecord  - source record.
    * @param subFieldCode - subfield code.
    * @return true if exists, otherwise false.
    */
-  public static boolean isSubfieldExist(Record record, char subFieldCode) {
+  public static boolean isSubfieldExist(Record sourceRecord, char subFieldCode) {
     try {
-      org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
+      org.marc4j.marc.Record marcRecord = computeMarcRecord(sourceRecord);
       if (marcRecord != null) {
         for (DataField dataField : marcRecord.getDataFields()) {
           Subfield subfield = dataField.getSubfield(subFieldCode);

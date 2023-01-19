@@ -768,6 +768,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
       });
     });
   }

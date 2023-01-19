@@ -68,7 +68,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected Vertx vertx;
   protected InstanceLinkClient instanceLinkClient;
 
-  public AbstractUpdateModifyEventHandler(
+  protected AbstractUpdateModifyEventHandler(
     RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
     this.mappingParametersCache = mappingParametersCache;
@@ -99,8 +99,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
         .compose(mappingParameters -> (modifiedEntityType() != MARC_BIBLIOGRAPHIC) ?
-          modifyRecord(payload, mappingProfile, mappingParameters) :
-          modifyMarcBibRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
+          processRecord(payload, mappingProfile, mappingParameters) :
+          processMarcBibRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -160,7 +160,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
   }
 
-  private Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+  private Future<Void> processRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                     MappingParameters mappingParameters) {
     try {
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
@@ -173,28 +173,56 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     }
   }
 
-  private void modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-    MappingParameters mappingParameters, InstanceLinkDtoCollection links, Promise<InstanceLinkDtoCollection> promise) {
+  private Future<Void> processMarcBibRecord(Record newRecord, DataImportEventPayload payload, MappingProfile mappingProfile,
+                                MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
+
+    return recordService.getRecordById(newRecord.getId(), payload.getTenant())
+      .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
+      .map(oldRecord -> isSubfieldExist(oldRecord, SUB_FIELD_9))
+      .compose(subfieldExist -> Boolean.TRUE.equals(subfieldExist) ? loadInstanceLink(instanceId, okapiParams) : Future.succeededFuture(Optional.empty()))
+      .compose(linksOptional -> linksOptional.isPresent() ? modifyMarcBibRecord(payload, mappingProfile, mappingParameters, linksOptional.get()) : modifyRecord(payload, mappingProfile, mappingParameters))
+      .compose(linksOptional -> updateInstanceLinks(instanceId, linksOptional, okapiParams));
+  }
+
+  private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+    MappingParameters mappingParameters, InstanceLinkDtoCollection links) {
+    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     try {
       MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(), links);
       marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
       marcRecordModifier.getResult(dataImportEventPayload);
       if (isLinksTheSame(links, marcRecordModifier.getBibAuthorityLinksKept())) {
-        promise.complete(null);
+        promise.complete(Optional.empty());
       } else {
-        promise.complete(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept()));
+        promise.complete(Optional.of(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept())));
       }
     } catch (IOException e) {
       promise.fail(e);
     }
+    return promise.future();
+  }
+
+  private Future<Optional<InstanceLinkDtoCollection>> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+                                                         MappingParameters mappingParameters) {
+    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
+    try {
+      MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
+      marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
+      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
+      marcRecordModifier.getResult(dataImportEventPayload);
+      promise.complete(Optional.empty());
+    } catch (IOException e) {
+      promise.fail(e);
+    }
+    return promise.future();
   }
 
   private boolean isLinksTheSame(InstanceLinkDtoCollection links, List<Link> bibAuthorityLinksKept) {
     if (links.getLinks().size() != bibAuthorityLinksKept.size()) {
       return false;
     }
-    for (Link link: links.getLinks()) {
+    for (Link link : links.getLinks()) {
       if (!bibAuthorityLinksKept.contains(link)) {
         return false;
       }
@@ -202,53 +230,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return true;
   }
 
-  private Future<Void> modifyMarcBibRecord(Record newRecord, DataImportEventPayload payload, MappingProfile mappingProfile,
-                                           MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
-
-    return recordService.getRecordById(newRecord.getId(), payload.getTenant())
-      .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
-      .compose(oldRecord -> {
-        Promise<InstanceLinkDtoCollection> promise = Promise.promise();
-        if (isSubfieldExist(oldRecord, SUB_FIELD_9)) {
-          instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
-            .whenComplete((instanceLinkDtoCollection, throwable) -> {
-              if (throwable != null) {
-                LOG.error(throwable.getMessage());
-                promise.fail(throwable);
-              } else {
-                modifyMarcBibRecord(payload, mappingProfile, mappingParameters, instanceLinkDtoCollection.get(), promise);
-              }
-            });
-        } else {
-          try {
-            MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
-            marcRecordModifier.initialize(payload, mappingParameters, mappingProfile, modifiedEntityType());
-            marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
-            marcRecordModifier.getResult(payload);
-            promise.complete(null);
-          } catch (IOException e) {
-            promise.fail(e);
-          }
-        }
-        return promise.future();
-      })
-      .compose(instanceLinkDtoCollection -> {
-        Promise<Void> promise = Promise.promise();
-        if (instanceLinkDtoCollection != null) {
-          instanceLinkClient.updateInstanceLinks(instanceId, instanceLinkDtoCollection, okapiParams)
-            .whenComplete((v, throwable) -> {
-              if (throwable != null) {
-                promise.fail(throwable);
-              } else {
-                promise.complete();
-              }
-            });
-        } else {
-          promise.complete();
-        }
-        return promise.future();
-      });
-  }
   private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
     String recordAsString = getRecordAsString(eventPayload, marcMappingOption);
 
@@ -310,5 +291,37 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private Function<Optional<MappingParameters>, MappingParameters> mapMappingParametersOrFail(String message) {
     return mappingParameters -> mappingParameters.orElseThrow(() -> new EventProcessingException(message));
+  }
+
+  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(String instanceId, OkapiConnectionParams okapiParams) {
+    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
+    instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
+      .whenComplete((instanceLinkDtoCollection, throwable) -> {
+        if (throwable != null) {
+          LOG.error(throwable.getMessage());
+          promise.fail(throwable);
+        } else {
+          promise.complete(instanceLinkDtoCollection);
+        }
+      });
+    return promise.future();
+  }
+
+  private Future<Void> updateInstanceLinks(String instanceId, Optional<InstanceLinkDtoCollection> linkOptional,
+                                           OkapiConnectionParams okapiParams) {
+    Promise<Void> promise = Promise.promise();
+    if (linkOptional.isPresent()) {
+      instanceLinkClient.updateInstanceLinks(instanceId, linkOptional.get(), okapiParams)
+        .whenComplete((v, throwable) -> {
+          if (throwable != null) {
+            promise.fail(throwable);
+          } else {
+            promise.complete();
+          }
+        });
+    } else {
+      promise.complete();
+    }
+    return promise.future();
   }
 }

@@ -17,7 +17,9 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
+import org.folio.InstanceLinkDtoCollection;
 import org.folio.JobProfile;
+import org.folio.Link;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.client.InstanceLinkClient;
@@ -26,6 +28,7 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.rest.jaxrs.model.MarcField;
@@ -58,7 +61,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static java.util.Collections.singletonList;
+import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -74,13 +84,20 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
+  private static final String INSTANCE_LINKS_URL = "/links/instances";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String USER_ID_HEADER = "userId";
-
+  private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinkedContent.json";
+  private static final UrlPathPattern URL_PATH_PATTERN = new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
+  private static final ObjectMapper mapper = new ObjectMapper();
   private static String recordId = UUID.randomUUID().toString();
+  private static String secondRecordId = UUID.randomUUID().toString();
   private static String userId = UUID.randomUUID().toString();
+  private static String instanceId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
+  private static RawRecord secondRawRecord = new RawRecord().withId(recordId).withContent("test content");
   private static ParsedRecord parsedRecord;
+  private static ParsedRecord secondParsedRecord;
 
   private RecordDao recordDao;
   private RecordService recordService;
@@ -88,6 +105,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
+  private Record secondRecord;
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -179,9 +197,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(PARSED_CONTENT);
+      .withContent(mapper.readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    parsedRecord = new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT);
+
+    secondParsedRecord = new ParsedRecord().withId(secondRecordId)
+      .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
   }
 
   @Before
@@ -214,9 +234,21 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withMetadata(new Metadata());
 
+    secondRecord = new Record()
+      .withId(secondRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(secondRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(secondRawRecord)
+      .withParsedRecord(secondParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withMetadata(new Metadata());
+
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
@@ -444,7 +476,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      ObjectMapper mapper = new ObjectMapper();
       try {
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
@@ -545,5 +576,87 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     // then
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldNotUpdateLinksWhenIncomingZeroSubfieldIsSameAsExisting(TestContext context) {
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
+    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
+
+    // given
+    Async async = context.async();
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    var dataImportEventPayload = constructPayload(incomingParsedContent, "e"); //e - uncontrollable field
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      try {
+        context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+      } catch (JsonProcessingException e) {
+        context.fail(e);
+      }
+      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+
+      verify(1, getRequestedFor(URL_PATH_PATTERN));
+      verify(0, putRequestedFor(URL_PATH_PATTERN));
+      async.complete();
+    });
+  }
+
+  private InstanceLinkDtoCollection constructLinkCollection(String bibRecordTag) {
+    return new InstanceLinkDtoCollection()
+      .withLinks(singletonList(constructLink(bibRecordTag)));
+  }
+
+  private Link constructLink(String bibRecordTag) {
+    return new Link().withId(nextInt())
+      .withBibRecordTag(bibRecordTag)
+      .withBibRecordSubfields(singletonList("a"))
+      .withAuthorityId(UUID.randomUUID().toString())
+      .withInstanceId(UUID.randomUUID().toString())
+      .withAuthorityNaturalId("test");
+  }
+
+  private List<MarcMappingDetail> constructMappingDetails(String subfield) {
+    return singletonList(new MarcMappingDetail()
+      .withOrder(0)
+      .withField(new MarcField()
+        .withField("100")
+        .withIndicator1("*")
+        .withIndicator2("*")
+        .withSubfields(singletonList(new MarcSubfield().withSubfield(subfield)))));
+  }
+
+  private DataImportEventPayload constructPayload(String incomingParsedContent, String subfield){
+    Record incomingRecord = new Record().withId(secondRecord.getId()).withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
+    secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(secondRecord));
+
+    updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
+      .withMarcMappingDetails(constructMappingDetails(subfield));
+    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+        .withProfileId(updateMappingProfile.getId())
+        .withContentType(MAPPING_PROFILE)
+        .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
+
+    return new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(payloadContext)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
   }
 }

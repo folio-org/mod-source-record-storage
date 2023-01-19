@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
+import org.folio.Link;
 import org.folio.MappingProfile;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -179,10 +180,26 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(), links);
       marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
       marcRecordModifier.getResult(dataImportEventPayload);
-      promise.complete(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept()));
+      if (isLinksTheSame(links, marcRecordModifier.getBibAuthorityLinksKept())) {
+        promise.complete(null);
+      } else {
+        promise.complete(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept()));
+      }
     } catch (IOException e) {
       promise.fail(e);
     }
+  }
+
+  private boolean isLinksTheSame(InstanceLinkDtoCollection links, List<Link> bibAuthorityLinksKept) {
+    if (links.getLinks().size() != bibAuthorityLinksKept.size()) {
+      return false;
+    }
+    for (Link link: links.getLinks()) {
+      if (!bibAuthorityLinksKept.contains(link)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private Future<Void> modifyMarcBibRecord(Record newRecord, DataImportEventPayload payload, MappingProfile mappingProfile,
@@ -208,7 +225,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             marcRecordModifier.initialize(payload, mappingParameters, mappingProfile, modifiedEntityType());
             marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
             marcRecordModifier.getResult(payload);
-            promise.complete(new InstanceLinkDtoCollection().withLinks(List.of()));
+            promise.complete(null);
           } catch (IOException e) {
             promise.fail(e);
           }
@@ -217,7 +234,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       })
       .compose(instanceLinkDtoCollection -> {
         Promise<Void> promise = Promise.promise();
-        if (instanceLinkDtoCollection != null && !instanceLinkDtoCollection.getLinks().isEmpty()) {
+        if (instanceLinkDtoCollection != null) {
           instanceLinkClient.updateInstanceLinks(instanceId, instanceLinkDtoCollection, okapiParams)
             .whenComplete((v, throwable) -> {
               if (throwable != null) {

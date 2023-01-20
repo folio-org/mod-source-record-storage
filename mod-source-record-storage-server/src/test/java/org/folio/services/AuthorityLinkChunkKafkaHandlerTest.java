@@ -1,11 +1,5 @@
 package org.folio.services;
 
-import static java.util.Collections.singletonList;
-import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
-import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
-import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
@@ -13,19 +7,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ReadKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
@@ -37,6 +18,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.services.KafkaTopic;
 import org.folio.rest.jaxrs.model.BibAuthorityLinksUpdate;
+import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Link;
 import org.folio.rest.jaxrs.model.LinkUpdateReport;
@@ -57,6 +39,27 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.Collections.singletonList;
+import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
+import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
+import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
+import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
+import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
+
 @RunWith(VertxUnitRunner.class)
 public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
@@ -69,29 +72,30 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC = getTopicName(MARC_BIB);
   private static final String KAFKA_LINK_STATS_PRODUCER_TOPIC = getTopicName(LINKS_STATS);
   private static final String LINKED_AUTHORITY_ID = "6d19a8e8-2b71-482e-bfda-2b97f8722a2f";
+  private static final String LINKED_BIB_UPDATE_JOB_ID = UUID.randomUUID().toString();
+  private static final String RECORD_ID = UUID.randomUUID().toString();
+  private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final String SECOND_RECORD_ID = UUID.randomUUID().toString();
   private static final String SECOND_INSTANCE_ID = UUID.randomUUID().toString();
+  private static final String ERROR_RECORD_ID = UUID.randomUUID().toString();
+  private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
+  private static final String ERROR_RECORD_DESCRIPTION = "test error";
+  private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Integer LINK_ID = RandomUtils.nextInt();
   private static final Map<String, String> OKAPI_HEADERS = Map.of(
     OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL,
     OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID,
     OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN);
-
-  private static final ObjectMapper objectMapper = new ObjectMapper();
-
   private static String updatedParsedRecordContent;
   private static String unlinkedParsedRecordContent;
-
-  private final String linkedBibUpdateJobId = UUID.randomUUID().toString();
-  private final String recordId = UUID.randomUUID().toString();
-  private final String instanceId = UUID.randomUUID().toString();
-  private final RawRecord rawRecord = new RawRecord().withId(recordId)
+  private final RawRecord rawRecord = new RawRecord().withId(RECORD_ID)
     .withContent("test content");
 
   private RecordDao recordDao;
   private RecordService recordService;
   private Record record;
   private Record secondRecord;
+  private Record errorRecord;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -109,17 +113,17 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
-    var parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
+    var content = new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode();
+    var parsedRecord = new ParsedRecord().withId(RECORD_ID).withContent(content);
     record = new Record()
-      .withId(recordId)
+      .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
-      .withMatchedId(recordId)
-      .withRecordType(MARC_BIB)
+      .withMatchedId(RECORD_ID)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID));
 
     var secondParsedRecord = new ParsedRecord().withId(SECOND_RECORD_ID)
       .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
@@ -128,14 +132,28 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
       .withMatchedId(SECOND_RECORD_ID)
-      .withRecordType(MARC_BIB)
+      .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(secondParsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_INSTANCE_ID));
 
+    var errorRecordContent = new ErrorRecord().withId(ERROR_RECORD_ID).withContent(content).withDescription(ERROR_RECORD_DESCRIPTION);
+    var errorParsedRecord = new ParsedRecord().withContent(ERROR_RECORD_ID).withContent(content);
+    errorRecord = new Record()
+      .withId(ERROR_RECORD_ID)
+      .withRawRecord(rawRecord)
+      .withGeneration(0)
+      .withMatchedId(ERROR_RECORD_ID)
+      .withErrorRecord(errorRecordContent)
+      .withParsedRecord(errorParsedRecord)
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID));
+
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
       .compose(savedRecord -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(savedRecord -> recordService.saveRecord(errorRecord, TENANT_ID))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
   }
@@ -192,7 +210,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateMultipleRecordsAndSendMultipleRecordUpdatedEvents(TestContext context)
     throws InterruptedException {
-    var updateTargets = buildUpdateTargets(instanceId, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
+    var updateTargets = buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
     var event = buildLinkEventForUpdate(updateTargets);
 
     var traceHeader = UUID.randomUUID().toString();
@@ -206,16 +224,17 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
           return objectMapper.readValue(value, MarcBibUpdate.class).getRecord().getExternalIdsHolder().getInstanceId();
         } catch (IOException e) {
           return null;
-        }})
+        }
+      })
       .filter(Objects::nonNull)
       .collect(Collectors.toList());
 
-    context.assertTrue(List.of(instanceId, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+    context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
   }
 
   /**
    * Only $9 subfield should be removed and only in case it matches authorityId from event
-   * */
+   */
   @Test
   public void shouldUpdateBibRecordForDeleteEventAndSendRecordUpdatedEvent(TestContext context)
     throws InterruptedException, IOException {
@@ -247,8 +266,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateMultipleRecordsAndSendLinkUpdateReports(TestContext context) throws InterruptedException {
-    var updateTargets = buildUpdateTargets(instanceId, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
+  public void shouldUpdateMultipleRecordsAndSendSuccessLinkUpdateReports(TestContext context) throws InterruptedException {
+    var updateTargets = buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
     var event = buildLinkEventForUpdate(updateTargets);
 
     var traceHeader = UUID.randomUUID().toString();
@@ -261,14 +280,31 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
         try {
           var report = objectMapper.readValue(value, LinkUpdateReport.class);
           context.assertEquals(SUCCESS, report.getStatus());
+          context.assertNull(report.getFailCause());
           return report.getInstanceId();
         } catch (IOException e) {
           return null;
-        }})
+        }
+      })
       .filter(Objects::nonNull)
       .collect(Collectors.toList());
 
-    context.assertTrue(List.of(instanceId, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+    context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+  }
+
+  @Test
+  public void shouldUpdateRecordAndSendFailedLinkUpdateReport(TestContext context) throws InterruptedException, IOException {
+    var event = buildLinkEventForUpdate(buildUpdateTargets(ERROR_INSTANCE_ID));
+    var traceHeader = UUID.randomUUID().toString();
+
+    cluster.send(createRequest(event, traceHeader));
+    var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 1);
+    context.assertEquals(1, values.size());
+
+    var report = objectMapper.readValue(values.get(0), LinkUpdateReport.class);
+    context.assertEquals(FAIL, report.getStatus());
+    context.assertEquals(ERROR_INSTANCE_ID, report.getInstanceId());
+    context.assertEquals(ERROR_RECORD_DESCRIPTION, report.getFailCause());
   }
 
   private SendKeyValues<String, String> createRequest(Object payload, String traceValue) {
@@ -283,7 +319,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   private static String getTopicName(KafkaTopic topic) {
-    return topic.fullTopicName(kafkaConfig, topic);
+    return topic.fullTopicName(kafkaConfig, TENANT_ID);
   }
 
   private List<String> readValuesFromKafka(String topic, String traceHeader, int limit) throws InterruptedException {
@@ -298,7 +334,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private int getLinksCount(List<UpdateTarget> updateTargets) {
     return (int) updateTargets.stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream())
-      .filter(link -> link.getInstanceId().equals(instanceId))
+      .filter(link -> link.getInstanceId().equals(INSTANCE_ID))
       .count();
   }
 
@@ -311,7 +347,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   private BibAuthorityLinksUpdate buildLinkEvent(List<UpdateTarget> updateTargets, BibAuthorityLinksUpdate.Type type) {
-
     var subfieldChanges = List.of(
       new SubfieldsChange().withField("020")//repeatable, should update only one | $9 should be removed on DELETE
         .withSubfields(singletonList(new Subfield().withCode("a").withValue("2940447241 (electronic bk. updated)"))),
@@ -327,7 +362,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     );
 
     return new BibAuthorityLinksUpdate()
-      .withJobId(linkedBibUpdateJobId)
+      .withJobId(LINKED_BIB_UPDATE_JOB_ID)
       .withAuthorityId(LINKED_AUTHORITY_ID)
       .withTenant(TENANT_ID)
       .withTs("123")
@@ -337,7 +372,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   private List<UpdateTarget> buildUpdateTargets() {
-    return buildUpdateTargets(instanceId, UUID.randomUUID().toString());
+    return buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString());
   }
 
   private List<UpdateTarget> buildUpdateTargets(String... instanceIds) {

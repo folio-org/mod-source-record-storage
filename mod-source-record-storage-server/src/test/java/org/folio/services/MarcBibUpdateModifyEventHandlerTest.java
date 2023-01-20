@@ -89,18 +89,17 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String USER_ID_HEADER = "userId";
   private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinkedContent.json";
   private static final UrlPathPattern URL_PATH_PATTERN = new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
-  private static String recordId = UUID.randomUUID().toString();
-  private static String secondRecordId = UUID.randomUUID().toString();
-  private static String userId = UUID.randomUUID().toString();
-  private static String instanceId = UUID.randomUUID().toString();
+  private static final ObjectMapper mapper = new ObjectMapper();
+  private static final String recordId = UUID.randomUUID().toString();
+  private static final String secondRecordId = UUID.randomUUID().toString();
+  private static final String userId = UUID.randomUUID().toString();
+  private static final String instanceId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
-  private static RawRecord secondRawRecord = new RawRecord().withId(recordId).withContent("test content");
+  private static final RawRecord secondRawRecord = new RawRecord().withId(recordId).withContent("test content");
   private static ParsedRecord parsedRecord;
   private static ParsedRecord secondParsedRecord;
 
-  private RecordDao recordDao;
   private RecordService recordService;
-  private InstanceLinkClient instanceLinkClient;
   private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
@@ -196,7 +195,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(mapper.readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT);
 
     secondParsedRecord = new ParsedRecord().withId(secondRecordId)
@@ -209,10 +208,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    RecordDao recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    instanceLinkClient = new InstanceLinkClient();
-    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx, instanceLinkClient);
+    InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
+    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx,
+      instanceLinkClient);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -476,7 +476,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
-        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);
@@ -598,7 +597,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
-        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);
@@ -631,7 +629,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
-        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);
@@ -664,7 +661,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
-        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);

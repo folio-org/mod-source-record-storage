@@ -89,7 +89,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String USER_ID_HEADER = "userId";
   private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinkedContent.json";
   private static final UrlPathPattern URL_PATH_PATTERN = new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
-  private static final ObjectMapper mapper = new ObjectMapper();
   private static String recordId = UUID.randomUUID().toString();
   private static String secondRecordId = UUID.randomUUID().toString();
   private static String userId = UUID.randomUUID().toString();
@@ -197,7 +196,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @BeforeClass
   public static void setUpClass() throws IOException {
     rawRecord = new RawRecord().withId(recordId)
-      .withContent(mapper.readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT);
 
     secondParsedRecord = new ParsedRecord().withId(secondRecordId)
@@ -477,6 +476,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
+        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);
@@ -588,7 +588,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
-    var dataImportEventPayload = constructPayload(incomingParsedContent, "e"); //e - uncontrollable field
+    var dataImportEventPayload = constructPayload(incomingParsedContent, "e", "0"); //e - uncontrollable field
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
 
@@ -598,6 +598,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       try {
+        ObjectMapper mapper = new ObjectMapper();
         context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
       } catch (JsonProcessingException e) {
         context.fail(e);
@@ -605,7 +606,95 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
 
       verify(1, getRequestedFor(URL_PATH_PATTERN));
-      verify(0, putRequestedFor(URL_PATH_PATTERN));
+      verify(0, putRequestedFor(URL_PATH_PATTERN)); //Updated only uncontrolled subfields, links is not updated
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldUpdateLinksWhenIncomingZeroSubfieldIsNull(TestContext context) {
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
+    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
+
+    // given
+    Async async = context.async();
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    var dataImportEventPayload = constructPayload(incomingParsedContent, "e","0");
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+      } catch (JsonProcessingException e) {
+        context.fail(e);
+      }
+      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+
+      verify(1, getRequestedFor(URL_PATH_PATTERN));
+      verify(1, putRequestedFor(URL_PATH_PATTERN)); //Updated uncontrolled subfields and links also updated
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldUnlinkBibFieldWhenIncomingZeroSubfieldIsDifferent(TestContext context) {
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
+    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
+
+    // given
+    Async async = context.async();
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    var dataImportEventPayload = constructPayload(incomingParsedContent, "e","0");
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+      } catch (JsonProcessingException e) {
+        context.fail(e);
+      }
+      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+
+      verify(1, getRequestedFor(URL_PATH_PATTERN));
+      verify(1, putRequestedFor(URL_PATH_PATTERN)); // Updated only uncontrolled subfields and bib fields unlinked
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldNotUpdateBibFieldWhen500ErrorGetEntityLinkRequest(TestContext context) {
+
+    // given
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
+    Async async = context.async();
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    var dataImportEventPayload = constructPayload(incomingParsedContent, "e","0");
+
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNotNull(throwable);
+      context.assertNull(eventPayload);
+      context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+      verify(1, getRequestedFor(URL_PATH_PATTERN));
       async.complete();
     });
   }
@@ -624,25 +713,27 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withAuthorityNaturalId("test");
   }
 
-  private List<MarcMappingDetail> constructMappingDetails(String subfield) {
+  private List<MarcMappingDetail> constructMappingDetails(String subfield1, String subfield2) {
     return singletonList(new MarcMappingDetail()
       .withOrder(0)
       .withField(new MarcField()
         .withField("100")
         .withIndicator1("*")
         .withIndicator2("*")
-        .withSubfields(singletonList(new MarcSubfield().withSubfield(subfield)))));
+        .withSubfields(List.of(new MarcSubfield().withSubfield(subfield1), new MarcSubfield().withSubfield(subfield2)))));
   }
 
-  private DataImportEventPayload constructPayload(String incomingParsedContent, String subfield){
-    Record incomingRecord = new Record().withId(secondRecord.getId()).withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
+  private DataImportEventPayload constructPayload(String incomingParsedContent, String subfield1, String subfield2){
+    Record incomingRecord = new Record().withId(secondRecord.getId())
+      .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
     secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(secondRecord));
 
     updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
-      .withMarcMappingDetails(constructMappingDetails(subfield));
+      .withMarcMappingDetails(constructMappingDetails(subfield1, subfield2));
     profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(updateMappingProfile.getId())

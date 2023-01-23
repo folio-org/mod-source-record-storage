@@ -1,5 +1,12 @@
 package org.folio.services;
 
+import static java.util.Collections.singletonList;
+import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
+import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
+import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
+import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
+import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
@@ -7,6 +14,19 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ReadKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
@@ -38,27 +58,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.Collections.singletonList;
-import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
-import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
-import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
-import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
-import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
 
 @RunWith(VertxUnitRunner.class)
 public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {

@@ -1,11 +1,9 @@
 package org.folio.services.handlers.actions;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
@@ -13,15 +11,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
-import org.folio.InstanceLinkDtoCollection;
-import org.folio.Link;
 import org.folio.MappingProfile;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
-import org.folio.processing.mapping.mapper.writer.marc.MarcBibRecordModifier;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
@@ -44,13 +39,11 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 
@@ -58,11 +51,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
   private static final String USER_ID_HEADER = "userId";
-  private static final char SUB_FIELD_9 = '9';
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
-  private static final String RECORD_NOT_FOUND_MSG = "Record was not found by recordId '%s'";
+
   protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
@@ -98,9 +90,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
-        .compose(mappingParameters -> (modifiedEntityType() != MARC_BIBLIOGRAPHIC) ?
-          processRecord(payload, mappingProfile, mappingParameters) :
-          processMarcBibRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
+        .compose(mappingParameters -> modifyRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -160,8 +150,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
   }
 
-  private Future<Void> processRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-                                    MappingParameters mappingParameters) {
+  protected Future<Void> modifyRecord(Record newRecord, DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+                              MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
     try {
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
@@ -171,63 +161,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     } catch (IOException e) {
       return Future.failedFuture(e);
     }
-  }
-
-  private Future<Void> processMarcBibRecord(Record newRecord, DataImportEventPayload payload, MappingProfile mappingProfile,
-                                MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
-
-    return recordService.getRecordById(newRecord.getId(), payload.getTenant())
-      .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
-      .map(oldRecord -> isSubfieldExist(oldRecord, SUB_FIELD_9))
-      .compose(subfieldExist -> Boolean.TRUE.equals(subfieldExist) ? loadInstanceLink(instanceId, okapiParams) : Future.succeededFuture(Optional.empty()))
-      .compose(linksOptional -> linksOptional.isPresent() ? modifyMarcBibRecord(payload, mappingProfile, mappingParameters, linksOptional.get()) : modifyRecord(payload, mappingProfile, mappingParameters))
-      .compose(linksOptional -> updateInstanceLinks(instanceId, linksOptional, okapiParams));
-  }
-
-  private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-    MappingParameters mappingParameters, InstanceLinkDtoCollection links) {
-    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
-    try {
-      MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
-      marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(), links);
-      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
-      marcRecordModifier.getResult(dataImportEventPayload);
-      if (isLinksTheSame(links, marcRecordModifier.getBibAuthorityLinksKept())) {
-        promise.complete(Optional.empty());
-      } else {
-        promise.complete(Optional.of(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept())));
-      }
-    } catch (IOException e) {
-      promise.fail(e);
-    }
-    return promise.future();
-  }
-
-  private Future<Optional<InstanceLinkDtoCollection>> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-                                                         MappingParameters mappingParameters) {
-    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
-    try {
-      MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
-      marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
-      marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
-      marcRecordModifier.getResult(dataImportEventPayload);
-      promise.complete(Optional.empty());
-    } catch (IOException e) {
-      promise.fail(e);
-    }
-    return promise.future();
-  }
-
-  private boolean isLinksTheSame(InstanceLinkDtoCollection links, List<Link> bibAuthorityLinksKept) {
-    if (links.getLinks().size() != bibAuthorityLinksKept.size()) {
-      return false;
-    }
-    for (Link link : links.getLinks()) {
-      if (!bibAuthorityLinksKept.contains(link)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private String retrieveHrid(DataImportEventPayload eventPayload, MappingDetail.MarcMappingOption marcMappingOption) {
@@ -291,37 +224,5 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private Function<Optional<MappingParameters>, MappingParameters> mapMappingParametersOrFail(String message) {
     return mappingParameters -> mappingParameters.orElseThrow(() -> new EventProcessingException(message));
-  }
-
-  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(String instanceId, OkapiConnectionParams okapiParams) {
-    Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
-    instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
-      .whenComplete((instanceLinkDtoCollection, throwable) -> {
-        if (throwable != null) {
-          LOG.error(throwable.getMessage());
-          promise.fail(throwable);
-        } else {
-          promise.complete(instanceLinkDtoCollection);
-        }
-      });
-    return promise.future();
-  }
-
-  private Future<Void> updateInstanceLinks(String instanceId, Optional<InstanceLinkDtoCollection> linkOptional,
-                                           OkapiConnectionParams okapiParams) {
-    Promise<Void> promise = Promise.promise();
-    if (linkOptional.isPresent()) {
-      instanceLinkClient.updateInstanceLinks(instanceId, linkOptional.get(), okapiParams)
-        .whenComplete((v, throwable) -> {
-          if (throwable != null) {
-            promise.fail(throwable);
-          } else {
-            promise.complete();
-          }
-        });
-    } else {
-      promise.complete();
-    }
-    return promise.future();
   }
 }

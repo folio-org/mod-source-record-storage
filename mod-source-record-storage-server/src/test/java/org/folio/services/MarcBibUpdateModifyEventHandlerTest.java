@@ -650,10 +650,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             }
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
 
-            verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
-            verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
             async.complete();
           });
+
+        verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+        verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
       });
   }
 

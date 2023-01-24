@@ -48,7 +48,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -60,6 +59,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.junit.runner.RunWith;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -600,6 +600,55 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordModify(incomingParsedContent, expectedParsedContent, 1, 1, context);
+  }
+
+  @Test
+  public void shouldNotUpdateBibFieldWhen500ErrorGetEntityLinkRequest(TestContext context) {
+
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    Async async = context.async();
+    Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+
+    Snapshot secondSnapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    String secondRecordId = UUID.randomUUID().toString();
+    ParsedRecord secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
+    RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
+
+    Record secondRecord = new Record()
+      .withId(secondRecordId)
+      .withSnapshotId(secondSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(secondRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(secondRawRecord)
+      .withParsedRecord(secondParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withMetadata(new Metadata());
+
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(result -> {
+        var dataImportEventPayload = constructPayload(secondRecord, incomingParsedContent, snapshotForRecordUpdate,"e", "0");
+        modifyRecordEventHandler.handle(dataImportEventPayload)
+          .whenComplete((eventPayload, throwable) -> {
+            context.assertNotNull(throwable);
+            context.assertNull(eventPayload);
+            context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+            async.complete();
+          });
+
+        verify(1, getRequestedFor(URL_PATH_PATTERN));
+        verify(0, putRequestedFor(URL_PATH_PATTERN));
+      });
   }
 
   private void verifyBibRecordModify(String incomingParsedContent, String expectedParsedContent,

@@ -68,7 +68,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String KAFKA_KEY_NAME = "test-key";
   private static final String KAFKA_TEST_HEADER = "test";
   private static final String KAFKA_CONSUMER_TOPIC = getTopicName(INSTANCE_AUTHORITY);
-  private static final String KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC = getTopicName(MARC_BIB);
+  private static final String KAFKA_SRS_BIB_PRODUCER_TOPIC = getTopicName(MARC_BIB);
   private static final String KAFKA_LINK_STATS_PRODUCER_TOPIC = getTopicName(LINKS_STATS);
   private static final String LINKED_AUTHORITY_ID = "6d19a8e8-2b71-482e-bfda-2b97f8722a2f";
   private static final String LINKED_BIB_UPDATE_JOB_ID = UUID.randomUUID().toString();
@@ -179,7 +179,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var keyValues = cluster.read(ReadKeyValues.from(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC)
+    var keyValues = cluster.read(ReadKeyValues.from(KAFKA_SRS_BIB_PRODUCER_TOPIC)
       .withMaxTotalPollTime(60, TimeUnit.SECONDS)
       .filterOnHeaders(headers -> Arrays.equals(headers.lastHeader(KAFKA_TEST_HEADER).value(),
         traceHeader.getBytes(StandardCharsets.UTF_8)))
@@ -214,7 +214,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var values = readValuesFromKafka(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 2);
+    var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 2);
     context.assertEquals(2, values.size());
 
     var eventsInstanceIds = values.stream()
@@ -245,7 +245,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var traceHeader = UUID.randomUUID().toString();
     cluster.send(createRequest(event, traceHeader));
-    var values = readValuesFromKafka(KAFKA_KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
+    var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
     var actualOutgoingEvent = objectMapper.readValue(values.get(0), MarcBibUpdate.class);
 

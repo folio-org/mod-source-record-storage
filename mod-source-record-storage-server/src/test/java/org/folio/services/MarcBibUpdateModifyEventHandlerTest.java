@@ -84,11 +84,11 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+  private static final String SECOND_PARSED_CONTENT = "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String INSTANCE_LINKS_URL = "/links/instances";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String USER_ID_HEADER = "userId";
-  private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinkedContent.json";
   private static final UrlPathPattern URL_PATH_PATTERN = new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final String recordId = UUID.randomUUID().toString();
@@ -96,7 +96,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String userId = UUID.randomUUID().toString();
   private static final String instanceId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
-  private static final RawRecord secondRawRecord = new RawRecord().withId(recordId).withContent("test content");
+  private static final RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
   private static ParsedRecord parsedRecord;
   private static ParsedRecord secondParsedRecord;
 
@@ -198,8 +198,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withContent(mapper.readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT);
 
-    secondParsedRecord = new ParsedRecord().withId(secondRecordId)
-      .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
+    secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
   }
 
   @Before

@@ -82,15 +82,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
       String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
-      Record newRecord = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
+      Record newRecord = extractRecord(payload);
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
-      String instanceId = (newRecord.getExternalIdsHolder() != null) ? newRecord.getExternalIdsHolder().getInstanceId() : null;
-      OkapiConnectionParams okapiParams = RestUtil.retrieveOkapiConnectionParams(payload, vertx);
+      OkapiConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
 
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
-        .compose(mappingParameters -> modifyRecord(newRecord, payload, mappingProfile, mappingParameters, instanceId, okapiParams))
+        .compose(mappingParameters -> modifyRecord(payload, mappingProfile, mappingParameters))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -150,8 +149,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
   }
 
-  protected Future<Void> modifyRecord(Record newRecord, DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-                              MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams) {
+  protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+                                      MappingParameters mappingParameters) {
     try {
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
@@ -224,5 +223,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private Function<Optional<MappingParameters>, MappingParameters> mapMappingParametersOrFail(String message) {
     return mappingParameters -> mappingParameters.orElseThrow(() -> new EventProcessingException(message));
+  }
+
+  protected Record extractRecord(DataImportEventPayload payload) {
+    return Json.decodeValue(payload.getContext().get(modifiedEntityType().value()), Record.class);
+  }
+
+  protected OkapiConnectionParams getOkapiParams(DataImportEventPayload payload) {
+    return RestUtil.retrieveOkapiConnectionParams(payload, vertx);
   }
 }

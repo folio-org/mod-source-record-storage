@@ -1,6 +1,8 @@
 package org.folio.services.handlers.actions;
 
 import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -72,27 +74,39 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected Future<Void> modifyRecord(Record newRecord, DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-    MappingParameters mappingParameters, String instanceId, OkapiConnectionParams okapiParams){
+  protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+                                      MappingParameters mappingParameters){
+
+    var newRecord = extractRecord(dataImportEventPayload);
+    var instanceId = (newRecord.getExternalIdsHolder() != null) ? newRecord.getExternalIdsHolder().getInstanceId() : null;
+    var okapiParams = getOkapiParams(dataImportEventPayload);
+
     return recordService.getRecordById(newRecord.getId(), dataImportEventPayload.getTenant())
       .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
-      .map(oldRecord -> isSubfieldExist(oldRecord, SUB_FIELD_9))
-      .compose(subfieldExist -> Boolean.TRUE.equals(subfieldExist) ? loadInstanceLink(instanceId, okapiParams) : Future.succeededFuture(Optional.empty()))
+      .compose(oldRecord -> loadInstanceLink(oldRecord, instanceId, okapiParams))
       .compose(linksOptional -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, linksOptional))
       .compose(linksOptional -> updateInstanceLinks(instanceId, linksOptional, okapiParams));
   }
 
-  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(String instanceId, OkapiConnectionParams okapiParams) {
+  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId, OkapiConnectionParams okapiParams) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
-    instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
-      .whenComplete((instanceLinkDtoCollection, throwable) -> {
-        if (throwable != null) {
-          LOG.error(throwable.getMessage());
-          promise.fail(throwable);
-        } else {
-          promise.complete(instanceLinkDtoCollection);
-        }
-      });
+    if (isSubfieldExist(oldRecord, SUB_FIELD_9)) {
+      if (isNull(instanceId) || isBlank(instanceId)) {
+        instanceId = oldRecord.getExternalIdsHolder().getInstanceId();
+      }
+      instanceLinkClient.getLinksByInstanceId(instanceId, okapiParams)
+        .whenComplete((instanceLinkDtoCollection, throwable) -> {
+          if (throwable != null) {
+            LOG.error(throwable.getMessage());
+            promise.fail(throwable);
+          } else {
+            promise.complete(instanceLinkDtoCollection);
+          }
+        });
+    } else {
+      promise.complete(Optional.empty());
+    }
+
     return promise.future();
   }
 

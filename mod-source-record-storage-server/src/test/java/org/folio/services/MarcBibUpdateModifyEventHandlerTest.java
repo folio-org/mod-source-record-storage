@@ -649,7 +649,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
               context.fail(e);
             }
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-
             async.complete();
           });
 

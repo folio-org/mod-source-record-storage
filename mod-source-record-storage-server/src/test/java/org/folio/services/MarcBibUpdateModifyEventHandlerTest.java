@@ -15,7 +15,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.util.ArrayList;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -92,19 +91,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final UrlPathPattern URL_PATH_PATTERN = new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final String recordId = UUID.randomUUID().toString();
-  private static final String secondRecordId = UUID.randomUUID().toString();
   private static final String userId = UUID.randomUUID().toString();
   private static final String instanceId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
-  private static final RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
   private static ParsedRecord parsedRecord;
-  private static ParsedRecord secondParsedRecord;
-
   private RecordService recordService;
   private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Record record;
-  private Record secondRecord;
-
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
@@ -197,8 +190,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     rawRecord = new RawRecord().withId(recordId)
       .withContent(mapper.readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT);
-
-    secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
   }
 
   @Before
@@ -217,14 +208,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
-    Snapshot secondSnapshot = new Snapshot()
-      .withJobExecutionId(UUID.randomUUID().toString())
-      .withProcessingStartedDate(new Date())
-      .withStatus(Snapshot.Status.COMMITTED);
-
-    List<Snapshot> snapshots = new ArrayList<>();
-    snapshots.add(snapshot);
-    snapshots.add(secondSnapshot);
 
     record = new Record()
       .withId(recordId)
@@ -236,19 +219,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withMetadata(new Metadata());
 
-    secondRecord = new Record()
-      .withId(secondRecordId)
-      .withSnapshotId(secondSnapshot.getJobExecutionId())
-      .withGeneration(0)
-      .withMatchedId(secondRecordId)
-      .withRecordType(MARC_BIB)
-      .withRawRecord(secondRawRecord)
-      .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
-      .withMetadata(new Metadata());
-
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    SnapshotDaoUtil.save(queryExecutor, snapshots)
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
       .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());
@@ -602,93 +574,70 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldNotUpdateLinksWhenIncomingZeroSubfieldIsSameAsExisting(TestContext context) {
-    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
-    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given
-    Async async = context.async();
     String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
-    Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
-      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-    recordService.saveRecord(secondRecord, TENANT_ID)
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(result -> {
-        var dataImportEventPayload = constructPayload(incomingParsedContent, snapshotForRecordUpdate,"e", "0");
-        modifyRecordEventHandler.handle(dataImportEventPayload)
-          .whenComplete((eventPayload, throwable) -> {
-            context.assertNull(throwable);
-            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
-            Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-            try {
-              context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
-            } catch (JsonProcessingException e) {
-              context.fail(e);
-            }
-            context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-
-            verify(1, getRequestedFor(URL_PATH_PATTERN));
-            verify(0, putRequestedFor(URL_PATH_PATTERN)); //Updated only uncontrolled subfields, links is not updated
-            async.complete();
-          });
-      });
+    verifyBibRecordModify(incomingParsedContent, expectedParsedContent, 1, 0, context);
   }
 
   @Test
   public void shouldUpdateLinksWhenIncomingZeroSubfieldIsNull(TestContext context) {
-    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
-    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given
-    Async async = context.async();
     String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
-    Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
-      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-    recordService.saveRecord(secondRecord, TENANT_ID)
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(result -> {
-        var dataImportEventPayload = constructPayload(incomingParsedContent, snapshotForRecordUpdate,"e", "0");
-        modifyRecordEventHandler.handle(dataImportEventPayload)
-          .whenComplete((eventPayload, throwable) -> {
-            context.assertNull(throwable);
-            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
-            Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-            try {
-              context.assertEquals(mapper.readTree(expectedParsedContent), mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
-            } catch (JsonProcessingException e) {
-              context.fail(e);
-            }
-            context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-
-            verify(1, getRequestedFor(URL_PATH_PATTERN));
-            verify(1, putRequestedFor(URL_PATH_PATTERN)); //Updated uncontrolled subfields and links also updated
-            async.complete();
-          });
-      });
+    verifyBibRecordModify(incomingParsedContent, expectedParsedContent, 1, 1, context);
   }
 
   @Test
   public void shouldUnlinkBibFieldWhenIncomingZeroSubfieldIsDifferent(TestContext context) {
+
+    // given
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    verifyBibRecordModify(incomingParsedContent, expectedParsedContent, 1, 1, context);
+  }
+
+  private void verifyBibRecordModify(String incomingParsedContent, String expectedParsedContent,
+                                       int getRequestCount, int putRequestCount, TestContext context) {
     WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
     WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given
     Async async = context.async();
-    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-    recordService.saveRecord(secondRecord, TENANT_ID)
+    Snapshot secondSnapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    String secondRecordId = UUID.randomUUID().toString();
+    ParsedRecord secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
+    RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
+
+    Record secondRecord = new Record()
+      .withId(secondRecordId)
+      .withSnapshotId(secondSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(secondRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(secondRawRecord)
+      .withParsedRecord(secondParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withMetadata(new Metadata());
+
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
-        var dataImportEventPayload = constructPayload(incomingParsedContent, snapshotForRecordUpdate,"e", "0");
+        var dataImportEventPayload = constructPayload(secondRecord, incomingParsedContent, snapshotForRecordUpdate,"e", "0");
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
             context.assertNull(throwable);
@@ -701,8 +650,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             }
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
 
-            verify(1, getRequestedFor(URL_PATH_PATTERN));
-            verify(1, putRequestedFor(URL_PATH_PATTERN)); // Updated only uncontrolled subfields and bib fields unlinked
+            verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+            verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
             async.complete();
           });
       });
@@ -732,7 +681,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         .withSubfields(List.of(new MarcSubfield().withSubfield(subfield1), new MarcSubfield().withSubfield(subfield2)))));
   }
 
-  private DataImportEventPayload constructPayload(String incomingParsedContent, Snapshot snapshotForRecordUpdate, String subfield1, String subfield2){
+  private DataImportEventPayload constructPayload(Record secondRecord, String incomingParsedContent, Snapshot snapshotForRecordUpdate, String subfield1, String subfield2){
     Record incomingRecord = new Record().withId(secondRecord.getId())
       .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));

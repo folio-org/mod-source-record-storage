@@ -227,30 +227,6 @@
       ]
     },
     {
-      "id": "instance-authority-links",
-      "version": "1.0",
-      "handlers": [
-        {
-          "methods": [
-            "GET"
-          ],
-          "pathPattern": "/links/instances/{instanceId}",
-          "permissionsRequired": [
-            "instance-authority-links.instances.collection.get"
-          ]
-        },
-        {
-          "methods": [
-            "PUT"
-          ],
-          "pathPattern": "/links/instances/{instanceId}",
-          "permissionsRequired": [
-            "instance-authority-links.instances.collection.put"
-          ]
-        }
-      ]
-    },
-    {
       "id": "_tenant",
       "version": "2.0",
       "interfaceType": "system",
@@ -278,6 +254,12 @@
     {
       "id": "data-import-converter-storage",
       "version": "1.2"
+    }
+  ],
+  "requires": [
+    {
+      "id": "instance-authority-links",
+      "version": "1.0"
     }
   ],
   "permissionSets": [
@@ -342,16 +324,6 @@
       "description": "Return marc bib ids, which doesn't exist in the system"
     },
     {
-      "permissionName": "instance-authority-links.instances.collection.get",
-      "displayName": "Entities Links - get instance-authority links",
-      "description": "Get instance-authority links collection"
-    },
-    {
-      "permissionName": "instance-authority-links.instances.collection.put",
-      "displayName": "Entities Links - update instance-authority links",
-      "description": "Update instance-authority links collection"
-    },
-    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -367,9 +339,7 @@
         "source-storage.records.delete",
         "source-storage.records.update",
         "source-storage.sourceRecords.get",
-        "source-storage.verified.records",
-        "instance-authority-links.instances.collection.get",
-        "instance-authority-links.instances.collection.put"
+        "source-storage.verified.records"
       ],
       "visible": false
     }

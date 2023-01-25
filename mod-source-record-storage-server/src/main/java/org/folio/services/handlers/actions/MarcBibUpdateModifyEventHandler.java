@@ -40,6 +40,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private static final Logger LOG = LogManager.getLogger();
   private static final String RECORD_NOT_FOUND_MSG = "Record was not found by recordId '%s'";
   private static final char SUB_FIELD_9 = '9';
+  private final InstanceLinkClient instanceLinkClient;
 
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,

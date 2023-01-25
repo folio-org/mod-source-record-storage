@@ -12,7 +12,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
-import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -58,7 +57,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
-  protected InstanceLinkClient instanceLinkClient;
 
   protected AbstractUpdateModifyEventHandler(
     RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {

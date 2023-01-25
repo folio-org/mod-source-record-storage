@@ -1,6 +1,7 @@
 package org.folio.consumers;
 
 import static java.util.Collections.emptyList;
+import static java.util.Objects.nonNull;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -9,10 +10,8 @@ import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToParsedContentJsonString;
 import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
-import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
@@ -45,6 +44,7 @@ import org.folio.rest.jaxrs.model.Link;
 import org.folio.rest.jaxrs.model.LinkUpdateReport;
 import org.folio.rest.jaxrs.model.MarcBibUpdate;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
@@ -238,6 +238,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     var instanceIdToLinkIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream())
       .collect(Collectors.groupingBy(Link::getInstanceId, Collectors.mapping(Link::getLinkId, Collectors.toList())));
+
     return batchResponse.getRecords().stream()
       .map(bibRecord -> {
         var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
@@ -252,29 +253,23 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .collect(Collectors.toList());
   }
 
-  private List<LinkUpdateReport> toLinkUpdateReport(RecordsBatchResponse batchResponse,
-                                                    BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+  private List<LinkUpdateReport> toFailedLinkUpdateReports(List<Record> errorRecords,
+                                                           BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
     var instanceIdToLinkIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream())
       .collect(Collectors.groupingBy(Link::getInstanceId, Collectors.mapping(Link::getLinkId, Collectors.toList())));
-    return batchResponse.getRecords().stream()
+
+    return errorRecords.stream()
       .map(bibRecord -> {
         var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
-        var errorRecord = bibRecord.getErrorRecord();
-        var report = new LinkUpdateReport()
+        return new LinkUpdateReport()
           .withInstanceId(instanceId)
           .withJobId(bibAuthorityLinksUpdate.getJobId())
           .withLinkIds(instanceIdToLinkIds.get(instanceId))
           .withTenant(bibAuthorityLinksUpdate.getTenant())
-          .withTs(bibAuthorityLinksUpdate.getTs());
-
-        if (errorRecord == null) {
-          report.setStatus(SUCCESS);
-        } else {
-          report.setStatus(FAIL);
-          report.setFailCause(errorRecord.getDescription());
-        }
-        return report;
+          .withTs(bibAuthorityLinksUpdate.getTs())
+          .withFailCause(bibRecord.getErrorRecord().getDescription())
+          .withStatus(FAIL);
       })
       .collect(Collectors.toList());
   }
@@ -294,12 +289,14 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event, List<KafkaHeader> headers) {
-    LOGGER.info("Sending {} linking reports for jobId {}, authorityId {}",
-      batchResponse.getRecords().size(), event.getJobId(), event.getAuthorityId());
+    var errorRecords = getErrorRecords(batchResponse);
+    if (!errorRecords.isEmpty()) {
+      LOGGER.info("Errors detected. Sending {} linking reports for jobId {}, authorityId {}",
+        errorRecords.size(), event.getJobId(), event.getAuthorityId());
 
-    toLinkUpdateReport(batchResponse, event).forEach(report ->
-      sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), report, headers));
-
+      toFailedLinkUpdateReports(errorRecords, event).forEach(report ->
+        sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), report, headers));
+    }
     return batchResponse;
   }
 
@@ -369,6 +366,12 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
       return newSubfields.values();
     };
+  }
+
+  private List<Record> getErrorRecords(RecordsBatchResponse batchResponse) {
+    return batchResponse.getRecords().stream()
+      .filter(record -> nonNull(record.getErrorRecord()))
+      .collect(Collectors.toList());
   }
 
   private LinkProcessor deleteLinkProcessor() {

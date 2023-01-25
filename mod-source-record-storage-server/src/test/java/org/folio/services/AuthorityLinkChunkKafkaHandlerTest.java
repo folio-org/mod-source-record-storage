@@ -5,7 +5,6 @@ import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
-import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.SUCCESS;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -79,8 +78,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String ERROR_RECORD_ID = UUID.randomUUID().toString();
   private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
   private static final String ERROR_RECORD_DESCRIPTION = "test error";
-  private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Integer LINK_ID = RandomUtils.nextInt();
+  private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Map<String, String> OKAPI_HEADERS = Map.of(
     OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL,
     OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID,
@@ -117,7 +116,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     record = new Record()
       .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
-      .withGeneration(0)
       .withMatchedId(RECORD_ID)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -129,7 +127,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     secondRecord = new Record()
       .withId(SECOND_RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
-      .withGeneration(0)
       .withMatchedId(SECOND_RECORD_ID)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -141,7 +138,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     errorRecord = new Record()
       .withId(ERROR_RECORD_ID)
       .withRawRecord(rawRecord)
-      .withGeneration(0)
       .withMatchedId(ERROR_RECORD_ID)
       .withErrorRecord(errorRecordContent)
       .withParsedRecord(errorParsedRecord)
@@ -265,35 +261,9 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateMultipleRecordsAndSendSuccessLinkUpdateReports(TestContext context) throws InterruptedException {
-    var updateTargets = buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
-    var event = buildLinkEventForUpdate(updateTargets);
-
-    var traceHeader = UUID.randomUUID().toString();
-    cluster.send(createRequest(event, traceHeader));
-    var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 2);
-    context.assertEquals(2, values.size());
-
-    var eventsInstanceIds = values.stream()
-      .map(value -> {
-        try {
-          var report = objectMapper.readValue(value, LinkUpdateReport.class);
-          context.assertEquals(SUCCESS, report.getStatus());
-          context.assertNull(report.getFailCause());
-          return report.getInstanceId();
-        } catch (IOException e) {
-          return null;
-        }
-      })
-      .filter(Objects::nonNull)
-      .collect(Collectors.toList());
-
-    context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
-  }
-
-  @Test
-  public void shouldUpdateRecordAndSendFailedLinkUpdateReport(TestContext context) throws InterruptedException, IOException {
-    var event = buildLinkEventForUpdate(buildUpdateTargets(ERROR_INSTANCE_ID));
+  public void shouldUpdateMultipleRecordsAndSendOneFailedLinkUpdateReport(TestContext context)
+    throws InterruptedException, IOException {
+    var event = buildLinkEventForUpdate(buildUpdateTargets(INSTANCE_ID, SECOND_INSTANCE_ID, ERROR_INSTANCE_ID));
     var traceHeader = UUID.randomUUID().toString();
 
     cluster.send(createRequest(event, traceHeader));

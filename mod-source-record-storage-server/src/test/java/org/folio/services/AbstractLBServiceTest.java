@@ -66,9 +66,6 @@ public abstract class AbstractLBServiceTest {
     cluster = provisionWith(defaultClusterConfig());
     cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");
-    //Property variables
-    System.setProperty("kafka-host", hostAndPort[0]);
-    System.setProperty("kafka-port", hostAndPort[1]);
     //Env variables
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);

@@ -95,10 +95,6 @@ public final class EventHandlingUtil {
       tenantId, eventType);
   }
 
-  public static String createTopicNameNoNamespace(String eventType, String tenantId, KafkaConfig kafkaConfig) {
-    return String.join(".", kafkaConfig.getEnvId(), tenantId, eventType);
-  }
-
   public static String createSubscriptionPattern(String env, String eventType) {
     return String.join("\\.", env, "\\w{1,}", eventType);
   }

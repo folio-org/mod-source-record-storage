@@ -1,5 +1,6 @@
 package org.folio.verticle.consumers;
 
+import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 import static org.folio.services.util.EventHandlingUtil.createSubscriptionPattern;
 
@@ -19,7 +20,7 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractVerticle {
   private static AbstractApplicationContext springGlobalContext;
 
   private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
-  public static final String AUTHORITY_INSTANCE_LINKS_TOPIC = "links.instance-authority";
+  public static final String AUTHORITY_INSTANCE_LINKS_TOPIC = INSTANCE_AUTHORITY.moduleTopicName();
 
   @Autowired
   private AuthorityLinkChunkKafkaHandler kafkaHandler;

@@ -4,12 +4,15 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import java.util.Optional;
+import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -49,13 +52,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
-  private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG =
-    "MappingParameters snapshot was not found by jobExecutionId '%s'";
+  private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
+
   protected RecordService recordService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
 
-  public AbstractUpdateModifyEventHandler(
+  protected AbstractUpdateModifyEventHandler(
     RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
     this.mappingParametersCache = mappingParametersCache;
@@ -77,14 +80,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
       String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
-      Record record = Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class);
-      String incoming001 = getValueFromControlledField(record, HR_ID_FROM_FIELD);
+      Record newRecord = extractRecord(payload);
+      String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
+      OkapiConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
 
-      mappingParametersCache.get(payload.getJobExecutionId(), RestUtil.retrieveOkapiConnectionParams(payload, vertx))
-        .compose(parametersOptional -> parametersOptional
-          .map(mappingParams -> modifyRecord(payload, mappingProfile, mappingParams))
-          .orElseGet(() -> Future.failedFuture(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId()))))
+      mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
+        .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
+        .compose(mappingParameters -> modifyRecord(payload, mappingProfile, mappingParameters))
         .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
         .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
         .onSuccess(changedRecord -> {
@@ -144,8 +147,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
   }
 
-  private Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-                                    MappingParameters mappingParameters) {
+  protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
+                                      MappingParameters mappingParameters) {
     try {
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
@@ -214,5 +217,17 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     } else {
       changedRecord.withMetadata(new Metadata().withUpdatedByUserId(userId));
     }
+  }
+
+  private Function<Optional<MappingParameters>, MappingParameters> mapMappingParametersOrFail(String message) {
+    return mappingParameters -> mappingParameters.orElseThrow(() -> new EventProcessingException(message));
+  }
+
+  protected Record extractRecord(DataImportEventPayload payload) {
+    return Json.decodeValue(payload.getContext().get(modifiedEntityType().value()), Record.class);
+  }
+
+  protected OkapiConnectionParams getOkapiParams(DataImportEventPayload payload) {
+    return RestUtil.retrieveOkapiConnectionParams(payload, vertx);
   }
 }

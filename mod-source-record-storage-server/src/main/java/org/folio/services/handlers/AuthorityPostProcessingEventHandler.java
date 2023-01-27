@@ -61,6 +61,11 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
   }
 
   @Override
+  protected void prepareEventPayload(DataImportEventPayload dataImportEventPayload) {
+
+  }
+
+  @Override
   protected void setExternalIds(ExternalIdsHolder externalIdsHolder, String externalId, String externalHrid) {
     externalIdsHolder.setAuthorityId(externalId);
     externalIdsHolder.setAuthorityHrid(externalHrid);

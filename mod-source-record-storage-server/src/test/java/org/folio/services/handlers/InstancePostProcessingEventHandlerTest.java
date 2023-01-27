@@ -43,6 +43,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
@@ -717,4 +718,58 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Assert.assertFalse(isEligible);
   }
 
+  @Test
+  public void shouldFillEventPayloadWithPostProcessingFlagIfOrderEventExists(TestContext context) {
+    Async async = context.async();
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put("recordId", record.getId());
+
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_ORDER_CREATED_READY_FOR_POST_PROCESSING);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+    recordDao.saveRecord(record, TENANT_ID)
+      .onFailure(future::completeExceptionally)
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .thenApply(future::complete)
+        .exceptionally(future::completeExceptionally));
+
+    future.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record updatedRecord = getAr.result().get();
+
+        context.assertNotNull(updatedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, updatedRecord.getExternalIdsHolder().getInstanceId());
+
+        context.assertNotNull(updatedRecord.getParsedRecord());
+        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        context.assertEquals(payload.getContext().get("POST_PROCESSING"),"true");
+
+        JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceId = getInventoryId(fields);
+        context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
+      });
+    });
+  }
 }

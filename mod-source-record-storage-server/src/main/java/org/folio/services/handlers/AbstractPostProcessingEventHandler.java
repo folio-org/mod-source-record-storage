@@ -71,6 +71,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
+  public static final String POST_PROCESSING_INDICATOR = "POST_PROCESSING";
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
@@ -130,6 +131,8 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   protected abstract DataImportEventTypes replyEventType();
 
   protected abstract TypeConnection typeConnection();
+
+  protected abstract void prepareEventPayload(DataImportEventPayload dataImportEventPayload);
 
   protected List<KafkaHeader> getKafkaHeaders(DataImportEventPayload eventPayload) {
     List<KafkaHeader> kafkaHeaders = new ArrayList<>(List.of(
@@ -207,6 +210,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     context.put(getRecordType().value(), Json.encode(record));
     context.put(DATA_IMPORT_IDENTIFIER, Boolean.TRUE.toString());
     context.put(getMarcType().value(), Json.encode(record));
+    prepareEventPayload(dataImportEventPayload);
     return Json.encode(context);
   }
 

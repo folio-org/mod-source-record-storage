@@ -1,5 +1,6 @@
 package org.folio.services.handlers;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
@@ -47,6 +48,13 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   @Override
   protected TypeConnection typeConnection() {
     return TypeConnection.MARC_BIB;
+  }
+
+  @Override
+  protected void prepareEventPayload(DataImportEventPayload dataImportEventPayload) {
+    if(dataImportEventPayload.getEventType().equals(DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value())){
+      dataImportEventPayload.getContext().put(POST_PROCESSING_INDICATOR, "true");
+    }
   }
 
   @Override

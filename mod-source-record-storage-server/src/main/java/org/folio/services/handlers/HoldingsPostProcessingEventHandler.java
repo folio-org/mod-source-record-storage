@@ -40,6 +40,11 @@ public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEv
   }
 
   @Override
+  protected void prepareEventPayload(DataImportEventPayload dataImportEventPayload) {
+
+  }
+
+  @Override
   protected void setExternalIds(ExternalIdsHolder externalIdsHolder, String externalId, String externalHrid) {
     externalIdsHolder.setHoldingsId(externalId);
     externalIdsHolder.setHoldingsHrid(externalHrid);

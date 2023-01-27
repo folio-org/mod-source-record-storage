@@ -4,7 +4,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToParsedContentJsonString;
@@ -19,7 +18,6 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -52,15 +50,17 @@ import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
+import org.folio.services.handlers.links.DeleteLinkProcessor;
+import org.folio.services.handlers.links.LinkProcessor;
+import org.folio.services.handlers.links.UpdateLinkProcessor;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.impl.DataFieldImpl;
-import org.marc4j.marc.impl.SubfieldImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String, String> {
-  private static final char AUTHORITY_ID_SUBFIELD = '9';
+  public static final char AUTHORITY_ID_SUBFIELD = '9';
   private static final AtomicLong INDEXER = new AtomicLong();
   private static final Logger LOGGER = LogManager.getLogger();
   private final Map<KafkaTopic, KafkaProducer<String, String>> producers = new HashMap<>();
@@ -189,12 +189,12 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       case DELETE: {
         LOGGER.debug("Precessing DELETE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return Future.succeededFuture(deleteLinkProcessor());
+        return Future.succeededFuture(new DeleteLinkProcessor());
       }
       case UPDATE: {
         LOGGER.debug("Precessing UPDATE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return Future.succeededFuture(updateLinkProcessor());
+        return Future.succeededFuture(new UpdateLinkProcessor());
       }
       default: {
         return Future.failedFuture(new IllegalArgumentException(
@@ -204,7 +204,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private List<String> extractUpdateTargetFieldCodesForInstance(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String instanceId) {
+  private List<String> extractUpdateTargetFieldCodesForInstance(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
+                                                                String instanceId) {
     return bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .filter(updateTarget -> updateTarget.getLinks().stream()
         .anyMatch(link -> link.getInstanceId().equals(instanceId)))
@@ -218,7 +219,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .findFirst();
   }
 
-  private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event) {
+  private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
+                                                          BibAuthorityLinksUpdate event) {
     LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
@@ -288,7 +290,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .map(result -> bibAuthorityLinksUpdate);
   }
 
-  private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event, List<KafkaHeader> headers) {
+  private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,
+                                           List<KafkaHeader> headers) {
     var errorRecords = getErrorRecords(batchResponse);
     if (!errorRecords.isEmpty()) {
       LOGGER.info("Errors detected. Sending {} linking reports for jobId {}, authorityId {}",
@@ -308,7 +311,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     return Future.fromCompletionStage(
       CompletableFuture.allOf(
         marcBibUpdateEvents.stream()
-          .map(marcBibUpdate -> sendEventToKafka(MARC_BIB, marcBibUpdate.getTenant(), marcBibUpdate.getJobId(), marcBibUpdate, consumerRecord.headers()))
+          .map(marcBibUpdate -> sendEventToKafka(MARC_BIB, marcBibUpdate.getTenant(), marcBibUpdate.getJobId(),
+            marcBibUpdate, consumerRecord.headers()))
           .map(Future::toCompletionStage)
           .map(CompletionStage::toCompletableFuture)
           .toArray(CompletableFuture[]::new)
@@ -316,10 +320,11 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     ).map(unused -> consumerRecord.key());
   }
 
-  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, Object record, List<KafkaHeader> kafkaHeaders) {
+  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, Object marcRecord,
+                                           List<KafkaHeader> kafkaHeaders) {
     var promise = Promise.<Boolean>promise();
     try {
-      var kafkaRecord = createKafkaProducerRecord(topic, tenant, record, kafkaHeaders);
+      var kafkaRecord = createKafkaProducerRecord(topic, tenant, marcRecord, kafkaHeaders);
       producers.get(topic).write(kafkaRecord, ar -> {
         if (ar.succeeded()) {
           LOGGER.debug("Event with type {}, jobId {} was sent to kafka", topic.topicName(), jobId);
@@ -334,60 +339,25 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       LOGGER.error("Failed to send an event for eventType {}, jobId {}, cause {}", topic.topicName(), jobId, e);
       return Future.failedFuture(e);
     }
-    return promise.future().onFailure(th -> LOGGER.error("Failed to send {} event for jobId {}.", topic.topicName(), jobId, th));
+    return promise.future()
+      .onFailure(th -> LOGGER.error("Failed to send {} event for jobId {}.", topic.topicName(), jobId, th));
   }
 
-  private KafkaProducerRecord<String, String> createKafkaProducerRecord(KafkaTopic topic, String tenant, Object record,
+  private KafkaProducerRecord<String, String> createKafkaProducerRecord(KafkaTopic topic, String tenant,
+                                                                        Object marcRecord,
                                                                         List<KafkaHeader> kafkaHeaders) {
     var topicName = topic.fullTopicName(kafkaConfig, tenant);
     var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
-    var kafkaRecord = KafkaProducerRecord.create(topicName, key, Json.encode(record));
+    var kafkaRecord = KafkaProducerRecord.create(topicName, key, Json.encode(marcRecord));
     kafkaRecord.addHeaders(kafkaHeaders);
 
     return kafkaRecord;
   }
 
-  private LinkProcessor updateLinkProcessor() {
-    return (fieldCode, subfieldsChanges, oldSubfields) -> {
-      var newSubfields = new HashMap<Character, Subfield>();
-
-      //add old subfields
-      oldSubfields.forEach(subfield -> newSubfields.put(subfield.getCode(), subfield));
-
-      //add subfields from incoming event, removing ones with empty value
-      subfieldsChanges.forEach(subfield -> {
-        var code = subfield.getCode().charAt(0);
-        if (isBlank(subfield.getValue())) {
-          newSubfields.remove(code);
-          return;
-        }
-        newSubfields.put(code, new SubfieldImpl(code, subfield.getValue()));
-      });
-
-      return newSubfields.values();
-    };
-  }
-
   private List<Record> getErrorRecords(RecordsBatchResponse batchResponse) {
     return batchResponse.getRecords().stream()
-      .filter(record -> nonNull(record.getErrorRecord()))
+      .filter(marcRecord -> nonNull(marcRecord.getErrorRecord()))
       .collect(Collectors.toList());
-  }
-
-  private LinkProcessor deleteLinkProcessor() {
-    return (fieldCode, subfieldsChanges, oldSubfields) -> {
-      var newSubfields = new LinkedList<>(oldSubfields);
-
-      newSubfields.removeIf(subfield -> subfield.getCode() == AUTHORITY_ID_SUBFIELD);
-
-      return newSubfields;
-    };
-  }
-
-  private interface LinkProcessor {
-    Collection<Subfield> process(String fieldCode,
-                                 List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges,
-                                 List<Subfield> oldSubfields);
   }
 
 }

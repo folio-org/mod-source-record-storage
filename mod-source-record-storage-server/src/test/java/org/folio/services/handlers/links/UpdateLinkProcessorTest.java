@@ -36,30 +36,4 @@ class UpdateLinkProcessorTest {
     assertEquals(actual.toString(), expected.toString());
   }
 
-//  private class TestSubfield extends SubfieldImpl {
-//
-//    public TestSubfield(char code, String data) {
-//      super(code, data);
-//    }
-//
-//    @Override
-//    public boolean equals(Object o) {
-//      if (this == o) { return true; }
-//
-//      if (!(o instanceof TestSubfield)) { return false; }
-//
-//      TestSubfield that = (TestSubfield) o;
-//
-//      return new EqualsBuilder().append(getCode(), that.getCode())
-//        .append(getData(), that.getData())
-//        .isEquals();
-//    }
-//
-//    @Override
-//    public int hashCode() {
-//      return new HashCodeBuilder(17, 37)
-//        .append(getCode()).append(getData())
-//        .toHashCode();
-//    }
-//  }
 }

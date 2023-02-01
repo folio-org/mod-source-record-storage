@@ -254,9 +254,7 @@
     {
       "id": "data-import-converter-storage",
       "version": "1.2"
-    }
-  ],
-  "requires": [
+    },
     {
       "id": "instance-authority-links",
       "version": "1.0"

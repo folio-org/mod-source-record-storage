@@ -26,6 +26,7 @@ import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingPa
 import org.folio.processing.mapping.mapper.writer.marc.MarcBibRecordModifier;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
@@ -77,6 +78,10 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   @Override
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                       MappingParameters mappingParameters) {
+    if (mappingProfile.getMappingDetails().getMarcMappingOption() == MappingDetail.MarcMappingOption.MODIFY) {
+      return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty())
+        .map(v -> null);
+    }
     var matchedRecord = extractRecord(dataImportEventPayload, "MATCHED_" + modifiedEntityType().value());
     var isValid = matchedRecord != null && matchedRecord.getExternalIdsHolder() != null;
     if (!isValid) {

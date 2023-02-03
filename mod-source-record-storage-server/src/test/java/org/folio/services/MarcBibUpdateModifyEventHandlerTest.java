@@ -1,6 +1,13 @@
 package org.folio.services;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static java.util.Collections.singletonList;
+import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -38,7 +45,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
+import org.folio.InstanceLinkDtoCollection;
 import org.folio.JobProfile;
+import org.folio.Link;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.client.InstanceLinkClient;
@@ -77,7 +86,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String USER_ID_HEADER = "userId";
-
+  private static final String INSTANCE_LINKS_URL = "/links/instances";
+  private static final UrlPathPattern URL_PATH_PATTERN =
+    new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
+  private static final String SECOND_PARSED_CONTENT =
+    "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
+  private static final String instanceId = UUID.randomUUID().toString();
+  private static final ObjectMapper mapper = new ObjectMapper();
   private static String recordId = UUID.randomUUID().toString();
   private static String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
@@ -273,8 +288,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
-    String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String incomingParsedContent =
+      "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent =
+      "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     var instanceId = UUID.randomUUID().toString();
     Record incomingRecord = new Record()
       .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
@@ -563,5 +580,142 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     // then
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldNotUpdateLinksWhenIncomingZeroSubfieldIsSameAsExisting(TestContext context) {
+    // given
+    String incomingParsedContent =
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent =
+      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 0, context);
+  }
+
+  @Test
+  public void shouldUpdateLinksWhenIncomingZeroSubfieldIsNull(TestContext context) {
+    // given
+    String incomingParsedContent =
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent =
+      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
+  }
+
+  @Test
+  public void shouldUnlinkBibFieldWhenIncomingZeroSubfieldIsDifferent(TestContext context) {
+    // given
+    String incomingParsedContent =
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String expectedParsedContent =
+      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
+  }
+
+  private InstanceLinkDtoCollection constructLinkCollection(String bibRecordTag) {
+    return new InstanceLinkDtoCollection()
+      .withLinks(singletonList(constructLink(bibRecordTag)));
+  }
+
+  private Link constructLink(String bibRecordTag) {
+    return new Link().withId(nextInt())
+      .withBibRecordTag(bibRecordTag)
+      .withBibRecordSubfields(singletonList("a"))
+      .withAuthorityId(UUID.randomUUID().toString())
+      .withInstanceId(UUID.randomUUID().toString())
+      .withAuthorityNaturalId("test");
+  }
+
+  private void verifyBibRecordUpdate(String incomingParsedContent, String expectedParsedContent,
+                                     int getRequestCount, int putRequestCount, TestContext context) {
+    WireMock.stubFor(
+      get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
+    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
+
+    // given
+    Async async = context.async();
+    Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+
+    Snapshot secondSnapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    String secondRecordId = UUID.randomUUID().toString();
+    ParsedRecord secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
+    RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
+
+    Record secondRecord = new Record()
+      .withId(secondRecordId)
+      .withSnapshotId(secondSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(secondRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(secondRawRecord)
+      .withParsedRecord(secondParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withMetadata(new Metadata());
+
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(result -> {
+        Record incomingRecord = new Record().withId(secondRecord.getId())
+          .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+        secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
+        HashMap<String, String> payloadContext = new HashMap<>();
+        payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+        payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(secondRecord));
+
+        updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
+          .withMarcMappingDetails(singletonList(new MarcMappingDetail()
+            .withOrder(0)
+            .withField(new MarcField()
+              .withField("100")
+              .withIndicator1("*")
+              .withIndicator2("*")
+              .withSubfields(
+                List.of(new MarcSubfield().withSubfield("e"), new MarcSubfield().withSubfield("0"))))));
+        profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+          .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+            .withProfileId(updateMappingProfile.getId())
+            .withContentType(MAPPING_PROFILE)
+            .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
+
+        var dataImportEventPayload =
+          new DataImportEventPayload()
+            .withTenant(TENANT_ID)
+            .withOkapiUrl(mockServer.baseUrl())
+            .withToken(TOKEN)
+            .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+            .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+            .withContext(payloadContext)
+            .withProfileSnapshot(profileSnapshotWrapper)
+            .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+        modifyRecordEventHandler.handle(dataImportEventPayload)
+          .whenComplete((eventPayload, throwable) -> {
+            context.assertNull(throwable);
+            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+            Record actualRecord =
+              Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+            try {
+              context.assertEquals(mapper.readTree(expectedParsedContent),
+                mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+            } catch (JsonProcessingException e) {
+              context.fail(e);
+            }
+            context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+            async.complete();
+          });
+
+        verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+        verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
+      });
   }
 }

@@ -615,6 +615,85 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
   }
 
+  @Test
+  public void shouldNotUpdateBibFieldWhen500ErrorGetEntityLinkRequest(TestContext context) {
+    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
+    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+
+    Async async = context.async();
+    Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+
+    Snapshot secondSnapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    String secondRecordId = UUID.randomUUID().toString();
+    ParsedRecord secondParsedRecord = new ParsedRecord().withId(secondRecordId).withContent(SECOND_PARSED_CONTENT);
+    RawRecord secondRawRecord = new RawRecord().withId(secondRecordId).withContent("test content");
+
+    Record secondRecord = new Record()
+      .withId(secondRecordId)
+      .withSnapshotId(secondSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(secondRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(secondRawRecord)
+      .withParsedRecord(secondParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withMetadata(new Metadata());
+
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(result -> {
+        Record incomingRecord = new Record().withId(secondRecord.getId())
+          .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+        secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
+        HashMap<String, String> payloadContext = new HashMap<>();
+        payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+        payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(secondRecord));
+
+        updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
+          .withMarcMappingDetails(singletonList(new MarcMappingDetail()
+            .withOrder(0)
+            .withField(new MarcField()
+              .withField("100")
+              .withIndicator1("*")
+              .withIndicator2("*")
+              .withSubfields(
+                List.of(new MarcSubfield().withSubfield("e"), new MarcSubfield().withSubfield("0"))))));
+        profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+          .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+            .withProfileId(updateMappingProfile.getId())
+            .withContentType(MAPPING_PROFILE)
+            .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
+
+        var dataImportEventPayload = new DataImportEventPayload()
+          .withTenant(TENANT_ID)
+          .withOkapiUrl(mockServer.baseUrl())
+          .withToken(TOKEN)
+          .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+          .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+          .withContext(payloadContext)
+          .withProfileSnapshot(profileSnapshotWrapper)
+          .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+        modifyRecordEventHandler.handle(dataImportEventPayload)
+          .whenComplete((eventPayload, throwable) -> {
+            context.assertNotNull(throwable);
+            context.assertNull(eventPayload);
+            context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+            async.complete();
+          });
+
+        verify(1, getRequestedFor(URL_PATH_PATTERN));
+        verify(0, putRequestedFor(URL_PATH_PATTERN));
+      });
+  }
+
   private InstanceLinkDtoCollection constructLinkCollection(String bibRecordTag) {
     return new InstanceLinkDtoCollection()
       .withLinks(singletonList(constructLink(bibRecordTag)));

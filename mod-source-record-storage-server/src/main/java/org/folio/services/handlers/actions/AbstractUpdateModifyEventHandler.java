@@ -80,7 +80,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
       String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
-      Record newRecord = extractRecord(payload);
+      Record newRecord = extractRecord(payload, modifiedEntityType().value());
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
       OkapiConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
@@ -223,8 +223,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return mappingParameters -> mappingParameters.orElseThrow(() -> new EventProcessingException(message));
   }
 
-  protected Record extractRecord(DataImportEventPayload payload) {
-    return Json.decodeValue(payload.getContext().get(modifiedEntityType().value()), Record.class);
+  protected Record extractRecord(DataImportEventPayload payload, String key) {
+    return Json.decodeValue(payload.getContext().get(key), Record.class);
   }
 
   protected OkapiConnectionParams getOkapiParams(DataImportEventPayload payload) {

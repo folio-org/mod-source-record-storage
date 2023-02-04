@@ -84,7 +84,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java2</artifactId>
-      <version>4.0.2</version>
+      <version>4.3.7</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -93,7 +93,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.8.0</version>
+      <version>1.10.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -108,7 +108,7 @@
     <dependency>
       <groupId>org.marc4j</groupId>
       <artifactId>marc4j</artifactId>
-      <version>2.9.1</version>
+      <version>2.9.2</version>
     </dependency>
     <dependency>
       <groupId>io.xlate</groupId>
@@ -118,13 +118,17 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.6.0</version>
+      <version>1.7.0</version>
       <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.5.3</version>
+      <version>1.6.0-SNAPSHOT</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -146,7 +150,7 @@
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>4.5.13</version>
+      <version>4.5.14</version>
     </dependency>
     <dependency>
       <groupId>com.github.tomakehurst</groupId>
@@ -163,7 +167,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>4.8.0</version>
+      <version>5.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -203,7 +207,7 @@
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
-      <version>2.13.9</version>
+      <version>2.13.10</version>
     </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
@@ -218,7 +222,7 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.1.1</version>
+      <version>3.1.2</version>
     </dependency>
     <dependency>
       <groupId>com.zaxxer</groupId>
@@ -235,7 +239,7 @@
     <vertx-jooq.version>6.1.1</vertx-jooq.version>
     <postgres.version>42.5.1</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
-    <lombok.version>1.18.20</lombok.version>
+    <lombok.version>1.18.24</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 

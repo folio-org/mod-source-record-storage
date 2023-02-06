@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.IdType;
@@ -349,6 +350,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     var topicName = topic.fullTopicName(kafkaConfig, tenant);
     var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
     var kafkaRecord = KafkaProducerRecord.create(topicName, key, Json.encode(marcRecord));
+    kafkaHeaders.removeIf(kafkaHeader -> !StringUtils.startsWithIgnoreCase(kafkaHeader.key(), "x-okapi-"));
     kafkaRecord.addHeaders(kafkaHeaders);
 
     return kafkaRecord;

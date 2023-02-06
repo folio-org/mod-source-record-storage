@@ -65,7 +65,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String PARSED_MARC_RECORD_LINKED_UPDATED_PATH = "src/test/resources/parsedMarcRecordLinkedUpdated.json";
   private static final String PARSED_MARC_RECORD_UNLINKED = "src/test/resources/parsedMarcRecordUnlinked.json";
   private static final String KAFKA_KEY_NAME = "test-key";
-  private static final String KAFKA_TEST_HEADER = "test";
+  private static final String KAFKA_TEST_HEADER = "x-okapi-test";
   private static final String KAFKA_CONSUMER_TOPIC = getTopicName(INSTANCE_AUTHORITY);
   private static final String KAFKA_SRS_BIB_PRODUCER_TOPIC = getTopicName(MARC_BIB);
   private static final String KAFKA_LINK_STATS_PRODUCER_TOPIC = getTopicName(LINKS_STATS);

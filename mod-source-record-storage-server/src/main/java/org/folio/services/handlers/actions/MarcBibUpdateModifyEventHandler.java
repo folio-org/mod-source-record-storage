@@ -1,6 +1,5 @@
 package org.folio.services.handlers.actions;
 
-import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
@@ -26,24 +25,26 @@ import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.processing.mapping.mapper.writer.marc.MarcBibRecordModifier;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
-import org.folio.rest.jaxrs.model.Record;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Component
 public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
-  private static final String RECORD_NOT_FOUND_MSG = "Record was not found by recordId '%s'";
+  private static final String UNEXPECTED_PAYLOAD_MSG = "Matched record doesn't contains external record id. jobExecutionId '%s'";
   private static final char SUB_FIELD_9 = '9';
+
   private final InstanceLinkClient instanceLinkClient;
 
   @Autowired
-  public MarcBibUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache,
+  public MarcBibUpdateModifyEventHandler(RecordService recordService,
+                                         MappingParametersSnapshotCache mappingParametersCache,
                                          Vertx vertx, InstanceLinkClient instanceLinkClient) {
     super(recordService, mappingParametersCache, vertx);
     this.instanceLinkClient = instanceLinkClient;
@@ -55,13 +56,13 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected boolean isHridFillingNeeded() {
-    return false;
+  public String getPostProcessingInitializationEventType() {
+    return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
   }
 
   @Override
-  public String getPostProcessingInitializationEventType() {
-    return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
+  protected boolean isHridFillingNeeded() {
+    return false;
   }
 
   @Override
@@ -76,20 +77,28 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   @Override
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-                                      MappingParameters mappingParameters){
-
-    var newRecord = extractRecord(dataImportEventPayload);
-    var instanceId = (newRecord.getExternalIdsHolder() != null) ? newRecord.getExternalIdsHolder().getInstanceId() : null;
+                                      MappingParameters mappingParameters) {
+    if (mappingProfile.getMappingDetails().getMarcMappingOption() == MappingDetail.MarcMappingOption.MODIFY) {
+      return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty())
+        .map(v -> null);
+    }
+    var matchedRecord = extractRecord(dataImportEventPayload, "MATCHED_" + modifiedEntityType().value());
+    var isValid = matchedRecord != null && matchedRecord.getExternalIdsHolder() != null;
+    if (!isValid) {
+      var msg = String.format(UNEXPECTED_PAYLOAD_MSG, dataImportEventPayload.getJobExecutionId());
+      LOG.warn(msg);
+      throw new EventProcessingException(msg);
+    }
+    var instanceId = matchedRecord.getExternalIdsHolder().getInstanceId();
     var okapiParams = getOkapiParams(dataImportEventPayload);
 
-    return recordService.getRecordById(newRecord.getId(), dataImportEventPayload.getTenant())
-      .map(optionalRecord -> optionalRecord.orElseThrow(() -> new EventProcessingException(format(RECORD_NOT_FOUND_MSG, newRecord.getId()))))
-      .compose(oldRecord -> loadInstanceLink(oldRecord, instanceId, okapiParams))
-      .compose(linksOptional -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, linksOptional))
-      .compose(linksOptional -> updateInstanceLinks(instanceId, linksOptional, okapiParams));
+    return loadInstanceLink(matchedRecord, instanceId, okapiParams)
+      .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links))
+      .compose(links -> updateInstanceLinks(instanceId, links, okapiParams));
   }
 
-  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId, OkapiConnectionParams okapiParams) {
+  private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,
+                                                                       OkapiConnectionParams okapiParams) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     if (isSubfieldExist(oldRecord, SUB_FIELD_9)) {
       if (isNull(instanceId) || isBlank(instanceId)) {
@@ -111,19 +120,23 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     return promise.future();
   }
 
-  private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
-    MappingParameters mappingParameters, Optional<InstanceLinkDtoCollection> linksOptional) {
+  private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload,
+                                                                          MappingProfile mappingProfile,
+                                                                          MappingParameters mappingParameters,
+                                                                          Optional<InstanceLinkDtoCollection> links) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     try {
-      if (linksOptional.isPresent()) {
+      if (links.isPresent()) {
         MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
-        marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(), linksOptional.get());
+        marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(),
+          links.get());
         marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
         marcRecordModifier.getResult(dataImportEventPayload);
-        if (isLinksTheSame(linksOptional.get(), marcRecordModifier.getBibAuthorityLinksKept())) {
+        if (isLinksTheSame(links.get(), marcRecordModifier.getBibAuthorityLinksKept())) {
           promise.complete(Optional.empty());
         } else {
-          promise.complete(Optional.of(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept())));
+          promise.complete(
+            Optional.of(new InstanceLinkDtoCollection().withLinks(marcRecordModifier.getBibAuthorityLinksKept())));
         }
       } else {
         MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
@@ -150,11 +163,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     return true;
   }
 
-  private Future<Void> updateInstanceLinks(String instanceId, Optional<InstanceLinkDtoCollection> linkOptional,
+  private Future<Void> updateInstanceLinks(String instanceId, Optional<InstanceLinkDtoCollection> links,
                                            OkapiConnectionParams okapiParams) {
     Promise<Void> promise = Promise.promise();
-    if (linkOptional.isPresent()) {
-      instanceLinkClient.updateInstanceLinks(instanceId, linkOptional.get(), okapiParams)
+    if (links.isPresent()) {
+      instanceLinkClient.updateInstanceLinks(instanceId, links.get(), okapiParams)
         .whenComplete((v, throwable) -> {
           if (throwable != null) {
             promise.fail(throwable);

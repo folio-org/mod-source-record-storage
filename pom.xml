@@ -22,11 +22,12 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <raml-module-builder.version>35.0.1</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>4.3.4</vertx.version>
-    <junit.version>4.13.1</junit.version>
+    <vertx.version>4.3.7</vertx.version>
+    <junit.version>4.13.2</junit.version>
     <rest-assured.version>4.5.1</rest-assured.version>
-    <kafkaclients.version>3.1.2</kafkaclients.version>
-    <kafkajunit.version>3.1.0</kafkajunit.version>
+    <kafkaclients.version>3.3.2</kafkaclients.version>
+    <kafkajunit.version>3.3.0</kafkajunit.version>
+    <spring.version>5.3.23</spring.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 
@@ -44,7 +45,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>${spring.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

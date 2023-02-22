@@ -31,7 +31,7 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private final static String POST_PROCESSING_RESULT_EVENT = "POST_PROCESSING_RESULT_EVENT";
+  public final static String POST_PROCESSING_RESULT_EVENT = "POST_PROCESSING_RESULT_EVENT";
 
   private final KafkaConfig kafkaConfig;
 

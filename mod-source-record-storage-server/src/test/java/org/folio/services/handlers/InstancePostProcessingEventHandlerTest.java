@@ -52,6 +52,7 @@ import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.services.handlers.InstancePostProcessingEventHandler.POST_PROCESSING_RESULT_EVENT;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 @RunWith(VertxUnitRunner.class)
@@ -734,6 +735,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_ORDER_CREATED_READY_FOR_POST_PROCESSING);
+    dataImportEventPayload.getContext().put(POST_PROCESSING_RESULT_EVENT, DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value());
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     recordDao.saveRecord(record, TENANT_ID)
@@ -759,7 +761,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         context.assertNotNull(updatedRecord.getParsedRecord());
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        context.assertNull(payload.getContext().get("POST_PROCESSING"));
+        context.assertNull(payload.getContext().get(POST_PROCESSING_RESULT_EVENT));
+        context.assertEquals(Boolean.valueOf(payload.getContext().get("POST_PROCESSING")), true);
         context.assertEquals(payload.getEventType(), DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value());
 
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());

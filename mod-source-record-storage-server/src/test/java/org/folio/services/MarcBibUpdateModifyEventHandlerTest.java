@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
@@ -20,6 +21,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -90,7 +92,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String SECOND_PARSED_CONTENT =
-    "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
+    "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+      "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
   private static final String instanceId = UUID.randomUUID().toString();
   private static final ObjectMapper mapper = new ObjectMapper();
   private static String recordId = UUID.randomUUID().toString();
@@ -586,9 +589,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   public void shouldNotUpdateLinksWhenIncomingZeroSubfieldIsSameAsExisting(TestContext context) {
     // given
     String incomingParsedContent =
-      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 0, context);
   }
@@ -597,9 +602,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   public void shouldUpdateLinksWhenIncomingZeroSubfieldIsNull(TestContext context) {
     // given
     String incomingParsedContent =
-      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"00104cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
   }
@@ -608,9 +615,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   public void shouldUnlinkBibFieldWhenIncomingZeroSubfieldIsDifferent(TestContext context) {
     // given
     String incomingParsedContent =
-      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"00131cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
   }
@@ -705,7 +714,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withBibRecordSubfields(singletonList("a"))
       .withAuthorityId(UUID.randomUUID().toString())
       .withInstanceId(UUID.randomUUID().toString())
-      .withAuthorityNaturalId("test");
+      .withAuthorityNaturalId("n2008052404");
   }
 
   private void verifyBibRecordUpdate(String incomingParsedContent, String expectedParsedContent,
@@ -753,14 +762,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(secondRecord));
 
         updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
-          .withMarcMappingDetails(singletonList(new MarcMappingDetail()
-            .withOrder(0)
-            .withField(new MarcField()
-              .withField("100")
-              .withIndicator1("*")
-              .withIndicator2("*")
-              .withSubfields(
-                List.of(new MarcSubfield().withSubfield("e"), new MarcSubfield().withSubfield("0"))))));
+          .withMarcMappingDetails(emptyList());
         profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
           .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
             .withProfileId(updateMappingProfile.getId())
@@ -790,11 +792,15 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
               context.fail(e);
             }
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+
+            try {
+              verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+              verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
+            } catch (VerificationException ex) {
+              context.fail(ex);
+            }
             async.complete();
           });
-
-        verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
-        verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
       });
   }
 }

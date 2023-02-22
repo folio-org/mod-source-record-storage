@@ -759,7 +759,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         context.assertNotNull(updatedRecord.getParsedRecord());
         context.assertNotNull(updatedRecord.getParsedRecord().getContent());
-        context.assertEquals(payload.getContext().get("POST_PROCESSING"),"true");
+        context.assertNull(payload.getContext().get("POST_PROCESSING"));
+        context.assertEquals(payload.getEventType(), DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value());
 
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 

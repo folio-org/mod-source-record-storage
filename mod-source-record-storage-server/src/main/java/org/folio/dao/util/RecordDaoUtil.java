@@ -539,6 +539,10 @@ public final class RecordDaoUtil {
     return DSL.noCondition();
   }
 
+  public static Condition filterRecordByExternalIdNonNull() {
+    return RECORDS_LB.EXTERNAL_ID.isNotNull();
+  }
+
   /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
    *

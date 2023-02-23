@@ -92,6 +92,7 @@ import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
@@ -189,7 +190,8 @@ public class RecordDaoImpl implements RecordDao {
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
-  public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, int offset, int limit, String tenantId) {
+  @Override
+  public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
@@ -202,6 +204,7 @@ public class RecordDaoImpl implements RecordDao {
       .where(
         filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
           .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
       )
       .offset(offset)

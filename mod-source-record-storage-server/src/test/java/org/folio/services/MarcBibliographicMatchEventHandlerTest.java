@@ -2,6 +2,7 @@ package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -14,7 +15,6 @@ import org.folio.MatchProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -55,6 +55,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{ \"001\": \"12345\" }, {\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"i\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"}]}}]}";
+  private static final String PARSED_CONTENT_WITH_NO_999_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private RecordDao recordDao;
   private MarcBibliographicMatchEventHandler handler;
@@ -360,6 +361,53 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
           async.complete();
         }));
+  }
+
+  @Test
+  public void shouldNotMatchRecordBy035aFieldIfRecordExternalIdIsNull(TestContext context) {
+    Async async = context.async();
+    incomingRecord.getParsedRecord().withContent(PARSED_CONTENT_WITH_NO_999_FIELD);
+    existingRecord.getParsedRecord().withContent(PARSED_CONTENT_WITH_NO_999_FIELD);
+    existingRecord.getExternalIdsHolder().setInstanceId(null);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("035"),
+                new Field().withLabel("indicator1").withValue(" "),
+                new Field().withLabel("indicator2").withValue(" "),
+                new Field().withLabel("recordSubfield").withValue("a"))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("035"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .compose(record -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)))
+      .onComplete(payloadAr -> {
+        context.assertTrue(payloadAr.succeeded());
+        context.assertEquals(payloadAr.result().getEventType(), DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value());
+        async.complete();
+      });
   }
 
   @Test

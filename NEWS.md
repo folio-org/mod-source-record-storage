@@ -1,3 +1,25 @@
+## 2023-02-17 v5.6.0
+* [MODSOURCE-551](https://issues.folio.org/browse/MODSOURCE-551) Link update: Implement mechanism of topic creation
+* [MODSOURCE-557](https://issues.folio.org/browse/MODSOURCE-557) Logging improvement - Configuration
+* [MODSOURCE-465](https://issues.folio.org/browse/MODSOURCE-465) Logging improvement
+* [MODDATAIMP-722](https://issues.folio.org/browse/MODDATAIMP-722) MARC-to-MARC Holdings update stacked
+* [MODDATAIMP-736](https://issues.folio.org/browse/MODDATAIMP-736) Adjust logging configuration for SRS to display datetime in a proper format
+* [MODSOURCE-552](https://issues.folio.org/browse/MODSOURCE-552) Extend GET /source-storage/source-records/<Id> to fetch deleted record
+* [MODSOURCE-566](https://issues.folio.org/browse/MODSOURCE-566) Improve logging in DAO
+* [MODSOURCE-550](https://issues.folio.org/browse/MODSOURCE-550) Link update: Update MARC bibs according to links.instance-authority event
+* [MODSOURCE-569](https://issues.folio.org/browse/MODSOURCE-569) Fix transformation to marc record
+* [MODSOURCE-571](https://issues.folio.org/browse/MODSOURCE-571) links.instance-authority event not being consumed
+* [MODSOURCE-573](https://issues.folio.org/browse/MODSOURCE-573) Linked bib update fails because of snapshot absence
+* [MODDATAIMP-758](https://issues.folio.org/browse/MODDATAIMP-758) Improve logging (hide SQL requests)
+* [MODSOURCE-578](https://issues.folio.org/browse/MODSOURCE-578) MARC bib field moved to the end of the fields lists after user updates controlling MARC authority record
+* [MODSOURCE-567](https://issues.folio.org/browse/MODSOURCE-567) Link update report: send event if update failed
+* [MODSOURCE-562](https://issues.folio.org/browse/MODSOURCE-562) Handle bib-authority link when user updates a bib record via data import
+* [MODSOURCE-577](https://issues.folio.org/browse/MODSOURCE-577) Prevent Instance PostProcessing Handler from sending DI_COMPLETED
+* [MODSOURCE-583](https://issues.folio.org/browse/MODSOURCE-583) Order subfields when update linked subfields
+* [MODSOURCE-587](https://issues.folio.org/browse/MODSOURCE-587) Cleanup kafka headers for marc.bib event
+* [MODSOURCE-586](https://issues.folio.org/browse/MODSOURCE-586) Fix unable to update "MARC Bib" record upon data import
+* [MODDATAIMP-750](https://issues.folio.org/browse/MODDATAIMP-750) Update util libraries dependencies
+
 ## 2022-10-19 v5.5.0
 * [MODSOURCE-538](https://issues.folio.org/browse/MODSOURCE-538) Subscribe the module to item updated event.
 * [MODSOURCE-540](https://issues.folio.org/browse/MODSOURCE-540) Upgrade to RMB v35.0.1

@@ -379,14 +379,14 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
-        .withContent(new MatchProfile()
+        .withContent((new MatchProfile()
           .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withMatchDetails(singletonList(new MatchDetail()
             .withMatchCriterion(EXACTLY_MATCHES)
             .withExistingMatchExpression(new MatchExpression()
               .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
+              .withFields(List.of(
                 new Field().withLabel("field").withValue("035"),
                 new Field().withLabel("indicator1").withValue(" "),
                 new Field().withLabel("indicator2").withValue(" "),
@@ -395,11 +395,12 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
             .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
             .withIncomingMatchExpression(new MatchExpression()
               .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
+              .withFields(List.of(
                 new Field().withLabel("field").withValue("035"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("a"))))))));
+                new Field().withLabel("indicator1").withValue(" "),
+                new Field().withLabel("indicator2").withValue(" "),
+                new Field().withLabel("recordSubfield").withValue("a")))))))
+        ));
 
     recordDao.saveRecord(existingRecord, TENANT_ID)
       .compose(record -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)))

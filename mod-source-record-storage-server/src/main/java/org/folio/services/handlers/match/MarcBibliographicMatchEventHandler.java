@@ -31,4 +31,8 @@ public class MarcBibliographicMatchEventHandler extends AbstractMarcMatchEventHa
     return DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING.value();
   }
 
+  @Override
+  protected boolean isNonNullExternalIdRequired() {
+    return true;
+  }
 }

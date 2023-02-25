@@ -75,6 +75,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
     String tenantId = okapiConnectionParams.getTenantId();
+    String jobExecutionId = extractValueFromHeaders(targetRecord.headers(), JOB_EXECUTION_ID_HEADER);
     String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
     String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
     String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
@@ -84,14 +85,14 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
 
     try {
-      LOGGER.debug("handle:: RecordCollection has been received with event: '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
-        eventPayload.getEventType(), chunkId, chunkNumber, key, recordId);
+      LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
+        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key, recordId);
       setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, eventPayload.getEventType(), targetRecord));
     } catch (Exception e) {
-      LOGGER.warn("handle:: RecordCollection processing has failed with errors with event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}' ",
-        eventPayload.getEventType(), chunkId, chunkNumber, key, recordId);
+      LOGGER.warn("handle:: RecordCollection processing has failed with errors with event: '{}', jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}' ",
+        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key, recordId);
       return Future.failedFuture(e);
     }
   }

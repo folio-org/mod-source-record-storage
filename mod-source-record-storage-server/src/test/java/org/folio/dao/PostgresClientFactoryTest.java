@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.HashMap;
 
-import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

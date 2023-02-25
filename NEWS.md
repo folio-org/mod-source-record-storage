@@ -1,3 +1,6 @@
+## 2023-02-xx v5.6.2-SNAPSHOT
+* [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration
+
 ## 2023-02-27 v5.6.1
 * Update data-import-processing-core dependency to v4.0.2
 

@@ -57,7 +57,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
 
-  public AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
+  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
@@ -86,7 +86,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
           .onSuccess(recordCollection -> processSucceededResult(recordCollection.getRecords(), payload, future))
           .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
       } else {
-        recordDao.getMatchedRecords(matchField, typeConnection, 0, 2, payload.getTenant())
+        recordDao.getMatchedRecords(matchField, typeConnection, isNonNullExternalIdRequired(), 0, 2, payload.getTenant())
           .onSuccess(recordList -> processSucceededResult(recordList, payload, future))
           .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
       }
@@ -144,6 +144,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
    */
   protected String getMatchedMarcKey() {
     return "MATCHED_" + typeConnection.getMarcType();
+  }
+
+  protected boolean isNonNullExternalIdRequired() {
+    return false;
   }
 
   /* Verifies whether the given {@link MatchProfile} is suitable for {@link EventHandler} */

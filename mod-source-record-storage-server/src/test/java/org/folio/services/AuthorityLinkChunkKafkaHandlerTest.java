@@ -36,6 +36,7 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.services.KafkaTopic;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.BibAuthorityLinksUpdate;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -50,7 +51,6 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Subfield;
 import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -79,11 +79,14 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
   private static final String ERROR_RECORD_DESCRIPTION = "test error";
   private static final Integer LINK_ID = RandomUtils.nextInt();
+  private static final String USER_ID = UUID.randomUUID().toString();
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Map<String, String> OKAPI_HEADERS = Map.of(
-    OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL,
-    OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID,
-    OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN);
+    XOkapiHeaders.URL, OKAPI_URL,
+    XOkapiHeaders.TENANT, TENANT_ID,
+    XOkapiHeaders.TOKEN, TOKEN,
+    XOkapiHeaders.USER_ID, USER_ID
+  );
   private static String updatedParsedRecordContent;
   private static String unlinkedParsedRecordContent;
   private final RawRecord rawRecord = new RawRecord().withId(RECORD_ID)
@@ -278,11 +281,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
   private SendKeyValues<String, String> createRequest(Object payload, String traceValue) {
     var eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(payload));
-    OKAPI_HEADERS.forEach((key, value) -> {
-      eventRecord.addHeader(key, value, Charset.defaultCharset());
-      eventRecord.addHeader(key, value, Charset.defaultCharset());
-      eventRecord.addHeader(key, value, Charset.defaultCharset());
-    });
+    OKAPI_HEADERS.forEach((key, value) -> eventRecord.addHeader(key, value, Charset.defaultCharset()));
     eventRecord.addHeader(KAFKA_TEST_HEADER, traceValue, Charset.defaultCharset());
     return SendKeyValues.to(KAFKA_CONSUMER_TOPIC, singletonList(eventRecord)).useDefaults();
   }
@@ -395,5 +394,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     context.assertEquals(record.getGeneration() + 1, updatedRecord.getGeneration());
     context.assertEquals(expectedParsedRecordContent,
       ParsedRecordDaoUtil.normalize(updatedRecord.getParsedRecord().getContent()).toString());
+    context.assertEquals(USER_ID, updatedRecord.getMetadata().getUpdatedByUserId());
   }
 }

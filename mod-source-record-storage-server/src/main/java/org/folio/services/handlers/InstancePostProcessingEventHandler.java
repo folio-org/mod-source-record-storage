@@ -12,6 +12,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,10 @@ import org.folio.services.util.TypeConnection;
 
 @Component
 public class InstancePostProcessingEventHandler extends AbstractPostProcessingEventHandler {
+
+  private static final Logger LOGGER = LogManager.getLogger();
+
+  public final static String POST_PROCESSING_RESULT_EVENT = "POST_PROCESSING_RESULT_EVENT";
 
   private final KafkaConfig kafkaConfig;
 
@@ -52,7 +58,13 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
 
   @Override
   protected void prepareEventPayload(DataImportEventPayload dataImportEventPayload) {
-    if(dataImportEventPayload.getEventType().equals(DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value())){
+    LOGGER.debug("prepareEventPayload :: eventType: {}, jobExecutionId: {}, POST_PROCESSING_RESULT_EVENT: {}",
+      dataImportEventPayload.getEventType(), dataImportEventPayload.getJobExecutionId(), dataImportEventPayload.getContext().get(POST_PROCESSING_RESULT_EVENT));
+    if (DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value().equals(dataImportEventPayload.getContext().get(POST_PROCESSING_RESULT_EVENT))) {
+      LOGGER.info("Set POST_PROCESSING_INDICATOR to event with eventType: {}, jobExecutionId: {}",
+        dataImportEventPayload.getEventType(), dataImportEventPayload.getJobExecutionId());
+      dataImportEventPayload.setEventType(dataImportEventPayload.getContext().get(POST_PROCESSING_RESULT_EVENT));
+      dataImportEventPayload.getContext().remove(POST_PROCESSING_RESULT_EVENT);
       dataImportEventPayload.getContext().put(POST_PROCESSING_INDICATOR, "true");
     }
   }

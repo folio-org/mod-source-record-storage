@@ -1,5 +1,6 @@
 ## 2023-02-xx v5.6.2-SNAPSHOT
 * [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration
+* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
 
 ## 2023-02-17 v5.6.0
 * [MODSOURCE-551](https://issues.folio.org/browse/MODSOURCE-551) Link update: Implement mechanism of topic creation

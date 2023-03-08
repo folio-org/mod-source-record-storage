@@ -16,7 +16,7 @@ public class KafkaUtil {
    */
   public static String extractHeaderValue(String key, List<KafkaHeader> headers) {
     return headers.stream()
-      .filter(header -> header.key().equals(key))
+      .filter(header -> header.key().equalsIgnoreCase(key))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

@@ -96,8 +96,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
   private static final String instanceId = UUID.randomUUID().toString();
   private static final ObjectMapper mapper = new ObjectMapper();
-  private static String recordId = UUID.randomUUID().toString();
-  private static String userId = UUID.randomUUID().toString();
+  private static final String recordId = UUID.randomUUID().toString();
+  private static final String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
   @Rule
@@ -695,11 +695,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             context.assertNotNull(throwable);
             context.assertNull(eventPayload);
             context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+            verifyGetAndPut(context, 1, 0);
             async.complete();
           });
-
-        verify(1, getRequestedFor(URL_PATH_PATTERN));
-        verify(0, putRequestedFor(URL_PATH_PATTERN));
       });
   }
 
@@ -781,23 +779,34 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
-            context.assertNull(throwable);
-            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
-            Record actualRecord =
-              Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-            try {
-              context.assertEquals(mapper.readTree(expectedParsedContent),
-                mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
-            } catch (JsonProcessingException e) {
-              context.fail(e);
-            }
+            var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+            context.assertNull(throwable);
 
+            verifyRecords(context, expectedParsedContent, actualRecord);
+            verifyGetAndPut(context, getRequestCount, putRequestCount);
             async.complete();
           });
-
-        verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
-        verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
       });
+  }
+
+  private void verifyGetAndPut(TestContext context, int getRequestCount, int putRequestCount){
+    try {
+      verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+      verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
+    } catch (VerificationException e) {
+      context.fail(e);
+    }
+  }
+
+  private void verifyRecords(TestContext context, String expectedParsedContent, Record actualRecord){
+    try {
+      context.assertEquals(
+        mapper.readTree(expectedParsedContent),
+        mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+    } catch (JsonProcessingException e) {
+      context.fail(e);
+    }
   }
 }

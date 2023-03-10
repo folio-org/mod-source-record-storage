@@ -5,7 +5,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
@@ -23,9 +22,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -96,15 +92,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
   private static final String instanceId = UUID.randomUUID().toString();
   private static final ObjectMapper mapper = new ObjectMapper();
-  private static String recordId = UUID.randomUUID().toString();
-  private static String userId = UUID.randomUUID().toString();
+  private static final String recordId = UUID.randomUUID().toString();
+  private static final String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
+
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
   private RecordDao recordDao;
@@ -196,7 +188,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
@@ -236,6 +228,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @After
   public void tearDown(TestContext context) {
+    wireMockServer.resetRequests();
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
@@ -260,7 +253,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(record.getSnapshotId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -313,7 +306,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -365,7 +358,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -417,7 +410,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -462,7 +455,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -478,16 +471,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertNull(throwable);
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      ObjectMapper mapper = new ObjectMapper();
-      try {
-        context.assertEquals(mapper.readTree(expectedParsedContent),
-          mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
-      } catch (JsonProcessingException e) {
-        context.fail(e);
-      }
+      var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      verifyRecords(context, expectedParsedContent, actualRecord);
       async.complete();
     });
   }
@@ -626,7 +612,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldNotUpdateBibFieldWhen500ErrorGetEntityLinkRequest(TestContext context) {
-    WireMock.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
+    wireMockServer.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
     String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     Async async = context.async();
@@ -683,7 +669,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
         var dataImportEventPayload = new DataImportEventPayload()
           .withTenant(TENANT_ID)
-          .withOkapiUrl(mockServer.baseUrl())
+          .withOkapiUrl(wireMockServer.baseUrl())
           .withToken(TOKEN)
           .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
           .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -695,11 +681,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             context.assertNotNull(throwable);
             context.assertNull(eventPayload);
             context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+            verifyGetAndPut(context, 1, 0);
             async.complete();
           });
-
-        verify(1, getRequestedFor(URL_PATH_PATTERN));
-        verify(0, putRequestedFor(URL_PATH_PATTERN));
       });
   }
 
@@ -719,9 +703,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private void verifyBibRecordUpdate(String incomingParsedContent, String expectedParsedContent,
                                      int getRequestCount, int putRequestCount, TestContext context) {
-    WireMock.stubFor(
+    wireMockServer.stubFor(
       get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
-    WireMock.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
+    wireMockServer.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given
     Async async = context.async();
@@ -772,7 +756,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         var dataImportEventPayload =
           new DataImportEventPayload()
             .withTenant(TENANT_ID)
-            .withOkapiUrl(mockServer.baseUrl())
+            .withOkapiUrl(wireMockServer.baseUrl())
             .withToken(TOKEN)
             .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
             .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -781,23 +765,34 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
-            context.assertNull(throwable);
-            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
-            Record actualRecord =
-              Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-            try {
-              context.assertEquals(mapper.readTree(expectedParsedContent),
-                mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
-            } catch (JsonProcessingException e) {
-              context.fail(e);
-            }
+            var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+            context.assertNull(throwable);
 
+            verifyRecords(context, expectedParsedContent, actualRecord);
+            verifyGetAndPut(context, getRequestCount, putRequestCount);
             async.complete();
           });
-
-        verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
-        verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
       });
+  }
+
+  private void verifyGetAndPut(TestContext context, int getRequestCount, int putRequestCount){
+    try {
+      wireMockServer.verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
+      wireMockServer.verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
+    } catch (VerificationException e) {
+      context.fail(e);
+    }
+  }
+
+  private void verifyRecords(TestContext context, String expectedParsedContent, Record actualRecord){
+    try {
+      context.assertEquals(
+        mapper.readTree(expectedParsedContent),
+        mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+    } catch (JsonProcessingException e) {
+      context.fail(e);
+    }
   }
 }

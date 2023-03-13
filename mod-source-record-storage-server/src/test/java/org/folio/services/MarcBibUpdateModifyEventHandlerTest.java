@@ -20,6 +20,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
@@ -719,7 +720,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayloadOriginalRecord = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
@@ -729,7 +730,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     DataImportEventPayload dataImportEventPayloadDuplicateRecord = new DataImportEventPayload()
       .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withToken(TOKEN)
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())

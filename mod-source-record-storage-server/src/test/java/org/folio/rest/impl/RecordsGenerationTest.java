@@ -181,123 +181,80 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotUpdateRecordsGenerationIfSnapshotsNotCommitted(TestContext testContext) {
-    List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
-    for (Snapshot snapshot : snapshots) {
-      Async async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshot.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-      async.complete();
+  public void shouldUpdateRecordsGenerationIfSnapshotStatusIsParsingInProgress(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
 
-      async = testContext.async();
-      Record record = new Record()
-        .withId(matchedId)
-        .withSnapshotId(snapshot.getJobExecutionId())
-        .withRecordType(Record.RecordType.MARC_BIB)
-        .withRawRecord(rawRecord)
-        .withParsedRecord(marcRecord)
-        .withMatchedId(matchedId);
+    Record record1 = new Record()
+      .withId(matchedId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(matchedId);
 
-      Record created = RestAssured.given()
-        .spec(spec)
-        .body(record)
-        .when()
-        .post(SOURCE_STORAGE_RECORDS_PATH)
-        .body().as(Record.class);
-      async.complete();
+    Record created1 = RestAssured.given()
+      .spec(spec)
+      .body(record1)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
 
-      async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .when()
-        .get(SOURCE_STORAGE_RECORDS_PATH + "/" + created.getId())
-        .then()
-        .statusCode(HttpStatus.SC_OK)
-        .body("id", is(created.getId()))
-        .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("matchedId", is(matchedId))
-        .body("generation", is(0));
-      async.complete();
-    }
-  }
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + created1.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(created1.getId()))
+      .body("snapshotId", is(snapshot_1.getJobExecutionId()))
+      .body("rawRecord.content", is(rawRecord.getContent()))
+      .body("matchedId", is(matchedId))
+      .body("generation", is(0));
+    async.complete();
 
-  @Test
-  public void shouldNotUpdateRecordsGenerationIfSnapshotsCommittedAfter(TestContext testContext) {
-    List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2);
-    List<String> ids = new ArrayList<>();
-    // create snapshots and records
-    for (int i = 0; i < snapshots.size(); i++) {
-      Async async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
-        .when()
-        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-      async.complete();
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(snapshot_2.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
+      .when()
+      .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
 
-      Record record = new Record()
-        .withId(matchedId)
-        .withSnapshotId(snapshots.get(i).getJobExecutionId())
-        .withRecordType(Record.RecordType.MARC_BIB)
-        .withRawRecord(rawRecord)
-        .withParsedRecord(marcRecord)
-        .withMatchedId(matchedId);
+    Record record2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(matchedId);
 
-      ids.add(record.getId());
+    Record created2 = RestAssured.given()
+      .spec(spec)
+      .body(record2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .body().as(Record.class);
 
-      async = testContext.async();
-      Record created = RestAssured.given()
-        .spec(spec)
-        .body(record)
-        .when()
-        .post(SOURCE_STORAGE_RECORDS_PATH)
-        .body().as(Record.class);
-
-      RestAssured.given()
-        .spec(spec)
-        .when()
-        .get(SOURCE_STORAGE_RECORDS_PATH + "/" + created.getId())
-        .then()
-        .statusCode(HttpStatus.SC_OK)
-        .body("id", is(created.getId()))
-        .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("matchedId", is(matchedId))
-        .body("generation", is(0));
-      async.complete();
-    }
-
-    // update snapshots to committed after
-    for (int i = 0; i < snapshots.size(); i++) {
-      Async async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .body(snapshots.get(i).withStatus(Snapshot.Status.COMMITTED))
-        .when()
-        .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i).getJobExecutionId())
-        .then()
-        .statusCode(HttpStatus.SC_OK);
-      async.complete();
-
-      async = testContext.async();
-      RestAssured.given()
-        .spec(spec)
-        .when()
-        .get(SOURCE_STORAGE_RECORDS_PATH + "/" + ids.get(i))
-        .then()
-        .statusCode(HttpStatus.SC_OK)
-        .body("id", is(ids.get(i)))
-        .body("rawRecord.content", is(rawRecord.getContent()))
-        .body("matchedId", is(matchedId))
-        .body("generation", is(0));
-      async.complete();
-    }
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + created2.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(created2.getId()))
+      .body("snapshotId", is(snapshot_2.getJobExecutionId()))
+      .body("rawRecord.content", is(rawRecord.getContent()))
+      .body("matchedId", is(matchedId))
+      .body("generation", is(1));
+    async.complete();
   }
 
   @Test

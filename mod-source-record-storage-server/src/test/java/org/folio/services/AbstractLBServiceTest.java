@@ -1,6 +1,8 @@
 package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import io.restassured.RestAssured;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
@@ -57,6 +59,7 @@ public abstract class AbstractLBServiceTest {
   protected static PostgresClientFactory postgresClientFactory;
 
   public static EmbeddedKafkaCluster cluster;
+  public static WireMockServer wireMockServer;
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
@@ -65,6 +68,9 @@ public abstract class AbstractLBServiceTest {
 
     cluster = provisionWith(defaultClusterConfig());
     cluster.start();
+    wireMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort());
+    wireMockServer.start();
+
     String[] hostAndPort = cluster.getBrokerList().split(":");
     //Env variables
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
@@ -132,6 +138,7 @@ public abstract class AbstractLBServiceTest {
     PostgresClientFactory.closeAll();
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopPostgresTester();
+      wireMockServer.stop();
       cluster.stop();
       async.complete();
     }));

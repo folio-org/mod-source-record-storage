@@ -20,7 +20,6 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
@@ -67,6 +66,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
 import org.junit.After;
 import org.junit.Assert;
@@ -685,6 +685,79 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             async.complete();
           });
       });
+  }
+
+  @Test
+  public void shouldReturnExceptionForDuplicateRecord(TestContext context) {
+    // given
+    Async async = context.async();
+
+    String incomingParsedContent =
+      "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    String expectedParsedContent =
+      "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    var instanceId = UUID.randomUUID().toString();
+    Record incomingRecord = new Record()
+      .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
+
+    HashMap<String, String> payloadContextOriginalRecord = new HashMap<>();
+    payloadContextOriginalRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+    payloadContextOriginalRecord.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+
+    HashMap<String, String> payloadContextDuplicateRecord = new HashMap<>();
+    payloadContextDuplicateRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+    payloadContextDuplicateRecord.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+
+    mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
+    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+        .withProfileId(mappingProfile.getId())
+        .withContentType(MAPPING_PROFILE)
+        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
+
+    DataImportEventPayload dataImportEventPayloadOriginalRecord = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(payloadContextOriginalRecord)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+
+    DataImportEventPayload dataImportEventPayloadDuplicateRecord = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(mockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(payloadContextDuplicateRecord)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+
+    // when
+    CompletableFuture<DataImportEventPayload> future1 = modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord);
+    CompletableFuture<DataImportEventPayload> future2 = modifyRecordEventHandler.handle(dataImportEventPayloadDuplicateRecord);
+
+    // then
+    future1.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+
+      Record actualRecord =
+        Json.decodeValue(dataImportEventPayloadOriginalRecord.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      context.assertEquals(dataImportEventPayloadOriginalRecord.getJobExecutionId(), actualRecord.getSnapshotId());
+    });
+
+    future2.whenComplete((eventPayload, throwable) -> {
+      context.assertNotNull(throwable);
+      context.assertEquals(throwable.getClass(), DuplicateRecordException.class);
+      async.complete();
+    });
   }
 
   private InstanceLinkDtoCollection constructLinkCollection(String bibRecordTag) {

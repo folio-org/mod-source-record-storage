@@ -1,6 +1,11 @@
-## 2023-02-xx v5.6.2-SNAPSHOT
+## 2023-03-26 v5.6.2
+* [MODSOURCE-610](https://issues.folio.org/browse/MODSOURCE-610) remove condition of snapshot status for calculating generation and clarify error message for duplicates record error
+* [MODSOURCE-599](https://issues.folio.org/browse/MODSOURCE-599) Rework assertions for linked bib records tests
+* [MODSOURCE-603](https://issues.folio.org/browse/MODSOURCE-603) Set updatedBy metadata on handling links update
+* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Upgrade di-utils to v1.11.0
 * [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration
-* [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
+* [MODSOURCE-598](https://issues.folio.org/browse/MODSOURCE-598) Update postprocessing method to handle DI orders with instances creation
+* [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) Update data-import-processing-core dependency
 
 ## 2023-02-27 v5.6.1
 * Update data-import-processing-core dependency to v4.0.2

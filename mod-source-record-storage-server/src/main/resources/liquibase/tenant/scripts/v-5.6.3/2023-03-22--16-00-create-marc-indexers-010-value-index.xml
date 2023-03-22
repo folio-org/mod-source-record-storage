@@ -4,9 +4,9 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
-  <changeSet id="2023-03-22--16-00-create-marc-indexers-value-index" author="VolodymyrRohach">
+  <changeSet id="2023-03-22--16-00-create-marc-indexers-010-value-index" author="VolodymyrRohach">
     <sql>
-      CREATE INDEX IF NOT EXISTS marc_indexers_value_idx ON ${database.defaultSchemaName}.marc_indexers_010 USING BTREE (value);
+      CREATE INDEX IF NOT EXISTS marc_indexers_010_value_idx ON ${database.defaultSchemaName}.marc_indexers_010 USING BTREE (value);
     </sql>
   </changeSet>
 

@@ -1,5 +1,5 @@
 ## 2023-03-xx v5.6.3-SNAPSHOT
-* [MODSOURCE-5615](https://issues.folio.org/browse/MODSOURCE-615) Link update: Implement mechanism of topic creation
+* [MODSOURCE-615](https://issues.folio.org/browse/MODSOURCE-615) Importing 10,000 MARC authority records > Completes with errors due to timeout - Indices added.
 
 ## 2023-03-18 v5.6.2
 * [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration

@@ -1,4 +1,7 @@
-## 2023-02-xx v5.6.2-SNAPSHOT
+## 2023-03-xx v5.6.3-SNAPSHOT
+* [MODSOURCE-615](https://issues.folio.org/browse/MODSOURCE-615) Importing 10,000 MARC authority records > Completes with errors due to timeout - Indices added.
+
+## 2023-03-18 v5.6.2
 * [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration
 * [MODDATAIMP-786](https://issues.folio.org/browse/MODDATAIMP-786) Update data-import-util library to v1.11.0
 

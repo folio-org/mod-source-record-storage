@@ -1,3 +1,7 @@
+## 2023-03-29 v5.6.3
+* [MODSOURCE-615](https://issues.folio.org/browse/MODSOURCE-615) Add indexes on 010 and 035 MARC fields
+* Update data-import-processing-core to v4.0.4
+
 ## 2023-03-26 v5.6.2
 * [MODSOURCE-610](https://issues.folio.org/browse/MODSOURCE-610) remove condition of snapshot status for calculating generation and clarify error message for duplicates record error
 * [MODSOURCE-599](https://issues.folio.org/browse/MODSOURCE-599) Rework assertions for linked bib records tests

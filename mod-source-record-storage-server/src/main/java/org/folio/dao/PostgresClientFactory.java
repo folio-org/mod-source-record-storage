@@ -45,6 +45,8 @@ public class PostgresClientFactory {
   public static final String PASSWORD = "password";
   public static final String USERNAME = "username";
   public static final String DB_MAXPOOLSIZE = "maxPoolSize";
+  private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
+  private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
@@ -169,9 +171,13 @@ public class PostgresClientFactory {
     }
 
     Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
+    int connectionTimeout = Integer.parseInt(System.getenv().getOrDefault(CONNECTION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT_VALUE));
     LOG.info("getCachedPool:: Creating new database connection for tenant {} with poolSize {}", tenantId, maxPoolSize);
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
-    PoolOptions poolOptions = new PoolOptions().setMaxSize(maxPoolSize);
+    PoolOptions poolOptions = new PoolOptions()
+      .setConnectionTimeout(connectionTimeout)
+      .setIdleTimeoutUnit(TimeUnit.SECONDS)
+      .setMaxSize(maxPoolSize);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     POOL_CACHE.put(tenantId, client);
     return client;

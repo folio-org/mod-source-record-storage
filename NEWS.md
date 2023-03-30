@@ -1,3 +1,6 @@
+## 2023-03-30 v5.6.4
+* [MODSOURCE-618](https://issues.folio.org/browse/MODSOURCE-618) Add DB_CONNECTION_TIMEOUT parameter to make connection pull timeout configurable
+
 ## 2023-03-29 v5.6.3
 * [MODSOURCE-615](https://issues.folio.org/browse/MODSOURCE-615) Add indexes on 010 and 035 MARC fields
 * Update data-import-processing-core to v4.0.4

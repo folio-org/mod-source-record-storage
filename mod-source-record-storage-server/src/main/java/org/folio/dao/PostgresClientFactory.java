@@ -176,7 +176,7 @@ public class PostgresClientFactory {
     PgConnectOptions connectOptions = getConnectOptions(tenantId);
     PoolOptions poolOptions = new PoolOptions()
       .setConnectionTimeout(connectionTimeout)
-      .setIdleTimeoutUnit(TimeUnit.SECONDS)
+      .setConnectionTimeoutUnit(TimeUnit.SECONDS)
       .setMaxSize(maxPoolSize);
     PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
     POOL_CACHE.put(tenantId, client);

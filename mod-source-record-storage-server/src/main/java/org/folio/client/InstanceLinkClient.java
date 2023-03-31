@@ -49,7 +49,7 @@ public class InstanceLinkClient {
     LOGGER.trace("Trying to get list of LinkingRule for okapi url: {}, tenantId: {}",
       params.getOkapiUrl(), params.getTenantId());
 
-    return RestUtil.doRequest(params, "/links/linking-rules/instance-authority", HttpMethod.GET, null)
+    return RestUtil.doRequest(params, "/linking-rules/instance-authority", HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse->{

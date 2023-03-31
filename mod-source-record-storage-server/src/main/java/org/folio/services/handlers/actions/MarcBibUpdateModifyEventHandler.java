@@ -95,11 +95,9 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     var okapiParams = getOkapiParams(dataImportEventPayload);
 
     return loadLinkingRules(okapiParams)
-      .compose(linkingRuleDtos -> {
-        return loadInstanceLink(matchedRecord, instanceId, okapiParams)
-          .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos))
-          .compose(links -> updateInstanceLinks(instanceId, links, okapiParams));
-      });
+      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, okapiParams)
+        .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
+        .compose(links -> updateInstanceLinks(instanceId, links, okapiParams)));
   }
 
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,
@@ -128,7 +126,8 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload,
                                                                           MappingProfile mappingProfile,
                                                                           MappingParameters mappingParameters,
-                                                                          Optional<InstanceLinkDtoCollection> links, List<LinkingRuleDto> linkingRules) {
+                                                                          Optional<InstanceLinkDtoCollection> links,
+                                                                          List<LinkingRuleDto> linkingRules) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     try {
       if (links.isPresent()) {

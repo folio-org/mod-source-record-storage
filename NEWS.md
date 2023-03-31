@@ -1,3 +1,6 @@
+## 2023-03-31 v5.6.5
+* Update data-import-processing-core to v4.0.5
+
 ## 2023-03-30 v5.6.4
 * [MODSOURCE-618](https://issues.folio.org/browse/MODSOURCE-618) Add DB_CONNECTION_TIMEOUT parameter to make connection pull timeout configurable
 

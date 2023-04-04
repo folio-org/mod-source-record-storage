@@ -11,6 +11,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
@@ -18,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.Link;
+import org.folio.LinkingRuleDto;
 import org.folio.MappingProfile;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -29,6 +31,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -41,13 +44,16 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private static final char SUB_FIELD_9 = '9';
 
   private final InstanceLinkClient instanceLinkClient;
+  private final LinkingRulesCache linkingRulesCache;
 
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService,
                                          MappingParametersSnapshotCache mappingParametersCache,
-                                         Vertx vertx, InstanceLinkClient instanceLinkClient) {
+                                         Vertx vertx, InstanceLinkClient instanceLinkClient,
+                                         LinkingRulesCache linkingRulesCache) {
     super(recordService, mappingParametersCache, vertx);
     this.instanceLinkClient = instanceLinkClient;
+    this.linkingRulesCache = linkingRulesCache;
   }
 
   @Override
@@ -79,7 +85,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                       MappingParameters mappingParameters) {
     if (mappingProfile.getMappingDetails().getMarcMappingOption() == MappingDetail.MarcMappingOption.MODIFY) {
-      return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty())
+      return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty(), Collections.emptyList())
         .map(v -> null);
     }
     var matchedRecord = extractRecord(dataImportEventPayload, "MATCHED_" + modifiedEntityType().value());
@@ -92,9 +98,10 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     var instanceId = matchedRecord.getExternalIdsHolder().getInstanceId();
     var okapiParams = getOkapiParams(dataImportEventPayload);
 
-    return loadInstanceLink(matchedRecord, instanceId, okapiParams)
-      .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links))
-      .compose(links -> updateInstanceLinks(instanceId, links, okapiParams));
+    return linkingRulesCache.get(okapiParams)
+      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, okapiParams)
+        .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
+        .compose(links -> updateInstanceLinks(instanceId, links, okapiParams)));
   }
 
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,
@@ -123,13 +130,14 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private Future<Optional<InstanceLinkDtoCollection>> modifyMarcBibRecord(DataImportEventPayload dataImportEventPayload,
                                                                           MappingProfile mappingProfile,
                                                                           MappingParameters mappingParameters,
-                                                                          Optional<InstanceLinkDtoCollection> links) {
+                                                                          Optional<InstanceLinkDtoCollection> links,
+                                                                          List<LinkingRuleDto> linkingRules) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     try {
       if (links.isPresent()) {
         MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
         marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(),
-          links.get());
+          links.get(), linkingRules);
         marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
         marcRecordModifier.getResult(dataImportEventPayload);
         if (isLinksTheSame(links.get(), marcRecordModifier.getBibAuthorityLinksKept())) {
@@ -180,5 +188,4 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     }
     return promise.future();
   }
-
 }

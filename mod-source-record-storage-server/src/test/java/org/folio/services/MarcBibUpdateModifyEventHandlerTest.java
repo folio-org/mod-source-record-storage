@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
@@ -46,6 +47,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.JobProfile;
 import org.folio.Link;
+import org.folio.LinkingRuleDto;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.client.InstanceLinkClient;
@@ -66,6 +68,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
@@ -88,6 +91,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String INSTANCE_LINKS_URL = "/links/instances";
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
+  private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
@@ -196,9 +200,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
+    LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
     modifyRecordEventHandler =
       new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx,
-        instanceLinkClient);
+        instanceLinkClient, linkingRulesCache);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -761,24 +766,31 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     });
   }
 
-  private InstanceLinkDtoCollection constructLinkCollection(String bibRecordTag) {
+  private InstanceLinkDtoCollection constructLinkCollection() {
     return new InstanceLinkDtoCollection()
-      .withLinks(singletonList(constructLink(bibRecordTag)));
+      .withLinks(singletonList(constructLink()));
   }
 
-  private Link constructLink(String bibRecordTag) {
+  private Link constructLink() {
     return new Link().withId(nextInt())
-      .withBibRecordTag(bibRecordTag)
-      .withBibRecordSubfields(singletonList("a"))
       .withAuthorityId(UUID.randomUUID().toString())
       .withInstanceId(UUID.randomUUID().toString())
-      .withAuthorityNaturalId("n2008052404");
+      .withAuthorityNaturalId("n2008052404")
+      .withLinkingRuleId(1);
+  }
+
+  private List<LinkingRuleDto> constructLinkingRulesCollection() {
+    return singletonList(new LinkingRuleDto()
+      .withId(1)
+      .withBibField("100"));
   }
 
   private void verifyBibRecordUpdate(String incomingParsedContent, String expectedParsedContent,
                                      int getRequestCount, int putRequestCount, TestContext context) {
-    wireMockServer.stubFor(
-      get(URL_PATH_PATTERN).willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection("100")))));
+    wireMockServer.stubFor(get(URL_PATH_PATTERN)
+      .willReturn(WireMock.ok().withBody(Json.encode(constructLinkCollection()))));
+    wireMockServer.stubFor(get(urlPathEqualTo(LINKING_RULES_URL))
+      .willReturn(WireMock.ok().withBody(Json.encode(constructLinkingRulesCollection()))));
     wireMockServer.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given

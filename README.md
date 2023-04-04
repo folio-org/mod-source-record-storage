@@ -123,6 +123,7 @@ After setup, it is good to check logs in all related modules for errors. Data im
 * Relevant from the **Orchid** release, module versions from 5.6.0:
   * "_srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum_": 100
   * "_srs.kafka.AuthorityLinkChunkConsumer.loadLimit_": 2
+* Relevant from the **Poppy** release, module versions from 5.7.0:
   * "_srs.linking-rules-cache.expiration.time.hours_": 12
 
 ## Database schemas

@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.Link;
+import org.folio.LinkingRuleDto;
 import org.folio.MappingProfile;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -27,10 +28,10 @@ import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingPa
 import org.folio.processing.mapping.mapper.writer.marc.MarcBibRecordModifier;
 import org.folio.processing.mapping.mapper.writer.marc.MarcRecordModifier;
 import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.LinkingRuleDto;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -43,13 +44,16 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private static final char SUB_FIELD_9 = '9';
 
   private final InstanceLinkClient instanceLinkClient;
+  private final LinkingRulesCache linkingRulesCache;
 
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService,
                                          MappingParametersSnapshotCache mappingParametersCache,
-                                         Vertx vertx, InstanceLinkClient instanceLinkClient) {
+                                         Vertx vertx, InstanceLinkClient instanceLinkClient,
+                                         LinkingRulesCache linkingRulesCache) {
     super(recordService, mappingParametersCache, vertx);
     this.instanceLinkClient = instanceLinkClient;
+    this.linkingRulesCache = linkingRulesCache;
   }
 
   @Override
@@ -94,7 +98,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     var instanceId = matchedRecord.getExternalIdsHolder().getInstanceId();
     var okapiParams = getOkapiParams(dataImportEventPayload);
 
-    return loadLinkingRules(okapiParams)
+    return linkingRulesCache.get(okapiParams)
       .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, okapiParams)
         .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
         .compose(links -> updateInstanceLinks(instanceId, links, okapiParams)));
@@ -133,7 +137,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
       if (links.isPresent()) {
         MarcBibRecordModifier marcRecordModifier = new MarcBibRecordModifier();
         marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(),
-          links.get());
+          links.get(), linkingRules);
         marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
         marcRecordModifier.getResult(dataImportEventPayload);
         if (isLinksTheSame(links.get(), marcRecordModifier.getBibAuthorityLinksKept())) {
@@ -144,7 +148,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
         }
       } else {
         MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
-        marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType(), linkingRules);
+        marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
         marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
         marcRecordModifier.getResult(dataImportEventPayload);
         promise.complete(Optional.empty());
@@ -152,21 +156,6 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     } catch (IOException e) {
       promise.fail(e);
     }
-    return promise.future();
-  }
-
-  private Future<Optional<List<LinkingRuleDto>>> loadLinkingRules(OkapiConnectionParams params) {
-    Promise<Optional<List<LinkingRuleDto>>> promise = Promise.promise();
-    instanceLinkClient.getLinkingRuleList(params)
-      .whenComplete((linkingRuleDtos, throwable) -> {
-        if (throwable != null) {
-          LOG.warn(throwable.getMessage());
-          promise.fail(throwable);
-        } else {
-          promise.complete(linkingRuleDtos);
-        }
-      });
-
     return promise.future();
   }
 

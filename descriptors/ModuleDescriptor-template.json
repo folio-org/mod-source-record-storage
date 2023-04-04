@@ -257,6 +257,10 @@
     },
     {
       "id": "instance-authority-links",
+      "version": "2.0"
+    },
+    {
+      "id": "instance-authority-linking-rules",
       "version": "1.0"
     }
   ],

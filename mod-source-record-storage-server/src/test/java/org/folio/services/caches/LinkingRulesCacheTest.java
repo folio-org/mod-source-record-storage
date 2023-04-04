@@ -4,6 +4,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -13,6 +14,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxException;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -144,6 +146,22 @@ public class LinkingRulesCacheTest {
 
         async.complete();
       });
+    });
+  }
+
+  @Test
+  public void shouldFailOnException(TestContext context) {
+    Async async = context.async();
+
+    OkapiConnectionParams params = new OkapiConnectionParams(emptyMap(), vertx);
+
+    Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
+
+    optionalFuture.onComplete(ar -> {
+      context.assertTrue(ar.failed());
+      context.assertTrue(ar.cause().getCause() instanceof VertxException);
+
+      async.complete();
     });
   }
 

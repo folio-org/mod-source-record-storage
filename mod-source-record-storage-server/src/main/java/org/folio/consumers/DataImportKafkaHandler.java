@@ -5,7 +5,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
-import io.vertx.kafka.client.producer.KafkaHeader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,11 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
 import static org.folio.DataImportEventTypes.DI_ERROR;
+import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
 @Qualifier("DataImportKafkaHandler")
@@ -51,9 +50,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
-    String recordId = extractValueFromHeaders(targetRecord.headers(), RECORD_ID_HEADER);
-    String chunkId = extractValueFromHeaders(targetRecord.headers(), CHUNK_ID_HEADER);
-    String userId = extractValueFromHeaders(targetRecord.headers(), USER_ID_HEADER);
+    String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
+    String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
+    String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
       Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
@@ -86,13 +85,5 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       LOGGER.warn("handle:: Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
       return Future.failedFuture(e);
     }
-  }
-
-  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
-    return headers.stream()
-      .filter(header -> header.key().equals(key))
-      .findFirst()
-      .map(header -> header.value().toString())
-      .orElse(null);
   }
 }

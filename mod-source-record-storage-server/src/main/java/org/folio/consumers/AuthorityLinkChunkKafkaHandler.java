@@ -10,6 +10,7 @@ import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToPa
 import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
+import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -38,6 +39,7 @@ import org.folio.dao.util.RecordType;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.services.KafkaTopic;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.BibAuthorityLinksUpdate;
 import org.folio.rest.jaxrs.model.Link;
 import org.folio.rest.jaxrs.model.LinkUpdateReport;
@@ -84,10 +86,12 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
+    LOGGER.trace("handle:: Handling kafka record: {}", consumerRecord);
+    var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
     return mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
       .compose(event -> retrieveRecords(event, event.getTenant())
-        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection))
+        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
         .compose(recordCollection -> recordService.saveRecords(recordCollection, event.getTenant()))
         .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
         .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
@@ -126,7 +130,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
-                                                          RecordCollection recordCollection) {
+                                                          RecordCollection recordCollection, String userId) {
     LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
@@ -178,6 +182,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         bibRecord.setId(newRecordId);
         bibRecord.getRawRecord().setId(newRecordId);
         bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
+        setUpdatedBy(bibRecord, userId);
       });
 
       return recordCollection;
@@ -289,6 +294,16 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
     return snapshotService.saveSnapshot(snapshot, bibAuthorityLinksUpdate.getTenant())
       .map(result -> bibAuthorityLinksUpdate);
+  }
+
+  private void setUpdatedBy(Record changedRecord, String userId) {
+    if (StringUtils.isNotBlank(userId)) {
+      if (changedRecord.getMetadata() != null) {
+        changedRecord.getMetadata().setUpdatedByUserId(userId);
+      } else {
+        changedRecord.withMetadata(new Metadata().withUpdatedByUserId(userId));
+      }
+    }
   }
 
   private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,

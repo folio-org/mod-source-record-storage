@@ -41,6 +41,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.MarcRecordsTrackingRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
@@ -57,9 +58,11 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record2;
 import org.jooq.SelectJoinStep;
+import org.jooq.SelectOnConditionStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
 import org.jooq.UpdateConditionStep;
+import org.jooq.UpdateQuery;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
@@ -100,6 +103,7 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
@@ -123,6 +127,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
+  private static final String VERSION = "version";
   private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
@@ -194,21 +199,32 @@ public class RecordDaoImpl implements RecordDao {
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .select(getAllRecordFields(prt))
-      .from(RECORDS_LB)
-      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-      .where(
-        filterRecordByType(typeConnection.getRecordType().value())
-          .and(filterRecordByState(Record.State.ACTUAL.value()))
-          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
-      )
-      .offset(offset)
-      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
+      {
+        SelectOnConditionStep<org.jooq.Record> query = dsl
+          .select(getAllRecordFields(prt))
+          .from(RECORDS_LB)
+          .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+          .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+          .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+          .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))));
+        if (typeConnection.getDbType()
+          .getTableName().equalsIgnoreCase("marc_records_lb")) {
+          query = query.innerJoin(MARC_RECORDS_TRACKING)
+            .on(MARC_RECORDS_TRACKING.ID
+              .eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+              .and(MARC_RECORDS_TRACKING.VERSION
+                .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+        }
+        return query.where(
+            filterRecordByType(typeConnection.getRecordType().value())
+              .and(filterRecordByState(Record.State.ACTUAL.value()))
+              .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+              .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+          )
+          .offset(offset)
+          .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+      }
     )).map(queryResult -> queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
   }
 
@@ -292,7 +308,11 @@ public class RecordDaoImpl implements RecordDao {
     if (parseFieldsResult.isEnabled()) {
       parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
         Table marcIndexers = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
-        selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
+        selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))
+          .innerJoin(MARC_RECORDS_TRACKING)
+          .on(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID)).eq(MARC_RECORDS_TRACKING.ID)
+            .and(MARC_RECORDS_TRACKING.VERSION
+              .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION)))));
       });
     }
   }
@@ -944,6 +964,45 @@ public class RecordDaoImpl implements RecordDao {
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
+  }
+
+  @Override
+  public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
+    LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
+
+    String rawSQL =
+      "WITH deleted_rows AS (delete\n" +
+        "    from marc_indexers mi\n" +
+        "        where exists(\n" +
+        "                select 1\n" +
+        "                from marc_records_tracking mrt\n" +
+        "                where mrt.is_dirty = true\n" +
+        "                  and mrt.id = mi.marc_id\n" +
+        "                  and mrt.version != mi.version\n" +
+        "            )\n" +
+        "        returning mi.marc_id)\n" +
+        "SELECT DISTINCT marc_id\n" +
+        "FROM deleted_rows";
+
+    return executeInTransaction(QE -> QE
+        .executeAny(dsl -> dsl.resultQuery(rawSQL))
+        .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
+        .compose(res -> {
+          Collection<UUID> values = new ArrayList<>();
+          for (Row row : res) {
+            values.add(row.getUUID(0));
+          }
+          return QE.execute(dsl -> {
+            UpdateQuery<MarcRecordsTrackingRecord> query = dsl.updateQuery(MARC_RECORDS_TRACKING);
+            query.addValue(MARC_RECORDS_TRACKING.IS_DIRTY, false);
+            query.addConditions(MARC_RECORDS_TRACKING.ID.in(values));
+            return query;
+          });
+        })
+        .onFailure(th -> LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th))
+      , tenantId)
+      .map(res -> true)
+      .recover(th -> Future.succeededFuture(false));
   }
 
   @Override

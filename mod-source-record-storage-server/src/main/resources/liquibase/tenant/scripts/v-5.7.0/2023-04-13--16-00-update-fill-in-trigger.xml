@@ -28,7 +28,7 @@
         suffix text;
       begin
       execute 'update ${database.defaultSchemaName}.marc_indexers set version = 0;';
-      execute 'insert into ${database.defaultSchemaName}.marc_records_tracking select id, 0, false from marc_records_lb;';
+      execute 'insert into ${database.defaultSchemaName}.marc_records_tracking select id, 0, false from ${database.defaultSchemaName}.marc_records_lb;';
       for index in 0 .. 999
           loop
             suffix = lpad(index::text, 3, '0');

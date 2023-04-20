@@ -147,7 +147,7 @@
                                                                             is_dirty = true
                                                                         where id = NEW.id
                returning version into result;
-             delete from diku_mod_source_record_storage.marc_indexers_leader where marc_id = NEW.id;
+             delete from ${database.defaultSchemaName}.marc_indexers_leader where marc_id = NEW.id;
           end if;
           perform ${database.defaultSchemaName}.fill_in_marc_indexers(NEW.id, NEW.content, result);
           return NEW;

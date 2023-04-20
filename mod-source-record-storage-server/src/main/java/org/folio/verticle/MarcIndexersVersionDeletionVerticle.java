@@ -14,6 +14,11 @@ import org.springframework.stereotype.Component;
 
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
+/**
+ * This verticle is responsible for periodically deleting old versions of Marc Indexers for all tenants.
+ * The interval between each deletion can be configured using the "srs.marcIndexers.delete.interval.seconds"
+ * system property.
+ */
 @Component
 @Scope(SCOPE_PROTOTYPE)
 public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
@@ -43,6 +48,9 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
     startFuture.complete();
   }
 
+  /**
+   * Deletes old versions of Marc Indexers for all tenants in the system and returns a Future of Boolean.
+   */
   private Future<Boolean> deleteOldMarcIndexerVersions() {
     LOGGER.info("Performing marc_indexers old versions deletion...");
     long startTime = System.nanoTime();

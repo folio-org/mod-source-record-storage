@@ -304,7 +304,7 @@ public interface RecordDao {
   /**
    * Performs purge of marc indexer versions that are not the latest for each marc record
    *
-   * @return void future
+   * @return boolean future
    */
   Future<Boolean> deleteMarcIndexersOldVersions(String tenantId);
 

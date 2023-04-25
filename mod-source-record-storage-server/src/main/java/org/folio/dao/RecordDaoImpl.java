@@ -173,7 +173,7 @@ public class RecordDaoImpl implements RecordDao {
       "                from "+MARC_RECORDS_TRACKING.getName()+" mrt\n" +
       "                where mrt.is_dirty = true\n" +
       "                  and mrt.id = mi.marc_id\n" +
-      "                  and mrt.version != mi.version\n" +
+      "                  and mrt.version > mi.version\n" +
       "            )\n" +
       "        returning mi.marc_id)\n" +
       "insert into "+DELETE_MARC_INDEXERS_TEMP_TABLE+"\n" +

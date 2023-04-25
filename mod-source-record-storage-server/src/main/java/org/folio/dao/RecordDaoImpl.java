@@ -41,7 +41,6 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
-import org.folio.rest.jooq.tables.records.MarcRecordsTrackingRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
@@ -56,18 +55,19 @@ import org.jooq.JSONB;
 import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
+import org.jooq.Record1;
 import org.jooq.Record2;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectOnConditionStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
 import org.jooq.UpdateConditionStep;
-import org.jooq.UpdateQuery;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -115,6 +115,7 @@ import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.primaryKey;
 import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
@@ -163,17 +164,19 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.EXTERNAL_HRID
   };
 
+  private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
   private static final String DELETE_OLD_MARC_INDEXERS_SQL =
     "WITH deleted_rows AS (delete\n" +
       "    from marc_indexers mi\n" +
       "        where exists(\n" +
       "                select 1\n" +
-      "                from marc_records_tracking mrt\n" +
+      "                from "+MARC_RECORDS_TRACKING.getName()+" mrt\n" +
       "                where mrt.is_dirty = true\n" +
       "                  and mrt.id = mi.marc_id\n" +
       "                  and mrt.version != mi.version\n" +
       "            )\n" +
       "        returning mi.marc_id)\n" +
+      "insert into "+DELETE_MARC_INDEXERS_TEMP_TABLE+"\n" +
       "SELECT DISTINCT marc_id\n" +
       "FROM deleted_rows";
 
@@ -992,24 +995,30 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
-    return executeInTransaction(QE -> QE
-      // delete old marcIndexers versions
-        .executeAny(dsl -> dsl.resultQuery(DELETE_OLD_MARC_INDEXERS_SQL))
-        .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
-        .compose(res -> {
-          Collection<UUID> values = new ArrayList<>();
-          for (Row row : res) {
-            values.add(row.getUUID(0));
-          }
+    final String marc_id_field = "marc_id";
+    return executeInTransaction(QE ->
+        Future.succeededFuture()
+          // create temporary table
+          .compose(ar -> QE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
+            .column(marc_id_field, SQLDataType.UUID)
+            .constraint(primaryKey(marc_id_field))
+            .onCommitDrop()
+          ))
+          // delete old marc indexers versions
+          .compose(ar -> QE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+            .onFailure(th ->
+              LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
           // Update tracking table to show that a marc records has had its marcIndexers cleaned
-          return QE.execute(dsl -> {
-            UpdateQuery<MarcRecordsTrackingRecord> query = dsl.updateQuery(MARC_RECORDS_TRACKING);
-            query.addValue(MARC_RECORDS_TRACKING.IS_DIRTY, false);
-            query.addConditions(MARC_RECORDS_TRACKING.ID.in(values));
-            return query;
-          });
-        })
-        .onFailure(th -> LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th))
+          .compose(res -> QE.execute(dsl -> {
+              Table<Record1<UUID>> subquery = select(field(marc_id_field, SQLDataType.UUID))
+                .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
+              return dsl.update(MARC_RECORDS_TRACKING)
+                .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
+                .where(MARC_RECORDS_TRACKING.ID
+                  .in(select(subquery.field(marc_id_field, SQLDataType.UUID)).from(subquery)));
+            })
+            .onFailure(th ->
+              LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th)))
       , tenantId)
       .map(res -> true)
       .recover(th -> Future.succeededFuture(false));

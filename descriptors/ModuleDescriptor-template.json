@@ -219,6 +219,15 @@
           "methods": [
             "POST"
           ],
+          "pathPattern": "/source-storage/batch/parsed-records/fetch",
+          "permissionsRequired": [
+            "source-storage.records.fetch"
+          ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
           "pathPattern": "/source-storage/batch/verified-records",
           "permissionsRequired": [
             "source-storage.verified.records"
@@ -306,6 +315,11 @@
       "description": "Put Record"
     },
     {
+      "permissionName": "source-storage.records.fetch",
+      "displayName": "Source Storage - fetch record",
+      "description": "Fetch Record"
+    },
+    {
       "permissionName": "source-storage.records.update",
       "displayName": "Source Storage - update record",
       "description": "Update Record's fields"
@@ -338,6 +352,7 @@
         "source-storage.records.get",
         "source-storage.records.post",
         "source-storage.records.put",
+        "source-storage.records.fetch",
         "source-storage.records.delete",
         "source-storage.records.update",
         "source-storage.sourceRecords.get",

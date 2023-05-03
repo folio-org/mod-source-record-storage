@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.resource.SourceStorageBatch;
 import org.folio.rest.tools.utils.MetadataUtil;
@@ -97,6 +98,32 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("putSourceStorageBatchParsedRecords:: Failed to update parsed records", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void postSourceStorageBatchParsedRecordsFetch(FetchParsedRecordsBatchRequest entity,
+                                                       Map<String, String> okapiHeaders,
+                                                       Handler<AsyncResult<Response>> asyncResultHandler,
+                                                       Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.fetchParsedRecords(entity, tenantId)
+          .map(parsedRecordsBatchResponse -> {
+            if (!parsedRecordsBatchResponse.getRecords().isEmpty()) {
+              return PostSourceStorageBatchParsedRecordsFetchResponse.respond200WithApplicationJson(parsedRecordsBatchResponse);
+            } else {
+              LOG.warn("postSourceStorageBatchParsedRecordsFetch:: Batch of parsed records was fetched, but no records were found");
+              return PostSourceStorageBatchParsedRecordsFetchResponse.respond500WithApplicationJson(parsedRecordsBatchResponse);
+            }
+          })
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("postSourceStorageBatchParsedRecordsFetch:: Failed to fetch parsed records", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

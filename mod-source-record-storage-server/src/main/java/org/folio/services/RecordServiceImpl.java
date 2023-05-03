@@ -1,40 +1,39 @@
 package org.folio.services;
 
 import static java.lang.String.format;
-
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdsCondition;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
+import io.reactivex.Flowable;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
-
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.rest.jooq.enums.RecordState;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -46,9 +45,14 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -171,6 +175,22 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
+  public Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
+    var ids = fetchRequest.getConditions().getIds();
+    var idType = IdType.valueOf(fetchRequest.getConditions().getIdType());
+    if (ids.isEmpty()) {
+      Promise<RecordCollection> promise = Promise.promise();
+      promise.complete(new RecordCollection().withTotalRecords(0));
+      return promise.future();
+    }
+
+    var idsCondition = getExternalIdsCondition(ids, idType);
+    var recordType = toRecordType(fetchRequest.getRecordType().name());
+    return recordDao.getRecords(idsCondition, recordType, Collections.emptyList(), 0, ids.size(), tenantId)
+      .andThen(records -> filterFieldsByDataRange(records, fetchRequest));
+  }
+
+  @Override
   public Future<Record> getFormattedRecord(String id, IdType idType, String tenantId) {
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
@@ -215,7 +235,9 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
-    if (marcBibIds.size() > Short.MAX_VALUE) throw new BadRequestException("The number of IDs should not exceed 32767");
+    if (marcBibIds.size() > Short.MAX_VALUE) {
+      throw new BadRequestException("The number of IDs should not exceed 32767");
+    }
     return recordDao.verifyMarcBibRecords(marcBibIds, tenantId);
   }
 
@@ -229,9 +251,43 @@ public class RecordServiceImpl implements RecordService {
       RecordType recordType = toRecordType(record.getRecordType().name());
       recordType.formatRecord(record);
     } catch (Exception e) {
-      LOG.warn("formatMarcRecord:: Couldn't format {} record", record.getRecordType(), e );
+      LOG.warn("formatMarcRecord:: Couldn't format {} record", record.getRecordType(), e);
     }
     return record;
   }
 
+  private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
+                                       FetchParsedRecordsBatchRequest fetchRequest) {
+    recordCollectionAsyncResult.result().getRecords()
+      .forEach(record -> {
+        JsonObject parsedContent = JsonObject.mapFrom(record.getParsedRecord().getContent());
+        JsonArray fields = parsedContent.getJsonArray("fields");
+
+        var filteredFields = fields.stream()
+          .map(field -> (JsonObject) field)
+          .filter(field -> checkFieldRange(field, fetchRequest))
+          .collect(Collectors.toList());
+
+        parsedContent.put("fields", filteredFields);
+        record.getParsedRecord().setContent(parsedContent);
+      });
+  }
+
+  private boolean checkFieldRange(JsonObject fields, FetchParsedRecordsBatchRequest fetchRequest) {
+    var field = fields.fieldNames().iterator().next();
+
+    for (var range : fetchRequest.getData()) {
+      if (range.getField() != null &&
+        range.getField().equals(field)) {
+        return true;
+      }
+      int intField = Integer.parseInt(field);
+      if ((range.getTo() != null || range.getFrom() != null) &&
+        intField >= Integer.parseInt(range.getFrom()) &&
+        intField <= Integer.parseInt(range.getTo())) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

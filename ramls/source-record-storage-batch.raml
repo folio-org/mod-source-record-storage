@@ -13,6 +13,7 @@ types:
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
   recordsBatchResponse: !include raml-storage/schemas/dto/recordsBatchResponse.json
   parsedRecordsBatchResponse: !include raml-storage/schemas/dto/parsedRecordsBatchResponse.json
+  fetchParsedRecordsBatchRequest: !include raml-storage/schemas/dto/fetchParsedRecordsBatchRequest.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
   marcBibCollection: !include raml-storage/schemas/dto/marcBibCollection.json
 
@@ -103,3 +104,32 @@ traits:
               example: "Internal server error"
             application/json:
               type: parsedRecordsBatchResponse
+    /fetch:
+      post:
+        description: "Fetch exact fields of parsed records by external IDs."
+        is: [ validate ]
+        body:
+          application/json:
+            type: fetchParsedRecordsBatchRequest
+        responses:
+          200:
+            body:
+              application/json:
+                type: recordCollection
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          422:
+            description: "Unprocessable Entity"
+            body:
+              application/json:
+                type: errors
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"
+              application/json:
+                type: recordCollection

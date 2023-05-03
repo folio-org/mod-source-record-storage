@@ -7,6 +7,7 @@ import java.util.Optional;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -162,6 +163,15 @@ public interface RecordService {
   Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
 
   /**
+   * Fetch records by ids and filter marc fields by provided range of fields
+   *
+   * @param fetchRequest     fetch request
+   * @param tenantId         tenant id
+   * @return {@link Future} of {@link RecordCollection}
+   */
+  Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId);
+
+  /**
    * Searches for Record either by SRS id or external relation id
    *
    * @param id             either SRS id or external relation id
@@ -175,7 +185,7 @@ public interface RecordService {
    * Change suppress from discovery flag for record by external relation id
    *
    * @param id             id
-   * @param idType external id type
+   * @param idType         external id type
    * @param suppress       suppress from discovery
    * @param tenantId       tenant id
    * @return future with true if succeeded

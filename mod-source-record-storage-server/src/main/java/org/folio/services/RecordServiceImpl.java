@@ -259,17 +259,17 @@ public class RecordServiceImpl implements RecordService {
   private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
     recordCollectionAsyncResult.result().getRecords()
-      .forEach(record -> {
-        JsonObject parsedContent = JsonObject.mapFrom(record.getParsedRecord().getContent());
+      .forEach(recordToFilter -> {
+        JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());
         JsonArray fields = parsedContent.getJsonArray("fields");
 
         var filteredFields = fields.stream()
-          .map(field -> (JsonObject) field)
+          .map(JsonObject.class::cast)
           .filter(field -> checkFieldRange(field, fetchRequest))
           .collect(Collectors.toList());
 
         parsedContent.put("fields", filteredFields);
-        record.getParsedRecord().setContent(parsedContent);
+        recordToFilter.getParsedRecord().setContent(parsedContent.toString());
       });
   }
 
@@ -282,7 +282,7 @@ public class RecordServiceImpl implements RecordService {
         return true;
       }
       int intField = Integer.parseInt(field);
-      if ((range.getTo() != null || range.getFrom() != null) &&
+      if ((range.getFrom() != null || range.getTo() != null) &&
         intField >= Integer.parseInt(range.getFrom()) &&
         intField <= Integer.parseInt(range.getTo())) {
         return true;

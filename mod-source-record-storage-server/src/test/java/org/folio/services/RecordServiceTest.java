@@ -19,8 +19,11 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
+import org.folio.rest.jaxrs.model.Conditions;
+import org.folio.rest.jaxrs.model.Datum;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -115,6 +118,47 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(1), get.result().getRecords().get(0));
         compareRecords(context, expected.get(2), get.result().getRecords().get(1));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchBibRecordsByExternalId(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      String externalId = "3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc";
+
+      Conditions conditions = new Conditions();
+      conditions.setIdType(IdType.EXTERNAL.name());
+      conditions.setIds(List.of(externalId));
+
+      List<Datum> data = List.of(new Datum().withFrom("001").withTo("999"));
+
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest();
+      batchRequest.setRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB);
+      batchRequest.setConditions(conditions);
+      batchRequest.setData(data);
+
+      recordService.fetchParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
+          .sorted(comparing(Record::getOrder))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
         async.complete();
       });
     });

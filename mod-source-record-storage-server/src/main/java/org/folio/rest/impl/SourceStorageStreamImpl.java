@@ -67,7 +67,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   }
 
   @Override
-  public void getSourceStorageStreamRecords(String snapshotId, String recordType, String state, List<String> orderBy,
+  public void getSourceStorageStreamRecords(String snapshotId, String recordType, String state, List<String> orderBy, String totalRecords,
                                             @Min(0) @Max(2147483647) int offset, @Min(0) @Max(2147483647) int limit,
                                             RoutingContext routingContext,
                                             Map<String, String> okapiHeaders,
@@ -90,7 +90,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
                                                   String instanceId, String instanceHrid, String holdingsId,
                                                   String holdingsHrid, String recordType, Boolean suppressFromDiscovery,
                                                   Boolean deleted, String leaderRecordStatus, Date updatedAfter,
-                                                  Date updatedBefore, List<String> orderBy, int offset, int limit,
+                                                  Date updatedBefore, List<String> orderBy,  String totalRecords, int offset, int limit,
                                                   RoutingContext routingContext, Map<String, String> okapiHeaders,
                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HttpServerResponse response = prepareStreamResponse(routingContext);

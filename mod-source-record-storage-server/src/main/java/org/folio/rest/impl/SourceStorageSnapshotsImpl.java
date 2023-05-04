@@ -48,7 +48,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
   }
 
   @Override
-  public void postSourceStorageSnapshots(String lang, Snapshot entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageSnapshots(Snapshot entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -65,7 +65,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
   }
 
   @Override
-  public void getSourceStorageSnapshots(String status, List<String> orderBy, int offset, int limit, String lang,
+  public void getSourceStorageSnapshots(String status, List<String> orderBy,  String totalRecords, int offset, int limit,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -84,7 +84,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
   }
 
   @Override
-  public void putSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang, Snapshot entity,
+  public void putSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, Snapshot entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -102,7 +102,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
   }
 
   @Override
-  public void deleteSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang,
+  public void deleteSourceStorageSnapshotsByJobExecutionId(String jobExecutionId,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -122,7 +122,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
   }
 
   @Override
-  public void getSourceStorageSnapshotsByJobExecutionId(String jobExecutionId, String lang,
+  public void getSourceStorageSnapshotsByJobExecutionId(String jobExecutionId,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

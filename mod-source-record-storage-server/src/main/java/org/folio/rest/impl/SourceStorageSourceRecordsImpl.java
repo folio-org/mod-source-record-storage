@@ -62,7 +62,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
                                             String instanceId, String instanceHrid, String holdingsId, String holdingsHrid,
                                             String recordType, Boolean suppressFromDiscovery, Boolean deleted,
                                             String leaderRecordStatus, Date updatedAfter, Date updatedBefore,
-                                            List<String> orderBy, int offset, int limit, Map<String, String> okapiHeaders,
+                                            List<String> orderBy,  String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,
                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

@@ -1,6 +1,8 @@
 package org.folio.services;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static java.util.Objects.nonNull;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
@@ -18,7 +20,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -186,7 +187,7 @@ public class RecordServiceImpl implements RecordService {
 
     var idsCondition = getExternalIdsCondition(ids, idType);
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getRecords(idsCondition, recordType, Collections.emptyList(), 0, ids.size(), tenantId)
+    return recordDao.getRecords(idsCondition, recordType, emptyList(), 0, ids.size(), tenantId)
       .andThen(records -> filterFieldsByDataRange(records, fetchRequest));
   }
 
@@ -258,32 +259,28 @@ public class RecordServiceImpl implements RecordService {
 
   private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
-    recordCollectionAsyncResult.result().getRecords()
+    recordCollectionAsyncResult.result().getRecords().stream()
+      .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))
       .forEach(recordToFilter -> {
         JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());
         JsonArray fields = parsedContent.getJsonArray("fields");
 
-        var filteredFields = fields.stream()
+        var filteredFields = fields.stream().parallel()
           .map(JsonObject.class::cast)
           .filter(field -> checkFieldRange(field, fetchRequest))
           .collect(Collectors.toList());
 
         parsedContent.put("fields", filteredFields);
-        recordToFilter.getParsedRecord().setContent(parsedContent.toString());
+        recordToFilter.getParsedRecord().setContent(parsedContent.encode());
       });
   }
 
   private boolean checkFieldRange(JsonObject fields, FetchParsedRecordsBatchRequest fetchRequest) {
     var field = fields.fieldNames().iterator().next();
+    int intField = Integer.parseInt(field);
 
     for (var range : fetchRequest.getData()) {
-      if (range.getField() != null &&
-        range.getField().equals(field)) {
-        return true;
-      }
-      int intField = Integer.parseInt(field);
-      if ((range.getFrom() != null || range.getTo() != null) &&
-        intField >= Integer.parseInt(range.getFrom()) &&
+      if (intField >= Integer.parseInt(range.getFrom()) &&
         intField <= Integer.parseInt(range.getTo())) {
         return true;
       }

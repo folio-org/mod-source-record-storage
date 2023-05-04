@@ -268,10 +268,11 @@ public class RecordServiceImpl implements RecordService {
         var filteredFields = fields.stream().parallel()
           .map(JsonObject.class::cast)
           .filter(field -> checkFieldRange(field, fetchRequest))
+          .map(JsonObject::getMap)
           .collect(Collectors.toList());
 
         parsedContent.put("fields", filteredFields);
-        recordToFilter.getParsedRecord().setContent(parsedContent.encode());
+        recordToFilter.getParsedRecord().setContent(parsedContent.getMap());
       });
   }
 

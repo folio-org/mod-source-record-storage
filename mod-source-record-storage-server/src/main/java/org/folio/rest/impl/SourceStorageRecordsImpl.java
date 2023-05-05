@@ -49,7 +49,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void postSourceStorageRecords(String lang, Record entity, Map<String, String> okapiHeaders,
+  public void postSourceStorageRecords(Record entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -64,8 +64,8 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void getSourceStorageRecords(String snapshotId, String recordType, String state, List<String> orderBy, int offset, int limit,
-      String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
+  public void getSourceStorageRecords(String snapshotId, String recordType, String state, List<String> orderBy,  String totalRecords, int offset, int limit,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
       Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -83,7 +83,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void putSourceStorageRecordsById(String id, String lang, Record entity, Map<String, String> okapiHeaders,
+  public void putSourceStorageRecordsById(String id, Record entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -100,7 +100,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void deleteSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteSourceStorageRecordsById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -118,7 +118,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void getSourceStorageRecordsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getSourceStorageRecordsById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {

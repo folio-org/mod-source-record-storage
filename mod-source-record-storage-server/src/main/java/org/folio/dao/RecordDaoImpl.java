@@ -329,10 +329,9 @@ public class RecordDaoImpl implements RecordDao {
         Field<UUID> marcIndexersMarcIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID));
         Field<Integer> marcIndexersVersionField = field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION));
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))
-          .innerJoin(MARC_RECORDS_TRACKING) // join to marc_records_tracking to return latest version
-          .on(marcIndexersMarcIdField.eq(MARC_RECORDS_TRACKING.ID)
-            .and(MARC_RECORDS_TRACKING.VERSION
-              .eq(marcIndexersVersionField)));
+          .innerJoin(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin)) // join to marc_records_tracking to return latest version
+          .on(marcIndexersMarcIdField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).ID)
+            .and(marcIndexersVersionField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).VERSION)));
       });
     }
   }

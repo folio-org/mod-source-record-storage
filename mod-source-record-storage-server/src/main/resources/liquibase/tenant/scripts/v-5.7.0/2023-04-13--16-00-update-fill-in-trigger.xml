@@ -6,7 +6,7 @@
 
   <changeSet id="2023-04-13--16-00-create-marc-records-tracker-table" author="okolawole">
     <createTable tableName="marc_records_tracking">
-      <column name="id" type="uuid">
+      <column name="marc_id" type="uuid">
         <constraints primaryKey="true" nullable="false"/>
       </column>
       <column name="version" type="integer">
@@ -122,7 +122,7 @@
           if (TG_OP = 'DELETE') then
       delete from ${database.defaultSchemaName}.marc_indexers where marc_id = OLD.id;
       delete from ${database.defaultSchemaName}.marc_indexers_leader where marc_id = OLD.id;
-      delete from ${database.defaultSchemaName}.marc_records_tracking where id = OLD.id;
+      delete from ${database.defaultSchemaName}.marc_records_tracking where marc_id = OLD.id;
       end if;
       return OLD;
       end;
@@ -140,12 +140,12 @@
         result integer;
       begin
           if (TG_OP = 'INSERT') then
-              insert into ${database.defaultSchemaName}.marc_records_tracking(id, version, is_dirty) values (NEW.id, 0, true);
+              insert into ${database.defaultSchemaName}.marc_records_tracking(marc_id, version, is_dirty) values (NEW.id, 0, true);
               result = 0;
           elsif (TG_OP = 'UPDATE') then
              update ${database.defaultSchemaName}.marc_records_tracking set version = version + 1,
                                                                             is_dirty = true
-                                                                        where id = NEW.id
+                                                                        where marc_id = NEW.id
                returning version into result;
              delete from ${database.defaultSchemaName}.marc_indexers_leader where marc_id = NEW.id;
           end if;

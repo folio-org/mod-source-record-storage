@@ -172,7 +172,7 @@ public class RecordDaoImpl implements RecordDao {
       "                select 1\n" +
       "                from "+MARC_RECORDS_TRACKING.getName()+" mrt\n" +
       "                where mrt.is_dirty = true\n" +
-      "                  and mrt.id = mi.marc_id\n" +
+      "                  and mrt.marc_id = mi.marc_id\n" +
       "                  and mrt.version > mi.version\n" +
       "            )\n" +
       "        returning mi.marc_id)\n" +
@@ -229,7 +229,7 @@ public class RecordDaoImpl implements RecordDao {
         if (typeConnection.getDbType()
           .getTableName().equalsIgnoreCase(MARC_RECORDS_LB.getName())) {
           query = query.innerJoin(MARC_RECORDS_TRACKING)
-            .on(MARC_RECORDS_TRACKING.ID
+            .on(MARC_RECORDS_TRACKING.MARC_ID
               .eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
               .and(MARC_RECORDS_TRACKING.VERSION
                 .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
@@ -330,7 +330,7 @@ public class RecordDaoImpl implements RecordDao {
         Field<Integer> marcIndexersVersionField = field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION));
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))
           .innerJoin(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin)) // join to marc_records_tracking to return latest version
-          .on(marcIndexersMarcIdField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).ID)
+          .on(marcIndexersMarcIdField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).MARC_ID)
             .and(marcIndexersVersionField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).VERSION)));
       });
     }
@@ -1013,7 +1013,7 @@ public class RecordDaoImpl implements RecordDao {
                 .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
               return dsl.update(MARC_RECORDS_TRACKING)
                 .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
-                .where(MARC_RECORDS_TRACKING.ID
+                .where(MARC_RECORDS_TRACKING.MARC_ID
                   .in(select(subquery.field(marc_id_field, SQLDataType.UUID)).from(subquery)));
             })
             .onFailure(th ->

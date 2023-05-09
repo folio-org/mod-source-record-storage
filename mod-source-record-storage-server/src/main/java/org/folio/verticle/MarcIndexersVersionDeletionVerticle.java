@@ -25,11 +25,14 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Autowired
   private RecordDao recordDao;
+  private TenantDataProvider tenantDataProvider;
 
   @Autowired
-  private TenantDataProvider tenantDataProvider;
+  public MarcIndexersVersionDeletionVerticle(RecordDao recordDao, TenantDataProvider tenantDataProvider) {
+    this.recordDao = recordDao;
+    this.tenantDataProvider = tenantDataProvider;
+  }
 
   @Value("${srs.marcIndexers.delete.interval.seconds:1800}")
   private int interval;
@@ -51,7 +54,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   /**
    * Deletes old versions of Marc Indexers for all tenants in the system and returns a Future of Boolean.
    */
-  private Future<Boolean> deleteOldMarcIndexerVersions() {
+  Future<Boolean> deleteOldMarcIndexerVersions() {
     LOGGER.info("Performing marc_indexers old versions deletion...");
     long startTime = System.nanoTime();
     return tenantDataProvider.getModuleTenants()

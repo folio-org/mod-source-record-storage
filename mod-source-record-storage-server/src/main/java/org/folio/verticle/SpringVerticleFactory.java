@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.Callable;
 
+@SuppressWarnings("squid:S3749")
 @Component
 public class SpringVerticleFactory implements VerticleFactory, ApplicationContextAware {
   private ApplicationContext applicationContext;

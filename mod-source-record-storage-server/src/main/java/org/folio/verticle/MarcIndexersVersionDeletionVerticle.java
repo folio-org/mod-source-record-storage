@@ -62,11 +62,11 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
         LOGGER.error("could not get the list of tenants to delete marc indexer versions", ar.getCause()))
       .compose(ar -> {
         Future<Boolean> future = Future.succeededFuture();
-        if (ar.size() == 0) {
+        if (ar.isEmpty()) {
           LOGGER.info("no tenants available for marc_indexers deletion");
         }
         for (String tenantId : ar) {
-          future = future.compose(Void -> recordDao.deleteMarcIndexersOldVersions(tenantId));
+          future = future.compose(v -> recordDao.deleteMarcIndexersOldVersions(tenantId));
         }
         return future;
       })

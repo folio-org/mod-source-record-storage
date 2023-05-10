@@ -994,27 +994,26 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
-    final String marc_id_field = "marc_id";
-    return executeInTransaction(QE ->
+    return executeInTransaction(txQE ->
         Future.succeededFuture()
           // create temporary table
-          .compose(ar -> QE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
-            .column(marc_id_field, SQLDataType.UUID)
-            .constraint(primaryKey(marc_id_field))
+          .compose(ar -> txQE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
+            .column(MARC_ID, SQLDataType.UUID)
+            .constraint(primaryKey(MARC_ID))
             .onCommitDrop()
           ))
           // delete old marc indexers versions
-          .compose(ar -> QE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+          .compose(ar -> txQE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
             .onFailure(th ->
               LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
           // Update tracking table to show that a marc records has had its marcIndexers cleaned
-          .compose(res -> QE.execute(dsl -> {
-              Table<Record1<UUID>> subquery = select(field(marc_id_field, SQLDataType.UUID))
+          .compose(res -> txQE.execute(dsl -> {
+              Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
                 .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
               return dsl.update(MARC_RECORDS_TRACKING)
                 .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
                 .where(MARC_RECORDS_TRACKING.MARC_ID
-                  .in(select(subquery.field(marc_id_field, SQLDataType.UUID)).from(subquery)));
+                  .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)));
             })
             .onFailure(th ->
               LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th)))

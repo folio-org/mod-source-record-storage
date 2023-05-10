@@ -191,6 +191,23 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<RecordCollection> getParsedRecords(Condition condition, RecordType recordType, int offset, int limit, String tenantId) {
+    Name cte = name(CTE);
+    Name prt = name(recordType.getTableName());
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.selectCount()
+        .from(RECORDS_LB)
+        .where(condition.and(recordType.getRecordImplicitCondition()))))
+      .select(getAllRecordFieldsWithCount(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .where(condition.and(recordType.getRecordImplicitCondition()))
+      .offset(offset)
+      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+  }
+
+  @Override
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));

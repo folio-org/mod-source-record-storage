@@ -187,7 +187,7 @@ public class RecordServiceImpl implements RecordService {
 
     var idsCondition = getExternalIdsCondition(ids, idType);
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getRecords(idsCondition, recordType, emptyList(), 0, ids.size(), tenantId)
+    return recordDao.getParsedRecords(idsCondition, recordType, 0, ids.size(), tenantId)
       .andThen(records -> filterFieldsByDataRange(records, fetchRequest));
   }
 

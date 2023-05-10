@@ -111,14 +111,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
     vertxContext.runOnContext(v -> {
       try {
         recordService.fetchParsedRecords(entity, tenantId)
-          .map(parsedRecordsBatchResponse -> {
-            if (!parsedRecordsBatchResponse.getRecords().isEmpty()) {
-              return PostSourceStorageBatchParsedRecordsFetchResponse.respond200WithApplicationJson(parsedRecordsBatchResponse);
-            } else {
-              LOG.warn("postSourceStorageBatchParsedRecordsFetch:: Batch of parsed records was fetched, but no records were found");
-              return PostSourceStorageBatchParsedRecordsFetchResponse.respond500WithApplicationJson(parsedRecordsBatchResponse);
-            }
-          })
+          .map(PostSourceStorageBatchParsedRecordsFetchResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

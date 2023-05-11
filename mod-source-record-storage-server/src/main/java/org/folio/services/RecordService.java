@@ -169,7 +169,7 @@ public interface RecordService {
    * @param tenantId         tenant id
    * @return {@link Future} of {@link RecordCollection}
    */
-  Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId);
+  Future<SourceRecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId);
 
   /**
    * Searches for Record either by SRS id or external relation id

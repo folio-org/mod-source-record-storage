@@ -1,13 +1,11 @@
 package org.folio.services;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.getExternalIdsCondition;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
@@ -176,19 +174,22 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
+  public Future<SourceRecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
     var ids = fetchRequest.getConditions().getIds();
     var idType = IdType.valueOf(fetchRequest.getConditions().getIdType());
     if (ids.isEmpty()) {
-      Promise<RecordCollection> promise = Promise.promise();
-      promise.complete(new RecordCollection().withTotalRecords(0));
+      Promise<SourceRecordCollection> promise = Promise.promise();
+      promise.complete(new SourceRecordCollection().withTotalRecords(0));
       return promise.future();
     }
 
-    var idsCondition = getExternalIdsCondition(ids, idType);
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getParsedRecords(idsCondition, recordType, 0, ids.size(), tenantId)
-      .andThen(records -> filterFieldsByDataRange(records, fetchRequest));
+    return recordDao.getSourceRecords(ids, idType, recordType, true, tenantId)
+      .onComplete(records -> filterFieldsByDataRange(records, fetchRequest))
+      .onFailure(ex -> {
+        LOG.warn("fetchParsedRecords:: Failed to fetch parsed records {}", ex.getMessage());
+        throw new BadRequestException(ex.getCause());
+      });
   }
 
   @Override
@@ -257,9 +258,9 @@ public class RecordServiceImpl implements RecordService {
     return record;
   }
 
-  private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
+  private void filterFieldsByDataRange(AsyncResult<SourceRecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
-    recordCollectionAsyncResult.result().getRecords().stream()
+    recordCollectionAsyncResult.result().getSourceRecords().stream()
       .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))
       .forEach(recordToFilter -> {
         JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());

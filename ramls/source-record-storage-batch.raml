@@ -14,6 +14,7 @@ types:
   recordsBatchResponse: !include raml-storage/schemas/dto/recordsBatchResponse.json
   parsedRecordsBatchResponse: !include raml-storage/schemas/dto/parsedRecordsBatchResponse.json
   fetchParsedRecordsBatchRequest: !include raml-storage/schemas/dto/fetchParsedRecordsBatchRequest.json
+  sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
   marcBibCollection: !include raml-storage/schemas/dto/marcBibCollection.json
 
@@ -115,7 +116,7 @@ traits:
           200:
             body:
               application/json:
-                type: recordCollection
+                type: sourceRecordCollection
           400:
             description: "Bad request"
             body:

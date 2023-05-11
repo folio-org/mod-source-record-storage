@@ -150,13 +150,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        List<Record> expected = records.stream()
+        List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
-          .sorted(comparing(Record::getOrder))
+          .map(record -> record.withRawRecord(null))
+          .map(RecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        compareSourceRecords(context, expected.get(0), get.result().getSourceRecords().get(0));
         async.complete();
       });
     });
@@ -195,14 +196,15 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        List<Record> expected = records.stream()
+        List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
           .peek(r -> r.getParsedRecord().setContent(expectedContent))
-          .sorted(comparing(Record::getOrder))
+          .map(record -> record.withRawRecord(null))
+          .map(RecordDaoUtil::toSourceRecord)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        compareSourceRecords(context, expected.get(0), get.result().getSourceRecords().get(0));
         async.complete();
       });
     });

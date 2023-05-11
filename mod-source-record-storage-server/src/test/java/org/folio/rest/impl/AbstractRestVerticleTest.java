@@ -11,6 +11,7 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -86,7 +87,11 @@ public abstract class AbstractRestVerticleTest {
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
-    vertx = Vertx.vertx();
+
+    VertxOptions options = new VertxOptions();
+    options.setBlockedThreadCheckInterval(6000);
+    vertx = Vertx.vertx(options);
+
     cluster = provisionWith(defaultClusterConfig());
     cluster.start();
     String[] hostAndPort = cluster.getBrokerList().split(":");

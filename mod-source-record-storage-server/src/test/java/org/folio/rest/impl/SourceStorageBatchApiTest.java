@@ -238,7 +238,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(externalIds.size()))
+      .body("records.size()", is(externalIds.size()))
       .body("totalRecords", is(externalIds.size()));
     async.complete();
   }
@@ -263,7 +263,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(0))
+      .body("records.size()", is(0))
       .body("totalRecords", is(0));
     async.complete();
   }

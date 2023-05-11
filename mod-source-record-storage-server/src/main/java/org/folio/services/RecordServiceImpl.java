@@ -174,20 +174,20 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
+  public Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
     var ids = fetchRequest.getConditions().getIds();
     var idType = IdType.valueOf(fetchRequest.getConditions().getIdType());
     if (ids.isEmpty()) {
-      Promise<SourceRecordCollection> promise = Promise.promise();
-      promise.complete(new SourceRecordCollection().withTotalRecords(0));
+      Promise<RecordCollection> promise = Promise.promise();
+      promise.complete(new RecordCollection().withTotalRecords(0));
       return promise.future();
     }
 
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getSourceRecords(ids, idType, recordType, true, tenantId)
+    return recordDao.getParsedRecords(ids, idType, recordType, tenantId)
       .onComplete(records -> filterFieldsByDataRange(records, fetchRequest))
       .onFailure(ex -> {
-        LOG.warn("fetchParsedRecords:: Failed to fetch parsed records {}", ex.getMessage());
+        LOG.warn("fetchParsedRecords:: Failed to fetch parsed records. {}", ex.getMessage());
         throw new BadRequestException(ex.getCause());
       });
   }
@@ -258,9 +258,9 @@ public class RecordServiceImpl implements RecordService {
     return record;
   }
 
-  private void filterFieldsByDataRange(AsyncResult<SourceRecordCollection> recordCollectionAsyncResult,
+  private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
-    recordCollectionAsyncResult.result().getSourceRecords().stream()
+    recordCollectionAsyncResult.result().getRecords().stream()
       .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))
       .forEach(recordToFilter -> {
         JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());

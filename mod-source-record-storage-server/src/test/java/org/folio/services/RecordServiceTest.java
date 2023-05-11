@@ -150,14 +150,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        List<SourceRecord> expected = records.stream()
+        List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
-          .map(record -> record.withRawRecord(null))
-          .map(RecordDaoUtil::toSourceRecord)
+          .map(this::removeUnnecessaryFields)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected.get(0), get.result().getSourceRecords().get(0));
+        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
         async.complete();
       });
     });
@@ -196,15 +195,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
-        List<SourceRecord> expected = records.stream()
+        List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
           .peek(r -> r.getParsedRecord().setContent(expectedContent))
-          .map(record -> record.withRawRecord(null))
-          .map(RecordDaoUtil::toSourceRecord)
+          .map(this::removeUnnecessaryFields)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareSourceRecords(context, expected.get(0), get.result().getSourceRecords().get(0));
+        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
         async.complete();
       });
     });
@@ -1573,4 +1571,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getInstanceId(), actual.getInstanceId());
   }
 
+  private Record removeUnnecessaryFields(Record record) {
+    return record.withRawRecord(null)
+      .withLeaderRecordStatus(null)
+      .withAdditionalInfo(null)
+      .withGeneration(null)
+      .withSnapshotId(null)
+      .withMatchedId(null)
+      .withMetadata(null)
+      .withOrder(null);
+  }
 }

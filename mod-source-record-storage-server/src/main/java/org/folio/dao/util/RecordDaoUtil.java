@@ -294,6 +294,20 @@ public final class RecordDaoUtil {
       .withMetadata(toMetadata(pojo));
   }
 
+  public static Record toParsedRecord(Row row) {
+    RecordsLb pojo = new RecordsLb()
+      .setId(row.getUUID("id"))
+      .setRecordType(RecordType.valueOf(row.getString("record_type")))
+      .setExternalId(row.getUUID("external_id"))
+      .setState(RecordState.valueOf(row.getString("state")));
+
+    return new Record()
+      .withId(pojo.getId().toString())
+      .withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()))
+      .withState(State.valueOf(pojo.getState().toString()))
+      .withExternalIdsHolder(toExternalIdsHolder(pojo));
+  }
+
   /**
    * Convert database query result {@link Row} to {@link Optional} {@link Record}
    *

@@ -48,6 +48,17 @@ public interface RecordDao {
   Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * Searches for {@link Record} by {@link Condition} with only {@link ParsedRecord} content
+   *
+   * @param externalIds list of ids
+   * @param idType      external id type on which source record will be searched
+   * @param recordType  record type
+   * @param tenantId    tenant id
+   * @return {@link Future} of {@link RecordCollection}
+   */
+  Future<RecordCollection> getParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId);
+
+  /**
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit
    *
    * @param matchField          Marc field that needs to be matched

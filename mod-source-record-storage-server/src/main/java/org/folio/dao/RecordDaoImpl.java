@@ -191,6 +191,24 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<RecordCollection> getParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId) {
+    Name cte = name(CTE);
+    Name prt = name(recordType.getTableName());
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.selectCount()
+        .from(RECORDS_LB)
+        .where(condition.and(recordType.getRecordImplicitCondition()))))
+      .select(field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
+        COUNT_FIELD, RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID, RECORDS_LB.RECORD_TYPE, RECORDS_LB.STATE)
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(recordType.getRecordImplicitCondition()))
+    )).map(this::toParsedRecordCollection);
+  }
+
+  @Override
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
@@ -1122,6 +1140,18 @@ public class RecordDaoImpl implements RecordDao {
     return recordCollection;
   }
 
+  private RecordCollection toParsedRecordCollection(QueryResult result) {
+    RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
+    List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      recordCollection.setTotalRecords(row.getInteger(COUNT));
+      return toParsedRecord(row);
+    }).collect(Collectors.toList());
+    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
+      recordCollection.withRecords(records);
+    }
+    return recordCollection;
+  }
+
   /*
    * Code to avoid the occurrence of records when limit equals to zero
    */
@@ -1170,6 +1200,15 @@ public class RecordDaoImpl implements RecordDao {
     ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
     if (Objects.nonNull(errorRecord.getContent())) {
       record.setErrorRecord(errorRecord);
+    }
+    return record;
+  }
+
+  private Record toParsedRecord(Row row) {
+    Record record = RecordDaoUtil.toParsedRecord(row);
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      record.setParsedRecord(parsedRecord);
     }
     return record;
   }

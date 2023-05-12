@@ -1269,6 +1269,54 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Test
+  public void shouldReturnActualRecordsOnFilteringByDeleted(TestContext testContext) {
+    postSnapshots(testContext, snapshot_2);
+
+    Record record1 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withLeaderRecordStatus("d")
+      .withState(Record.State.OLD);
+
+    Record record2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withLeaderRecordStatus("d")
+      .withState(Record.State.ACTUAL);
+
+    Record record3 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withLeaderRecordStatus("d")
+      .withState(Record.State.DELETED);
+
+    postRecords(testContext, record1, record2, record3);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?deleted=true")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2));
+    async.complete();
+  }
+
   private void shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(TestContext testContext, RecordType recordType,
                                                                          Record record, Snapshot snapshot) {
     postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3, snapshot);

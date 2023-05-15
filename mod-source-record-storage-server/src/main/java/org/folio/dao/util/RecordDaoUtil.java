@@ -22,6 +22,7 @@ import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGeneri
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.jooq.Condition;
@@ -510,6 +511,19 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} to filter by leader record status list
+   *
+   * @param statuses leader record statuses to equal
+   * @return condition
+   */
+  public static Condition filterRecordByLeaderRecordStatus(List<String> statuses) {
+    if (ObjectUtils.isNotEmpty(statuses)) {
+      return RECORDS_LB.LEADER_RECORD_STATUS.in(statuses);
+    }
+    return DSL.noCondition();
+  }
+
+  /**
    * Get {@link Condition} to filter by range of updated date
    *
    * @param updatedAfter  updated after to be greater than or equal
@@ -528,7 +542,7 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by state ACTUAL or DELETED or leader record status d, s, or x
+   * Get {@link Condition} to filter by state ACTUAL or DELETED or ACTUAL and leader record status d, s, or x
    *
    * @param deleted deleted flag
    * @return condition
@@ -536,10 +550,8 @@ public final class RecordDaoUtil {
   public static Condition filterRecordByDeleted(Boolean deleted) {
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
     if (Boolean.TRUE.equals(deleted)) {
-      condition = condition.or(filterRecordByState(RecordState.DELETED.name()));
-      for (String status : DELETED_LEADER_RECORD_STATUS) {
-        condition = condition.or(filterRecordByLeaderRecordStatus(status));
-      }
+      condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
+        .or(filterRecordByState(RecordState.ACTUAL.name()).and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS)));
     }
     return condition;
   }

@@ -1283,12 +1283,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private StrippedParsedRecord toStrippedParsedRecord(Row row) {
-    StrippedParsedRecord record = RecordDaoUtil.toStrippedParsedRecord(row);
+    StrippedParsedRecord strippedRecord = RecordDaoUtil.toStrippedParsedRecord(row);
     ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
     if (Objects.nonNull(parsedRecord.getContent())) {
-      record.setParsedRecord(parsedRecord);
+      strippedRecord.setParsedRecord(parsedRecord);
     }
-    return record;
+    return strippedRecord;
   }
 
   private void logRecordCollection(String msg, RecordCollection recordCollection, String tenantId) {

@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
 import org.folio.dao.util.MatchField;
@@ -48,15 +49,15 @@ public interface RecordDao {
   Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
-   * Searches for {@link Record} by {@link Condition} with only {@link ParsedRecord} content
+   * Searches for records by {@link Condition} with only {@link ParsedRecord} content
    *
    * @param externalIds list of ids
    * @param idType      external id type on which source record will be searched
    * @param recordType  record type
    * @param tenantId    tenant id
-   * @return {@link Future} of {@link RecordCollection}
+   * @return {@link Future} of {@link StrippedParsedRecordCollection}
    */
-  Future<RecordCollection> getParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId);
+  Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId);
 
   /**
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit

@@ -110,7 +110,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
                                                        Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.fetchParsedRecords(entity, tenantId)
+        recordService.fetchStrippedParsedRecords(entity, tenantId)
           .map(PostSourceStorageBatchParsedRecordsFetchResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

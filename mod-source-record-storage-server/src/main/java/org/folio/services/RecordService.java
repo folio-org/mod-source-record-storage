@@ -17,6 +17,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -163,13 +164,13 @@ public interface RecordService {
   Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
 
   /**
-   * Fetch records by ids and filter marc fields by provided range of fields
+   * Fetch stripped parsed records by ids and filter marc fields by provided range of fields
    *
    * @param fetchRequest     fetch request
    * @param tenantId         tenant id
-   * @return {@link Future} of {@link RecordCollection}
+   * @return {@link Future} of {@link StrippedParsedRecordCollection}
    */
-  Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId);
+  Future<StrippedParsedRecordCollection> fetchStrippedParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId);
 
   /**
    * Searches for Record either by SRS id or external relation id

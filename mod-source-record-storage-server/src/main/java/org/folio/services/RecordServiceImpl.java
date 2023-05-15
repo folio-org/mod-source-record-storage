@@ -44,6 +44,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -174,17 +175,17 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordCollection> fetchParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
+  public Future<StrippedParsedRecordCollection> fetchStrippedParsedRecords(FetchParsedRecordsBatchRequest fetchRequest, String tenantId) {
     var ids = fetchRequest.getConditions().getIds();
     var idType = IdType.valueOf(fetchRequest.getConditions().getIdType());
     if (ids.isEmpty()) {
-      Promise<RecordCollection> promise = Promise.promise();
-      promise.complete(new RecordCollection().withTotalRecords(0));
+      Promise<StrippedParsedRecordCollection> promise = Promise.promise();
+      promise.complete(new StrippedParsedRecordCollection().withTotalRecords(0));
       return promise.future();
     }
 
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getParsedRecords(ids, idType, recordType, tenantId)
+    return recordDao.getStrippedParsedRecords(ids, idType, recordType, tenantId)
       .onComplete(records -> filterFieldsByDataRange(records, fetchRequest))
       .onFailure(ex -> {
         LOG.warn("fetchParsedRecords:: Failed to fetch parsed records. {}", ex.getMessage());
@@ -258,7 +259,7 @@ public class RecordServiceImpl implements RecordService {
     return record;
   }
 
-  private void filterFieldsByDataRange(AsyncResult<RecordCollection> recordCollectionAsyncResult,
+  private void filterFieldsByDataRange(AsyncResult<StrippedParsedRecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
     recordCollectionAsyncResult.result().getRecords().stream()
       .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))

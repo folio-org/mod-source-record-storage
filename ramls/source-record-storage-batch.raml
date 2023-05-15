@@ -10,12 +10,13 @@ documentation:
     content: Batch API for managing records
 
 types:
+  errors: !include raml-storage/raml-util/schemas/errors.schema
   recordCollection: !include raml-storage/schemas/dto/recordCollection.json
+  marcBibCollection: !include raml-storage/schemas/dto/marcBibCollection.json
   recordsBatchResponse: !include raml-storage/schemas/dto/recordsBatchResponse.json
   parsedRecordsBatchResponse: !include raml-storage/schemas/dto/parsedRecordsBatchResponse.json
   fetchParsedRecordsBatchRequest: !include raml-storage/schemas/dto/fetchParsedRecordsBatchRequest.json
-  errors: !include raml-storage/raml-util/schemas/errors.schema
-  marcBibCollection: !include raml-storage/schemas/dto/marcBibCollection.json
+  strippedParsedRecordCollection: !include raml-storage/schemas/dto/strippedParsedRecordCollection.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -115,7 +116,7 @@ traits:
           200:
             body:
               application/json:
-                type: recordCollection
+                type: strippedParsedRecordCollection
           400:
             description: "Bad request"
             body:
@@ -131,5 +132,3 @@ traits:
             body:
               text/plain:
                 example: "Internal server error"
-              application/json:
-                type: recordCollection

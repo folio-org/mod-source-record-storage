@@ -33,6 +33,7 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -146,14 +147,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withConditions(conditions)
         .withData(data);
 
-      recordService.fetchParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
-          .map(this::removeUnnecessaryFields)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
@@ -191,7 +191,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withConditions(conditions)
         .withData(data);
 
-      recordService.fetchParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -199,7 +199,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
           .peek(r -> r.getParsedRecord().setContent(expectedContent))
-          .map(this::removeUnnecessaryFields)
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
@@ -1454,12 +1453,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private void compareRecords(TestContext context, Record expected, Record actual) {
-    var recordType = expected.getRecordType();
     context.assertNotNull(actual);
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
     context.assertEquals(expected.getMatchedId(), actual.getMatchedId());
-    context.assertEquals(recordType, actual.getRecordType());
+    context.assertEquals(expected.getRecordType(), actual.getRecordType());
     context.assertEquals(expected.getState(), actual.getState());
     context.assertEquals(expected.getLeaderRecordStatus(), actual.getLeaderRecordStatus());
     context.assertEquals(expected.getOrder(), actual.getOrder());
@@ -1472,7 +1470,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     if (Objects.nonNull(expected.getParsedRecord())) {
       compareParsedRecords(context, expected.getParsedRecord(), actual.getParsedRecord());
     } else {
-      context.assertNull(actual.getRawRecord());
+      context.assertNull(actual.getParsedRecord());
     }
     if (Objects.nonNull(expected.getErrorRecord())) {
       compareErrorRecords(context, expected.getErrorRecord(), actual.getErrorRecord());
@@ -1496,6 +1494,22 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     }
   }
 
+  private void compareRecords(TestContext context, Record expected, StrippedParsedRecord actual) {
+    context.assertNotNull(actual);
+    context.assertEquals(expected.getId(), actual.getId());
+    context.assertEquals(expected.getRecordType().toString(), actual.getRecordType().toString());
+    if (Objects.nonNull(expected.getParsedRecord())) {
+      compareParsedRecords(context, expected.getParsedRecord(), actual.getParsedRecord());
+    } else {
+      context.assertNull(actual.getParsedRecord());
+    }
+    if (Objects.nonNull(expected.getExternalIdsHolder())) {
+      compareExternalIdsHolder(context, expected.getExternalIdsHolder(), actual.getExternalIdsHolder());
+    } else {
+      context.assertNull(actual.getExternalIdsHolder());
+    }
+  }
+
   private void compareSourceRecords(TestContext context, List<SourceRecord> expected, List<SourceRecord> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (SourceRecord sourceRecord : expected) {
@@ -1505,10 +1519,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void compareSourceRecords(TestContext context, SourceRecord expected, SourceRecord actual) {
     context.assertNotNull(actual);
-    var recordType = expected.getRecordType();
     context.assertEquals(expected.getRecordId(), actual.getRecordId());
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
-    context.assertEquals(recordType, actual.getRecordType());
+    context.assertEquals(expected.getRecordType(), actual.getRecordType());
     context.assertEquals(expected.getOrder(), actual.getOrder());
     if (Objects.nonNull(expected.getRawRecord())) {
       compareRawRecords(context, expected.getRawRecord(), actual.getRawRecord());
@@ -1569,16 +1582,5 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void compareExternalIdsHolder(TestContext context, ExternalIdsHolder expected, ExternalIdsHolder actual) {
     context.assertEquals(expected.getInstanceId(), actual.getInstanceId());
-  }
-
-  private Record removeUnnecessaryFields(Record record) {
-    return record.withRawRecord(null)
-      .withLeaderRecordStatus(null)
-      .withAdditionalInfo(null)
-      .withGeneration(null)
-      .withSnapshotId(null)
-      .withMatchedId(null)
-      .withMetadata(null)
-      .withOrder(null);
   }
 }

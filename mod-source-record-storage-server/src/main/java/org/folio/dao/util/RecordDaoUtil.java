@@ -23,6 +23,7 @@ import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.OrderField;
@@ -294,17 +295,20 @@ public final class RecordDaoUtil {
       .withMetadata(toMetadata(pojo));
   }
 
-  public static Record toParsedRecord(Row row) {
+  //TODO: Update JOOQ versions, or replace RowMappers
+  // Since Vert.x v3.9.4 Row methods throws NoSuchElementException instead of returning null
+  // So RowMappers can't be used when not all columns where selected
+  public static StrippedParsedRecord toStrippedParsedRecord(Row row) {
     RecordsLb pojo = new RecordsLb()
       .setId(row.getUUID("id"))
       .setRecordType(RecordType.valueOf(row.getString("record_type")))
       .setExternalId(row.getUUID("external_id"))
       .setState(RecordState.valueOf(row.getString("state")));
 
-    return new Record()
+    return new StrippedParsedRecord()
       .withId(pojo.getId().toString())
-      .withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()))
-      .withState(State.valueOf(pojo.getState().toString()))
+      .withRecordType(StrippedParsedRecord.RecordType.valueOf(pojo.getRecordType().toString()))
+      .withRecordState(StrippedParsedRecord.RecordState.valueOf(pojo.getState().toString()))
       .withExternalIdsHolder(toExternalIdsHolder(pojo));
   }
 

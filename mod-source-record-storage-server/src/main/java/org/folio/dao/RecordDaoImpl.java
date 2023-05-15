@@ -38,6 +38,8 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecord;
+import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
@@ -191,7 +193,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordCollection> getParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId) {
+  public Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
     Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType);
@@ -205,7 +207,7 @@ public class RecordDaoImpl implements RecordDao {
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
       .where(condition.and(recordType.getRecordImplicitCondition()))
-    )).map(this::toParsedRecordCollection);
+    )).map(this::toStrippedParsedRecordCollection);
   }
 
   @Override
@@ -1140,11 +1142,11 @@ public class RecordDaoImpl implements RecordDao {
     return recordCollection;
   }
 
-  private RecordCollection toParsedRecordCollection(QueryResult result) {
-    RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
-    List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(QueryResult result) {
+    StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
+    List<StrippedParsedRecord> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
-      return toParsedRecord(row);
+      return toStrippedParsedRecord(row);
     }).collect(Collectors.toList());
     if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
@@ -1204,8 +1206,8 @@ public class RecordDaoImpl implements RecordDao {
     return record;
   }
 
-  private Record toParsedRecord(Row row) {
-    Record record = RecordDaoUtil.toParsedRecord(row);
+  private StrippedParsedRecord toStrippedParsedRecord(Row row) {
+    StrippedParsedRecord record = RecordDaoUtil.toStrippedParsedRecord(row);
     ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
     if (Objects.nonNull(parsedRecord.getContent())) {
       record.setParsedRecord(parsedRecord);

@@ -1,0 +1,168 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2023-04-13--16-00-create-marc-records-tracker-table" author="okolawole">
+    <createTable tableName="marc_records_tracking">
+      <column name="marc_id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="version" type="integer">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="is_dirty" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addColumn tableName="marc_indexers">
+      <column name="version" type="integer"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="2023-04-13--16-00-create-index_on_marc_indexers.xml" author="okolawole">
+    <sql splitStatements="false">
+      do $$ declare
+      index integer;
+        suffix text;
+      begin
+      execute 'update ${database.defaultSchemaName}.marc_indexers set version = 0;';
+      execute 'insert into ${database.defaultSchemaName}.marc_records_tracking select id, 0, false from ${database.defaultSchemaName}.marc_records_lb;';
+      for index in 0 .. 999
+          loop
+            suffix = lpad(index::text, 3, '0');
+      execute 'drop index if exists idx_marc_indexers_marc_id_' || suffix || ';';
+      execute 'create index idx_marc_indexers_marc_id_version_' || suffix || ' on ${database.defaultSchemaName}.marc_indexers_' || suffix || '(marc_id, version);';
+      end loop;
+      end;
+      $$;
+    </sql>
+    <addNotNullConstraint columnName="version" tableName="marc_indexers"/>
+    <createIndex indexName="idx_marc_records_tracking_dirty" tableName="marc_records_tracking">
+      <column name="is_dirty"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet id="2023-04-13--16-00-update-function-fill_in_marc_indexers" author="okolawole">
+    <sql splitStatements="false">
+      create or replace function ${database.defaultSchemaName}.fill_in_marc_indexers(p_marc_id uuid, p_marc_content jsonb, p_version integer)
+      returns void
+      as
+      $fill_in_marc_indexers$
+      begin
+      insert into ${database.defaultSchemaName}.marc_indexers (field_no, ind1, ind2, subfield_no, value, marc_id, version)
+        (with vals as (select value from jsonb_array_elements((
+          select value
+          from jsonb_each(p_marc_content) x
+          where key = 'fields')) y),
+              fields as (select x.key as field_no, x.value as field_value
+                         from vals,
+                              jsonb_each(vals.value) x),
+              fields_subfields as (
+                select field_no,
+                       trim(field_value ->> 'ind1'::text) ind1,
+                       trim(field_value ->> 'ind2')       ind2,
+                       field_value -> 'subfields'         subfields,
+                       field_value                   from fields),
+              marc_raw as (
+                select fs.field_no, fs.ind1, fs.ind2, fs.field_value, null::text subfield_no, null::text subfield_value
+                from fields_subfields fs
+                where subfields is null
+                union all
+                select fs.field_no, fs.ind1, fs.ind2, fs.field_value, subfs.key::text subfield_no, subfs.value::text subfield_value
+                from fields_subfields fs,
+                     jsonb_array_elements(fs.subfields) sx,
+                     jsonb_each(sx.value) subfs
+                where subfields is not null),
+              marc as (
+                select m.field_no,
+                       CASE WHEN ind1 IS NULL or ind1 = '' THEN '#' ELSE ind1 END
+                         as ind1,
+                       CASE WHEN ind2 IS NULL or ind2 = '' THEN '#' ELSE ind2 END
+                         as ind2,
+                       CASE WHEN subfield_no IS NULL or trim(subfield_no) = '' THEN '0' ELSE subfield_no END
+                         as subfield_no,
+                       trim(both '"' from coalesce(subfield_value, field_value::text))
+           as value
+         from marc_raw m)
+      select distinct lower(field_no) field_no, ind1, ind2, subfield_no, value, p_marc_id marc_id, p_version from marc);
+--
+      insert into ${database.defaultSchemaName}.marc_indexers_leader(p_00_04, p_05, p_06, p_07, p_08, p_09, p_10, p_11, p_12_16, p_17,p_18, p_19, p_20, p_21, p_22, marc_id)
+        (select substring(value from 1 for 5)  p_00_04,
+                substring(value from 6 for 1)  p_05,
+                substring(value from 7 for 1)  p_06,
+                substring(value from 8 for 1)  p_07,
+                substring(value from 9 for 1)  p_08,
+                substring(value from 10 for 1) p_09,
+                substring(value from 11 for 1) p_10,
+                substring(value from 12 for 1) p_11,
+                substring(value from 13 for 5) p_12_16,
+                substring(value from 18 for 1) p_17,
+                substring(value from 19 for 1) p_18,
+                substring(value from 20 for 1) p_19,
+                substring(value from 21 for 1) p_20,
+                substring(value from 22 for 1) p_21,
+                substring(value from 23 for 1) p_22,
+                marc_id
+         from (select replace(lower(trim(both '"' from value::text)), ' ', '#') as value,
+                               p_marc_id marc_id
+               from jsonb_each(p_marc_content) x
+               where key = 'leader') y);
+      end;
+      $fill_in_marc_indexers$ language plpgsql;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2023-04-13--16-00-update-function-delete_marc_indexers" author="okolawole">
+    <sql splitStatements="false">
+      create or replace function ${database.defaultSchemaName}.delete_marc_indexers()
+      returns trigger as $delete_marc_indexers$
+      begin
+          if (TG_OP = 'DELETE') then
+      delete from ${database.defaultSchemaName}.marc_indexers where marc_id = OLD.id;
+      delete from ${database.defaultSchemaName}.marc_indexers_leader where marc_id = OLD.id;
+      delete from ${database.defaultSchemaName}.marc_records_tracking where marc_id = OLD.id;
+      end if;
+      return OLD;
+      end;
+      $delete_marc_indexers$ language plpgsql;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2023-04-13--16-00-update-function-insert_marc_indexers" author="okolawole">
+    <sql splitStatements="false">
+      create or replace function ${database.defaultSchemaName}.insert_marc_indexers()
+      returns trigger
+      as
+      $insert_marc_indexers$
+      declare
+        result integer;
+      begin
+          if (TG_OP = 'INSERT') then
+              insert into ${database.defaultSchemaName}.marc_records_tracking(marc_id, version, is_dirty) values (NEW.id, 0, true);
+              result = 0;
+          elsif (TG_OP = 'UPDATE') then
+             update ${database.defaultSchemaName}.marc_records_tracking set version = version + 1,
+                                                                            is_dirty = true
+                                                                        where marc_id = NEW.id
+               returning version into result;
+             delete from ${database.defaultSchemaName}.marc_indexers_leader where marc_id = NEW.id;
+          end if;
+          perform ${database.defaultSchemaName}.fill_in_marc_indexers(NEW.id, NEW.content, result);
+          return NEW;
+      end;
+      $insert_marc_indexers$ language plpgsql;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2021-02-13--12-30-drop-and-create-triggers" author="okolawole" runOnChange="true">
+    <sql splitStatements="false">
+      drop trigger if exists process_marc_records_lb_delete_trigger on ${database.defaultSchemaName}.marc_records_lb;
+      create trigger process_marc_records_lb_delete_trigger before delete on ${database.defaultSchemaName}.marc_records_lb for each row execute procedure ${database.defaultSchemaName}.delete_marc_indexers();
+      drop trigger if exists process_marc_records_lb_insert_update_trigger on ${database.defaultSchemaName}.marc_records_lb;
+      create trigger process_marc_records_lb_insert_update_trigger after insert or update on ${database.defaultSchemaName}.marc_records_lb for each row execute procedure ${database.defaultSchemaName}.insert_marc_indexers();
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -224,8 +224,7 @@ public class RecordDaoImpl implements RecordDao {
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(recordType.getRecordImplicitCondition()))))
-      .select(field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
-        COUNT_FIELD, RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID, RECORDS_LB.RECORD_TYPE, RECORDS_LB.STATE)
+      .select(getStrippedParsedRecordWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
@@ -1204,6 +1203,14 @@ public class RecordDaoImpl implements RecordDao {
     return (Field<?>[]) ArrayUtils.addAll(getAllRecordFields(prt), new Field<?>[] {
       COUNT_FIELD
     });
+  }
+
+  private Field<?>[] getStrippedParsedRecordWithCount(Name prt) {
+    return new Field<?>[] { COUNT_FIELD,
+      RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID,
+      RECORDS_LB.STATE, RECORDS_LB.RECORD_TYPE,
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT)
+    };
   }
 
   private RecordCollection toRecordCollection(QueryResult result) {

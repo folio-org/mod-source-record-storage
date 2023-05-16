@@ -38,6 +38,8 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.StrippedParsedRecord;
+import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
@@ -211,6 +213,23 @@ public class RecordDaoImpl implements RecordDao {
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+  }
+
+  @Override
+  public Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId) {
+    Name cte = name(CTE);
+    Name prt = name(recordType.getTableName());
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
+      .with(cte.as(dsl.selectCount()
+        .from(RECORDS_LB)
+        .where(condition.and(recordType.getRecordImplicitCondition()))))
+      .select(getStrippedParsedRecordWithCount(prt))
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(recordType.getRecordImplicitCondition()))
+    )).map(this::toStrippedParsedRecordCollection);
   }
 
   @Override
@@ -548,7 +567,7 @@ public class RecordDaoImpl implements RecordDao {
             .errors();
 
           recordsLoadingErrors.forEach(error -> {
-            if(error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+            if (error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
               throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
             }
             LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
@@ -1186,11 +1205,31 @@ public class RecordDaoImpl implements RecordDao {
     });
   }
 
+  private Field<?>[] getStrippedParsedRecordWithCount(Name prt) {
+    return new Field<?>[] { COUNT_FIELD,
+      RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID,
+      RECORDS_LB.STATE, RECORDS_LB.RECORD_TYPE,
+      field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT)
+    };
+  }
+
   private RecordCollection toRecordCollection(QueryResult result) {
     RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
     List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
       return toRecord(row);
+    }).collect(Collectors.toList());
+    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
+      recordCollection.withRecords(records);
+    }
+    return recordCollection;
+  }
+
+  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(QueryResult result) {
+    StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
+    List<StrippedParsedRecord> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+      recordCollection.setTotalRecords(row.getInteger(COUNT));
+      return toStrippedParsedRecord(row);
     }).collect(Collectors.toList());
     if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
@@ -1248,6 +1287,15 @@ public class RecordDaoImpl implements RecordDao {
       record.setErrorRecord(errorRecord);
     }
     return record;
+  }
+
+  private StrippedParsedRecord toStrippedParsedRecord(Row row) {
+    StrippedParsedRecord strippedRecord = RecordDaoUtil.toStrippedParsedRecord(row);
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      strippedRecord.setParsedRecord(parsedRecord);
+    }
+    return strippedRecord;
   }
 
   private void logRecordCollection(String msg, RecordCollection recordCollection, String tenantId) {

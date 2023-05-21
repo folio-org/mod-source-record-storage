@@ -37,6 +37,7 @@ import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
+import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -261,28 +262,31 @@ public class RecordServiceImpl implements RecordService {
 
   private void filterFieldsByDataRange(AsyncResult<StrippedParsedRecordCollection> recordCollectionAsyncResult,
                                        FetchParsedRecordsBatchRequest fetchRequest) {
-    recordCollectionAsyncResult.result().getRecords().stream()
-      .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))
-      .forEach(recordToFilter -> {
-        JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());
-        JsonArray fields = parsedContent.getJsonArray("fields");
+    var data = fetchRequest.getData();
+    if (data != null && !data.isEmpty()) {
+      recordCollectionAsyncResult.result().getRecords().stream()
+        .filter(recordToFilter -> nonNull(recordToFilter.getParsedRecord()))
+        .forEach(recordToFilter -> {
+          JsonObject parsedContent = JsonObject.mapFrom(recordToFilter.getParsedRecord().getContent());
+          JsonArray fields = parsedContent.getJsonArray("fields");
 
-        var filteredFields = fields.stream().parallel()
-          .map(JsonObject.class::cast)
-          .filter(field -> checkFieldRange(field, fetchRequest))
-          .map(JsonObject::getMap)
-          .collect(Collectors.toList());
+          var filteredFields = fields.stream().parallel()
+            .map(JsonObject.class::cast)
+            .filter(field -> checkFieldRange(field, data))
+            .map(JsonObject::getMap)
+            .collect(Collectors.toList());
 
-        parsedContent.put("fields", filteredFields);
-        recordToFilter.getParsedRecord().setContent(parsedContent.getMap());
-      });
+          parsedContent.put("fields", filteredFields);
+          recordToFilter.getParsedRecord().setContent(parsedContent.getMap());
+        });
+    }
   }
 
-  private boolean checkFieldRange(JsonObject fields, FetchParsedRecordsBatchRequest fetchRequest) {
+  private boolean checkFieldRange(JsonObject fields, List<FieldRange> data) {
     var field = fields.fieldNames().iterator().next();
     int intField = Integer.parseInt(field);
 
-    for (var range : fetchRequest.getData()) {
+    for (var range : data) {
       if (intField >= Integer.parseInt(range.getFrom()) &&
         intField <= Integer.parseInt(range.getTo())) {
         return true;

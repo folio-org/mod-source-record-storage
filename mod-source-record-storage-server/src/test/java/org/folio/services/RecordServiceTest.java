@@ -20,10 +20,10 @@ import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.Conditions;
-import org.folio.rest.jaxrs.model.Datum;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
+import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -137,7 +137,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
 
       String externalId = "3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc";
-      List<Datum> data = List.of(new Datum().withFrom("001").withTo("999"));
+      List<FieldRange> data = List.of(new FieldRange().withFrom("001").withTo("999"));
 
       Conditions conditions = new Conditions()
         .withIdType(IdType.INSTANCE.name())
@@ -175,9 +175,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
 
       String externalId = "3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc";
-      List<Datum> data = List.of(
-        new Datum().withFrom("001").withTo("001"),
-        new Datum().withFrom("007").withTo("007")
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
       );
       String expectedContent =
         "{\"fields\": [{\"001\": \"inst000000000008\"}, {\"007\": \"cu\\\\uuu---uuuuu\"}]," +

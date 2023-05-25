@@ -25,6 +25,7 @@ import org.junit.runner.RunWith;
 import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
+import static org.folio.rest.jaxrs.model.Record.State.OLD;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
@@ -104,6 +105,23 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     });
   }
 
+  @Test
+  public void shouldDeleteMarcIndexersRelatedToRecordInOldState(TestContext context) {
+    Async async = context.async();
+
+    Future<Boolean> future = recordService.updateRecord(record.withState(OLD), TENANT_ID)
+      .compose(v -> existMarcIndexersByRecordId(record.getId()))
+      .onSuccess(context::assertTrue)
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions())
+      .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertFalse(ar.result());
+      async.complete();
+    });
+  }
+
   private Future<Boolean> existOldMarcIndexersVersions() {
     Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_TABLE));
     Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
@@ -114,6 +132,18 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
         .from(marcIndexers)
         .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(indexersIdField))
         .and(indexersVersionField.lessThan(MARC_RECORDS_TRACKING.VERSION))
+        .limit(1))
+      .map(rows -> rows.size() != 0);
+  }
+
+  private Future<Boolean> existMarcIndexersByRecordId(String recordId) {
+    Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_TABLE));
+    Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
+
+    return postgresClientFactory.getQueryExecutor(TENANT_ID).executeAny(dslContext -> dslContext
+        .select()
+        .from(marcIndexers)
+        .where(indexersIdField.eq(UUID.fromString(recordId)))
         .limit(1))
       .map(rows -> rows.size() != 0);
   }

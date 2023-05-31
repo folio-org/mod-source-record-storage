@@ -1,3 +1,7 @@
+## 2023-06-27 v5.5.3
+* [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
+* [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
+
 ## 2022-11-01 v5.5.2
 * [MODSOURCE-556](https://issues.folio.org/browse/MODSOURCE-556) Fix behaviour of the cache in JobProfileSnapshotCache class
 

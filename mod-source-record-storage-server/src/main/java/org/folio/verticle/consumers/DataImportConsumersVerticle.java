@@ -40,6 +40,10 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RE
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_MATCHED;
+
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 
 public class DataImportConsumersVerticle extends AbstractVerticle {
@@ -66,7 +70,10 @@ public class DataImportConsumersVerticle extends AbstractVerticle {
     DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
     DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
     DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(),
-    DI_MARC_FOR_DELETE_RECEIVED.value()
+    DI_MARC_FOR_DELETE_RECEIVED.value(),
+    DI_INVENTORY_INSTANCE_MATCHED.value(),
+    DI_INVENTORY_HOLDING_MATCHED.value(),
+    DI_INVENTORY_ITEM_MATCHED.value()
   );
 
   @Autowired

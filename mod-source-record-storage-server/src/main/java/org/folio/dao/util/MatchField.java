@@ -1,5 +1,6 @@
 package org.folio.dao.util;
 
+import org.folio.processing.value.Value;
 import org.marc4j.marc.impl.Verifier;
 
 /**
@@ -13,10 +14,10 @@ public class MatchField {
   private final String ind1;
   private final String ind2;
   private final String subfield;
-  private final String value;
+  private final Value value;
   private final String fieldPath;
 
-  public MatchField(String tag, String ind1, String ind2, String subfield, String value) {
+  public MatchField(String tag, String ind1, String ind2, String subfield, Value value) {
     this.tag = tag;
     this.ind1 = ind1;
     this.ind2 = ind2;
@@ -41,7 +42,7 @@ public class MatchField {
     return subfield;
   }
 
-  public String getValue() {
+  public Value getValue() {
     return value;
   }
 

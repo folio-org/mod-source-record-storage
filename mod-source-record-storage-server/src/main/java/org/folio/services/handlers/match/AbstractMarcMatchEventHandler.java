@@ -18,7 +18,6 @@ import org.folio.processing.matching.reader.util.MarcValueReaderUtil;
 import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Field;
-import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -104,21 +103,29 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     String ind1 = matchDetailFields.get(1).getValue();
     String ind2 = matchDetailFields.get(2).getValue();
     String subfield = matchDetailFields.get(3).getValue();
-    String value = retrieveValueFromMarcRecord(record, matchDetail.getIncomingMatchExpression());
+    Value value = MarcValueReaderUtil.readValueFromRecord(record, matchDetail.getIncomingMatchExpression());
     return new MatchField(field, ind1, ind2, subfield, value);
   }
 
   /* Searches for {@link MatchField} in a separate record properties considering it is matched_id, external_id, or external_hrid */
   private Future<RecordCollection> processDefaultMatchField(MatchField matchField, String tenantId) {
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
+    String valueAsString = getStringValue(matchField.getValue());
     if (matchField.isMatchedId()) {
-      condition = condition.and(filterRecordByRecordId(matchField.getValue()));
+      condition = condition.and(filterRecordByRecordId(valueAsString));
     } else if (matchField.isExternalId()) {
-      condition = condition.and(filterRecordByExternalId(matchField.getValue()));
+      condition = condition.and(filterRecordByExternalId(valueAsString));
     } else if (matchField.isExternalHrid()) {
-      condition = condition.and(filterRecordByExternalHrid(matchField.getValue()));
+      condition = condition.and(filterRecordByExternalHrid(valueAsString));
     }
     return recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
+  }
+
+  private String getStringValue(Value value) {
+    if (Value.ValueType.STRING.equals(value.getType())) {
+      return String.valueOf(value.getValue());
+    }
+    return StringUtils.EMPTY;
   }
 
   /* Verifies a correctness of the given {@link MatchDetail} */
@@ -166,16 +173,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
     }
     return matchProfile.getMatchDetails().get(0);
-  }
-
-  /* Read value from the Marc record using di-core library */
-  private String retrieveValueFromMarcRecord(String record, MatchExpression matchExpression) {
-    String valueFromField = StringUtils.EMPTY;
-    var value = MarcValueReaderUtil.readValueFromRecord(record, matchExpression);
-    if (value.getType() == Value.ValueType.STRING) {
-      valueFromField = String.valueOf(value.getValue());
-    }
-    return valueFromField;
   }
 
   /**

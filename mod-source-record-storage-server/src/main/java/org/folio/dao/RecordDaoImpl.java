@@ -589,7 +589,7 @@ public class RecordDaoImpl implements RecordDao {
               }
               return record;
             }).collect(Collectors.toList()))
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute()
             .errors();
 
@@ -608,7 +608,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbRawRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           // batch insert parsed records
@@ -618,7 +618,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbParsedRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           if (!dbErrorRecords.isEmpty()) {
@@ -629,7 +629,7 @@ public class RecordDaoImpl implements RecordDao {
               .onDuplicateKeyUpdate()
               .onErrorAbort()
               .loadRecords(dbErrorRecords)
-              .fieldsFromSource()
+              .fieldsCorresponding()
               .execute();
           }
 

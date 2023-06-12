@@ -168,19 +168,31 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
   private static final String DELETE_OLD_MARC_INDEXERS_SQL =
-    "WITH deleted_rows AS (delete\n" +
-      "    from marc_indexers mi\n" +
-      "        where exists(\n" +
-      "                select 1\n" +
-      "                from "+MARC_RECORDS_TRACKING.getName()+" mrt\n" +
-      "                where mrt.is_dirty = true\n" +
-      "                  and mrt.marc_id = mi.marc_id\n" +
-      "                  and mrt.version > mi.version\n" +
-      "            )\n" +
-      "        returning mi.marc_id)\n" +
-      "insert into "+DELETE_MARC_INDEXERS_TEMP_TABLE+"\n" +
-      "SELECT DISTINCT marc_id\n" +
-      "FROM deleted_rows";
+    "WITH deleted_rows AS ( " +
+    "    delete from marc_indexers mi " +
+    "    where exists( " +
+    "        select 1 " +
+    "        from " + MARC_RECORDS_TRACKING.getName() + " mrt " +
+    "        where mrt.is_dirty = true " +
+    "          and mrt.marc_id = mi.marc_id " +
+    "          and mrt.version > mi.version " +
+    "    ) " +
+    "    returning mi.marc_id), " +
+    "deleted_rows2 AS ( " +
+    "    delete from marc_indexers mi " +
+    "    where exists( " +
+    "        select 1 " +
+    "        from records_lb " +
+    "        where records_lb.id = mi.marc_id " +
+    "          and records_lb.state = 'OLD' " +
+    "    ) " +
+    "    returning mi.marc_id) " +
+    "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " " +
+    "SELECT DISTINCT marc_id " +
+    "FROM deleted_rows " +
+    "UNION " +
+    "SELECT marc_id " +
+    "FROM deleted_rows2";
 
   private final PostgresClientFactory postgresClientFactory;
 

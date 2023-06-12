@@ -2,7 +2,7 @@ package org.folio.services.migrations;
 
 import io.vertx.core.Future;
 
-public interface AsyncMigrationJobRunner {
+public interface AsyncMigrationTaskRunner {
 
   Future<Void> runMigration(String tenantId);
 

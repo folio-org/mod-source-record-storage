@@ -20,7 +20,7 @@
         <constraints primaryKey="true" nullable="false"/>
       </column>
       <column name="migrations" type="text[]">
-        <constraints primaryKey="true" nullable="false"/>
+        <constraints nullable="false"/>
       </column>
       <column name="status" type="${database.defaultSchemaName}.migration_job_status">
         <constraints nullable="false"/>

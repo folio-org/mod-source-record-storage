@@ -25,10 +25,10 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   public static final String MIGRATION_IN_PROGRESS_MSG = "Failed to initiate migration job, because migration job with id '%s' already in progress";
 
   private MigrationJobDao migrationJobDao;
-  private List<AsyncMigrationJobRunner> jobRunners;
+  private List<AsyncMigrationTaskRunner> jobRunners;
 
   @Autowired
-  public AsyncMigrationJobServiceImpl(MigrationJobDao migrationJobDao, List<AsyncMigrationJobRunner> jobRunners) {
+  public AsyncMigrationJobServiceImpl(MigrationJobDao migrationJobDao, List<AsyncMigrationTaskRunner> jobRunners) {
     this.migrationJobDao = migrationJobDao;
     this.jobRunners = jobRunners;
   }
@@ -70,12 +70,12 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   }
 
   private Future<Void> runMigrations(AsyncMigrationJob asyncMigrationJob, String tenantId) {
-    List<AsyncMigrationJobRunner> runners = asyncMigrationJob.getMigrations().stream()
+    List<AsyncMigrationTaskRunner> runners = asyncMigrationJob.getMigrations().stream()
       .flatMap(migrationName -> jobRunners.stream().filter(runner -> migrationName.equals(runner.getMigrationName())))
       .collect(Collectors.toList());
 
     Future<Void> future = Future.succeededFuture();
-    for (AsyncMigrationJobRunner runner : runners) {
+    for (AsyncMigrationTaskRunner runner : runners) {
       future = future.compose(v -> runner.runMigration(tenantId));
     }
 

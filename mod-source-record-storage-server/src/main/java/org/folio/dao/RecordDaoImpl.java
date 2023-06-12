@@ -643,7 +643,7 @@ public class RecordDaoImpl implements RecordDao {
         promise.fail(e);
       } catch (SQLException | DataAccessException e) {
         LOG.warn("saveRecords:: Failed to save records", e);
-        promise.fail(e);
+        promise.fail(e.getCause());
       }
     },
     false,

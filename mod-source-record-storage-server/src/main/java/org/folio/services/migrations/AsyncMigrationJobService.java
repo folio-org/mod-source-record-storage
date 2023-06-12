@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface AsyncMigrationJobService {
 
-  Future<Void> runAsyncMigration(AsyncMigrationJobInitRq migrationJobInitRq, String tenantId);
+  Future<AsyncMigrationJob> runAsyncMigration(AsyncMigrationJobInitRq migrationJobInitRq, String tenantId);
 
   Future<Optional<AsyncMigrationJob>> getById(String id, String tenantId);
 

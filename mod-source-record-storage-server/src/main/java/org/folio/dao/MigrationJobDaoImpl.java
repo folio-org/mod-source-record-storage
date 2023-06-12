@@ -13,19 +13,21 @@ import org.folio.rest.jooq.tables.records.AsyncMigrationJobsRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import javax.ws.rs.NotFoundException;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.folio.rest.jooq.Tables.ASYNC_MIGRATION_JOBS;
 
 @Repository
 public class MigrationJobDaoImpl implements MigrationJobDao {
 
   private static final Logger LOG = LogManager.getLogger();
+  public static final String JOB_NOT_FOUND_MSG = "Async migration job was not found by id: '%s'";
 
   private PostgresClientFactory postgresClientFactory;
 
@@ -49,6 +51,28 @@ public class MigrationJobDaoImpl implements MigrationJobDao {
     return getQueryExecutor(tenantId).findOneRow(dslContext -> dslContext
         .selectFrom(ASYNC_MIGRATION_JOBS)
         .where(ASYNC_MIGRATION_JOBS.ID.eq(UUID.fromString(id))))
+      .map(row -> row != null ? Optional.of(mapRowToAsyncMigrationJob(row)) : Optional.empty());
+  }
+
+  @Override
+  public Future<AsyncMigrationJob> update(AsyncMigrationJob migrationJob, String tenantId) {
+    LOG.trace("update:: Updating async migration job by id {} for tenant {}", migrationJob.getId(), tenantId);
+
+    return getQueryExecutor(tenantId).executeAny(dslContext -> dslContext
+      .update(ASYNC_MIGRATION_JOBS)
+      .set(mapToDatabaseRecord(migrationJob))
+      .where(ASYNC_MIGRATION_JOBS.ID.eq(UUID.fromString(migrationJob.getId())))
+      .returning())
+      .compose(rows -> rows.size() != 0 ? Future.succeededFuture(migrationJob)
+        : Future.failedFuture(new NotFoundException(format(JOB_NOT_FOUND_MSG, migrationJob.getId()))));
+  }
+
+  @Override
+  public Future<Optional<AsyncMigrationJob>> getJobInProgress(String tenantId) {
+    LOG.trace("getJobInProgress:: Searching async migration job  status for tenant {}", tenantId);
+    return getQueryExecutor(tenantId).findOneRow(dslContext -> dslContext
+        .selectFrom(ASYNC_MIGRATION_JOBS)
+        .where(ASYNC_MIGRATION_JOBS.STATUS.eq(MigrationJobStatus.IN_PROGRESS)))
       .map(row -> row != null ? Optional.of(mapRowToAsyncMigrationJob(row)) : Optional.empty());
   }
 

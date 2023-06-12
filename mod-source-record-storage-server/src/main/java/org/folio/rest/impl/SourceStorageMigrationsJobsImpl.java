@@ -32,7 +32,11 @@ public class SourceStorageMigrationsJobsImpl implements SourceStorageMigrationsJ
   @Override
   public void postSourceStorageMigrationsJobs(AsyncMigrationJobInitRq entity, Map<String, String> okapiHeaders,
                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
+    asyncMigrationJobService.runAsyncMigration(entity, tenantId)
+      .map(PostSourceStorageMigrationsJobsResponse::respond202WithApplicationJson)
+      .map(Response.class::cast)
+      .otherwise(ExceptionHelper::mapExceptionToResponse)
+      .onComplete(asyncResultHandler);
   }
 
   @Override

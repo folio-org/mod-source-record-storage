@@ -19,7 +19,7 @@ public class MarcIndexersVersionMigrationTaskRunner implements AsyncMigrationTas
 
   private static final Logger LOG = LogManager.getLogger();
   private static final String MIGRATION_NAME = "marcIndexersVersionMigration";
-  private static final String SCRIPT_PATH = "async_migration/update-fill-in-trigger.sql";
+  private static final String SCRIPT_PATH = "async_migration/set-marc-indexers-version.sql";
 
   private final PostgresClientFactory postgresClientFactory;
 

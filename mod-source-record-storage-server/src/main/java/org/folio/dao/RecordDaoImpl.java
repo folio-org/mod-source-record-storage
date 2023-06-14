@@ -25,6 +25,8 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.processing.value.ListValue;
+import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -141,8 +143,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}' and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
-
+  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+  private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
 
@@ -252,6 +254,7 @@ public class RecordDaoImpl implements RecordDao {
       {
         SelectOnConditionStep<org.jooq.Record> query = dsl
           .select(getAllRecordFields(prt))
+          .distinctOn(RECORDS_LB.ID)
           .from(RECORDS_LB)
           .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
           .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
@@ -281,19 +284,31 @@ public class RecordDaoImpl implements RecordDao {
     if (matchedField.isControlField()) {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
-      params.put("value", matchedField.getValue());
+      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
-      params.put("value", matchedField.getValue());
+      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       params.put("ind1", matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
       params.put("ind2", matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
       params.put("subfield", matchedField.getSubfield());
       String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     }
+  }
+
+  private String getValueInSqlFormat(Value value) {
+    if (Value.ValueType.STRING.equals(value.getType())) {
+      return format(VALUE_IN_SINGLE_QUOTES, value.getValue());
+    }
+    if (Value.ValueType.LIST.equals(value.getType())) {
+      List<String> listOfValues = ((ListValue) value).getValue().stream()
+        .map(v -> format(VALUE_IN_SINGLE_QUOTES, v)).collect(Collectors.toList());
+      return StringUtils.join(listOfValues, ", ");
+    }
+    return StringUtils.EMPTY;
   }
 
   @Override
@@ -574,7 +589,7 @@ public class RecordDaoImpl implements RecordDao {
               }
               return record;
             }).collect(Collectors.toList()))
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute()
             .errors();
 
@@ -593,7 +608,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbRawRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           // batch insert parsed records
@@ -603,7 +618,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbParsedRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           if (!dbErrorRecords.isEmpty()) {
@@ -614,7 +629,7 @@ public class RecordDaoImpl implements RecordDao {
               .onDuplicateKeyUpdate()
               .onErrorAbort()
               .loadRecords(dbErrorRecords)
-              .fieldsFromSource()
+              .fieldsCorresponding()
               .execute();
           }
 
@@ -628,7 +643,7 @@ public class RecordDaoImpl implements RecordDao {
         promise.fail(e);
       } catch (SQLException | DataAccessException e) {
         LOG.warn("saveRecords:: Failed to save records", e);
-        promise.fail(e);
+        promise.fail(e.getCause());
       }
     },
     false,

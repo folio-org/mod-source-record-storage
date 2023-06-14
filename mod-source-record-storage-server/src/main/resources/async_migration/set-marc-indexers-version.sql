@@ -25,3 +25,4 @@ $$;
 
 ALTER TABLE marc_indexers ALTER COLUMN version SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty ON marc_records_tracking USING btree (is_dirty);
+

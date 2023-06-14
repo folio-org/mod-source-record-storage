@@ -174,7 +174,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     sendRecordsToKafka(jobExecutionId, records);
 
-    check_DI_ERROR_eventsSent(jobExecutionId, records, "SQL [null]; ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"" );
+    check_DI_ERROR_eventsSent(jobExecutionId, records, "ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"" );
   }
 
   @Test

@@ -226,8 +226,8 @@
     <testcontainers.version>1.15.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jooq.version>3.13.6</jooq.version>
-    <vertx-jooq.version>6.1.1</vertx-jooq.version>
+    <jooq.version>3.16.19</jooq.version>
+    <vertx-jooq.version>6.5.5</vertx-jooq.version>
     <postgres.version>42.5.0</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.20</lombok.version>

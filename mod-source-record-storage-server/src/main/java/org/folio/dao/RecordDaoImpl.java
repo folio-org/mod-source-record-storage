@@ -555,7 +555,7 @@ public class RecordDaoImpl implements RecordDao {
               }
               return record;
             }).collect(Collectors.toList()))
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute()
             .errors();
 
@@ -574,7 +574,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbRawRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           // batch insert parsed records
@@ -584,7 +584,7 @@ public class RecordDaoImpl implements RecordDao {
             .onDuplicateKeyUpdate()
             .onErrorAbort()
             .loadRecords(dbParsedRecords)
-            .fieldsFromSource()
+            .fieldsCorresponding()
             .execute();
 
           if (!dbErrorRecords.isEmpty()) {
@@ -595,7 +595,7 @@ public class RecordDaoImpl implements RecordDao {
               .onDuplicateKeyUpdate()
               .onErrorAbort()
               .loadRecords(dbErrorRecords)
-              .fieldsFromSource()
+              .fieldsCorresponding()
               .execute();
           }
 
@@ -609,7 +609,7 @@ public class RecordDaoImpl implements RecordDao {
         promise.fail(e);
       } catch (SQLException | DataAccessException e) {
         LOG.warn("saveRecords:: Failed to save records", e);
-        promise.fail(e);
+        promise.fail(e.getCause());
       }
     },
     false,

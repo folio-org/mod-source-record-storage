@@ -47,7 +47,7 @@ public class MigrationJobDaoImpl implements MigrationJobDao {
 
   @Override
   public Future<Optional<AsyncMigrationJob>> getById(String id, String tenantId) {
-    LOG.trace("getById:: Finding async migration job by id {} for tenant {}", id, tenantId);
+    LOG.trace("getById:: Searching async migration job by id {} for tenant {}", id, tenantId);
     return getQueryExecutor(tenantId).findOneRow(dslContext -> dslContext
         .selectFrom(ASYNC_MIGRATION_JOBS)
         .where(ASYNC_MIGRATION_JOBS.ID.eq(UUID.fromString(id))))
@@ -106,7 +106,8 @@ public class MigrationJobDaoImpl implements MigrationJobDao {
     AsyncMigrationJobs pojo = RowMappers.getAsyncMigrationJobsMapper().apply(row);
     AsyncMigrationJob asyncMigrationJob = new AsyncMigrationJob()
       .withId(pojo.getId().toString())
-      .withMigrations(Arrays.asList(pojo.getMigrations()))
+//      .withMigrations(Arrays.asList(pojo.getMigrations()))
+      .withMigrations(Arrays.asList(row.getArrayOfStrings(ASYNC_MIGRATION_JOBS.MIGRATIONS.getName())))
       .withStatus(AsyncMigrationJob.Status.fromValue(pojo.getStatus().toString()))
       .withErrorMessage(pojo.getError());
 

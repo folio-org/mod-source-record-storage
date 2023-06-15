@@ -21,8 +21,9 @@ import java.util.stream.Collectors;
 public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
 
   private static final Logger LOG = LogManager.getLogger();
-  public static final String INVALID_MIGRATIONS_MSG = "Specified migrations are not supported. Migrations: %s";
-  public static final String MIGRATION_IN_PROGRESS_MSG = "Failed to initiate migration job, because migration job with id '%s' already in progress";
+  private static final String INVALID_MIGRATIONS_MSG = "Specified migrations are not supported. Migrations: %s";
+  private static final String MIGRATION_IN_PROGRESS_MSG = "Failed to initiate migration job, because migration job with id '%s' already in progress";
+  private static final String ERROR_UPDATE_JOB_STATUS_MSG = "Error updating migration job status to '%s', jobId: '%s'";
 
   private MigrationJobDao migrationJobDao;
   private List<AsyncMigrationTaskRunner> jobRunners;
@@ -76,29 +77,31 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
 
     Future<Void> future = Future.succeededFuture();
     for (AsyncMigrationTaskRunner runner : runners) {
-      future = future.compose(v -> runner.runMigration(tenantId));
+      future = future.compose(v -> runner.runMigration(asyncMigrationJob, tenantId));
     }
 
     return future;
   }
 
   private void logProcessedMigration(AsyncMigrationJob asyncMigrationJob, String tenantId) {
-    LOG.info("Async migration job with id: '{}' and migrations: '{}' was completed successfully",
+    LOG.info("logProcessedMigration:: Async migration job with id: '{}' and migrations: '{}' was completed successfully",
       asyncMigrationJob.getId(), asyncMigrationJob.getMigrations());
 
     asyncMigrationJob.withCompletedDate(new Date())
       .withStatus(AsyncMigrationJob.Status.COMPLETED);
-    migrationJobDao.update(asyncMigrationJob, tenantId);
+    migrationJobDao.update(asyncMigrationJob, tenantId)
+      .onFailure(e -> LOG.error(String.format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
   }
 
   private void logFailedMigration(AsyncMigrationJob asyncMigrationJob, String tenantId, Throwable throwable) {
-    LOG.error("Async migration job with id: '{}' and migrations: '{}' failed",
+    LOG.error("logFailedMigration:: Async migration job with id: '{}' and migrations: '{}' failed",
       asyncMigrationJob.getId(), asyncMigrationJob.getMigrations(), throwable);
 
     asyncMigrationJob.withCompletedDate(new Date())
       .withStatus(AsyncMigrationJob.Status.ERROR)
       .withErrorMessage(throwable.getMessage());
-    migrationJobDao.update(asyncMigrationJob, tenantId);
+    migrationJobDao.update(asyncMigrationJob, tenantId)
+      .onFailure(e -> LOG.error(String.format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
   }
 
   @Override

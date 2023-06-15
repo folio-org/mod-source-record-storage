@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.impl.TenantAPI;
+import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +30,7 @@ public class MarcIndexersVersionMigrationTaskRunner implements AsyncMigrationTas
   }
 
   @Override
-  public Future<Void> runMigration(String tenantId) {
+  public Future<Void> runMigration(AsyncMigrationJob asyncMigrationJob, String tenantId) {
     try {
       InputStream scriptInputStream = TenantAPI.class.getClassLoader().getResourceAsStream(SCRIPT_PATH);
       String script = IOUtils.toString(scriptInputStream, StandardCharsets.UTF_8);
@@ -37,15 +38,17 @@ public class MarcIndexersVersionMigrationTaskRunner implements AsyncMigrationTas
 
       postgresClientFactory.getCachedPool(tenantId).query(script).execute(rowsAr -> {
         if (rowsAr.succeeded()) {
-          LOG.info("runMigration:: Migration '{}' successfully executed", MIGRATION_NAME);
+          LOG.info("runMigration:: Migration '{}' successfully executed, migration jobId: '{}'", MIGRATION_NAME, asyncMigrationJob.getId());
           promise.complete();
         } else {
-          LOG.error("runMigration:: Failed to execute migration '{}', cause: ", MIGRATION_NAME, rowsAr.cause());
+          LOG.error("runMigration:: Failed to execute migration '{}', migration jobId: '{}', cause: ",
+            MIGRATION_NAME, asyncMigrationJob.getId(), rowsAr.cause());
           promise.fail(rowsAr.cause());
         }
       });
       return promise.future();
     } catch (IOException e) {
+      LOG.error("runMigration:: Failed to run migration '{}', migration jobId: '{}' cause: ", MIGRATION_NAME, asyncMigrationJob.getId(), e);
       return Future.failedFuture(e);
     }
   }

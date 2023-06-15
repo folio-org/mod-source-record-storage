@@ -40,7 +40,8 @@ public class SourceStorageMigrationsJobsImpl implements SourceStorageMigrationsJ
   }
 
   @Override
-  public void getSourceStorageMigrationsJobsById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getSourceStorageMigrationsJobsById(String id, Map<String, String> okapiHeaders,
+                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncMigrationJobService.getById(id, tenantId)
       .map(migrationJobOptional -> migrationJobOptional
         .map(GetSourceStorageMigrationsJobsByIdResponse::respond200WithApplicationJson)

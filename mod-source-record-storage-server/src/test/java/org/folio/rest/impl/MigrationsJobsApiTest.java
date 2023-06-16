@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static java.lang.String.format;
+import static org.folio.rest.jaxrs.model.AsyncMigrationJob.Status.COMPLETED;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -61,7 +62,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("id", is(migrationJob.getId()))
-      .body("status", is(AsyncMigrationJob.Status.COMPLETED.value()))
+      .body("status", is(COMPLETED.value()))
       .body("completedDate", notNullValue());
   }
 
@@ -91,7 +92,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() {
+  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() throws InterruptedException {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -113,6 +114,17 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CONFLICT)
       .body(is(format("Failed to initiate migration job, because migration job with id '%s' already in progress", runningJobId)));
+
+    // waits for running job completion before finishing the test to avoid impact on other tests
+    Wait.delay(3);
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MIGRATIONS_JOBS_PATH + runningJobId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(runningJobId))
+      .body("status", is(COMPLETED.value()));
   }
 
   private void clearTable(TestContext context) {

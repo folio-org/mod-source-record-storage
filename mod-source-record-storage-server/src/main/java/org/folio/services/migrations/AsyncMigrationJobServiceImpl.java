@@ -3,7 +3,7 @@ package org.folio.services.migrations;
 import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dao.MigrationJobDao;
+import org.folio.dao.AsyncMigrationJobDao;
 import org.folio.dataimport.util.exception.ConflictException;
 import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 import org.folio.rest.jaxrs.model.AsyncMigrationJobInitRq;
@@ -25,11 +25,11 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   private static final String MIGRATION_IN_PROGRESS_MSG = "Failed to initiate migration job, because migration job with id '%s' already in progress";
   private static final String ERROR_UPDATE_JOB_STATUS_MSG = "Error updating migration job status to '%s', jobId: '%s'";
 
-  private MigrationJobDao migrationJobDao;
+  private AsyncMigrationJobDao migrationJobDao;
   private List<AsyncMigrationTaskRunner> jobRunners;
 
   @Autowired
-  public AsyncMigrationJobServiceImpl(MigrationJobDao migrationJobDao, List<AsyncMigrationTaskRunner> jobRunners) {
+  public AsyncMigrationJobServiceImpl(AsyncMigrationJobDao migrationJobDao, List<AsyncMigrationTaskRunner> jobRunners) {
     this.migrationJobDao = migrationJobDao;
     this.jobRunners = jobRunners;
   }
@@ -47,10 +47,8 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
       .withStatus(AsyncMigrationJob.Status.IN_PROGRESS)
       .withStartedDate(new Date());
 
-    return migrationJobDao.getJobInProgress(tenantId)
-      .compose(jobOptional -> jobOptional
-        .map(migrationJob -> Future.<String>failedFuture(new ConflictException(String.format(MIGRATION_IN_PROGRESS_MSG, migrationJob.getId()))))
-        .orElseGet(() -> migrationJobDao.save(asyncMigrationJob, tenantId)))
+    return checkMigrationsInProgress(tenantId)
+      .compose(v -> migrationJobDao.save(asyncMigrationJob, tenantId))
       .map(res -> {
         runMigrations(asyncMigrationJob, tenantId)
           .onSuccess(v -> logProcessedMigration(asyncMigrationJob, tenantId))
@@ -66,8 +64,15 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
       .collect(Collectors.toList());
   }
 
-  private Future<Optional<AsyncMigrationJob>> checkMigrationsInProgress(String tenantId) {
-    return migrationJobDao.getJobInProgress(tenantId);
+  private Future<Boolean> checkMigrationsInProgress(String tenantId) {
+    return migrationJobDao.getJobInProgress(tenantId).compose(jobOptional -> {
+      if (jobOptional.isPresent()) {
+        String msg = String.format(MIGRATION_IN_PROGRESS_MSG, jobOptional.get().getId());
+        LOG.warn("checkMigrationsInProgress:: {}", msg);
+        return Future.failedFuture(new ConflictException(msg));
+      }
+      return Future.succeededFuture(false);
+    });
   }
 
   private Future<Void> runMigrations(AsyncMigrationJob asyncMigrationJob, String tenantId) {

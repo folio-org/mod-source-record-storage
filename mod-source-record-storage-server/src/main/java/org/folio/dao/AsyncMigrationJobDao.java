@@ -5,7 +5,7 @@ import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 
 import java.util.Optional;
 
-public interface MigrationJobDao {
+public interface AsyncMigrationJobDao {
 
   Future<String> save(AsyncMigrationJob migrationJob, String tenantId);
 

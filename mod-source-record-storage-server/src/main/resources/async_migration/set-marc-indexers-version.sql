@@ -13,8 +13,12 @@ do $$
     index integer;
     suffix text;
   begin
-    execute 'update marc_indexers set version = 0;';
-    execute 'insert into marc_records_tracking select id, 0, false from marc_records_lb;';
+    execute 'update marc_indexers set version = 0 where version IS NULL;';
+    execute 'insert into marc_records_tracking ' ||
+            'select id, 0, false ' ||
+            'from marc_records_lb ' ||
+            'left join marc_records_tracking ON marc_records_tracking.marc_id = marc_records_lb.id ' ||
+            'where marc_records_tracking.marc_id IS NULL;';
     for index in 0 .. 999 loop
       suffix = lpad(index::text, 3, '0');
       execute 'drop index if exists idx_marc_indexers_marc_id_' || suffix || ';';

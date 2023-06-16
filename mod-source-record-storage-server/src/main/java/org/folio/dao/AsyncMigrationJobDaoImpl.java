@@ -27,7 +27,7 @@ import static org.folio.rest.jooq.Tables.ASYNC_MIGRATION_JOBS;
 public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
 
   private static final Logger LOG = LogManager.getLogger();
-  public static final String JOB_NOT_FOUND_MSG = "Async migration job was not found by id: '%s'";
+  private static final String JOB_NOT_FOUND_MSG = "Async migration job was not found by id: '%s'";
 
   private PostgresClientFactory postgresClientFactory;
 
@@ -106,7 +106,6 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
     AsyncMigrationJobs pojo = RowMappers.getAsyncMigrationJobsMapper().apply(row);
     AsyncMigrationJob asyncMigrationJob = new AsyncMigrationJob()
       .withId(pojo.getId().toString())
-//      .withMigrations(Arrays.asList(pojo.getMigrations()))
       .withMigrations(Arrays.asList(row.getArrayOfStrings(ASYNC_MIGRATION_JOBS.MIGRATIONS.getName())))
       .withStatus(AsyncMigrationJob.Status.fromValue(pojo.getStatus().toString()))
       .withErrorMessage(pojo.getError());

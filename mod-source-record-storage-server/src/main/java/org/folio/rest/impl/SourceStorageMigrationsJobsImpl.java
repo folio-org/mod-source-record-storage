@@ -18,11 +18,12 @@ import static java.lang.String.format;
 
 public class SourceStorageMigrationsJobsImpl implements SourceStorageMigrationsJobs {
 
-  public static final String NOT_FOUND_MSG = "Async migration job with id '%s' was not found";
-  @Autowired
-  private AsyncMigrationJobService asyncMigrationJobService;
+  private static final String NOT_FOUND_MSG = "Async migration job with id '%s' was not found";
 
   private final String tenantId;
+
+  @Autowired
+  private AsyncMigrationJobService asyncMigrationJobService;
 
   public SourceStorageMigrationsJobsImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());

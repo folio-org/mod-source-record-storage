@@ -37,12 +37,12 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
   }
 
   @Override
-  public Future<String> save(AsyncMigrationJob migrationJob, String tenantId) {
+  public Future<Void> save(AsyncMigrationJob migrationJob, String tenantId) {
     LOG.trace("save:: Saving async migration job with id {} for tenant {}", migrationJob.getId(), tenantId);
     return getQueryExecutor(tenantId).executeAny(dslContext -> dslContext
         .insertInto(ASYNC_MIGRATION_JOBS)
         .set(mapToDatabaseRecord(migrationJob)))
-      .map(migrationJob.getId());
+      .mapEmpty();
   }
 
   @Override

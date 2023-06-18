@@ -17,6 +17,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static java.lang.String.format;
+
 @Service
 public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
 
@@ -38,7 +40,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   public Future<AsyncMigrationJob> runAsyncMigration(AsyncMigrationJobInitRq migrationJobInitRq, String tenantId) {
     List<String> invalidMigrations = getUnsupportedMigrations(migrationJobInitRq);
     if (!invalidMigrations.isEmpty()) {
-      return Future.failedFuture(new BadRequestException(String.format(INVALID_MIGRATIONS_MSG, invalidMigrations)));
+      return Future.failedFuture(new BadRequestException(format(INVALID_MIGRATIONS_MSG, invalidMigrations)));
     }
 
     AsyncMigrationJob asyncMigrationJob = new AsyncMigrationJob()
@@ -49,7 +51,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
 
     return checkMigrationsInProgress(tenantId)
       .compose(v -> migrationJobDao.save(asyncMigrationJob, tenantId))
-      .map(res -> {
+      .map(unused  -> {
         runMigrations(asyncMigrationJob, tenantId)
           .onSuccess(v -> logProcessedMigration(asyncMigrationJob, tenantId))
           .onFailure(e -> logFailedMigration(asyncMigrationJob, tenantId, e));
@@ -67,7 +69,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   private Future<Boolean> checkMigrationsInProgress(String tenantId) {
     return migrationJobDao.getJobInProgress(tenantId).compose(jobOptional -> {
       if (jobOptional.isPresent()) {
-        String msg = String.format(MIGRATION_IN_PROGRESS_MSG, jobOptional.get().getId());
+        String msg = format(MIGRATION_IN_PROGRESS_MSG, jobOptional.get().getId());
         LOG.warn("checkMigrationsInProgress:: {}", msg);
         return Future.failedFuture(new ConflictException(msg));
       }
@@ -95,7 +97,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
     asyncMigrationJob.withCompletedDate(new Date())
       .withStatus(AsyncMigrationJob.Status.COMPLETED);
     migrationJobDao.update(asyncMigrationJob, tenantId)
-      .onFailure(e -> LOG.error(String.format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
+      .onFailure(e -> LOG.error(format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
   }
 
   private void logFailedMigration(AsyncMigrationJob asyncMigrationJob, String tenantId, Throwable throwable) {
@@ -106,7 +108,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
       .withStatus(AsyncMigrationJob.Status.ERROR)
       .withErrorMessage(throwable.getMessage());
     migrationJobDao.update(asyncMigrationJob, tenantId)
-      .onFailure(e -> LOG.error(String.format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
+      .onFailure(e -> LOG.error(format(ERROR_UPDATE_JOB_STATUS_MSG, asyncMigrationJob.getStatus(), asyncMigrationJob.getId()), e));
   }
 
   @Override

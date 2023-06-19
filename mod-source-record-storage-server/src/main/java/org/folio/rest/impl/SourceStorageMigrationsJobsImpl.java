@@ -25,7 +25,7 @@ public class SourceStorageMigrationsJobsImpl implements SourceStorageMigrationsJ
   @Autowired
   private AsyncMigrationJobService asyncMigrationJobService;
 
-  public SourceStorageMigrationsJobsImpl(Vertx vertx, String tenantId) {
+  public SourceStorageMigrationsJobsImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     this.tenantId = tenantId;
   }

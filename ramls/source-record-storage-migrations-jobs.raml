@@ -1,0 +1,51 @@
+#%RAML 1.0
+
+title: Source Record Storage Async Migrations API
+version: v1.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Source Record Storage Migration Jobs API
+    content: API for managing asynchronous migration jobs
+
+types:
+  asyncMigrationJobInitRq: !include raml-storage/schemas/mod-source-record-storage/asyncMigrationJobInitRqDto.json
+  asyncMigrationJob: !include raml-storage/schemas/mod-source-record-storage/asyncMigrationJob.json
+
+/source-storage/migrations/jobs:
+  displayName: Async migrations
+  description: API for managing async migration jobs
+  post:
+    description: Initiate a migration job
+    body:
+      application/json:
+        type: asyncMigrationJobInitRq
+        example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJobInitRqDto.sample
+    responses:
+      202:
+        description: Migration job has been submitted
+        body:
+          application/json:
+            type: asyncMigrationJob
+            example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJob.sample
+      500:
+        description: Internal server error
+        body:
+          text/plain:
+            example: Internal server error
+  /{id}:
+    get:
+      description: Get a migration job
+      responses:
+        200:
+          description: Migration job has been returned
+          body:
+            application/json:
+              type: asyncMigrationJob
+              example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJob.sample
+        404:
+          description: "Not found"
+          body:
+            text/plain:
+              example: "Not found"

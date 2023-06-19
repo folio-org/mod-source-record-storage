@@ -1,12 +1,3 @@
--- delete marc_indexers related to OLD records
-DELETE FROM marc_indexers
-WHERE exists(
-  SELECT 1
-  FROM records_lb
-  WHERE records_lb.id = marc_indexers.marc_id
-    AND records_lb.state = 'OLD'
-);
-
 -- set marc_indexers version, populate marc_records_tracking table and create indexes on marc_indexers table
 do $$
   declare
@@ -29,4 +20,3 @@ $$;
 
 ALTER TABLE marc_indexers ALTER COLUMN version SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty ON marc_records_tracking USING btree (is_dirty);
-

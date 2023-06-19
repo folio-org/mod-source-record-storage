@@ -22,7 +22,7 @@ do $$
     for index in 0 .. 999 loop
       suffix = lpad(index::text, 3, '0');
       execute 'drop index if exists idx_marc_indexers_marc_id_' || suffix || ';';
-      execute 'create index idx_marc_indexers_marc_id_version_' || suffix || ' on marc_indexers_' || suffix || '(marc_id, version);';
+      execute 'create index if not exists idx_marc_indexers_marc_id_version_' || suffix || ' on marc_indexers_' || suffix || '(marc_id, version);';
     end loop;
   end;
 $$;

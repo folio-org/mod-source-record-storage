@@ -102,7 +102,7 @@ public class PostgresClientFactory {
    * @param tenantId tenant id
    * @return pooled database client
    */
-  public PgPool getCachedPool(String tenantId) {
+  PgPool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
   }
 

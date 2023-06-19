@@ -227,6 +227,22 @@
       ]
     },
     {
+      "id": "source-storage-async-migrations",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["POST"],
+          "pathPattern": "/source-storage/migrations/jobs",
+          "permissionsRequired": ["source-storage.migrations.post"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/source-storage/migrations/jobs/{id}",
+          "permissionsRequired": ["source-storage.migrations.get"]
+        }
+      ]
+    },
+    {
       "id": "_tenant",
       "version": "2.0",
       "interfaceType": "system",
@@ -318,6 +334,16 @@
       "description": "Return marc bib ids, which doesn't exist in the system"
     },
     {
+      "permissionName": "source-storage.migrations.post",
+      "displayName": "Source Storage - initiate migration job",
+      "description": "Initiate asynchronous migration job"
+    },
+    {
+      "permissionName": "source-storage.migrations.get",
+      "displayName": "Source Storage - get migration job(s)",
+      "description": "Get migration job(s)"
+    },
+    {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
@@ -333,7 +359,9 @@
         "source-storage.records.delete",
         "source-storage.records.update",
         "source-storage.sourceRecords.get",
-        "source-storage.verified.records"
+        "source-storage.verified.records",
+        "source-storage.migrations.post",
+        "source-storage.migrations.get"
       ],
       "visible": false
     }

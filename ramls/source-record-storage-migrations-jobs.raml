@@ -21,12 +21,14 @@ types:
     body:
       application/json:
         type: asyncMigrationJobInitRq
+        example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJobInitRqDto.sample
     responses:
       202:
         description: Migration job has been submitted
         body:
           application/json:
             type: asyncMigrationJob
+            example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJob.sample
       500:
         description: Internal server error
         body:
@@ -41,6 +43,7 @@ types:
           body:
             application/json:
               type: asyncMigrationJob
+              example: !include raml-storage/examples/mod-source-record-storage/asyncMigrationJob.sample
         404:
           description: "Not found"
           body:

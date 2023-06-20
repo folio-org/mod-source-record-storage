@@ -1,3 +1,7 @@
+## 2023-xo-xo v5.6.6-SNAPSHOT
+* [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
+* [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
+
 ## 2023-03-31 v5.6.5
 * Update data-import-processing-core to v4.0.5
 

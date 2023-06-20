@@ -229,8 +229,9 @@ public interface RecordService {
    *
    * @param matchedId matched id
    * @param state record state
+   * @param recordType record type
    * @param tenantId  tenant id
    * @return void future
    */
-  Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId);
+  Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
 }

@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -425,6 +426,78 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         });
       });
     });
+  }
+
+  @Test
+  public void shouldUpdateRecordState(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getMarcBibRecord();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(original.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(original.getRecordType().toString()))
+      .withParsedRecord(original.getParsedRecord())
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withMetadata(original.getMetadata());
+
+    recordDao.saveRecord(original, TENANT_ID)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DRAFT, RecordType.MARC_BIB, TENANT_ID))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(original.getMatchedId()));
+        recordService.getRecords(condition, RecordType.MARC_BIB, Collections.emptyList(), 0, 999, TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            List<Record> resultRecords = get.result().getRecords();
+            context.assertFalse(resultRecords.isEmpty());
+            context.assertEquals(3, resultRecords.size());
+            context.assertTrue(resultRecords.stream().allMatch(record -> record.getState() == State.DRAFT));
+            async.complete();
+          });
+      });
+  }
+
+  @Test
+  public void shouldUpdateMarcAuthorityRecordStateToDeleted(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getMarcAuthorityRecord();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(original.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(original.getRecordType().toString()))
+      .withParsedRecord(original.getParsedRecord())
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withMetadata(original.getMetadata());
+
+    recordDao.saveRecord(original, TENANT_ID)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, TENANT_ID))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(original.getMatchedId()));
+        recordService.getRecords(condition, RecordType.MARC_AUTHORITY, Collections.emptyList(), 0, 999, TENANT_ID)
+          .onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            List<Record> resultRecords = get.result().getRecords();
+            context.assertFalse(resultRecords.isEmpty());
+            context.assertEquals(2, resultRecords.size());
+            context.assertTrue(resultRecords.stream().allMatch(record -> record.getState() == State.DELETED));
+            context.assertTrue(resultRecords.stream().allMatch(record -> "d".equals(record.getLeaderRecordStatus())));
+            async.complete();
+          });
+      });
   }
 
   @Test

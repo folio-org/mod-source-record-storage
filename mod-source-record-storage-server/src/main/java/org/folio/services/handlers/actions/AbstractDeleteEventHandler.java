@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
+import org.folio.dao.util.RecordType;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -17,7 +18,6 @@ import org.folio.services.util.TypeConnection;
 
 import java.util.concurrent.CompletableFuture;
 
-import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
@@ -65,13 +65,13 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
 
   /* Handles DELETE action  */
   private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
-    var record = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
-    LOG.info("handlePayload:: Handling 'delete' event for the record id = {}", record.getId());
-    recordService.updateRecordsState(record.getMatchedId(), RecordState.DELETED, payload.getTenant())
+    var payloadRecord = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
+    LOG.info("handlePayload:: Handling 'delete' event for the record id = {}", payloadRecord.getId());
+    recordService.updateRecordsState(payloadRecord.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, payload.getTenant())
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());
-        payload.getContext().put(getExternalRecordIdKey(), getExternalRecordId(record.getExternalIdsHolder()));
+        payload.getContext().put(getExternalRecordIdKey(), getExternalRecordId(payloadRecord.getExternalIdsHolder()));
         future.complete(payload);
       })
       .onFailure(throwable -> completeExceptionally(future, throwable));

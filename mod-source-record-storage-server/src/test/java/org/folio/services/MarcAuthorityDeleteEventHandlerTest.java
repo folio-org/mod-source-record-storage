@@ -36,6 +36,9 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
+
+  private static final String PARSED_CONTENT =
+    "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private final RecordService recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory));
   private final EventHandler eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
   private Record record;
@@ -67,6 +70,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
   public void shouldDeleteRecord(TestContext context) {
     Async async = context.async();
     // given
+    record.setParsedRecord(new ParsedRecord().withId(record.getId()).withContent(PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
@@ -96,6 +100,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
               context.assertTrue(optionalDeletedRecord.isPresent());
               Record deletedRecord = optionalDeletedRecord.get();
               context.assertTrue(deletedRecord.getDeleted());
+              context.assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
               async.complete();
             });
         })

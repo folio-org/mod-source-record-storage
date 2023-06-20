@@ -246,8 +246,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
-    return recordDao.updateRecordsState(matchedId, state, tenantId);
+  public Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId) {
+    return recordDao.updateRecordsState(matchedId, state, recordType, tenantId);
   }
 
   private Record formatMarcRecord(Record record) {

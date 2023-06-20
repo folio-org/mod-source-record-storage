@@ -99,6 +99,7 @@ import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
@@ -141,6 +142,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+  private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
@@ -1070,8 +1072,12 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Void> updateRecordsState(String matchedId, RecordState state, String tenantId) {
+  public Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId) {
     LOG.trace("updateRecordsState:: Updating records state with value {} by matchedId {} for tenant {}", state, matchedId, tenantId);
+    if (recordType == RecordType.MARC_AUTHORITY && state == RecordState.DELETED) {
+      return updateMarcAuthorityRecordsStateAsDeleted(matchedId, tenantId);
+    }
+
     Promise<Void> promise = Promise.promise();
     getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, state)
@@ -1080,6 +1086,42 @@ public class RecordDaoImpl implements RecordDao {
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
+  }
+
+  public Future<Void> updateMarcAuthorityRecordsStateAsDeleted(String matchedId, String tenantId) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId));
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
+      .compose(recordCollection -> {
+        List<Future<Record>> futures = recordCollection.getRecords().stream()
+          .map(recordToUpdate -> updateMarcAuthorityRecordWithDeletedState(txQE, ensureRecordForeignKeys(recordToUpdate)))
+          .collect(Collectors.toList());
+
+        Promise<Void> result = Promise.promise();
+        GenericCompositeFuture.all(futures).onComplete(ar -> {
+          if (ar.succeeded()) {
+            result.complete();
+          } else {
+            result.fail(ar.cause());
+            LOG.warn("Error during update records state to DELETED", ar.cause());
+          }
+        });
+        return result.future();
+      }));
+  }
+
+  private Future<Record> updateMarcAuthorityRecordWithDeletedState(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+    record.withState(Record.State.DELETED);
+    if (Objects.nonNull(record.getParsedRecord())) {
+      record.getParsedRecord().setId(record.getId());
+      ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), 'd');
+      return ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+        .compose(parsedRecord -> {
+          record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
+          return RecordDaoUtil.update(txQE, record);
+        });
+    }
+    return RecordDaoUtil.update(txQE, record);
+
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {

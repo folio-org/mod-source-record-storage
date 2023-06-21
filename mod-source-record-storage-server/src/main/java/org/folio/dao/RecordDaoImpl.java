@@ -233,7 +233,8 @@ public class RecordDaoImpl implements RecordDao {
   public Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType);
+    Condition condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType)
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .with(cte.as(dsl.selectCount()
         .from(RECORDS_LB)

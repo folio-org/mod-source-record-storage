@@ -1,11 +1,14 @@
 package org.folio.services.handlers.links;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-import org.junit.jupiter.api.Test;
+
+import org.junit.Test;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.impl.SubfieldImpl;
+
+import static org.junit.Assert.assertEquals;
+
 
 class UpdateLinkProcessorTest {
 

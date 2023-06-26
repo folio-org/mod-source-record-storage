@@ -5,7 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.Collections;
 import java.util.List;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.marc4j.marc.impl.SubfieldImpl;
 
 class DeleteLinkProcessorTest {

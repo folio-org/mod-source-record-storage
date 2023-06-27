@@ -1,6 +1,13 @@
 ## 2023-xo-xo v5.6.6-SNAPSHOT
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
 * [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
+* [MODSOURCE-636](https://issues.folio.org/browse/MODSOURCE-636) Implement async migration service
+
+### Asynchronous migration job API
+| METHOD | URL                                     | DESCRIPTION                                     |
+|--------|-----------------------------------------|-------------------------------------------------|
+| POST   | /source-storage/migrations/jobs         | Initialize asynchronous migration job           |
+| GET    | /source-storage/migrations/jobs/{jobId} | Get asynchronous migration job entity by its id |
 
 ## 2023-03-31 v5.6.5
 * Update data-import-processing-core to v4.0.5

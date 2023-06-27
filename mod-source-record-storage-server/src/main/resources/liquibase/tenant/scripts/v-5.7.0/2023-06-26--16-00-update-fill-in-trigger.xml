@@ -1,0 +1,45 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+
+  <changeSet id="2023-06-26--16-00-update-function-fill_in_marc_indexers" author="okolawole">
+    <sql splitStatements="false">
+      create or replace function ${database.defaultSchemaName}.fill_in_marc_indexers(p_marc_id uuid, p_marc_content jsonb, p_version integer)
+      returns void
+      as
+      $fill_in_marc_indexers$
+      begin
+      -- This section used to contain an insert statement that would generate rows for marc_indexers table.
+      -- The logic has been moved up into mod-source-record-storage for reliability &amp; performance reasons.
+      -- MODSOURCE-664
+--
+      insert into ${database.defaultSchemaName}.marc_indexers_leader(p_00_04, p_05, p_06, p_07, p_08, p_09, p_10, p_11, p_12_16, p_17,p_18, p_19, p_20, p_21, p_22, marc_id)
+        (select substring(value from 1 for 5)  p_00_04,
+                substring(value from 6 for 1)  p_05,
+                substring(value from 7 for 1)  p_06,
+                substring(value from 8 for 1)  p_07,
+                substring(value from 9 for 1)  p_08,
+                substring(value from 10 for 1) p_09,
+                substring(value from 11 for 1) p_10,
+                substring(value from 12 for 1) p_11,
+                substring(value from 13 for 5) p_12_16,
+                substring(value from 18 for 1) p_17,
+                substring(value from 19 for 1) p_18,
+                substring(value from 20 for 1) p_19,
+                substring(value from 21 for 1) p_20,
+                substring(value from 22 for 1) p_21,
+                substring(value from 23 for 1) p_22,
+                marc_id
+         from (select replace(lower(trim(both '"' from value::text)), ' ', '#') as value,
+                               p_marc_id marc_id
+               from jsonb_each(p_marc_content) x
+               where key = 'leader') y);
+      end;
+      $fill_in_marc_indexers$ language plpgsql;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

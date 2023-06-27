@@ -1,0 +1,61 @@
+field_no,ind1,ind2,subfield_no,value,marc_id,version
+001,#,#,0,in00000000001,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+005,#,#,0,20230627082130.8,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+008,#,#,0,750907c19509999enkqr p       0   a0eng d,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+010,#,#,a,58020553,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+022,#,#,a,0022-0469,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+035,#,#,a,366832,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+035,#,#,a,(CStRLIN)NYCX1604275S,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+035,#,#,a,(NIC)notisABP6388,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+035,#,#,a,(OCoLC)1604275,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+040,#,#,d,CStRLIN,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+040,#,#,d,CtY,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+040,#,#,d,MBTI,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+040,#,#,d,NIC,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+050,0,#,a,BR140,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+050,0,#,b,.J6,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+082,#,#,a,270.05,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+222,0,4,a,The Journal of ecclesiastical history,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+245,0,4,a,The Journal of ecclesiastical history.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+260,#,#,a,"London,",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+260,#,#,b,Cambridge University Press [etc.],9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+265,#,#,a,"32 East 57th St., New York, 10022",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+300,#,#,a,v.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+300,#,#,b,25 cm.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+310,#,#,a,"Quarterly,",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+310,#,#,b,1970-,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+321,#,#,a,"Semiannual,",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+321,#,#,b,1950-69,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+362,0,#,a,v. 1-   Apr. 1950-,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+570,#,#,a,Editor:   C. W. Dugmore.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+650,#,0,a,Church history,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+650,#,0,x,Periodicals.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+650,#,7,0,(OCoLC)fst00860740,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+650,#,7,2,fast,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+650,#,7,a,Church history,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+655,#,7,0,(OCoLC)fst01411641,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+655,#,7,2,fast,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+655,#,7,a,Periodicals,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+700,1,#,a,"Dugmore, C. W.",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+700,1,#,e,ed.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+700,1,#,q,"(Clifford William),",9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+853,0,3,8,1,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+853,0,3,a,v.,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+853,0,3,i,(year),9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+863,4,0,8,1,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+863,4,0,a,1-49,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+863,4,0,i,1950-1998,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+902,#,#,a,pfnd,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+902,#,#,b,Lintz,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+905,#,#,a,19890510120000.0,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+948,2,#,a,20141106,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+948,2,#,b,m,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+948,2,#,d,batch,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+948,2,#,e,lts,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+948,2,#,x,addfast,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+950,#,#,a,BR140,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+950,#,#,b,.J86,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+950,#,#,h,01/01/01 N,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+950,#,#,l,OLIN,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+999,f,f,i,65ad2158-687a-406e-9799-aa4427dd9d4a,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1
+999,f,f,s,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,9a4db741-2acb-4ad8-9e66-ab6d17dcbe68,1

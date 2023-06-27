@@ -13,6 +13,7 @@ import io.vertx.sqlclient.Row;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ErrorRecordDaoUtil;
@@ -624,6 +625,11 @@ public class RecordDaoImpl implements RecordDao {
             .fieldsCorresponding()
             .execute();
 
+          // update marc_indexers if record type is MARC_RECORDS_LB
+          ParsedRecordDaoUtil.updateMarcIndexersTableSync(dsl,
+            recordType,
+            dbParsedRecords.stream().collect(Collectors.toMap(Record2::value1, Record2::value2)));
+
           if (!dbErrorRecords.isEmpty()) {
             // batch insert error records
             dsl.loadInto(ERROR_RECORDS_LB)
@@ -800,6 +806,7 @@ public class RecordDaoImpl implements RecordDao {
 
         List<UpdateConditionStep<RecordsLbRecord>> recordUpdates = new ArrayList<>();
         List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates = new ArrayList<>();
+        Map<String, JSONB> parsedMarcIndexersInput = new HashMap<>(); // used to insert marc_indexers
 
         Field<UUID> prtId = field(name(ID), UUID.class);
         Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
@@ -872,12 +879,15 @@ public class RecordDaoImpl implements RecordDao {
             try {
               RecordType recordType = toRecordType(record.getRecordType().name());
               recordType.formatRecord(record);
-
+              UUID id = UUID.fromString(record.getParsedRecord().getId());
+              JSONB content = JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
               parsedRecordUpdates.add(
                 DSL.update(table(name(recordType.getTableName())))
-                  .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
-                  .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
+                  .set(prtContent, content)
+                  .where(prtId.eq(id))
               );
+
+              parsedMarcIndexersInput.put(record.getParsedRecord().getId(), content);
 
             } catch (Exception e) {
               errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
@@ -918,6 +928,15 @@ public class RecordDaoImpl implements RecordDao {
               } else {
                 parsedRecordsUpdated.add(parsedRecord);
               }
+            }
+
+            // update MARC_INDEXERS
+            Map<UUID, JSONB> parsedRecordMap = parsedRecordsUpdated.stream()
+              .map(rec -> Pair.of(UUID.fromString(rec.getId()), parsedMarcIndexersInput.get(rec.getId())))
+              .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+            Optional<String> recordTypeOptional = recordTypes.stream().findFirst();
+            if (recordTypeOptional.isPresent()) {
+              ParsedRecordDaoUtil.updateMarcIndexersTableSync(dsl, toRecordType(recordTypeOptional.get()), parsedRecordMap);
             }
 
             blockingPromise.complete(new ParsedRecordsBatchResponse()

@@ -43,7 +43,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 
 import java.time.OffsetDateTime;
@@ -57,6 +56,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Comparator.comparing;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.junit.Assert.assertThrows;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
@@ -863,7 +863,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
     GenericCompositeFuture.all(futures).onComplete(ar -> {
       context.assertTrue(ar.failed());
-      Assertions.assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
+      assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
       async.complete();
     });
   }

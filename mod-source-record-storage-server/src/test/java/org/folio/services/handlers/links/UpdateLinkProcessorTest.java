@@ -1,18 +1,21 @@
 package org.folio.services.handlers.links;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-import org.junit.jupiter.api.Test;
+
+import org.junit.Test;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.impl.SubfieldImpl;
 
-class UpdateLinkProcessorTest {
+import static org.junit.Assert.assertEquals;
+
+
+public class UpdateLinkProcessorTest {
 
   private final LinkProcessor processor = new UpdateLinkProcessor();
 
   @Test
-  void process_positive_updateSubfieldsAndOrderIt() {
+  public void process_positive_updateSubfieldsAndOrderIt() {
     List<Subfield> oldSubfields = List.of(
       new SubfieldImpl('a', "a-data"),
       new SubfieldImpl('z', "z-data"),

@@ -300,6 +300,13 @@ public interface RecordDao {
   Future<Void> deleteRecords(int lastUpdatedDays, int limit, String tenantId);
 
   /**
+   * Performs purge of marc indexer versions that are not the latest for each marc record
+   *
+   * @return boolean future
+   */
+  Future<Boolean> deleteMarcIndexersOldVersions(String tenantId);
+
+  /**
    * Creates new Record and updates status of the "old" one,
    * no data is overwritten as a result of update. Creates
    * new snapshot.

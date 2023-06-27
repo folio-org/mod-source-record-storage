@@ -248,7 +248,7 @@
   </dependencies>
 
   <properties>
-    <testcontainers.version>1.15.3</testcontainers.version>
+    <testcontainers.version>1.18.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
@@ -351,7 +351,7 @@
       <plugin>
         <groupId>io.fabric8</groupId>
         <artifactId>docker-maven-plugin</artifactId>
-        <version>0.34.1</version>
+        <version>0.43.0</version>
         <configuration>
           <images>
             <image>

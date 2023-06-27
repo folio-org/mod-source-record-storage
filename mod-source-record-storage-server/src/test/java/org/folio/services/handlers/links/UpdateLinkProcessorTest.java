@@ -10,12 +10,12 @@ import org.marc4j.marc.impl.SubfieldImpl;
 import static org.junit.Assert.assertEquals;
 
 
-class UpdateLinkProcessorTest {
+public class UpdateLinkProcessorTest {
 
   private final LinkProcessor processor = new UpdateLinkProcessor();
 
   @Test
-  void process_positive_updateSubfieldsAndOrderIt() {
+  public void process_positive_updateSubfieldsAndOrderIt() {
     List<Subfield> oldSubfields = List.of(
       new SubfieldImpl('a', "a-data"),
       new SubfieldImpl('z', "z-data"),

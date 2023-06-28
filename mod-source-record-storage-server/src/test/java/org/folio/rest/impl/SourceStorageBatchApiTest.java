@@ -16,7 +16,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,7 +52,6 @@ import org.junit.runner.RunWith;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -882,8 +883,11 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Record createdRecord = createResponse.body().as(Record.class);
     async.complete();
 
+    Map<String, Object> contentObject = new HashMap<>();
+    contentObject.put("leader", "01542ccm a2200361   4500");
+    contentObject.put("fields", new ArrayList<>());
     ParsedRecord parsedRecordJson = new ParsedRecord().withId(createdRecord.getParsedRecord().getId())
-      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500").put("fields", new JsonArray()));
+      .withContent(contentObject);
 
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(Collections.singletonList(createdRecord.withParsedRecord(parsedRecordJson)))

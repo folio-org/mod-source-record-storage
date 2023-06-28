@@ -15,10 +15,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -852,17 +854,20 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) {
+  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) throws JsonProcessingException {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
     String firstSrsId = UUID.randomUUID().toString();
     String firstInstanceId = UUID.randomUUID().toString();
 
+    String contentString = new JsonObject().put("leader", "01542dcm a2200361   4500")
+      .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+        .put("subfields",
+          new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId))))))
+      .encode();
+    Map contentObj = new ObjectMapper().readValue(contentString, Map.class);
     ParsedRecord parsedRecord = new ParsedRecord().withId(firstSrsId)
-      .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
-        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
-          .put("subfields",
-            new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))))));
+      .withContent(contentObj);
 
     Record deleted_record_1 = new Record()
       .withId(firstSrsId)
@@ -908,7 +913,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
@@ -921,7 +926,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(4))
+      .body("sourceRecords.size()", is(5))
       .body("totalRecords", is(5));
     async.complete();
 
@@ -938,7 +943,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
@@ -951,7 +956,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(4))
+      .body("sourceRecords.size()", is(5))
       .body("totalRecords", is(5));
     async.complete();
 
@@ -963,7 +968,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4));
     async.complete();
   }

@@ -1,17 +1,13 @@
 package org.folio.rest.impl;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -26,12 +22,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
@@ -355,7 +354,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSameRecordOnGetByIdAndGetBySRSId(TestContext testContext) {
+  public void shouldReturnSameRecordOnGetByIdAndGetBySRSId(TestContext testContext) throws JsonProcessingException {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -368,11 +367,14 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     async = testContext.async();
     String srsId = UUID.randomUUID().toString();
+    String contentString = new JsonObject().put("leader", "01542ccm a2200361   4500")
+      .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+        .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId))))))
+      .encode();
+    Map contentObj = new ObjectMapper().readValue(contentString, Map.class);
 
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
-      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
-        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
-          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)))))));
+      .withContent(contentObj);
 
     Record newRecord = new Record()
       .withId(srsId)

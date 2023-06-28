@@ -74,7 +74,6 @@ public final class ParsedRecordDaoUtil {
   }
 
   public static class MarcIndexers extends TableImpl<org.jooq.Record> {
-    public final TableField<org.jooq.Record, UUID> MARC_ID = createField(DSL.name("marc_id"), SQLDataType.UUID);
     public final TableField<org.jooq.Record, String> FIELD_NO =
       createField(name("field_no"), SQLDataType.VARCHAR);
     public final TableField<org.jooq.Record, String> IND1 =
@@ -85,6 +84,8 @@ public final class ParsedRecordDaoUtil {
       createField(name("subfield_no"), SQLDataType.VARCHAR);
     public final TableField<org.jooq.Record, String> VALUE =
       createField(name("value"), SQLDataType.VARCHAR);
+    public final TableField<org.jooq.Record, UUID> MARC_ID =
+      createField(DSL.name("marc_id"), SQLDataType.UUID);
     public final TableField<org.jooq.Record, Integer> VERSION =
       createField(name("version"), SQLDataType.INTEGER);
 

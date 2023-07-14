@@ -1,3 +1,8 @@
+## 2023-07-14 v5.6.7
+* Reverted [MODSOURCE-654](https://issues.folio.org/browse/MODSOURCE-654)
+* Reverted [MODSOURCE-656](https://issues.folio.org/browse/MODSOURCE-656)
+* Reverted [MODSOURCE-658](https://issues.folio.org/browse/MODSOURCE-658)
+
 ## 2023-06-27 v5.6.6
 * [MODSOURCE-654](https://issues.folio.org/browse/MODSOURCE-654) Optimize Insert & Update of marc_records_lb table (MODSOURCE-601)
 * [MODSOURCE-656](https://issues.folio.org/browse/MODSOURCE-656) Delete marc_indexers records associated with "OLD" source records (MODSOURCE-635)

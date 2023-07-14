@@ -17,8 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   "org.folio.dao",
   "org.folio.services",
   "org.folio.consumers",
-  "org.folio.errorhandlers",
-  "org.folio.verticle"})
+  "org.folio.errorhandlers"})
 public class ApplicationConfig {
 
   private static final Logger LOGGER = LogManager.getLogger();

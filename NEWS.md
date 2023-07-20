@@ -1,4 +1,5 @@
 ## 2023-xo-xo v5.7.0-SNAPSHOT
+* [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
 * [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
 * [MODSOURCE-636](https://issues.folio.org/browse/MODSOURCE-636) Implement async migration service

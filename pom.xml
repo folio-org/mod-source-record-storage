@@ -20,7 +20,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <raml-module-builder.version>35.0.1</raml-module-builder.version>
+    <raml-module-builder.version>35.0.6</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>4.3.7</vertx.version>
     <junit.version>4.13.2</junit.version>
@@ -67,7 +67,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <release>11</release>
+          <release>17</release>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>

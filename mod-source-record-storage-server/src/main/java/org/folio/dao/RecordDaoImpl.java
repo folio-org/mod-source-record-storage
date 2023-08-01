@@ -145,10 +145,11 @@ public class RecordDaoImpl implements RecordDao {
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" = '{ind1}' and \"{partition}\".\"ind2\" = '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
+  private static final String WILDCARD = "*";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
@@ -294,8 +295,8 @@ public class RecordDaoImpl implements RecordDao {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
       params.put("value", getValueInSqlFormat(matchedField.getValue()));
-      params.put("ind1", matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
-      params.put("ind2", matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
+      params.put("ind1", matchedField.getInd1().equals(WILDCARD) ? "%" : matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
+      params.put("ind2", matchedField.getInd2().equals(WILDCARD) ? "%" : matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
       params.put("subfield", matchedField.getSubfield());
       String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);

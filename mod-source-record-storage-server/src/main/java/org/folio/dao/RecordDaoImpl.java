@@ -150,6 +150,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
   private static final String WILDCARD = "*";
+  private static final String PERCENT = "%";
+  private static final String HASH = "#";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
@@ -295,12 +297,18 @@ public class RecordDaoImpl implements RecordDao {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
       params.put("value", getValueInSqlFormat(matchedField.getValue()));
-      params.put("ind1", matchedField.getInd1().equals(WILDCARD) ? "%" : matchedField.getInd1().isBlank() ? "#" : matchedField.getInd1());
-      params.put("ind2", matchedField.getInd2().equals(WILDCARD) ? "%" : matchedField.getInd2().isBlank() ? "#" : matchedField.getInd2());
+      params.put("ind1", getSqlInd(matchedField.getInd1()));
+      params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
       String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     }
+  }
+
+  private String getSqlInd(String ind) {
+    if (ind.equals(WILDCARD)) return PERCENT;
+    if (ind.isBlank()) return HASH;
+    return ind;
   }
 
   private String getValueInSqlFormat(Value value) {

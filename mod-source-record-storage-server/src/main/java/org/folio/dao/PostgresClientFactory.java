@@ -192,7 +192,8 @@ public class PostgresClientFactory {
       .setPassword(postgresConfig.getString(PASSWORD))
       .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
       .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
-      .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
+      .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId))
+      .addProperty("application_name", "srs-pgpool");
   }
 
   private static DataSource getDataSource(String tenantId) {

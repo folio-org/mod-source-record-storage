@@ -9,10 +9,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
+import io.vertx.sqlclient.SqlClient;
 import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
@@ -21,6 +23,7 @@ import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -64,6 +67,14 @@ public class PostgresClientFactory {
 
   private final Vertx vertx;
 
+  private Class<? extends ReactiveClassicGenericQueryExecutor> ReactiveClassicGenericQueryExecutorProxyClass;
+
+  @Value("${srs.db.reactive.numRetries:3}")
+  private Integer numOfRetries;
+
+  @Value("${srs.db.reactive.retryDelay.ms:1000}")
+  private Long retryDelay;
+
   @Autowired
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
     this.vertx = Vertx.newInstance(vertx);
@@ -81,19 +92,43 @@ public class PostgresClientFactory {
     }
   }
 
+  @PostConstruct
+  public void setupProxyExecutorClass() {
+    // setup proxy class of ReactiveClassicGenericQueryExecutor
+    if(numOfRetries != null) QueryExecutorInterceptor.setNumberOfRetries(numOfRetries);
+    if(retryDelay != null) QueryExecutorInterceptor.setRetryDelay(retryDelay);
+    ReactiveClassicGenericQueryExecutorProxyClass = QueryExecutorInterceptor.generateClass();
+  }
+
+  protected void setRetryPolicy(Integer retries, Long retryDelay) {
+    this.numOfRetries = retries;
+    this.retryDelay = retryDelay;
+    setupProxyExecutorClass();
+  }
+
   @PreDestroy
   public void close() {
     closeAll();
   }
 
   /**
-   * Get {@link ReactiveClassicGenericQueryExecutor}
+   * Get proxied {@link ReactiveClassicGenericQueryExecutor} that will attempt to retry an execution
+   * on some executions
    *
    * @param tenantId tenant id
    * @return reactive query executor
    */
   public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
-    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
+    if (ReactiveClassicGenericQueryExecutorProxyClass == null) setupProxyExecutorClass();
+    ReactiveClassicGenericQueryExecutor queryExecutorProxy;
+    try {
+      queryExecutorProxy = ReactiveClassicGenericQueryExecutorProxyClass
+        .getDeclaredConstructor(Configuration.class, SqlClient.class)
+        .newInstance(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
+    } catch (Exception e) {
+      throw new RuntimeException("Something happened while creating proxied ReactiveClassicGenericQueryExecutor", e);
+    }
+    return queryExecutorProxy;
   }
 
   /**

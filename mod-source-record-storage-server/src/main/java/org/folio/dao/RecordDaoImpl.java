@@ -300,6 +300,7 @@ public class RecordDaoImpl implements RecordDao {
     Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .select(getAllRecordFields(prt))
+      .distinctOn(RECORDS_LB.ID)
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))

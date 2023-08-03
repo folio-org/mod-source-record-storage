@@ -11,11 +11,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.jooq.impl.DSL;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,7 +32,6 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientFactoryTest {
-  private static final Logger LOGGER = LogManager.getLogger();
 
   static Vertx vertx;
 
@@ -120,7 +118,7 @@ public class PostgresClientFactoryTest {
     Runnable closeResources = () -> {
       toxiproxy.close();
       postgreSQLContainer.close();
-      PostgresClientFactory.setConfigFilePath(null);
+      network.close();
     };
     final ToxiproxyClient toxiproxyClient = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
     final Proxy proxy = toxiproxyClient.createProxy("postgres", "0.0.0.0:8666", "toxipostgres:5432");
@@ -159,6 +157,13 @@ public class PostgresClientFactoryTest {
           }
         });
       });
+  }
+
+  @After
+  public void cleanup() {
+    PostgresClientFactory.setConfigFilePath(null);
+    PostgresClientFactory.closeAll();
+    Envs.setEnv(new HashMap<>());
   }
 
   @AfterClass

@@ -447,7 +447,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
-    /* Building a search query */
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoinAlternative(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
@@ -457,7 +456,7 @@ public class RecordDaoImpl implements RecordDao {
     if (searchParameters.getLimit() != null) {
       searchQuery.limit(searchParameters.getLimit());
     }
-    /* Building a count query */
+
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
     appendJoinAlternative(countQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);

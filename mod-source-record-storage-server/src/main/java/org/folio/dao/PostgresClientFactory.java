@@ -67,7 +67,7 @@ public class PostgresClientFactory {
 
   private final Vertx vertx;
 
-  private Class<? extends ReactiveClassicGenericQueryExecutor> ReactiveClassicGenericQueryExecutorProxyClass;
+  private static Class<? extends ReactiveClassicGenericQueryExecutor> reactiveClassicGenericQueryExecutorProxyClass;
 
   @Value("${srs.db.reactive.numRetries:3}")
   private Integer numOfRetries;
@@ -97,7 +97,7 @@ public class PostgresClientFactory {
     // setup proxy class of ReactiveClassicGenericQueryExecutor
     if(numOfRetries != null) QueryExecutorInterceptor.setNumberOfRetries(numOfRetries);
     if(retryDelay != null) QueryExecutorInterceptor.setRetryDelay(retryDelay);
-    ReactiveClassicGenericQueryExecutorProxyClass = QueryExecutorInterceptor.generateClass();
+    reactiveClassicGenericQueryExecutorProxyClass = QueryExecutorInterceptor.generateClass();
   }
 
   protected void setRetryPolicy(Integer retries, Long retryDelay) {
@@ -119,14 +119,14 @@ public class PostgresClientFactory {
    * @return reactive query executor
    */
   public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
-    if (ReactiveClassicGenericQueryExecutorProxyClass == null) setupProxyExecutorClass();
+    if (reactiveClassicGenericQueryExecutorProxyClass == null) setupProxyExecutorClass();
     ReactiveClassicGenericQueryExecutor queryExecutorProxy;
     try {
-      queryExecutorProxy = ReactiveClassicGenericQueryExecutorProxyClass
+      queryExecutorProxy = reactiveClassicGenericQueryExecutorProxyClass
         .getDeclaredConstructor(Configuration.class, SqlClient.class)
         .newInstance(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
     } catch (Exception e) {
-      throw new RuntimeException("Something happened while creating proxied ReactiveClassicGenericQueryExecutor", e);
+      throw new RuntimeException("Something happened while creating proxied reactiveClassicGenericQueryExecutor", e);
     }
     return queryExecutorProxy;
   }

@@ -28,6 +28,8 @@ public class QueryExecutorInterceptor {
   private static int numRetries = 1;
   private static long retryDelay = 1000;
 
+  private QueryExecutorInterceptor(){}
+
   /**
    * Sets the number of retries for the transaction and query methods.
    *

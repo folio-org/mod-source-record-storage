@@ -118,14 +118,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         })
         .onFailure(throwable -> {
           LOG.warn("handle:: Error while MARC record modifying", throwable);
-          if (throwable instanceof PgException) {
-            PgException pgException = (PgException) throwable;
+          if (throwable instanceof PgException pgException) {
             if (StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
               future.completeExceptionally(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
+              return;
             }
-          } else {
-            future.completeExceptionally(throwable);
           }
+          future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
       LOG.warn("handle:: Error modifying MARC record", e);

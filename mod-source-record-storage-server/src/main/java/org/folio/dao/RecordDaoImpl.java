@@ -257,7 +257,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
-    Table marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
       {
         SelectOnConditionStep<org.jooq.Record> query = dsl
@@ -407,12 +407,12 @@ public class RecordDaoImpl implements RecordDao {
 
   private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled()) {
-      Table marcIndexersLeader = table(name("marc_indexers_leader"));
+      Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
       selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
     }
     if (parseFieldsResult.isEnabled()) {
       parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
-        Table marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
+        Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
         Field<UUID> marcIndexersMarcIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID));
         Field<Integer> marcIndexersVersionField = field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION));
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))

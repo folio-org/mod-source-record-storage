@@ -140,6 +140,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
+  private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
@@ -256,7 +257,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
-    Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
+    Table marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
       {
         SelectOnConditionStep<org.jooq.Record> query = dsl
@@ -290,14 +291,14 @@ public class RecordDaoImpl implements RecordDao {
   private Future<List<Record>> handleMatchedRecordsSearchResult(QueryResult queryResult, MatchField matchedField, TypeConnection typeConnection,
                                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {
     if (enableFallbackQuery && !queryResult.hasResults()) {
-      return getMatchedRecordsWithoutTrackingTable(matchedField, typeConnection, externalIdRequired, offset, limit, tenantId);
+      return getMatchedRecordsWithoutIndexersVersionUsage(matchedField, typeConnection, externalIdRequired, offset, limit, tenantId);
     }
-    return Future.succeededFuture(queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
+    return Future.succeededFuture(queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).toList());
   }
 
-  public Future<List<Record>> getMatchedRecordsWithoutTrackingTable(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
+  public Future<List<Record>> getMatchedRecordsWithoutIndexersVersionUsage(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
-    Table marcIndexersPartitionTable = table(name("marc_indexers_" + matchedField.getTag()));
+    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
       .select(getAllRecordFields(prt))
       .distinctOn(RECORDS_LB.ID)
@@ -399,7 +400,7 @@ public class RecordDaoImpl implements RecordDao {
           .flatMapPublisher(pq -> pq.createStream(10000)
             .toFlowable()
             .filter(row -> !enableFallbackQuery || row.getInteger(COUNT) != 0)
-            .switchIfEmpty(streamMarcRecordIdsWithoutTracking(conn, parseLeaderResult, parseFieldsResult, searchParameters))
+            .switchIfEmpty(streamMarcRecordIdsWithoutIndexersVersionUsage(conn, parseLeaderResult, parseFieldsResult, searchParameters))
             .map(this::toRow))
           .doAfterTerminate(tx::commit)));
   }
@@ -411,7 +412,7 @@ public class RecordDaoImpl implements RecordDao {
     }
     if (parseFieldsResult.isEnabled()) {
       parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
-        Table marcIndexers = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
+        Table marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
         Field<UUID> marcIndexersMarcIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID));
         Field<Integer> marcIndexersVersionField = field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION));
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))
@@ -440,14 +441,15 @@ public class RecordDaoImpl implements RecordDao {
       .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
   }
 
-  private Flowable<io.vertx.reactivex.sqlclient.Row> streamMarcRecordIdsWithoutTracking(SqlConnection conn, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
-                                                                                        RecordSearchParameters searchParameters) {
+  private Flowable<io.vertx.reactivex.sqlclient.Row> streamMarcRecordIdsWithoutIndexersVersionUsage(SqlConnection conn, ParseLeaderResult parseLeaderResult,
+                                                                                                    ParseFieldsResult parseFieldsResult,
+                                                                                                    RecordSearchParameters searchParameters) {
     return conn.rxPrepare(getAlternativeQuery(parseLeaderResult, parseFieldsResult, searchParameters))
       .flatMapPublisher(pq -> pq.createStream(10000).toFlowable());
   }
 
   private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
-    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    SelectJoinStep<Record1<UUID>> searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoinAlternative(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
@@ -457,21 +459,21 @@ public class RecordDaoImpl implements RecordDao {
       searchQuery.limit(searchParameters.getLimit());
     }
 
-    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
+    SelectJoinStep<Record1<Integer>> countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
     appendJoinAlternative(countQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
 
     return DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
   }
 
-  private void appendJoinAlternative(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+  private void appendJoinAlternative(SelectJoinStep<?> selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled()) {
-      Table marcIndexersLeader = table(name("marc_indexers_leader"));
+      Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
       selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
     }
     if (parseFieldsResult.isEnabled()) {
       parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
-        Table marcIndexers = table(name("marc_indexers_" + fieldToJoin)).as("i" + fieldToJoin);
+        Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
       });
     }

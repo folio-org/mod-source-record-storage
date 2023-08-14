@@ -1,3 +1,6 @@
+## 2023-08-14 v5.6.8
+* [MODSOURCE-656](https://issues.folio.org/browse/MODSOURCE-656) Delete marc_indexers records associated with "OLD" source records (MODSOURCE-635)
+
 ## 2023-07-14 v5.6.7
 * Reverted [MODSOURCE-654](https://issues.folio.org/browse/MODSOURCE-654)
 * Reverted [MODSOURCE-656](https://issues.folio.org/browse/MODSOURCE-656)

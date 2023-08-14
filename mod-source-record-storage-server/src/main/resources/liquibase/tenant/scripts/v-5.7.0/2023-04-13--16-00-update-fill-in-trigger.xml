@@ -21,29 +21,6 @@
     </addColumn>
   </changeSet>
 
-  <changeSet id="2023-04-13--16-00-create-index_on_marc_indexers.xml" author="okolawole">
-    <sql splitStatements="false">
-      do $$ declare
-      index integer;
-        suffix text;
-      begin
-      execute 'update ${database.defaultSchemaName}.marc_indexers set version = 0;';
-      execute 'insert into ${database.defaultSchemaName}.marc_records_tracking select id, 0, false from ${database.defaultSchemaName}.marc_records_lb;';
-      for index in 0 .. 999
-          loop
-            suffix = lpad(index::text, 3, '0');
-      execute 'drop index if exists idx_marc_indexers_marc_id_' || suffix || ';';
-      execute 'create index idx_marc_indexers_marc_id_version_' || suffix || ' on ${database.defaultSchemaName}.marc_indexers_' || suffix || '(marc_id, version);';
-      end loop;
-      end;
-      $$;
-    </sql>
-    <addNotNullConstraint columnName="version" tableName="marc_indexers"/>
-    <createIndex indexName="idx_marc_records_tracking_dirty" tableName="marc_records_tracking">
-      <column name="is_dirty"/>
-    </createIndex>
-  </changeSet>
-
   <changeSet id="2023-04-13--16-00-update-function-fill_in_marc_indexers" author="okolawole">
     <sql splitStatements="false">
       create or replace function ${database.defaultSchemaName}.fill_in_marc_indexers(p_marc_id uuid, p_marc_content jsonb, p_version integer)

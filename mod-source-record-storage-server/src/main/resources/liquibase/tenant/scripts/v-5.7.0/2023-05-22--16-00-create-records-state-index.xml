@@ -4,17 +4,6 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
-  <changeSet id="2023-05-22--16-00-delete-old-records-marc-indexers" author="RuslanLavrov">
-    <sql splitStatements="false">
-      DELETE FROM ${database.defaultSchemaName}.marc_indexers
-      WHERE exists(
-        SELECT 1
-        FROM ${database.defaultSchemaName}.records_lb
-        WHERE records_lb.id = marc_indexers.marc_id
-          AND records_lb.state = 'OLD');
-    </sql>
-  </changeSet>
-
   <changeSet id="2023-05-22--16-00-create-records-state-index" author="RuslanLavrov">
     <createIndex indexName="idx_records_state" tableName="records_lb">
       <column name="state"/>

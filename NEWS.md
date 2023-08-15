@@ -1,4 +1,4 @@
-## 2023-08-14 v5.6.9
+## 2023-08-15 v5.6.10
 * [MODSOURCE-654](https://issues.folio.org/browse/MODSOURCE-654) Optimize Insert & Update of marc_records_lb table (MODSOURCE-601)
 * [MODSOURCE-656](https://issues.folio.org/browse/MODSOURCE-656) Delete marc_indexers records associated with "OLD" source records (MODSOURCE-635)
 * [MODSOURCE-681](https://issues.folio.org/browse/MODSOURCE-656) Allow DI to function correctly if marc_indexers version value is not set (MODSOURCE-671)

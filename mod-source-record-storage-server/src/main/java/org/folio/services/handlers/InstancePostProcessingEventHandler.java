@@ -47,6 +47,18 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
     sendEventToDataImportLog(dataImportEventPayload, record);
   }
 
+  @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return  DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value();
+    }
+    if (DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_BIB_RECORD_UPDATED.value();
+    }
+    return eventType;
+  }
+
   protected DataImportEventTypes replyEventType() {
     return DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
   }

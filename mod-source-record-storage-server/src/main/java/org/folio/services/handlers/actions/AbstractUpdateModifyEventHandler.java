@@ -6,7 +6,6 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import java.util.Optional;
 import java.util.function.Function;
-import io.vertx.pgclient.PgException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +24,6 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
-import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.RestUtil;
 
 import java.io.IOException;
@@ -54,8 +52,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
-  private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
-  private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
 
   protected RecordService recordService;
@@ -118,14 +114,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         })
         .onFailure(throwable -> {
           LOG.warn("handle:: Error while MARC record modifying", throwable);
-          if (throwable instanceof PgException) {
-            PgException pgException = (PgException) throwable;
-            if (StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
-              future.completeExceptionally(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
-            }
-          } else {
-            future.completeExceptionally(throwable);
-          }
+          future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
       LOG.warn("handle:: Error modifying MARC record", e);

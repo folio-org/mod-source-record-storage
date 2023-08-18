@@ -2,8 +2,12 @@ package org.folio.services.handlers;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
@@ -48,6 +52,18 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
         sendLogEvent(dataImportEventPayload, DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED, key, kafkaHeaders);
       }
     }
+  }
+
+  @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED.value();
+    }
+    if (DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED.value();
+    }
+    return eventType;
   }
 
   @Override

@@ -169,6 +169,15 @@ public final class AdditionalFieldsUtil {
     return result;
   }
 
+  public static String getFieldFromMarcRecord(Record record, String field, char ind1, char ind2, char subfield) {
+    List<VariableField> variableFields = computeMarcRecord(record).getVariableFields(field);
+    Optional<DataField> dataField = variableFields.stream().filter(v -> v instanceof DataField)
+      .map(v -> (DataField) v)
+      .filter(v -> ind1 == v.getIndicator1() && ind2 == v.getIndicator2())
+      .findFirst();
+    return dataField.map(value -> value.getSubfieldsAsString(String.valueOf(subfield))).orElse(null);
+  }
+
   /**
    * Adds new controlled field to marc record
    *

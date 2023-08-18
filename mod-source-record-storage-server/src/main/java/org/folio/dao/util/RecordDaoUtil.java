@@ -173,6 +173,26 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Make sure record has matched id.
+   *
+   * @param record record
+   * @return record with matched id
+   */
+  public static Record ensureRecordHasMatchedId(Record record) {
+    if (Objects.isNull(record.getMatchedId())) {
+      record.setMatchedId(UUID.randomUUID().toString());
+    }
+    return record;
+  }
+
+  public static Record ensureRecordHasGeneration(Record record) {
+    if (Objects.isNull(record.getGeneration())) {
+      record.setGeneration(0);
+    }
+    return record;
+  }
+
+  /**
    * Make sure record has additional info suppress discovery.
    *
    * @param record record

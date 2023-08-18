@@ -9,13 +9,18 @@ import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -25,9 +30,13 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.services.exceptions.DuplicateRecordException;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,15 +70,27 @@ public class RecordServiceImpl implements RecordService {
   private static final Logger LOG = LogManager.getLogger();
 
   private final RecordDao recordDao;
+  private final EnumMap<Record.RecordType, BiFunction<Record, String, Future<Optional<SourceRecord>>>> recordTypeToActualSourceRecord = new EnumMap<>(Record.RecordType.class);
+  private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
+  private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
 
   @Autowired
   public RecordServiceImpl(final RecordDao recordDao) {
     this.recordDao = recordDao;
+
+    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_BIB,
+      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), IdType.INSTANCE, RecordState.ACTUAL, tenantId));
+
+    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_HOLDING,
+      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getHoldingsId(), IdType.HOLDINGS, RecordState.ACTUAL, tenantId));
+
+    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_AUTHORITY,
+      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getAuthorityId(), IdType.AUTHORITY, RecordState.ACTUAL, tenantId));
   }
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset,
-      int limit, String tenantId) {
+                                             int limit, String tenantId) {
     return recordDao.getRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
@@ -96,11 +117,12 @@ public class RecordServiceImpl implements RecordService {
         }
         return Future.succeededFuture();
       })
-      .compose(v -> {
-        if (Objects.isNull(record.getGeneration())) {
-          return recordDao.calculateGeneration(txQE, record);
+      .compose(v -> setMatchedIdForRecord(record, tenantId))
+      .compose(r -> {
+        if (Objects.isNull(r.getGeneration())) {
+          return recordDao.calculateGeneration(txQE, r);
         }
-        return Future.succeededFuture(record.getGeneration());
+        return Future.succeededFuture(r.getGeneration());
       })
       .compose(generation -> {
         if (generation > 0) {
@@ -111,7 +133,8 @@ public class RecordServiceImpl implements RecordService {
         } else {
           return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
         }
-      }), tenantId);
+      }), tenantId)
+      .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 
   @Override
@@ -121,7 +144,13 @@ public class RecordServiceImpl implements RecordService {
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    return recordDao.saveRecords(recordCollection, tenantId);
+    List<Future> setMatchedIdsFutures = new ArrayList<>();
+    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record, tenantId)));
+    return GenericCompositeFuture.all(setMatchedIdsFutures)
+      .compose(ar -> ar.succeeded() ?
+        recordDao.saveRecords(recordCollection, tenantId)
+        : Future.failedFuture(ar.cause()))
+      .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 
   @Override
@@ -131,7 +160,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields,
-      int offset, int limit, String tenantId) {
+                                                         int offset, int limit, String tenantId) {
     return recordDao.getSourceRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
 
@@ -217,22 +246,22 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
-          .withJobExecutionId(snapshotId)
-          .withProcessingStartedDate(new Date())
-          .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
-            .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-              .withId(newRecordId)
-              .withSnapshotId(snapshot.getJobExecutionId())
-              .withMatchedId(parsedRecordDto.getId())
-              .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-              .withState(Record.State.ACTUAL)
-              .withOrder(existingRecord.getOrder())
-              .withGeneration(existingRecord.getGeneration() + 1)
-              .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-              .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-              .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-              .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-              .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
+            .withJobExecutionId(snapshotId)
+            .withProcessingStartedDate(new Date())
+            .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
+          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
+            .withId(newRecordId)
+            .withSnapshotId(snapshot.getJobExecutionId())
+            .withMatchedId(parsedRecordDto.getId())
+            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+            .withState(Record.State.ACTUAL)
+            .withOrder(existingRecord.getOrder())
+            .withGeneration(existingRecord.getGeneration() + 1)
+            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
         .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
   }
@@ -248,6 +277,32 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId) {
     return recordDao.updateRecordsState(matchedId, state, recordType, tenantId);
+  }
+
+  private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
+    String marcField999s = getFieldFromMarcRecord(record, TAG_999, 'f', 'f', 's');
+    if (marcField999s != null) {
+      return Future.succeededFuture(record.withMatchedId(marcField999s));
+    }
+    if (record.getExternalIdsHolder() != null) {
+      return recordTypeToActualSourceRecord.get(record.getRecordType()).apply(record, tenantId)
+        .compose(sourceRecord -> {
+          if (sourceRecord.isPresent()) {
+            return Future.succeededFuture(record.withMatchedId(sourceRecord.get().getRecordId()));
+          }
+          return Future.succeededFuture(record.withMatchedId(record.getId()));
+        });
+    }
+    return Future.succeededFuture(record.withMatchedId(record.getId()));
+  }
+
+  private static Future mapToDuplicateExceptionIfNeeded(Throwable throwable) {
+    if (throwable instanceof PgException pgException) {
+      if (StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
+        return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
+      }
+    }
+    return Future.failedFuture(throwable);
   }
 
   private Record formatMarcRecord(Record record) {

@@ -481,7 +481,6 @@ public class RecordDaoImpl implements RecordDao {
         .stream()
         .map(RecordDaoUtil::ensureRecordHasId)
         .map(RecordDaoUtil::ensureRecordHasMatchedId)
-        .map(RecordDaoUtil::ensureRecordHasGeneration)
         .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
         .map(RecordDaoUtil::ensureRecordForeignKeys)
         .forEach(record -> {

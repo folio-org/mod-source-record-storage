@@ -177,9 +177,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -202,7 +200,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -244,12 +242,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Record incomingRecord = new Record()
       .withRawRecord(rawRecord)
       .withId(recordId)
-      .withMatchedId(existingRecord.getMatchedId())
       .withSnapshotId(snapshotId2)
       .withRecordType(MARC_BIB)
       .withParsedRecord(parsedRecord);
 
     JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in001");
+    existingRecord.getExternalIdsHolder().setInstanceId(instanceJson.getString("id"));
+    existingRecord.getExternalIdsHolder().setInstanceHrid(instanceJson.getString("hrid"));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instanceJson.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -296,12 +295,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Record incomingRecord = new Record()
       .withRawRecord(rawRecord)
       .withId(recordId)
-      .withMatchedId(existingRecord.getMatchedId())
       .withSnapshotId(snapshotId2)
       .withRecordType(MARC_BIB)
       .withParsedRecord(parsedRecord);
 
     JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in00000000040");
+    existingRecord.getExternalIdsHolder().setInstanceId(instanceJson.getString("id"));
+    existingRecord.getExternalIdsHolder().setInstanceHrid(instanceJson.getString("hrid"));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instanceJson.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -405,9 +405,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -430,7 +428,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -471,9 +469,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -498,7 +494,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }

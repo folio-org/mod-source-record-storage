@@ -185,13 +185,6 @@ public final class RecordDaoUtil {
     return record;
   }
 
-  public static Record ensureRecordHasGeneration(Record record) {
-    if (Objects.isNull(record.getGeneration())) {
-      record.setGeneration(0);
-    }
-    return record;
-  }
-
   /**
    * Make sure record has additional info suppress discovery.
    *

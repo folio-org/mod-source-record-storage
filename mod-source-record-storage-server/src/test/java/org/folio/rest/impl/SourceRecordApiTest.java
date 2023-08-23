@@ -868,7 +868,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
         .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
           .put("subfields",
-            new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))))));
+            new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))
+          .put("ind1", "f")
+          .put("ind2", "f")))));
 
     Record deleted_record_1 = new Record()
       .withId(firstSrsId)

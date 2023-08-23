@@ -7,7 +7,7 @@ public enum IdType {
   AUTHORITY("authorityId"),
   EXTERNAL("externalId"),
   // NOTE: not really external id but is default from dto
-  RECORD("matchedId");
+  RECORD("id");
 
   private final String idField;
 

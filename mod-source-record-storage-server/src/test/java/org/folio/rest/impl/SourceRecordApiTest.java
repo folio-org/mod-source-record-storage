@@ -132,7 +132,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRawRecord(rawRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(0)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
     record_2 = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -152,7 +155,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRawRecord(rawRecord)
       .withErrorRecord(errorRecord)
       .withMatchedId(THIRD_UUID)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
     record_4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -205,8 +211,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid("12345"));
+        .withAuthorityId(UUID.randomUUID().toString())
+        .withAuthorityHrid("12345"));
     record_9 = new Record()
       .withId(NINTH_UUID)
       .withSnapshotId(snapshot_5.getJobExecutionId())
@@ -217,8 +223,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid("12345"));
+        .withHoldingsId(UUID.randomUUID().toString())
+        .withHoldingsHrid("12345"));
   }
 
   @Before
@@ -1577,7 +1583,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, SECOND_UUID, secondHrid);
+    setExternalIds(record, recordType, FOURTH_UUID, secondHrid);
 
     RestAssured.given()
       .spec(spec)

@@ -344,9 +344,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldFailToSaveRecord(TestContext context) {
     Async async = context.async();
     Record valid = TestMocks.getRecord(0);
+    String fakeSnapshotId = "fakeId";
     Record invalid = new Record()
       .withId(valid.getId())
-      .withSnapshotId(valid.getSnapshotId())
+      .withSnapshotId(fakeSnapshotId)
       .withRecordType(valid.getRecordType())
       .withState(valid.getState())
       .withGeneration(valid.getGeneration())
@@ -358,7 +359,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
-      String expected = "null value in column \"matched_id\" violates not-null constraint";
+      String expected = "Invalid UUID string: " + fakeSnapshotId;
       context.assertTrue(save.cause().getMessage().contains(expected));
       async.complete();
     });

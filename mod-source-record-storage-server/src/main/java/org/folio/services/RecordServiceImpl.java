@@ -90,6 +90,9 @@ public class RecordServiceImpl implements RecordService {
 
     recordTypeToActualSourceRecord.put(Record.RecordType.MARC_AUTHORITY,
       (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getAuthorityId(), IdType.AUTHORITY, RecordState.ACTUAL, tenantId));
+
+    recordTypeToActualSourceRecord.put(Record.RecordType.EDIFACT,
+      (record, tenantId) -> Future.succeededFuture(Optional.empty()));
   }
 
   @Override
@@ -289,7 +292,7 @@ public class RecordServiceImpl implements RecordService {
       return Future.succeededFuture(record.withMatchedId(marcField999s));
     }
     Promise<Record> promise = Promise.promise();
-    if (record.getExternalIdsHolder() != null && record.getRecordType() != null) {
+    if (record.getExternalIdsHolder() != null && record.getState() != Record.State.OLD) {
       recordTypeToActualSourceRecord.get(record.getRecordType()).apply(record, tenantId)
         .onComplete((ar) -> {
           if (ar.succeeded()) {

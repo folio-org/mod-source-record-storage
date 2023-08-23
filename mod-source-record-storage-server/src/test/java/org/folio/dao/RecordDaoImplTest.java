@@ -138,6 +138,20 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     });
   }
 
+  @Test
+  public void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(TestContext context) {
+    Async async = context.async();
+
+    recordDao.deleteMarcIndexersOldVersions(TENANT_ID);
+    Future<Boolean> future = recordDao.deleteMarcIndexersOldVersions(TENANT_ID);
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertFalse(ar.result());
+      async.complete();
+    });
+  }
+
   private Future<Boolean> deleteTrackingRecordById(String recordId) {
     return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dslContext -> dslContext
         .deleteFrom(MARC_RECORDS_TRACKING)

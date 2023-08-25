@@ -3,6 +3,7 @@
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
 * [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
 * [MODSOURCE-636](https://issues.folio.org/browse/MODSOURCE-636) Implement async migration service
+* [MODSOURCE-674](https://issues.folio.org/browse/MODSOURCE-674) Ensure only one background job can be triggered to clean up outdated marc indexers
 
 ### Asynchronous migration job API
 | METHOD | URL                                     | DESCRIPTION                                     |

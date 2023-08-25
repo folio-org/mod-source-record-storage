@@ -142,8 +142,8 @@ public class RecordDaoImpl implements RecordDao {
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
   private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
-  private static final String GET_LOCK_FUNCTION = "pg_try_advisory_xact_lock";
-  private static final int INDEXERS_DELETION_LOCK_PREFIX_ID = "delete_marc_indexers".hashCode();
+  static final String GET_LOCK_FUNCTION = "pg_try_advisory_xact_lock";
+  static final int INDEXERS_DELETION_LOCK_PREFIX_ID = "delete_marc_indexers".hashCode();
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";

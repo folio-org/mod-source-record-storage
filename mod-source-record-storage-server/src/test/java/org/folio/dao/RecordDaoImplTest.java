@@ -11,6 +11,7 @@ import io.vertx.reactivex.FlowableHelper;
 import io.vertx.sqlclient.Row;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
+import org.folio.dao.util.AdvisoryLockUtil;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.value.StringValue;
@@ -26,8 +27,6 @@ import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
-import org.jooq.impl.DSL;
-import org.jooq.impl.SQLDataType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,11 +38,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_PREFIX_ID;
+import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.jooq.impl.DSL.val;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordDaoImplTest extends AbstractLBServiceTest {
@@ -146,11 +144,10 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   public void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(TestContext context) {
     Async async = context.async();
 
-    Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID).transaction(txQE -> txQE
-      .findOneRow(dsl -> dsl.select(DSL.field("{0}", Boolean.class, DSL.function("pg_try_advisory_xact_lock",
-        SQLDataType.BOOLEAN, val(INDEXERS_DELETION_LOCK_PREFIX_ID), val(TENANT_ID.hashCode())))))
-      .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID))
-    );
+    Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
+    // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
+      .transaction(txQE -> AdvisoryLockUtil.acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
+        .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID)));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

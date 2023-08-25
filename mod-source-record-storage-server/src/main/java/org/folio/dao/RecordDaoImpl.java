@@ -96,6 +96,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
@@ -125,7 +126,6 @@ import static org.jooq.impl.DSL.primaryKey;
 import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
-import static org.jooq.impl.DSL.val;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -142,12 +142,11 @@ public class RecordDaoImpl implements RecordDao {
   private static final String COUNT = "count";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
   private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
-  static final String GET_LOCK_FUNCTION = "pg_try_advisory_xact_lock";
-  static final int INDEXERS_DELETION_LOCK_PREFIX_ID = "delete_marc_indexers".hashCode();
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
+  static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
@@ -1130,7 +1129,7 @@ public class RecordDaoImpl implements RecordDao {
    */
   @Override
   public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
-    return executeInTransaction(txQE -> acquireLock(txQE, tenantId)
+    return executeInTransaction(txQE -> acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, tenantId.hashCode())
       .compose(isLockAcquired -> {
         if (Boolean.FALSE.equals(isLockAcquired)) {
           LOG.info("deleteMarcIndexersOldVersions:: Previous marc_indexers old version deletion still ongoing, tenantId: '{}'", tenantId);
@@ -1138,12 +1137,6 @@ public class RecordDaoImpl implements RecordDao {
         }
         return deleteMarcIndexersOldVersions(txQE, tenantId);
       }), tenantId);
-  }
-
-  private Future<Boolean> acquireLock(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
-    return txQE.findOneRow(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
-      DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(INDEXERS_DELETION_LOCK_PREFIX_ID), val(tenantId.hashCode()))))
-    ).map(row -> row.getBoolean(0));
   }
 
   private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {

@@ -143,6 +143,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
   private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
   private static final String GET_LOCK_FUNCTION = "pg_try_advisory_xact_lock";
+  private static final int INDEXERS_DELETION_LOCK_PREFIX_ID = "delete_marc_indexers".hashCode();
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
@@ -1141,7 +1142,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<Boolean> acquireLock(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
     return txQE.findOneRow(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
-      DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(tenantId.hashCode()))))
+      DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(INDEXERS_DELETION_LOCK_PREFIX_ID), val(tenantId.hashCode()))))
     ).map(row -> row.getBoolean(0));
   }
 

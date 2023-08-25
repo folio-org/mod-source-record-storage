@@ -870,7 +870,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
           .put("subfields",
             new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))
           .put("ind1", "f")
-          .put("ind2", "f")))));
+          .put("ind2", "f")))).encode());
 
     Record deleted_record_1 = new Record()
       .withId(firstSrsId)
@@ -916,7 +916,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
@@ -929,7 +929,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(4))
+      .body("sourceRecords.size()", is(5))
       .body("totalRecords", is(5));
     async.complete();
 
@@ -946,7 +946,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
@@ -959,7 +959,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(4))
+      .body("sourceRecords.size()", is(5))
       .body("totalRecords", is(5));
     async.complete();
 
@@ -971,7 +971,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(3))
+      .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4));
     async.complete();
   }

@@ -11,6 +11,7 @@ import io.vertx.reactivex.FlowableHelper;
 import io.vertx.sqlclient.Row;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
+import org.folio.dao.util.AdvisoryLockUtil;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.value.StringValue;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
@@ -135,6 +137,22 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
           context.assertEquals(record.getExternalIdsHolder().getInstanceId(), ids.get(0));
           async.complete();
         });
+    });
+  }
+
+  @Test
+  public void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(TestContext context) {
+    Async async = context.async();
+
+    Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
+    // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
+      .transaction(txQE -> AdvisoryLockUtil.acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
+        .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID)));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertFalse(ar.result());
+      async.complete();
     });
   }
 

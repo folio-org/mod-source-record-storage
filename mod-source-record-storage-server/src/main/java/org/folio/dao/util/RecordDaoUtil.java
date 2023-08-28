@@ -350,6 +350,17 @@ public final class RecordDaoUtil {
     return null;
   }
 
+  public static IdType getExternalIdType(Record.RecordType recordType) {
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return IdType.INSTANCE;
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return IdType.HOLDINGS;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return IdType.AUTHORITY;
+    }
+    return null;
+  }
+
   public static String getExternalHrid(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {
     if (Objects.isNull(externalIdsHolder)) {
       return null;

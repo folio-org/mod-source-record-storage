@@ -37,6 +37,7 @@ import io.vertx.sqlclient.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.jooq.Condition;
@@ -72,7 +73,6 @@ public class RecordServiceImpl implements RecordService {
   private static final Logger LOG = LogManager.getLogger();
 
   private final RecordDao recordDao;
-  private final EnumMap<Record.RecordType, BiFunction<Record, String, Future<Optional<SourceRecord>>>> recordTypeToActualSourceRecord = new EnumMap<>(Record.RecordType.class);
   private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   public static final char SUBFIELD_S = 's';
@@ -81,18 +81,6 @@ public class RecordServiceImpl implements RecordService {
   @Autowired
   public RecordServiceImpl(final RecordDao recordDao) {
     this.recordDao = recordDao;
-
-    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_BIB,
-      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getInstanceId(), IdType.INSTANCE, RecordState.ACTUAL, tenantId));
-
-    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_HOLDING,
-      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getHoldingsId(), IdType.HOLDINGS, RecordState.ACTUAL, tenantId));
-
-    recordTypeToActualSourceRecord.put(Record.RecordType.MARC_AUTHORITY,
-      (record, tenantId) -> recordDao.getSourceRecordByExternalId(record.getExternalIdsHolder().getAuthorityId(), IdType.AUTHORITY, RecordState.ACTUAL, tenantId));
-
-    recordTypeToActualSourceRecord.put(Record.RecordType.EDIFACT,
-      (record, tenantId) -> Future.succeededFuture(Optional.empty()));
   }
 
   @Override
@@ -113,6 +101,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
+    LOG.debug(format("saveRecord:: Saving record with id: %s for tenant: %s", record.getId(), tenantId));
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
@@ -289,20 +278,29 @@ public class RecordServiceImpl implements RecordService {
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {
+      LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from 999$s field for record with id: %s", marcField999s, record.getId()));
       return Future.succeededFuture(record.withMatchedId(marcField999s));
     }
     Promise<Record> promise = Promise.promise();
-    if (record.getExternalIdsHolder() != null && record.getState() != Record.State.OLD) {
-      recordTypeToActualSourceRecord.get(record.getRecordType()).apply(record, tenantId)
+    String externalId = RecordDaoUtil.getExternalId(record.getExternalIdsHolder(), record.getRecordType());
+    IdType idType = RecordDaoUtil.getExternalIdType(record.getRecordType());
+
+    if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
+      recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
         .onComplete((ar) -> {
           if (ar.succeeded()) {
             Optional<SourceRecord> sourceRecord = ar.result();
             if (sourceRecord.isPresent()) {
-              promise.complete(record.withMatchedId(sourceRecord.get().getRecordId()));
+              String sourceRecordId = sourceRecord.get().getRecordId();
+              LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from source record for record with id: %s",
+                sourceRecordId, record.getId()));
+              promise.complete(record.withMatchedId(sourceRecordId));
             } else {
+              LOG.debug(format("setMatchedIdForRecord:: Set matchedId same as record id: %s", record.getId()));
               promise.complete(record.withMatchedId(record.getId()));
             }
           } else {
+            LOG.warn("setMatchedIdForRecord:: Error while retrieving source record");
             promise.fail(ar.cause());
           }
         });

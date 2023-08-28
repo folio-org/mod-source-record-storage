@@ -146,7 +146,7 @@ public abstract class AbstractRestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient(okapiUrl, "diku", "dummy-token");
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", okapiPort));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {

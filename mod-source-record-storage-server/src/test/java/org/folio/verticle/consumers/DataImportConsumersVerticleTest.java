@@ -86,7 +86,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   private static final String CHUNK_ID_HEADER = "chunkId";
 
   private final String snapshotId = UUID.randomUUID().toString();
-  private final String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
+  private final String recordId = UUID.randomUUID().toString();
 
   private final MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
     .withOrder(0)
@@ -134,7 +134,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(UUID.randomUUID().toString()));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory);
@@ -174,7 +174,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
     String expectedParsedContent =
-      "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
+      "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
 
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())

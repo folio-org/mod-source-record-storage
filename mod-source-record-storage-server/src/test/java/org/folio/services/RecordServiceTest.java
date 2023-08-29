@@ -80,19 +80,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
 
-  static {
-    try {
-      rawRecord = new RawRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-      marcRecord = new ParsedRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
   @Before
-  public void setUp(TestContext context) {
+  public void setUp(TestContext context) throws IOException {
+    rawRecord = new RawRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    marcRecord = new ParsedRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     Async async = context.async();
@@ -392,7 +386,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
 
@@ -422,6 +416,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();
     String recordId1 = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId);
     Record record1 = new Record()
       .withId(recordId1)
       .withSnapshotId(original.getSnapshotId())
@@ -431,7 +427,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withExternalIdsHolder(externalIdsHolder)
       .withMetadata(original.getMetadata());
 
     ParsedRecord parsedRecord2 = new ParsedRecord()
@@ -447,7 +443,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord2)
       .withGeneration(1)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withExternalIdsHolder(externalIdsHolder)
       .withMetadata(original.getMetadata());
 
     recordService.saveRecord(record1, TENANT_ID).onComplete(save -> {

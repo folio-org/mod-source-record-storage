@@ -287,31 +287,35 @@ public class RecordServiceImpl implements RecordService {
     IdType idType = RecordDaoUtil.getExternalIdType(record.getRecordType());
 
     if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
-      recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
-        .onComplete((ar) -> {
-          if (ar.succeeded()) {
-            Optional<SourceRecord> sourceRecord = ar.result();
-            if (sourceRecord.isPresent()) {
-              // Set matched id from existing source record
-              String sourceRecordId = sourceRecord.get().getRecordId();
-              LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from source record for record with id: %s",
-                sourceRecordId, record.getId()));
-              promise.complete(record.withMatchedId(sourceRecordId));
-            } else {
-              // Set matched id same as record id
-              LOG.debug(format("setMatchedIdForRecord:: Set matchedId same as record id: %s", record.getId()));
-              promise.complete(record.withMatchedId(record.getId()));
-            }
-          } else {
-            LOG.warn("setMatchedIdForRecord:: Error while retrieving source record");
-            promise.fail(ar.cause());
-          }
-        });
+      setMatchedIdFromExistingSourceRecord(record, tenantId, promise, externalId, idType);
     } else {
       // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
     return promise.future().onSuccess(r -> addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId()));
+  }
+
+  private void setMatchedIdFromExistingSourceRecord(Record record, String tenantId, Promise<Record> promise, String externalId, IdType idType) {
+    recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
+      .onComplete((ar) -> {
+        if (ar.succeeded()) {
+          Optional<SourceRecord> sourceRecord = ar.result();
+          if (sourceRecord.isPresent()) {
+            // Set matched id from existing source record
+            String sourceRecordId = sourceRecord.get().getRecordId();
+            LOG.debug(format("setMatchedIdFromExistingSourceRecord:: Set matchedId: %s from source record for record with id: %s",
+              sourceRecordId, record.getId()));
+            promise.complete(record.withMatchedId(sourceRecordId));
+          } else {
+            // Set matched id same as record id
+            LOG.debug(format("setMatchedIdFromExistingSourceRecord:: Set matchedId same as record id: %s", record.getId()));
+            promise.complete(record.withMatchedId(record.getId()));
+          }
+        } else {
+          LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record");
+          promise.fail(ar.cause());
+        }
+      });
   }
 
   private static Future mapToDuplicateExceptionIfNeeded(Throwable throwable) {

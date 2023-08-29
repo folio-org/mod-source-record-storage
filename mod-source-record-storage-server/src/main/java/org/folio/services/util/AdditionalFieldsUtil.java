@@ -604,7 +604,9 @@ public final class AdditionalFieldsUtil {
           if (reader.hasNext()) {
             return reader.next();
           }
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+          LOGGER.warn("computeMarcRecord:: Error during the building of MarcReader", ex);
+        }
         return null;
       }
     }

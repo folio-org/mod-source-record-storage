@@ -278,6 +278,7 @@ public class RecordServiceImpl implements RecordService {
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {
+      // Set matched id from 999$s marc field
       LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from 999$s field for record with id: %s", marcField999s, record.getId()));
       return Future.succeededFuture(record.withMatchedId(marcField999s));
     }
@@ -291,11 +292,13 @@ public class RecordServiceImpl implements RecordService {
           if (ar.succeeded()) {
             Optional<SourceRecord> sourceRecord = ar.result();
             if (sourceRecord.isPresent()) {
+              // Set matched id from existing source record
               String sourceRecordId = sourceRecord.get().getRecordId();
               LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from source record for record with id: %s",
                 sourceRecordId, record.getId()));
               promise.complete(record.withMatchedId(sourceRecordId));
             } else {
+              // Set matched id same as record id
               LOG.debug(format("setMatchedIdForRecord:: Set matchedId same as record id: %s", record.getId()));
               promise.complete(record.withMatchedId(record.getId()));
             }
@@ -305,6 +308,7 @@ public class RecordServiceImpl implements RecordService {
           }
         });
     } else {
+      // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
     return promise.future().onSuccess(r -> addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId()));

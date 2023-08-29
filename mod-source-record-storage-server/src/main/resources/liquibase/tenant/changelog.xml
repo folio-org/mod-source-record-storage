@@ -68,5 +68,6 @@
   <include file="scripts/v-5.7.0/2023-04-13--16-00-update-fill-in-trigger.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.7.0/2023-05-22--16-00-create-records-state-index.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.7.0/2023-05-31--16-00-create-async-migration-jobs-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.7.0/2023-08-29--16-00-define-version-column-default-value.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

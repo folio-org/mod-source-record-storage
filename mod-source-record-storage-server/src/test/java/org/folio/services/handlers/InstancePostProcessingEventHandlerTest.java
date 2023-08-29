@@ -27,6 +27,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -220,6 +221,95 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
         String actualInstanceId = getInventoryId(fields);
         context.assertEquals(expectedInstanceId, actualInstanceId);
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldReturnExceptionForDuplicateRecord(TestContext context) throws IOException {
+    Async async = context.async();
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
+
+    String duplicateRecordId = UUID.randomUUID().toString();
+    RawRecord rawRecordDuplicate = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
+    ParsedRecord parsedRecordDuplicate = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
+
+    Record duplicateRecord = new Record()
+      .withId(duplicateRecordId)
+      .withSnapshotId(snapshotId1)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecordDuplicate)
+      .withParsedRecord(parsedRecordDuplicate);
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
+
+    HashMap<String, String> payloadContextOriginalRecord = new HashMap<>();
+    payloadContextOriginalRecord.put(INSTANCE.value(), instance.encode());
+    payloadContextOriginalRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
+
+    HashMap<String, String> payloadContextDuplicateRecord = new HashMap<>();
+    payloadContextDuplicateRecord.put(INSTANCE.value(), instance.encode());
+    payloadContextDuplicateRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(duplicateRecord));
+
+    DataImportEventPayload dataImportEventPayloadOriginalRecord =
+      createDataImportEventPayload(payloadContextOriginalRecord, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    DataImportEventPayload dataImportEventPayloadDuplicateRecord =
+      createDataImportEventPayload(payloadContextDuplicateRecord, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    CompletableFuture<DataImportEventPayload> future1 = handler.handle(dataImportEventPayloadOriginalRecord);
+
+    future1.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record savedRecord = getAr.result().get();
+
+        context.assertNotNull(savedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, savedRecord.getExternalIdsHolder().getInstanceId());
+
+        context.assertNotNull(savedRecord.getParsedRecord());
+        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceId = getInventoryId(fields);
+        context.assertEquals(expectedInstanceId, actualInstanceId);
+      });
+      CompletableFuture<DataImportEventPayload> future2 = handler.handle(dataImportEventPayloadDuplicateRecord);
+      future2.whenComplete((eventPayload, throwable) -> {
+        context.assertNotNull(throwable);
+        context.assertEquals(throwable.getClass(), DuplicateRecordException.class);
         async.complete();
       });
     });

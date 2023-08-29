@@ -5,6 +5,7 @@ import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -338,8 +339,15 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldSaveMarcBibRecordWithMatchedIdFrom999field(TestContext context) {
-    String marc999 = "e567b8e2-a45b-45f1-a85a-6b6312bdf4d8";
+    String marc999 = UUID.randomUUID().toString();
     Record original = TestMocks.getMarcBibRecord();
+    ParsedRecord parsedRecord = new ParsedRecord().withId(marc999)
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", marc999)))
+          .put("ind1", "f")
+          .put("ind2", "f")))).encode());
     Record record = new Record()
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(original.getSnapshotId())
@@ -347,9 +355,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withState(State.ACTUAL)
       .withOrder(original.getOrder())
       .withRawRecord(original.getRawRecord())
-      .withParsedRecord(original.getParsedRecord())
+      .withParsedRecord(parsedRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
 

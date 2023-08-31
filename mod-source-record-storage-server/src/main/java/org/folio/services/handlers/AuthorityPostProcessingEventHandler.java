@@ -51,6 +51,18 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
   }
 
   @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED.value();
+    }
+    if (DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED.value();
+    }
+    return eventType;
+  }
+
+  @Override
   protected DataImportEventTypes replyEventType() {
     return null;
   }

@@ -140,7 +140,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       if (ar.failed()) {
         context.fail(ar.cause());
       }
-      recordService.getSourceRecordById(record.getMatchedId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID).onComplete(getNew -> {
+      recordService.getSourceRecordById(record.getId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID).onComplete(getNew -> {
         if (getNew.failed()) {
           context.fail(getNew.cause());
         }

@@ -101,8 +101,7 @@ public final class AdditionalFieldsUtil {
             Context context = Vertx.currentContext();
             if (context != null) {
               context.runOnContext(ar -> serviceExecutor.run());
-            }
-            else {
+            } else {
               // The common pool below is used because it is the  default executor for caffeine
               ForkJoinPool.commonPool().execute(serviceExecutor);
             }
@@ -167,6 +166,19 @@ public final class AdditionalFieldsUtil {
       LOGGER.warn("addFieldToMarcRecord:: Failed to add additional subfield {} for field {} to record {}", subfield, field, record.getId(), e);
     }
     return result;
+  }
+
+  public static String getFieldFromMarcRecord(Record record, String field, char ind1, char ind2, char subfield) {
+    org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
+    if (marcRecord != null) {
+      List<VariableField> variableFields = marcRecord.getVariableFields(field);
+      Optional<DataField> dataField = variableFields.stream().filter(v -> v instanceof DataField)
+        .map(v -> (DataField) v)
+        .filter(v -> ind1 == v.getIndicator1() && ind2 == v.getIndicator2())
+        .findFirst();
+      return dataField.map(value -> value.getSubfieldsAsString(String.valueOf(subfield))).orElse(null);
+    }
+    return null;
   }
 
   /**
@@ -508,7 +520,7 @@ public final class AdditionalFieldsUtil {
    * @param actualHrId - actual HrId
    */
   public static void remove035WithActualHrId(Record record, String actualHrId) {
-      removeField(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, actualHrId);
+    removeField(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, actualHrId);
   }
 
   /**
@@ -587,9 +599,13 @@ public final class AdditionalFieldsUtil {
         return parsedRecordContentCache.get(content);
       } catch (Exception e) {
         LOGGER.warn("computeMarcRecord:: Error during the transformation to marc record", e);
-        MarcReader reader = buildMarcReader(record);
-        if (reader.hasNext()) {
-          return reader.next();
+        try {
+          MarcReader reader = buildMarcReader(record);
+          if (reader.hasNext()) {
+            return reader.next();
+          }
+        } catch (Exception ex) {
+          LOGGER.warn("computeMarcRecord:: Error during the building of MarcReader", ex);
         }
         return null;
       }
@@ -606,7 +622,7 @@ public final class AdditionalFieldsUtil {
   /**
    * Check if any field with the subfield code exists.
    *
-   * @param sourceRecord  - source record.
+   * @param sourceRecord - source record.
    * @param subFieldCode - subfield code.
    * @return true if exists, otherwise false.
    */

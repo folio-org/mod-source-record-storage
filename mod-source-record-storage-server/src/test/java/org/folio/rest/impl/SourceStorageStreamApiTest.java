@@ -164,8 +164,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withOrder(101)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+      .withAuthorityId(UUID.randomUUID().toString())
+      .withAuthorityHrid("12345"));
   private static Record marc_holdings_record_1 = new Record()
     .withId(EIGHTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -176,8 +176,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withOrder(101)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+      .withHoldingsId(UUID.randomUUID().toString())
+      .withHoldingsHrid("12345"));
 
   @Before
   public void setUp(TestContext context) {
@@ -471,7 +471,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(secondHrid));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FOURTH_UUID).withInstanceHrid(secondHrid));
 
     RestAssured.given()
       .spec(spec)
@@ -938,7 +938,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       "and 005.03_02 = '41' " +
       "and 005.date in '20120101-20190101' " +
       "and 035.value is 'present' " +
-      "and 999.value is 'absent' " +
+      "and 999.value is 'present' " +
       "and 041.g is 'present' " +
       "and 041.z is 'absent' " +
       "and 050.ind1 is 'present' " +

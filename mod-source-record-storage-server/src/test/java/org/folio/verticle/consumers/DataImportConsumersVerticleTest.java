@@ -3,6 +3,7 @@ package org.folio.verticle.consumers;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
+import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -133,7 +134,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(UUID.randomUUID().toString()));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory);
@@ -212,7 +213,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     Record actualRecord =
       Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-    assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+    assertEquals(getParsedContentWithoutLeader(expectedParsedContent), getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));

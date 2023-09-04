@@ -37,6 +37,7 @@ import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.UUID;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
@@ -71,6 +72,7 @@ public abstract class AbstractRestVerticleTest {
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
+  private static final String MAX_POOL_SIZE = "50";
 
   static Vertx vertx;
   static RequestSpecification spec;
@@ -126,13 +128,16 @@ public abstract class AbstractRestVerticleTest {
         postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
         postgresSQLContainer.start();
 
-        Envs.setEnv(
-          postgresSQLContainer.getHost(),
-          postgresSQLContainer.getFirstMappedPort(),
-          postgresSQLContainer.getUsername(),
-          postgresSQLContainer.getPassword(),
-          postgresSQLContainer.getDatabaseName()
-        );
+        HashMap<String, String> envs = new HashMap<>();
+        envs.put(Envs.DB_HOST.toString(), postgresSQLContainer.getHost());
+        envs.put(Envs.DB_PORT.toString(), String.valueOf(postgresSQLContainer.getFirstMappedPort()));
+        envs.put(Envs.DB_USERNAME.toString(), postgresSQLContainer.getUsername());
+        envs.put(Envs.DB_PASSWORD.toString(), postgresSQLContainer.getPassword());
+        envs.put(Envs.DB_DATABASE.toString(), postgresSQLContainer.getDatabaseName());
+        envs.put(Envs.DB_MAXPOOLSIZE.toString(), MAX_POOL_SIZE);
+
+        Envs.setEnv(envs);
+
         break;
       default:
         String message = "No understood database choice made." +

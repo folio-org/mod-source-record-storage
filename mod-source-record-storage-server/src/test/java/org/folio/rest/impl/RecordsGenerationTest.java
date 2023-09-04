@@ -191,13 +191,15 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED);
 
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString());
     Record record1 = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
-      .withMatchedId(matchedId);
+      .withMatchedId(matchedId)
+      .withExternalIdsHolder(externalIdsHolder);
 
     Record created1 = RestAssured.given()
       .spec(spec)
@@ -234,7 +236,8 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
-      .withMatchedId(matchedId);
+      .withMatchedId(matchedId)
+      .withExternalIdsHolder(externalIdsHolder);
 
     Record created2 = RestAssured.given()
       .spec(spec)
@@ -372,7 +375,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
-          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)))))));
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", srsId)))
+          .put("ind1", "f")
+          .put("ind2", "f")))).encode());
 
     Record newRecord = new Record()
       .withId(srsId)

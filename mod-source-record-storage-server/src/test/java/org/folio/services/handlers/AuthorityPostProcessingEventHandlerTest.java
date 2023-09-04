@@ -96,7 +96,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -143,7 +143,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
           if (ex != null) {
             context.fail(ex);
           }
-          recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
+          recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
               context.fail(recordAr.cause());
             }
@@ -175,9 +175,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -199,7 +197,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -293,9 +291,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -317,7 +313,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -358,9 +354,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -384,7 +378,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }

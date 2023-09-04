@@ -30,6 +30,11 @@ public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEv
   }
 
   @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    return dataImportEventPayload.getEventType();
+  }
+
+  @Override
   protected DataImportEventTypes replyEventType() {
     return DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
   }

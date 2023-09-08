@@ -3,6 +3,8 @@ package org.folio.services.handlers.match;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
 
+import io.vertx.core.Vertx;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +18,9 @@ import org.folio.services.util.TypeConnection;
 public class MarcAuthorityMatchEventHandler extends AbstractMarcMatchEventHandler {
 
   @Autowired
-  public MarcAuthorityMatchEventHandler(RecordDao recordDao) {
+  public MarcAuthorityMatchEventHandler(RecordDao recordDao, ConsortiumConfigurationCache consortiumConfigurationCache, Vertx vertx) {
     super(TypeConnection.MARC_AUTHORITY, recordDao, DI_SRS_MARC_AUTHORITY_RECORD_MATCHED,
-      DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED);
+      DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED, consortiumConfigurationCache, vertx);
   }
 
   @Override
@@ -26,4 +28,8 @@ public class MarcAuthorityMatchEventHandler extends AbstractMarcMatchEventHandle
     return false;
   }
 
+  @Override
+  boolean isConsortiumAvailable() {
+    return false;
+  }
 }

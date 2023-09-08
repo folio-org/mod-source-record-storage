@@ -1,9 +1,16 @@
 package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import com.google.common.collect.Lists;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -25,13 +32,17 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
@@ -39,7 +50,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
@@ -65,6 +78,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   private static String rawRecordContent;
   private Record incomingRecord;
   private Record existingRecord;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -76,8 +91,11 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    handler = new MarcBibliographicMatchEventHandler(recordDao);
+    handler = new MarcBibliographicMatchEventHandler(recordDao, consortiumConfigurationCache, vertx);
     Async async = context.async();
+
+    Mockito.when(consortiumConfigurationCache.get(Mockito.any()))
+      .thenReturn(Future.succeededFuture(Optional.empty()));
 
     Snapshot existingRecordSnapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

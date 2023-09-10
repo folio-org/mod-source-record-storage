@@ -2,9 +2,6 @@ package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import com.google.common.collect.Lists;
@@ -38,11 +35,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
@@ -50,10 +44,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
@@ -78,8 +71,6 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   private static String rawRecordContent;
   private Record incomingRecord;
   private Record existingRecord;
-  @Mock
-  private ConsortiumConfigurationCache consortiumConfigurationCache;
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -89,13 +80,12 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern("/user-tenants"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new JsonObject().put("userTenants", new JsonArray())))));
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    handler = new MarcBibliographicMatchEventHandler(recordDao, consortiumConfigurationCache, vertx);
+    handler = new MarcBibliographicMatchEventHandler(recordDao, new ConsortiumConfigurationCache(vertx), vertx);
     Async async = context.async();
-
-    Mockito.when(consortiumConfigurationCache.get(Mockito.any()))
-      .thenReturn(Future.succeededFuture(Optional.empty()));
 
     Snapshot existingRecordSnapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -161,6 +151,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -209,6 +201,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -257,6 +251,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -304,6 +300,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -351,6 +349,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -398,6 +398,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -444,6 +446,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -493,6 +497,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withCurrentNode(new ProfileSnapshotWrapper()
         .withId(UUID.randomUUID().toString())
         .withContentType(MATCH_PROFILE)
@@ -544,6 +550,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
@@ -569,6 +577,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);
@@ -594,6 +604,8 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
       .withEventType("DI_SRS_MARC_BIB_RECORD_CREATED")
       .withContext(new HashMap<>())
       .withCurrentNode(profileSnapshotWrapper);

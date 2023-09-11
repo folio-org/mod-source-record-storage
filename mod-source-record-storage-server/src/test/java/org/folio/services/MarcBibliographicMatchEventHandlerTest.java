@@ -20,6 +20,8 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.processing.exceptions.MatchingException;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Field;
@@ -29,6 +31,8 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.junit.After;
@@ -64,8 +68,10 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   private static final String PARSED_CONTENT_WITH_NO_999_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String PARSED_CONTENT_WITH_MULTIPLE_035_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"12345\"}]}}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String PARSED_CONTENT_WITH_MULTIPLE_024_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"024\": {\"ind1\": \"1\", \"ind2\": \"2\", \"subfields\": [{\"a\": \"test\"}]}}, {\"024\": {\"ind1\": \"3\", \"ind2\": \" \", \"subfields\": [{\"a\": \"test45\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
-
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
+  private static final String USER_TENANTS = "/user-tenants";
+  private static final String CENTRAL_TENANT_ID = "centralTenantId";
+  private static final String CONSORTIUM_ID = "consortiumId";
   private RecordDao recordDao;
   private MarcBibliographicMatchEventHandler handler;
   private static String rawRecordContent;
@@ -73,14 +79,38 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
   private Record existingRecord;
 
   @BeforeClass
-  public static void setUpClass() throws IOException {
+  public static void setUpBeforeClass(TestContext context) throws IOException {
     rawRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class);
+    Async async = context.async();
+    TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
+    try {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
+        if (res2.result().statusCode() == 204) {
+          return;
+        }
+        if (res2.result().statusCode() == 201) {
+          tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
+            context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
+            String error = res3.bodyAsJson(TenantJob.class).getError();
+            if (error != null) {
+              context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            }
+          }));
+        } else {
+          context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+        }
+        async.complete();
+      });
+    } catch (Exception e) {
+      e.printStackTrace();
+      async.complete();
+    }
   }
 
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
-    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern("/user-tenants"), true))
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new JsonObject().put("userTenants", new JsonArray())))));
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
@@ -124,10 +154,16 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
+        async.complete();
+      } else {
+        SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID), snapshots).onComplete(saveCentralTenant -> {
+          if (save.failed()) {
+            context.fail(save.cause());
+          }
+          async.complete();
+        });
       }
-      async.complete();
     });
-
   }
 
   @After
@@ -136,8 +172,15 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
+        async.complete();
+      } else {
+        SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID)).onComplete(deleteCentralTenant -> {
+          if (delete.failed()) {
+            context.fail(delete.cause());
+          }
+          async.complete();
+        });
       }
-      async.complete();
     });
   }
 
@@ -613,5 +656,169 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
     Assert.assertFalse(isEligible);
+  }
+
+  @Test
+  public void shouldNotMatchByMatchedIdFieldAtLocalTenantAndMatchAtCentralTenant(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    JsonObject centralTenantIdResponse = new JsonObject()
+      .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
+
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS), true))
+      .willReturn(WireMock.ok().withBody(centralTenantIdResponse.encode())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s"))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    recordDao.saveRecord(existingRecord, CENTRAL_TENANT_ID)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_BIB_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldMatchByMatchedIdFieldAtLocalTenantAndNotMatchAtCentralTenant(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    JsonObject centralTenantIdResponse = new JsonObject()
+      .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
+
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS), true))
+      .willReturn(WireMock.ok().withBody(centralTenantIdResponse.encode())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s"))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_BIB_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldFailWhenMatchedByMatchedIdFieldAtLocalTenantAndMatchedAtCentralTenant(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    JsonObject centralTenantIdResponse = new JsonObject()
+      .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
+
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS), true))
+      .willReturn(WireMock.ok().withBody(centralTenantIdResponse.encode())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s"))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> recordDao.saveRecord(existingRecord, CENTRAL_TENANT_ID)
+        .onSuccess(v -> handler.handle(dataImportEventPayload)
+          .whenComplete((updatedEventPayload, throwable) -> {
+            context.assertNotNull(throwable);
+            context.assertTrue(throwable instanceof MatchingException);
+            async.complete();
+          })));
   }
 }

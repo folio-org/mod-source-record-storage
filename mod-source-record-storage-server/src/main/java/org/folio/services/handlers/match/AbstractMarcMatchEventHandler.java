@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -110,8 +111,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
           LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
             consortiumConfigurationOptional.get().getCentralTenantId());
           return retrieveMarcRecords(matchField, consortiumConfigurationOptional.get().getCentralTenantId())
-            .onSuccess(recordList::addAll)
-            .map(recordList);
+            .map(centralTenantResult -> Stream.concat(recordList.stream(), centralTenantResult.stream()).toList());
         }
         return Future.succeededFuture(recordList);
       });
@@ -123,8 +123,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   private Future<List<Record>> retrieveMarcRecords(MatchField matchField, String tenant) {
     if (matchField.isDefaultField()) {
+      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField, tenant);
       return processDefaultMatchField(matchField, tenant).map(RecordCollection::getRecords);
     }
+    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField, tenant);
     return recordDao.getMatchedRecords(matchField, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 

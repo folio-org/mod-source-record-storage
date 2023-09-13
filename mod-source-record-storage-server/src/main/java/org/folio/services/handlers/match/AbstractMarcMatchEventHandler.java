@@ -106,7 +106,9 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
                                                                                            List<Record> recordList) {
     return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload, vertx))
       .compose(consortiumConfigurationOptional -> {
-        if (consortiumConfigurationOptional.isPresent()) {
+        if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
+          LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
+            consortiumConfigurationOptional.get().getCentralTenantId());
           return retrieveMarcRecords(matchField, consortiumConfigurationOptional.get().getCentralTenantId())
             .onSuccess(recordList::addAll)
             .map(recordList);
@@ -214,10 +216,12 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     if (records.size() == 1) {
       payload.setEventType(matchedEventType.toString());
       payload.getContext().put(getMatchedMarcKey(), Json.encode(records.get(0)));
+      LOG.debug("processSucceededResult:: Matched 1 record for tenant with id {}", payload.getTenant());
       return Future.succeededFuture(payload);
     }
     if (records.size() > 1) {
       constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+      LOG.warn("processSucceededResult:: Matched multiple record for tenant with id {}", payload.getTenant());
       return Future.failedFuture(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
     }
     constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);

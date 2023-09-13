@@ -30,10 +30,12 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.services.caches.ConsortiumConfigurationCache;
+import org.folio.services.entities.ConsortiumConfiguration;
 import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
 import org.junit.After;
 import org.junit.Assert;
@@ -41,6 +43,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
@@ -48,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -766,6 +770,73 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
           async.complete();
         }));
+  }
+
+  @Test
+  public void shouldNotMatchByMatchedIdFieldAtCentralTenantIfItSameAsLocalTenant(TestContext context) {
+    Async async = context.async();
+
+    recordDao = Mockito.mock(RecordDao.class);
+    List<Record> records = new ArrayList<>();
+    records.add(new Record());
+    Mockito.doAnswer(invocationOnMock -> Future.succeededFuture(new RecordCollection().withTotalRecords(1).withRecords(records)))
+      .when(recordDao).getRecords(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.any());
+
+    ConsortiumConfigurationCache consortiumConfigurationCache = Mockito.mock(ConsortiumConfigurationCache.class);
+
+    Mockito.doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(new ConsortiumConfiguration(CENTRAL_TENANT_ID, CONSORTIUM_ID))))
+      .when(consortiumConfigurationCache).get(Mockito.any());
+
+    handler = new MarcBibliographicMatchEventHandler(recordDao, consortiumConfigurationCache, vertx);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    JsonObject centralTenantIdResponse = new JsonObject()
+      .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
+
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS), true))
+      .willReturn(WireMock.ok().withBody(centralTenantIdResponse.encode())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(CENTRAL_TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("999"),
+                new Field().withLabel("indicator1").withValue("f"),
+                new Field().withLabel("indicator2").withValue("f"),
+                new Field().withLabel("recordSubfield").withValue("s"))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("948"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    handler.handle(dataImportEventPayload)
+      .whenComplete((updatedEventPayload, throwable) -> {
+        Mockito.verify(recordDao, Mockito.times(1))
+          .getRecords(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyInt(), Mockito.anyInt(), Mockito.any());
+        context.assertNull(throwable);
+        context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+        context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_BIB_RECORD_MATCHED.value());
+        async.complete();
+      });
   }
 
   @Test

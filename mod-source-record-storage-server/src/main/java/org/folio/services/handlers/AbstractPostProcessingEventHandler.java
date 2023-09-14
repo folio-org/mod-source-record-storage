@@ -72,6 +72,8 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
   public static final String POST_PROCESSING_INDICATOR = "POST_PROCESSING";
+  public static final String CENTRAL_TENANT_INSTANCE_UPDATED_FLAG = "CENTRAL_TENANT_INSTANCE_UPDATED";
+  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
@@ -95,7 +97,17 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
           .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
-        .compose(record -> saveRecord(record, dataImportEventPayload.getTenant()))
+        .compose(record -> {
+          if (dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG) != null &&
+            dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true")) {
+            String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
+            dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
+            dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
+            LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}",jobExecutionId, centralTenantId);
+            return saveRecord(record, centralTenantId);
+          }
+          return saveRecord(record, dataImportEventPayload.getTenant());
+        })
         .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
           sendAdditionalEvent(dataImportEventPayload, record);
@@ -124,6 +136,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   protected abstract void sendAdditionalEvent(DataImportEventPayload dataImportEventPayload, Record record);
+
   protected abstract String getNextEventType(DataImportEventPayload dataImportEventPayload);
 
   protected String getEventKey() {

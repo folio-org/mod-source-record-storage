@@ -54,6 +54,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
   private static final String USER_ID_HEADER = "userId";
+  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
@@ -111,6 +112,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
           LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
             consortiumConfigurationOptional.get().getCentralTenantId());
           return retrieveMarcRecords(matchField, consortiumConfigurationOptional.get().getCentralTenantId())
+            .onSuccess(result -> {
+              if (!result.isEmpty()) {
+                payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
+              }
+            })
             .map(centralTenantResult -> Stream.concat(recordList.stream(), centralTenantResult.stream()).toList());
         }
         return Future.succeededFuture(recordList);

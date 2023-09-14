@@ -39,6 +39,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
@@ -58,8 +59,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
 
-  protected AbstractUpdateModifyEventHandler(
-    RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+  protected AbstractUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
     this.mappingParametersCache = mappingParametersCache;
     this.vertx = vertx;
@@ -107,7 +107,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
-        .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
+        .compose(changedRecord -> recordService.saveRecord(changedRecord, getTenant(payload)))
         .onSuccess(savedRecord -> {
           payload.setEventType(getNextEventType());
           future.complete(payload);
@@ -121,6 +121,15 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private String getTenant(DataImportEventPayload payload) {
+    String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+    if (centralTenantId != null) {
+      payload.getContext().remove(CENTRAL_TENANT_ID);
+      return centralTenantId;
+    }
+    return payload.getTenant();
   }
 
   @Override

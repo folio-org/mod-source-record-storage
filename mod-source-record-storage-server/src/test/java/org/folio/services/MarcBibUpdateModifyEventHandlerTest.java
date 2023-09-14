@@ -32,6 +32,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
@@ -42,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -55,6 +57,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MappingDetail;
@@ -68,6 +71,8 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.DuplicateRecordException;
@@ -92,6 +97,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
+  private static final String CENTRAL_TENANT_ID = "centralTenantId";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
@@ -183,12 +189,36 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY));
 
   @BeforeClass
-  public static void setUpClass() throws IOException {
+  public static void setUpBeforeClass(TestContext context) throws IOException {
     rawRecord = new RawRecord().withId(recordId)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId)
       .withContent(PARSED_CONTENT);
+    Async async = context.async();
+    TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
+    try {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
+        if (res2.result().statusCode() == 204) {
+          return;
+        }
+        if (res2.result().statusCode() == 201) {
+          tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
+            context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
+            String error = res3.bodyAsJson(TenantJob.class).getError();
+            if (error != null) {
+              context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            }
+          }));
+        } else {
+          context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+        }
+        async.complete();
+      });
+    } catch (Exception e) {
+      e.printStackTrace();
+      async.complete();
+    }
   }
 
   @Before
@@ -225,10 +255,14 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(new Metadata());
 
-    ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    SnapshotDaoUtil.save(queryExecutor, snapshot)
+    ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    ReactiveClassicGenericQueryExecutor queryExecutorCentralTenant = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
+
+    SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
       .compose(v -> recordService.saveRecord(record, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot))
+      .compose(v -> recordService.saveRecord(record, CENTRAL_TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
 
@@ -236,7 +270,20 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   public void tearDown(TestContext context) {
     wireMockServer.resetRequests();
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
-      .onComplete(context.asyncAssertSuccess());
+      .onComplete(ar -> {
+        if (ar.failed()) {
+          context.asyncAssertFailure();
+        } else {
+          SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID))
+            .onComplete(arCentral -> {
+              if (arCentral.failed()) {
+                context.asyncAssertFailure();
+              } else {
+                context.asyncAssertSuccess();
+              }
+            });
+        }
+      });
   }
 
   @Test
@@ -283,6 +330,57 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
       async.complete();
+    });
+  }
+
+  @Test
+  public void shouldModifyMarcRecordOnCentralTenantIfCentralTenantIdIsInContext(TestContext context) {
+    // given
+    Async async = context.async();
+
+    String expectedParsedContent =
+      "{\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"ind1\":\" \",\"ind2\":\" \",\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}]}}]}";
+    HashMap<String, String> payloadContext = new HashMap<>();
+    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put("CENTRAL_TENANT_ID", CENTRAL_TENANT_ID);
+
+    mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
+    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+        .withProfileId(mappingProfile.getId())
+        .withContentType(MAPPING_PROFILE)
+        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(record.getSnapshotId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withContext(payloadContext)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withAdditionalProperty(USER_ID_HEADER, userId);
+
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNull(throwable);
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+
+      Record actualRecord =
+        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      recordService.getRecordById(actualRecord.getId(), CENTRAL_TENANT_ID)
+          .onComplete(ar -> {
+            context.assertTrue(ar.succeeded());
+            context.assertTrue(ar.result().isPresent());
+            context.assertEquals(getParsedContentWithoutLeader(Json.encode(ar.result().get().getParsedRecord().getContent())),
+              getParsedContentWithoutLeader(expectedParsedContent));
+            async.complete();
+          });
     });
   }
 
@@ -866,7 +964,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       });
   }
 
-  private void verifyGetAndPut(TestContext context, int getRequestCount, int putRequestCount){
+  private void verifyGetAndPut(TestContext context, int getRequestCount, int putRequestCount) {
     try {
       wireMockServer.verify(getRequestCount, getRequestedFor(URL_PATH_PATTERN));
       wireMockServer.verify(putRequestCount, putRequestedFor(URL_PATH_PATTERN));
@@ -875,7 +973,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     }
   }
 
-  private void verifyRecords(TestContext context, String expectedParsedContent, Record actualRecord){
+  private void verifyRecords(TestContext context, String expectedParsedContent, Record actualRecord) {
     try {
       context.assertEquals(
         mapper.readTree(expectedParsedContent),
@@ -884,6 +982,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.fail(e);
     }
   }
+
   public static String getParsedContentWithoutLeader(String parsedContent) {
     JsonObject parsedContentAsJson = new JsonObject(parsedContent);
     parsedContentAsJson.remove("leader");

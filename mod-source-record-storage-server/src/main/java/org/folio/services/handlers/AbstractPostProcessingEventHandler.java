@@ -98,13 +98,8 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
           .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
         .compose(record -> {
-          if (dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG) != null &&
-            dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true")) {
-            String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
-            dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
-            dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
-            LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}",jobExecutionId, centralTenantId);
-            return saveRecord(record, centralTenantId);
+          if (centralTenantOperationExists(dataImportEventPayload)) {
+            return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
           return saveRecord(record, dataImportEventPayload.getTenant());
         })
@@ -329,4 +324,16 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     }
   }
 
+  private static boolean centralTenantOperationExists(DataImportEventPayload dataImportEventPayload) {
+    return dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG) != null &&
+      dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true");
+  }
+
+  private Future<Record> saveRecordForCentralTenant(DataImportEventPayload dataImportEventPayload, Record record, String jobExecutionId) {
+    String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
+    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
+    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
+    LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
+    return saveRecord(record, centralTenantId);
+  }
 }

@@ -65,6 +65,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
@@ -227,7 +229,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       }
       Assert.assertNull(payload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG));
       Assert.assertNull(payload.getContext().get(CENTRAL_TENANT_ID));
-      Assert.assertTrue(true);
+      verify(mockedRecordService, times(1)).updateParsedRecord(record, "centralTenantId");
       async.complete();
     });
   }

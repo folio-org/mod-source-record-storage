@@ -1688,7 +1688,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private CompositeFuture saveRecords(List<Record> records) {
     return GenericCompositeFuture.all(records.stream()
-      .map(record -> recordService.saveRecord(record, AbstractLBServiceTest.TENANT_ID))
+      .map(record -> recordService.saveRecord(record, AbstractLBServiceTest.TENANT_ID, null))
       .collect(Collectors.toList())
     );
   }

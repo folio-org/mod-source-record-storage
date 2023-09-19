@@ -103,6 +103,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
         })
         .onFailure(throwable -> {
           LOG.warn(FAIL_MSG, eventType, throwable);
+          dataImportEventPayload.setEventType(getNextEventType(dataImportEventPayload));
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
@@ -123,6 +124,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   protected abstract void sendAdditionalEvent(DataImportEventPayload dataImportEventPayload, Record record);
+  protected abstract String getNextEventType(DataImportEventPayload dataImportEventPayload);
 
   protected String getEventKey() {
     return String.valueOf(indexer.incrementAndGet() % 100);

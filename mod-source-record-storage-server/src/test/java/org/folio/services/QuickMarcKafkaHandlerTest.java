@@ -94,7 +94,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
+      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID, null))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
   }
@@ -116,7 +116,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
 
     ParsedRecord parsedRecord = record.getParsedRecord();
 
-    Future<Record> future = recordService.saveRecord(record, TENANT_ID);
+    Future<Record> future = recordService.saveRecord(record, TENANT_ID, null);
 
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
       .withId(record.getMatchedId())

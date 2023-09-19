@@ -86,7 +86,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY)
         )
       );
-    recordService.saveRecord(record, TENANT_ID)
+    recordService.saveRecord(record, TENANT_ID, null)
       // when
       .onSuccess(ar -> eventHandler.handle(dataImportEventPayload)
         // then

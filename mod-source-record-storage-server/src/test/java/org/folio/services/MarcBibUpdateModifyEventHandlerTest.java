@@ -227,7 +227,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> recordService.saveRecord(record, TENANT_ID, null))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
@@ -648,7 +648,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
-      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID, null))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
@@ -822,7 +822,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
-      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID, null))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {

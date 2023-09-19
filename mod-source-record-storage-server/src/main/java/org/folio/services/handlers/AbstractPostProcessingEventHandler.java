@@ -101,7 +101,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           if (centralTenantOperationExists(dataImportEventPayload)) {
             return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
-          return saveRecord(record, dataImportEventPayload.getTenant());
+          return saveRecord(record, dataImportEventPayload.getTenant(), null);
         })
         .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
@@ -297,14 +297,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
    * @param tenantId - tenantId
    * @return - Future with Record result
    */
-  private Future<Record> saveRecord(Record record, String tenantId) {
+  private Future<Record> saveRecord(Record record, String tenantId, String centralTenantId) {
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
           return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
-          return recordService.saveRecord(record, tenantId).map(record);
+          return recordService.saveRecord(record, tenantId, centralTenantId).map(record);
         }
       })
       .compose(updatedRecord ->
@@ -334,6 +334,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
-    return saveRecord(record, centralTenantId);
+    return saveRecord(record, dataImportEventPayload.getTenant(), centralTenantId);
   }
 }

@@ -107,7 +107,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
-        .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
+        .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant(), null))
         .onSuccess(savedRecord -> {
           payload.setEventType(getNextEventType());
           future.complete(payload);

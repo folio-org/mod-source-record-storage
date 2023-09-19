@@ -69,7 +69,7 @@ public interface RecordService {
    * @param tenantId tenant id
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, String tenantId, String centralTenantId);
 
   /**
    * Saves collection of records

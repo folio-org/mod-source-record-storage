@@ -183,7 +183,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> recordService.saveRecord(record, TENANT_ID, null))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }

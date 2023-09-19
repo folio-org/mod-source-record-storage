@@ -53,7 +53,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.saveRecord(entity, tenantId)
+        recordService.saveRecord(entity, tenantId, null)
           .map((Response) PostSourceStorageRecordsResponse.respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {

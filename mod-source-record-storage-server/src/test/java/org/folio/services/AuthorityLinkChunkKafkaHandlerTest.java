@@ -143,9 +143,9 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID));
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
-      .compose(savedRecord -> recordService.saveRecord(secondRecord, TENANT_ID))
-      .compose(savedRecord -> recordService.saveRecord(errorRecord, TENANT_ID))
+      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID, null))
+      .compose(savedRecord -> recordService.saveRecord(secondRecord, TENANT_ID, null))
+      .compose(savedRecord -> recordService.saveRecord(errorRecord, TENANT_ID, null))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
   }

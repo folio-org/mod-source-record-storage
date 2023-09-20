@@ -81,8 +81,8 @@ public class RecordCleanupServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(ar -> recordService.saveRecord(deletedRecordGen1, TENANT_ID, null))
-      .compose(ar -> recordService.saveRecord(deletedRecordGen0, TENANT_ID, null))
+      .compose(ar -> recordService.saveRecord(deletedRecordGen1, TENANT_ID))
+      .compose(ar -> recordService.saveRecord(deletedRecordGen0, TENANT_ID))
       .onComplete(ar -> async.complete())
       .onFailure(throwable -> context.fail(throwable));
   }

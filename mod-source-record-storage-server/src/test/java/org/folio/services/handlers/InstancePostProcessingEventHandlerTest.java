@@ -29,6 +29,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
+import org.folio.services.SnapshotService;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
@@ -87,8 +88,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
+    return new InstancePostProcessingEventHandler(recordService,snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -199,7 +200,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     doAnswer(invocationOnMock -> Future.succeededFuture(record)).when(mockedRecordService).updateRecord(any(), anyString());
 
-    InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, kafkaConfig, mappingParametersCache, vertx);
+    InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, null, kafkaConfig, mappingParametersCache, vertx);
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();

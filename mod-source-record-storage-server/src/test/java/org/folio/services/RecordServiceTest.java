@@ -361,7 +361,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(original.getMetadata());
     Async async = context.async();
 
-    recordService.saveRecord(record, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -398,7 +398,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(original.getMetadata());
     Async async = context.async();
 
-    recordService.saveRecord(record, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -454,7 +454,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(externalIdsHolder)
       .withMetadata(original.getMetadata());
 
-    recordService.saveRecord(record1, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(record1, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -471,7 +471,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertEquals(recordId1, get.result().get().getMatchedId());
         context.assertEquals(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S), recordId1);
 
-        recordService.saveRecord(record2, TENANT_ID, null).onComplete(save2 -> {
+        recordService.saveRecord(record2, TENANT_ID).onComplete(save2 -> {
           if (save2.failed()) {
             context.fail(save2.cause());
           }
@@ -531,7 +531,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(valid.getAdditionalInfo())
       .withExternalIdsHolder(valid.getExternalIdsHolder())
       .withMetadata(valid.getMetadata());
-    recordService.saveRecord(invalid, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
       String expected = "Invalid UUID string: " + fakeSnapshotId;
       context.assertTrue(save.cause().getMessage().contains(expected));
@@ -1185,7 +1185,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void saveMarcRecord(TestContext context, Record expected, Record.RecordType marcBib) {
     Async async = context.async();
-    recordService.saveRecord(expected, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1209,7 +1209,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void saveMarcRecordWithGenerationGreaterThanZero(TestContext context, Record expected, Record.RecordType marcBib) {
     Async async = context.async();
     expected.setGeneration(1);
-    recordService.saveRecord(expected, TENANT_ID, null).onComplete(save -> {
+    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1688,7 +1688,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private CompositeFuture saveRecords(List<Record> records) {
     return GenericCompositeFuture.all(records.stream()
-      .map(record -> recordService.saveRecord(record, AbstractLBServiceTest.TENANT_ID, null))
+      .map(record -> recordService.saveRecord(record, AbstractLBServiceTest.TENANT_ID))
       .collect(Collectors.toList())
     );
   }

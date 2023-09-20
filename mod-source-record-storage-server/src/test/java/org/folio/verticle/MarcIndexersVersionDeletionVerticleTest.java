@@ -66,7 +66,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId));
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID, null))
+      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
       .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());

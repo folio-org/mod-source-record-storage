@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +20,9 @@ import org.folio.services.util.TypeConnection;
 @Component
 public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEventHandler {
 
-  public HoldingsPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+  public HoldingsPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordService, kafkaConfig, mappingParametersCache, vertx);
+    super(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Override

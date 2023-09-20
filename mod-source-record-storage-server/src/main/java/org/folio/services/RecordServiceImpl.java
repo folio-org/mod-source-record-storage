@@ -100,52 +100,37 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> saveRecord(Record record, String localTenantId, String centralTenantId) {
+  public Future<Record> saveRecord(Record record, String tenantId) {
+    LOG.debug(format("saveRecord:: Saving record with id: %s for tenant: %s", record.getId(), tenantId));
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
-    Future<Snapshot> resultedSnapshot = Future.succeededFuture();
-    String currentTenantId;
-    if (centralTenantId != null) {
-      currentTenantId = centralTenantId;
-      resultedSnapshot = recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
         .map(optionalSnapshot -> optionalSnapshot
           .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
-        .compose(localSnapshot -> recordDao.executeInTransaction(localTxQE -> SnapshotDaoUtil.save(localTxQE, localSnapshot), centralTenantId)), localTenantId);
-    } else {
-      currentTenantId = localTenantId;
-    }
-    LOG.debug(format("saveRecord:: Saving record with id: %s for tenant: %s", record.getId(), currentTenantId));
-
-    return resultedSnapshot
-      .compose(f ->
-        recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
-            .map(optionalSnapshot -> optionalSnapshot
-              .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
-            .compose(snapshot -> {
-              if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-                return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
-              }
-              return Future.succeededFuture();
-            })
-            .compose(v -> setMatchedIdForRecord(record, currentTenantId))
-            .compose(r -> {
-              if (Objects.isNull(r.getGeneration())) {
-                return recordDao.calculateGeneration(txQE, r);
-              }
-              return Future.succeededFuture(r.getGeneration());
-            })
-            .compose(generation -> {
-              if (generation > 0) {
-                return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
-                  .compose(optionalMatchedRecord -> optionalMatchedRecord
-                    .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
-                    .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
-              } else {
-                return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
-              }
-            }), currentTenantId)
-          .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded));
-
+        .compose(snapshot -> {
+          if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+            return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
+          }
+          return Future.succeededFuture();
+        })
+        .compose(v -> setMatchedIdForRecord(record, tenantId))
+        .compose(r -> {
+          if (Objects.isNull(r.getGeneration())) {
+            return recordDao.calculateGeneration(txQE, r);
+          }
+          return Future.succeededFuture(r.getGeneration());
+        })
+        .compose(generation -> {
+          if (generation > 0) {
+            return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+              .compose(optionalMatchedRecord -> optionalMatchedRecord
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
+                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+          } else {
+            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
+          }
+        }), tenantId)
+      .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 
   @Override

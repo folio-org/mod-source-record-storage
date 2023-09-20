@@ -15,7 +15,7 @@ public interface SnapshotService {
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField}
    * with offset and limit
-   * 
+   *
    * @param condition   query where condition
    * @param orderFields fields to order by
    * @param offset      starting index in a list of results
@@ -61,5 +61,15 @@ public interface SnapshotService {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteSnapshot(String id, String tenantId);
+
+  /**
+   * Copy {@link Snapshot} to other tenant
+   *
+   * @param snapshotId       Snapshot id
+   * @param sourceTenantId source tenant id
+   * @param targetTenantId target tenant id
+   * @return future with copied Snapshot
+   */
+  Future<Snapshot> copySnapshotToOtherTenant(String snapshotId, String sourceTenantId, String targetTenantId);
 
 }

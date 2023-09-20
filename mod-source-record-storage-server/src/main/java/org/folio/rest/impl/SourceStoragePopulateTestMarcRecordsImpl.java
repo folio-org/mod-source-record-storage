@@ -67,7 +67,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
             }
             return record;
           })
-          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId, null)));
+          .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, tenantId)));
 
         GenericCompositeFuture.all(futures).onComplete(result -> {
           if (result.succeeded()) {

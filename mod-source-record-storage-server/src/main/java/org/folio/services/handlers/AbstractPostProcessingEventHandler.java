@@ -23,7 +23,9 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
@@ -78,10 +80,13 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
   private final RecordService recordService;
+  private final SnapshotService snapshotService;
 
-  protected AbstractPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+
+  protected AbstractPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
                                                MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
     this.recordService = recordService;
+    this.snapshotService = snapshotService;
     this.kafkaConfig = kafkaConfig;
     this.mappingParamsCache = mappingParamsCache;
     this.vertx = vertx;
@@ -304,7 +309,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
-          return recordService.saveRecord(record, tenantId, centralTenantId).map(record);
+          Future<Snapshot> resultedSnapshot = Future.succeededFuture();
+          if (centralTenantId != null) {
+            return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), tenantId, centralTenantId)
+              .compose(f -> recordService.saveRecord(record, centralTenantId).map(record));
+          }
+          return recordService.saveRecord(record, tenantId).map(record);
         }
       })
       .compose(updatedRecord ->
@@ -329,7 +339,8 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true");
   }
 
-  private Future<Record> saveRecordForCentralTenant(DataImportEventPayload dataImportEventPayload, Record record, String jobExecutionId) {
+  private Future<Record> saveRecordForCentralTenant(DataImportEventPayload dataImportEventPayload, Record
+    record, String jobExecutionId) {
     String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);

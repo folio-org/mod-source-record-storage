@@ -6,6 +6,7 @@ import static org.folio.rest.jaxrs.model.EntityType.MARC_AUTHORITY;
 
 import io.vertx.core.Vertx;
 
+import org.folio.services.SnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,10 @@ public class MarcAuthorityUpdateModifyEventHandler extends AbstractUpdateModifyE
 
   @Autowired
   public MarcAuthorityUpdateModifyEventHandler(RecordService recordService,
+                                               SnapshotService snapshotService,
                                                MappingParametersSnapshotCache mappingParametersCache,
                                                Vertx vertx) {
-    super(recordService, mappingParametersCache, vertx);
+    super(recordService, snapshotService, mappingParametersCache, vertx);
   }
 
   @Override

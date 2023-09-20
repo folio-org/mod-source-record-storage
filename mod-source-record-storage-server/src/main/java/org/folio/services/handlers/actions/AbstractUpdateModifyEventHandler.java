@@ -23,6 +23,7 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.RestUtil;
 
@@ -56,11 +57,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
 
   protected RecordService recordService;
+  protected SnapshotService snapshotService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
 
-  protected AbstractUpdateModifyEventHandler(RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+  protected AbstractUpdateModifyEventHandler(RecordService recordService, SnapshotService snapshotService,
+                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
+    this.snapshotService = snapshotService;
     this.mappingParametersCache = mappingParametersCache;
     this.vertx = vertx;
   }
@@ -107,7 +111,15 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
-        .compose(changedRecord -> recordService.saveRecord(changedRecord, getTenant(payload)))
+        .compose(changedRecord -> {
+          String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+          if (centralTenantId != null) {
+            payload.getContext().remove(CENTRAL_TENANT_ID);
+            return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
+              .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
+          }
+          return recordService.saveRecord(changedRecord, payload.getTenant());
+        })
         .onSuccess(savedRecord -> {
           payload.setEventType(getNextEventType());
           future.complete(payload);
@@ -121,15 +133,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
-  }
-
-  private String getTenant(DataImportEventPayload payload) {
-    String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
-    if (centralTenantId != null) {
-      payload.getContext().remove(CENTRAL_TENANT_ID);
-      return centralTenantId;
-    }
-    return payload.getTenant();
   }
 
   @Override

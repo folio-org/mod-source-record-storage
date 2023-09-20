@@ -55,6 +55,8 @@ import org.folio.TestUtil;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.SnapshotDao;
+import org.folio.dao.SnapshotDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.client.TenantClient;
@@ -111,10 +113,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
   private RecordDao recordDao;
+  private SnapshotDao snapshotDao;
   private RecordService recordService;
+  private SnapshotService snapshotService;
   private MarcBibUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
   private Record record;
+  private Snapshot snapshot;
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
@@ -228,14 +233,21 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
+    snapshotDao = new SnapshotDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
+    snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
     LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
     modifyRecordEventHandler =
-      new MarcBibUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx,
+      new MarcBibUpdateModifyEventHandler(recordService, snapshotService, new MappingParametersSnapshotCache(vertx), vertx,
         instanceLinkClient, linkingRulesCache);
 
-    Snapshot snapshot = new Snapshot()
+    snapshot = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.COMMITTED);
+
+    Snapshot snapshot_2 = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
@@ -255,14 +267,25 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(new Metadata());
 
+    Record record_2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(new Metadata());
+
     ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
     ReactiveClassicGenericQueryExecutor queryExecutorCentralTenant = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
 
     SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
       .compose(v -> recordService.saveRecord(record, TENANT_ID))
       .compose(v -> SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshotForRecordUpdate))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot))
-      .compose(v -> recordService.saveRecord(record, CENTRAL_TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot_2))
+      .compose(v -> recordService.saveRecord(record_2, CENTRAL_TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
 
@@ -374,13 +397,19 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       recordService.getRecordById(actualRecord.getId(), CENTRAL_TENANT_ID)
-          .onComplete(ar -> {
-            context.assertTrue(ar.succeeded());
-            context.assertTrue(ar.result().isPresent());
-            context.assertEquals(getParsedContentWithoutLeader(Json.encode(ar.result().get().getParsedRecord().getContent())),
-              getParsedContentWithoutLeader(expectedParsedContent));
-            async.complete();
-          });
+        .onComplete(ar -> {
+          context.assertTrue(ar.succeeded());
+          context.assertTrue(ar.result().isPresent());
+          context.assertEquals(getParsedContentWithoutLeader(Json.encode(ar.result().get().getParsedRecord().getContent())),
+            getParsedContentWithoutLeader(expectedParsedContent));
+          snapshotService.getSnapshotById(snapshot.getJobExecutionId(), CENTRAL_TENANT_ID)
+            .onComplete(ar2 -> {
+              context.assertTrue(ar2.succeeded());
+              context.assertTrue(ar2.result().isPresent());
+              context.assertEquals(ar2.result().get().getJobExecutionId(), snapshot.getJobExecutionId());
+              async.complete();
+            });
+        });
     });
   }
 

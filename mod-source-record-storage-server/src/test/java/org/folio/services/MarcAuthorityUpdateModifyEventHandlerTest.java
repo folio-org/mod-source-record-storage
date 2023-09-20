@@ -163,7 +163,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, new MappingParametersSnapshotCache(vertx), vertx);
+    modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, null, new MappingParametersSnapshotCache(vertx), vertx);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

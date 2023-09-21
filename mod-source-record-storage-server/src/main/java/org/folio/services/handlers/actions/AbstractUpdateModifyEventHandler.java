@@ -114,7 +114,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .compose(changedRecord -> {
           String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
           if (centralTenantId != null) {
-            payload.getContext().remove(CENTRAL_TENANT_ID);
             return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
               .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
           }

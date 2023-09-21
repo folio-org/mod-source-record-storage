@@ -106,7 +106,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           if (centralTenantOperationExists(dataImportEventPayload)) {
             return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
-          return saveRecord(record, dataImportEventPayload.getTenant(), null);
+          return saveRecord(record, dataImportEventPayload.getTenant());
         })
         .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
@@ -302,18 +302,13 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
    * @param tenantId - tenantId
    * @return - Future with Record result
    */
-  private Future<Record> saveRecord(Record record, String tenantId, String centralTenantId) {
+  private Future<Record> saveRecord(Record record, String tenantId) {
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
           return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
-          Future<Snapshot> resultedSnapshot = Future.succeededFuture();
-          if (centralTenantId != null) {
-            return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), tenantId, centralTenantId)
-              .compose(f -> recordService.saveRecord(record, centralTenantId).map(record));
-          }
           return recordService.saveRecord(record, tenantId).map(record);
         }
       })
@@ -345,6 +340,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
-    return saveRecord(record, dataImportEventPayload.getTenant(), centralTenantId);
+    if (centralTenantId != null) {
+      return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)
+        .compose(f -> saveRecord(record, centralTenantId).map(record));
+    }
+    else {
+      return saveRecord(record, dataImportEventPayload.getTenant());
+    }
   }
 }

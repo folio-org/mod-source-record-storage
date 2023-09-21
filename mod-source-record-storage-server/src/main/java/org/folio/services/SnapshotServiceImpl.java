@@ -13,6 +13,11 @@ import org.springframework.stereotype.Service;
 
 import io.vertx.core.Future;
 
+import javax.ws.rs.NotFoundException;
+
+import static java.lang.String.format;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+
 @Service
 public class SnapshotServiceImpl implements SnapshotService {
 
@@ -49,4 +54,11 @@ public class SnapshotServiceImpl implements SnapshotService {
     return snapshotDao.deleteSnapshot(id, tenantId);
   }
 
+  @Override
+  public Future<Snapshot> copySnapshotToOtherTenant(String snapshotId, String sourceTenantId, String targetTenantId) {
+    return snapshotDao.getSnapshotById(snapshotId, sourceTenantId)
+      .map(optionalSnapshot -> optionalSnapshot
+        .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshotId))))
+      .compose(sourceSnapshot -> snapshotDao.saveSnapshot(sourceSnapshot, targetTenantId));
+  }
 }

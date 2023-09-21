@@ -1,11 +1,9 @@
 package org.folio.services;
 
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
+import io.vertx.core.Future;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.TestMocks;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
@@ -21,10 +19,22 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @RunWith(VertxUnitRunner.class)
 public class SnapshotServiceTest extends AbstractLBServiceTest {
@@ -32,6 +42,12 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
   private SnapshotDao snapshotDao;
 
   private SnapshotService snapshotService;
+
+  @Mock
+  private SnapshotDao mockedSnapshotDao;
+
+  @InjectMocks
+  private SnapshotServiceImpl snapshotServiceForMocks;
 
   @Before
   public void setUp(TestContext context) {
@@ -216,6 +232,26 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
         context.fail(delete.cause());
       }
       context.assertFalse(delete.result());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldCopySnapshotToAnotherTenant(TestContext context) {
+    Async async = context.async();
+    MockitoAnnotations.openMocks(this);
+    Snapshot expected = TestMocks.getSnapshot(0);
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(expected))).when(mockedSnapshotDao).getSnapshotById(anyString(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(expected)).when(mockedSnapshotDao).saveSnapshot(any(), anyString());
+
+    snapshotServiceForMocks.copySnapshotToOtherTenant(expected.getJobExecutionId(), TENANT_ID, "centralTenantId").onComplete(get -> {
+      if (get.failed()) {
+        context.fail(get.cause());
+      }
+      compareSnapshots(context, expected, get.result());
+      verify(mockedSnapshotDao, times(1)).saveSnapshot(any(Snapshot.class), eq("centralTenantId"));
       async.complete();
     });
   }

@@ -104,7 +104,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
-    handler = createHandler(recordService,snapshotService, kafkaConfig);
+    handler = createHandler(recordService, snapshotService, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()

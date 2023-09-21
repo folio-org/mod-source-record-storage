@@ -27,9 +27,11 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
+import org.folio.services.SnapshotServiceImpl;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
@@ -76,6 +78,9 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Mock
   private RecordServiceImpl mockedRecordService;
+
+  @Mock
+  private SnapshotServiceImpl mockedSnapshotService;
   @Mock
   private RecordCollection recordCollection;
 
@@ -89,7 +94,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordService,snapshotService, kafkaConfig, mappingParametersCache, vertx);
+    return new InstancePostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -192,6 +197,10 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
 
+    doAnswer(invocationOnMock -> Future.succeededFuture(new Snapshot())).when(mockedSnapshotService).copySnapshotToOtherTenant(anyString(), anyString(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
+
     doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), anyString());
 
     doAnswer(invocationOnMock -> Future.succeededFuture(recordCollection)).when(mockedRecordService).getRecords(any(), any(), any(), anyInt(), anyInt(), anyString());
@@ -200,7 +209,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     doAnswer(invocationOnMock -> Future.succeededFuture(record)).when(mockedRecordService).updateRecord(any(), anyString());
 
-    InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, null, kafkaConfig, mappingParametersCache, vertx);
+    InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, mockedSnapshotService, kafkaConfig, mappingParametersCache, vertx);
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();

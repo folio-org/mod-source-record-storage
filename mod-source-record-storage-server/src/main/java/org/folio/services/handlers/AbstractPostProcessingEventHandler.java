@@ -342,7 +342,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
     if (centralTenantId != null) {
       return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)
-        .compose(f -> saveRecord(record, centralTenantId).map(record));
+        .compose(f -> saveRecord(record, centralTenantId));
     }
     else {
       return saveRecord(record, dataImportEventPayload.getTenant());

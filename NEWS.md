@@ -1,3 +1,6 @@
+## 2023-09-22 v5.6.12
+* [MODSOURCE-674](https://issues.folio.org/browse/MODSOURCE-674) Ensure only one background job can be triggered to clean up OLD marc indexers
+
 ## 2023-08-30 v5.6.11
 * [MODSOURCE-684](https://issues.folio.org/browse/MODSOURCE-684) Add default value for version column in marc_indexers
 

@@ -25,10 +25,13 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.folio.dao.SnapshotDao;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
+import org.folio.services.SnapshotService;
+import org.folio.services.SnapshotServiceImpl;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.junit.After;
 import org.junit.Before;
@@ -64,6 +67,10 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   protected Record record;
   protected RecordDao recordDao;
   protected RecordService recordService;
+  protected SnapshotDao snapshotDao;
+
+  protected SnapshotService snapshotService;
+
   protected MappingParametersSnapshotCache mappingParametersCache;
 
   protected AbstractPostProcessingEventHandler handler;
@@ -96,7 +103,8 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     mappingParametersCache = new MappingParametersSnapshotCache(vertx);
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
-    handler = createHandler(recordService, kafkaConfig);
+    snapshotService = new SnapshotServiceImpl(snapshotDao);
+    handler = createHandler(recordService, snapshotService, kafkaConfig);
     Async async = context.async();
 
     Snapshot snapshot1 = new Snapshot()
@@ -132,7 +140,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
   protected abstract Record.RecordType getMarcType();
 
-  protected abstract AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig);
+  protected abstract AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig);
 
   @After
   public void cleanUp(TestContext context) {

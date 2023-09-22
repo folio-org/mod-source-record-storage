@@ -23,7 +23,9 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
@@ -72,14 +74,19 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
   public static final String POST_PROCESSING_INDICATOR = "POST_PROCESSING";
+  public static final String CENTRAL_TENANT_INSTANCE_UPDATED_FLAG = "CENTRAL_TENANT_INSTANCE_UPDATED";
+  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
   private final RecordService recordService;
+  private final SnapshotService snapshotService;
 
-  protected AbstractPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+
+  protected AbstractPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
                                                MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
     this.recordService = recordService;
+    this.snapshotService = snapshotService;
     this.kafkaConfig = kafkaConfig;
     this.mappingParamsCache = mappingParamsCache;
     this.vertx = vertx;
@@ -95,7 +102,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
           .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
-        .compose(record -> saveRecord(record, dataImportEventPayload.getTenant()))
+        .compose(record -> {
+          if (centralTenantOperationExists(dataImportEventPayload)) {
+            return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
+          }
+          return saveRecord(record, dataImportEventPayload.getTenant());
+        })
         .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
           sendAdditionalEvent(dataImportEventPayload, record);
@@ -124,6 +136,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   protected abstract void sendAdditionalEvent(DataImportEventPayload dataImportEventPayload, Record record);
+
   protected abstract String getNextEventType(DataImportEventPayload dataImportEventPayload);
 
   protected String getEventKey() {
@@ -316,4 +329,23 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     }
   }
 
+  private static boolean centralTenantOperationExists(DataImportEventPayload dataImportEventPayload) {
+    return dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG) != null &&
+      dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true");
+  }
+
+  private Future<Record> saveRecordForCentralTenant(DataImportEventPayload dataImportEventPayload, Record
+    record, String jobExecutionId) {
+    String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
+    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
+    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
+    LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
+    if (centralTenantId != null) {
+      return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)
+        .compose(f -> saveRecord(record, centralTenantId));
+    }
+    else {
+      return saveRecord(record, dataImportEventPayload.getTenant());
+    }
+  }
 }

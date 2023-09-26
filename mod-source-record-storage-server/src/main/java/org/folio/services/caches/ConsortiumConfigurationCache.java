@@ -21,6 +21,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Cache for {@link ConsortiumConfiguration}
+ */
 @Component
 public class ConsortiumConfigurationCache {
   private static final Logger LOGGER = LogManager.getLogger();
@@ -38,6 +41,12 @@ public class ConsortiumConfigurationCache {
       .buildAsync();
   }
 
+  /**
+   * Searches for {@link ConsortiumConfiguration} cache by tenant id
+   *
+   * @param params okapi connection parameters
+   * @return future with optional {@link ConsortiumConfiguration}
+   */
   public Future<Optional<ConsortiumConfiguration>> get(OkapiConnectionParams params) {
     try {
       return Future.fromCompletionStage(cache.get(params.getTenantId(), (key, executor) -> loadConsortiumConfiguration(params)));

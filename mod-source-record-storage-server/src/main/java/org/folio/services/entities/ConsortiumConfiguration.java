@@ -1,5 +1,9 @@
 package org.folio.services.entities;
 
+/**
+ * Entity that contains configuration data for consortium process
+ * Contains of centralTenantId and consortiumId
+ */
 public class ConsortiumConfiguration {
   private String centralTenantId;
   private String consortiumId;

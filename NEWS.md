@@ -6,6 +6,7 @@
 * [MODSOURCE-674](https://issues.folio.org/browse/MODSOURCE-674) Ensure only one background job can be triggered to clean up outdated marc indexers
 * [MODSOURCE-530](https://issues.folio.org/browse/MODSOURCE-530) Fix duplicate records in incoming file causes problems after overlay process with no error reported
 * [MODSOURCE-690](https://issues.folio.org/browse/MODSOURCE-690) Make changes in SRS post processing handler to update MARC for shared Instance
+* [MODSOURCE-646](https://issues.folio.org/browse/MODSOURCE-646) Make changes to perform MARC To MARC Matching in Local Tenant & Central Tenant
 
 ### Asynchronous migration job API
 | METHOD | URL                                     | DESCRIPTION                                     |

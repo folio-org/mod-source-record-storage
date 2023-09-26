@@ -73,7 +73,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    handler = new MarcAuthorityMatchEventHandler(recordDao);
+    handler = new MarcAuthorityMatchEventHandler(recordDao, null, vertx);
     Async async = context.async();
 
     Snapshot existingRecordSnapshot = new Snapshot()

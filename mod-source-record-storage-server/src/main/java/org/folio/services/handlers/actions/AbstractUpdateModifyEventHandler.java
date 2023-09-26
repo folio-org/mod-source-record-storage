@@ -23,6 +23,7 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.RestUtil;
 
@@ -39,6 +40,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
@@ -55,12 +57,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
 
   protected RecordService recordService;
+  protected SnapshotService snapshotService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
 
-  protected AbstractUpdateModifyEventHandler(
-    RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+  protected AbstractUpdateModifyEventHandler(RecordService recordService, SnapshotService snapshotService,
+                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
+    this.snapshotService = snapshotService;
     this.mappingParametersCache = mappingParametersCache;
     this.vertx = vertx;
   }
@@ -107,7 +111,14 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           setUpdatedBy(changedRecord, userId);
           payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
         })
-        .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
+        .compose(changedRecord -> {
+          String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+          if (centralTenantId != null) {
+            return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
+              .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
+          }
+          return recordService.saveRecord(changedRecord, payload.getTenant());
+        })
         .onSuccess(savedRecord -> {
           payload.setEventType(getNextEventType());
           future.complete(payload);

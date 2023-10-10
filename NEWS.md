@@ -8,6 +8,7 @@
 * [MODSOURCE-690](https://issues.folio.org/browse/MODSOURCE-690) Make changes in SRS post processing handler to update MARC for shared Instance
 * [MODSOURCE-646](https://issues.folio.org/browse/MODSOURCE-646) Make changes to perform MARC To MARC Matching in Local Tenant & Central Tenant
 * [MODSOURCE-667](https://issues.folio.org/browse/MODSOURCE-667) Upgrade folio-kafka-wrapper to 3.0.0 version
+* [MODSOURCE-666](https://issues.folio.org/browse/MODSOURCE-666) Create script to clean up records with inconsistent matched id values
 
 ### Asynchronous migration job API
 | METHOD | URL                                     | DESCRIPTION                                     |

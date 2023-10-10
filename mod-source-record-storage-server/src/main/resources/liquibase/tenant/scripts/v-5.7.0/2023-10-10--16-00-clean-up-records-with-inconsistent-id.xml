@@ -1,0 +1,57 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2023-10-10--16-00-clean-up-records-with-inconsistent-id" author="MaksatGalymzhan">
+    <sql splitStatements="false">
+      UPDATE ${database.defaultSchemaName}.records_lb
+      SET generation=(
+      SELECT MAX(nested_query_rl.generation)+1
+      FROM ${database.defaultSchemaName}.records_lb nested_query_rl
+      WHERE nested_query_rl.matched_id = rl.matched_id),
+      matched_id = mi.value::UUID
+      FROM  ${database.defaultSchemaName}.records_lb rl,
+      ${database.defaultSchemaName}.marc_indexers mi
+      WHERE rl.matched_id = mi.marc_id
+      AND
+      rl.matched_id::text != mi.value
+      AND
+      rl.state='ACTUAL'
+      AND
+      mi.field_no='999'
+      AND
+      mi.ind1='f'
+      AND
+      mi.ind2='f'
+      AND
+      mi.subfield_no='s';
+
+      UPDATE ${database.defaultSchemaName}.records_lb
+      SET state='OLD'
+      FROM ${database.defaultSchemaName}.records_lb rl,
+      ${database.defaultSchemaName}.marc_indexers mi
+      WHERE rl.matched_id = mi.marc_id
+      AND
+      rl.matched_id::text = mi.value
+      AND
+      rl.state='ACTUAL'
+      AND
+      mi.field_no='999'
+      AND
+      mi.ind1='f'
+      AND
+      mi.ind2='f'
+      AND
+      mi.subfield_no='s'
+      AND
+      rl.generation!=(
+      SELECT MAX(nested_query_rl.generation)
+      FROM ${database.defaultSchemaName}.records_lb nested_query_rl
+      WHERE nested_query_rl.matched_id = rl.matched_id);
+
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

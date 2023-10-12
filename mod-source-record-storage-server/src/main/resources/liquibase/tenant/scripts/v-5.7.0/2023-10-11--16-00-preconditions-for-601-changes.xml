@@ -1,0 +1,51 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2023-10-11--16-00-preconditions-for-601-changes" author="afedasiuk">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(id) FROM ${database.defaultSchemaName}.raw_records_lb;
+      </sqlCheck>
+    </preConditions>
+
+    <sql splitStatements="false">
+        do $$ declare
+            index integer;
+            suffix text;
+        begin
+          for index in 0 .. 999 loop
+            suffix = lpad(index::text, 3, '0');
+            execute 'drop index if exists ${database.defaultSchemaName}.idx_marc_indexers_marc_id_' || suffix || ';';
+            raise info 'Starting to create index "${database.defaultSchemaName}.idx_marc_indexers_marc_id_version_%"', suffix;
+            execute 'create index if not exists idx_marc_indexers_marc_id_version_' || suffix || ' on ${database.defaultSchemaName}.marc_indexers_' || suffix || '(marc_id, version);';
+            -- commit;
+            raise info 'Index "${database.defaultSchemaName}.idx_marc_indexers_marc_id_version_%" has been created', suffix;
+          end loop;
+        end; $$;
+    </sql>
+
+    <sql splitStatements="false">
+      do $$ declare
+            index integer;
+            suffix text;
+        begin
+          for index in 0 .. 999 loop
+          suffix = lpad(index::text, 3, '0');
+          raise info 'Starting to create not-null constraint on "${database.defaultSchemaName}.idx_marc_indexers_%.version" column', suffix;
+          execute 'ALTER TABLE ${database.defaultSchemaName}.marc_indexers_' || suffix || ' ALTER COLUMN version SET NOT NULL;';
+          -- commit;
+          raise info 'Constraint has been created on "${database.defaultSchemaName}.idx_marc_indexers_%.version" column', suffix;
+          end loop;
+        end;
+      $$;
+    </sql>
+
+    <sql splitStatements="false">
+      CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty ON ${database.defaultSchemaName}.marc_records_tracking USING btree (is_dirty);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

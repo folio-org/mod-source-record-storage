@@ -420,6 +420,29 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldSaveEdifactRecordAndNotSet999Field(TestContext context) {
+    Async async = context.async();
+    Record record = TestMocks.getRecords(Record.RecordType.EDIFACT);
+
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(record.getId(), get.result().get().getMatchedId());
+        context.assertNull(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldSaveMarcBibRecordWithMatchedIdFromExistingSourceRecord(TestContext context) throws IOException {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();

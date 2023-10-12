@@ -292,7 +292,12 @@ public class RecordServiceImpl implements RecordService {
       // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
-    return promise.future().onSuccess(r -> addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId()));
+
+    return promise.future().onSuccess(r -> {
+      if (externalId != null && idType != null) {
+        addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
+      }
+    });
   }
 
   private void setMatchedIdFromExistingSourceRecord(Record record, String tenantId, Promise<Record> promise, String externalId, IdType idType) {

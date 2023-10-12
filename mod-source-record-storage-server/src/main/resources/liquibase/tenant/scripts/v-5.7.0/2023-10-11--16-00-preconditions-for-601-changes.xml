@@ -21,7 +21,6 @@
             execute 'drop index if exists ${database.defaultSchemaName}.idx_marc_indexers_marc_id_' || suffix || ';';
             raise info 'Starting to create index "${database.defaultSchemaName}.idx_marc_indexers_marc_id_version_%"', suffix;
             execute 'create index if not exists idx_marc_indexers_marc_id_version_' || suffix || ' on ${database.defaultSchemaName}.marc_indexers_' || suffix || '(marc_id, version);';
-            -- commit;
             raise info 'Index "${database.defaultSchemaName}.idx_marc_indexers_marc_id_version_%" has been created', suffix;
           end loop;
         end; $$;
@@ -36,7 +35,6 @@
           suffix = lpad(index::text, 3, '0');
           raise info 'Starting to create not-null constraint on "${database.defaultSchemaName}.idx_marc_indexers_%.version" column', suffix;
           execute 'ALTER TABLE ${database.defaultSchemaName}.marc_indexers_' || suffix || ' ALTER COLUMN version SET NOT NULL;';
-          -- commit;
           raise info 'Constraint has been created on "${database.defaultSchemaName}.idx_marc_indexers_%.version" column', suffix;
           end loop;
         end;

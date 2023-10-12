@@ -294,7 +294,7 @@ public class RecordServiceImpl implements RecordService {
     }
 
     return promise.future().onSuccess(r -> {
-      if (externalId != null && idType != null) {
+      if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
       }
     });

@@ -256,7 +256,7 @@
     <aspectj.version>1.9.19</aspectj.version>
     <postgres.version>42.5.1</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
-    <lombok.version>1.18.24</lombok.version>
+    <lombok.version>1.18.30</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 

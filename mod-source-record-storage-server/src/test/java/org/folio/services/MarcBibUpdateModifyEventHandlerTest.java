@@ -27,6 +27,7 @@ import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -314,6 +315,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String expectedParsedContent =
       "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -348,10 +350,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeader(expectedParsedContent),
-        getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
+      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
+      validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });
   }
@@ -361,6 +364,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String expectedParsedContent =
       "{\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"ind1\":\" \",\"ind2\":\" \",\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}]}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -400,8 +404,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         .onComplete(ar -> {
           context.assertTrue(ar.succeeded());
           context.assertTrue(ar.result().isPresent());
-          context.assertEquals(getParsedContentWithoutLeader(Json.encode(ar.result().get().getParsedRecord().getContent())),
-            getParsedContentWithoutLeader(expectedParsedContent));
+          context.assertEquals(getParsedContentWithoutLeaderAndDate(Json.encode(ar.result().get().getParsedRecord().getContent())),
+            getParsedContentWithoutLeaderAndDate(expectedParsedContent));
+          validate005Field(context, expectedDate, actualRecord);
           snapshotService.getSnapshotById(snapshot.getJobExecutionId(), CENTRAL_TENANT_ID)
             .onComplete(ar2 -> {
               context.assertTrue(ar2.succeeded());
@@ -418,6 +423,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent =
       "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
@@ -458,10 +464,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeader(expectedParsedContent),
-        getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
+      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+      validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });
   }
@@ -511,6 +518,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+      System.out.println(actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       async.complete();
@@ -827,6 +835,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent =
       "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
@@ -883,10 +892,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayloadOriginalRecord.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeader(expectedParsedContent),
-        getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
+      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayloadOriginalRecord.getJobExecutionId(), actualRecord.getSnapshotId());
+      validate005Field(context, expectedDate, actualRecord);
     });
 
     future2.whenComplete((eventPayload, throwable) -> {
@@ -1012,9 +1022,18 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     }
   }
 
-  public static String getParsedContentWithoutLeader(String parsedContent) {
+  public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
     JsonObject parsedContentAsJson = new JsonObject(parsedContent);
     parsedContentAsJson.remove("leader");
+
+    JsonArray fieldsArray = parsedContentAsJson.getJsonArray("fields");
+    for(int i = 0 ; i < fieldsArray.size() ; i++) {
+      JsonObject fieldObject = fieldsArray.getJsonObject(i);
+      if(fieldObject.containsKey("005")) {
+        fieldsArray.remove(i);
+        break;
+      }
+    }
     return parsedContentAsJson.encode();
   }
 }

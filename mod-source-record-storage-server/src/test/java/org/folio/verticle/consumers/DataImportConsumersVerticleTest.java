@@ -3,7 +3,7 @@ package org.folio.verticle.consumers;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
-import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeader;
+import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -213,7 +213,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     Record actualRecord =
       Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-    assertEquals(getParsedContentWithoutLeader(expectedParsedContent), getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
+    assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+     getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));

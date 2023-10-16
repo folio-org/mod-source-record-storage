@@ -18,6 +18,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -315,7 +316,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
-    String expectedDate = get005FieldExpectedDate();
     String expectedParsedContent =
       "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -354,7 +354,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
-      validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });
   }
@@ -364,7 +363,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
-    String expectedDate = get005FieldExpectedDate();
     String expectedParsedContent =
       "{\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"ind1\":\" \",\"ind2\":\" \",\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}]}}]}";
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -404,9 +402,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         .onComplete(ar -> {
           context.assertTrue(ar.succeeded());
           context.assertTrue(ar.result().isPresent());
-          context.assertEquals(getParsedContentWithoutLeaderAndDate(Json.encode(ar.result().get().getParsedRecord().getContent())),
-            getParsedContentWithoutLeaderAndDate(expectedParsedContent));
-          validate005Field(context, expectedDate, actualRecord);
+          context.assertEquals(getParsedContentWithoutLeader(Json.encode(ar.result().get().getParsedRecord().getContent())),
+            getParsedContentWithoutLeader(expectedParsedContent));
           snapshotService.getSnapshotById(snapshot.getJobExecutionId(), CENTRAL_TENANT_ID)
             .onComplete(ar2 -> {
               context.assertTrue(ar2.succeeded());
@@ -478,10 +475,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent =
       "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"2300089\"},{\"003\":\"LTSCA\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00138nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"00167nam  22000731a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     var instanceId = UUID.randomUUID().toString();
     Record incomingRecord = new Record()
       .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
@@ -518,9 +516,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      System.out.println(actualRecord.getParsedRecord().getContent().toString());
-      context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });
   }
@@ -531,10 +529,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     Async async = context.async();
 
+    String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent =
       "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"2300089\"},{\"003\":\"LTSCA\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406411\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00138nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+      "{\"leader\":\"00167nam  22000731a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"(LTSCA)2300089\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     var instanceId = UUID.randomUUID().toString();
     Record incomingRecord = new Record()
       .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
@@ -571,8 +570,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
+      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });
   }
@@ -616,7 +616,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      verifyRecords(context, expectedParsedContent, actualRecord);
+      verifyRecords(context, expectedParsedContent, actualRecord.getParsedRecord().getContent().toString());
       async.complete();
     });
   }
@@ -721,7 +721,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00191cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+      "{\"leader\":\"00220cam a2200061Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 0, context);
@@ -734,7 +734,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00104cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+      "{\"leader\":\"00133cam a2200061Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
@@ -747,7 +747,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
-      "{\"leader\":\"00131cam a2200049Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
+      "{\"leader\":\"00160cam a2200061Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
         "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, context);
@@ -934,6 +934,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     wireMockServer.stubFor(put(URL_PATH_PATTERN).willReturn(aResponse().withStatus(202)));
 
     // given
+    String expectedDate = get005FieldExpectedDate();
     Async async = context.async();
     Snapshot snapshotForRecordUpdate = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
@@ -996,7 +997,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
             context.assertNull(throwable);
 
-            verifyRecords(context, expectedParsedContent, actualRecord);
+            verifyRecords(context, getParsedContentWithoutDate(expectedParsedContent),
+              getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
+            validate005Field(context, expectedDate, actualRecord);
             verifyGetAndPut(context, getRequestCount, putRequestCount);
             async.complete();
           });
@@ -1012,28 +1015,52 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     }
   }
 
-  private void verifyRecords(TestContext context, String expectedParsedContent, Record actualRecord) {
+  private void verifyRecords(TestContext context, String expectedParsedContent, String actualParsedContent) {
     try {
       context.assertEquals(
         mapper.readTree(expectedParsedContent),
-        mapper.readTree(actualRecord.getParsedRecord().getContent().toString()));
+        mapper.readTree(actualParsedContent));
     } catch (JsonProcessingException e) {
       context.fail(e);
     }
   }
 
+  public static String getParsedContentWithoutLeader(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
+    removeLeaderFromRecord(parsedContentAsJson);
+
+    return parsedContentAsJson.encode();
+  }
+
+  public static String getParsedContentWithoutDate(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
+    remove005FieldFromRecord(parsedContentAsJson);
+
+    return parsedContentAsJson.encode();
+  }
+
   public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
     JsonObject parsedContentAsJson = new JsonObject(parsedContent);
-    parsedContentAsJson.remove("leader");
+    removeLeaderFromRecord(parsedContentAsJson);
+    remove005FieldFromRecord(parsedContentAsJson);
 
-    JsonArray fieldsArray = parsedContentAsJson.getJsonArray("fields");
-    for(int i = 0 ; i < fieldsArray.size() ; i++) {
+    return parsedContentAsJson.encode();
+  }
+
+  private static JsonObject removeLeaderFromRecord(JsonObject recordJson) {
+    recordJson.remove("leader");
+    return recordJson;
+  }
+
+  private static JsonObject remove005FieldFromRecord(JsonObject recordJson) {
+    JsonArray fieldsArray = recordJson.getJsonArray("fields");
+    for (int i = 0; i < fieldsArray.size(); i++) {
       JsonObject fieldObject = fieldsArray.getJsonObject(i);
-      if(fieldObject.containsKey("005")) {
+      if (fieldObject.containsKey(TAG_005)) {
         fieldsArray.remove(i);
         break;
       }
     }
-    return parsedContentAsJson.encode();
+    return recordJson;
   }
 }

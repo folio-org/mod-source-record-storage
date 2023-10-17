@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.junit.Assert.assertEquals;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -166,6 +167,12 @@ public abstract class AbstractLBServiceTest {
   protected void validate005Field(TestContext testContext, String expectedDate, Record record) {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
     testContext.assertEquals(expectedDate.substring(0, 10),
+      actualDate.substring(0, 10));
+  }
+
+  protected void validate005Field(String expectedDate, Record record) {
+    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+    assertEquals(expectedDate.substring(0, 10),
       actualDate.substring(0, 10));
   }
 }

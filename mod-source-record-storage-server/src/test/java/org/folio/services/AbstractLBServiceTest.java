@@ -18,16 +18,24 @@ import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.junit.Assert.assertEquals;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 public abstract class AbstractLBServiceTest {
 
@@ -151,4 +159,20 @@ public abstract class AbstractLBServiceTest {
     context.assertNotNull(actual.getUpdatedDate());
   }
 
+  protected String get005FieldExpectedDate() {
+    return AdditionalFieldsUtil.dateTime005Formatter
+      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+  }
+
+  protected void validate005Field(TestContext testContext, String expectedDate, Record record) {
+    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+    testContext.assertEquals(expectedDate.substring(0, 10),
+      actualDate.substring(0, 10));
+  }
+
+  protected void validate005Field(String expectedDate, Record record) {
+    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+    assertEquals(expectedDate.substring(0, 10),
+      actualDate.substring(0, 10));
+  }
 }

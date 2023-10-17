@@ -105,13 +105,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
                   fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
                 }
 
-                updateLatestTransactionDate(changedRecord, mappingParameters);
                 remove035WithActualHrId(changedRecord, hrId);
                 remove003FieldIfNeeded(changedRecord, hrId);
               }
 
               increaseGeneration(changedRecord);
               setUpdatedBy(changedRecord, userId);
+              updateLatestTransactionDate(changedRecord, mappingParameters);
               payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
             })
         )

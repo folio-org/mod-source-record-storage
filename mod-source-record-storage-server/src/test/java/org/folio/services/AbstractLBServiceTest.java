@@ -158,12 +158,12 @@ public abstract class AbstractLBServiceTest {
     context.assertNotNull(actual.getUpdatedDate());
   }
 
-  String get005FieldExpectedDate() {
+  protected String get005FieldExpectedDate() {
     return AdditionalFieldsUtil.dateTime005Formatter
       .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
   }
 
-  void validate005Field(TestContext testContext, String expectedDate, Record record) {
+  protected void validate005Field(TestContext testContext, String expectedDate, Record record) {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
     testContext.assertEquals(expectedDate.substring(0, 10),
       actualDate.substring(0, 10));

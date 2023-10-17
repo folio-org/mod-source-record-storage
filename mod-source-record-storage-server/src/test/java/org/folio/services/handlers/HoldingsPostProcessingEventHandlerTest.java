@@ -236,8 +236,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
-    String expectedDate = AdditionalFieldsUtil.dateTime005Formatter
-      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+    String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
@@ -281,9 +280,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
         context.assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate.substring(0, 10),
-          actualDate.substring(0, 10));
+        validate005Field(context, expectedDate, updatedRecord);
 
         async.complete();
       });

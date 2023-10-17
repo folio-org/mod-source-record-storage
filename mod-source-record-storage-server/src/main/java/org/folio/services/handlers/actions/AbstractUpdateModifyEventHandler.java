@@ -47,6 +47,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRec
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -91,26 +92,29 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
-        .compose(mappingParameters -> modifyRecord(payload, mappingProfile, mappingParameters))
-        .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
-        .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
-        .onSuccess(changedRecord -> {
-          if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
-            addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
+        .compose(mappingParameters ->
+          modifyRecord(payload, mappingProfile, mappingParameters)
+            .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
+            .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
+            .onSuccess(changedRecord -> {
+              if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
+                addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
-            String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
-            if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
-              fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
-            }
+                String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
+                if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
+                  fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
+                }
 
-            remove035WithActualHrId(changedRecord, hrId);
-            remove003FieldIfNeeded(changedRecord, hrId);
-          }
+                remove035WithActualHrId(changedRecord, hrId);
+                remove003FieldIfNeeded(changedRecord, hrId);
+              }
 
-          increaseGeneration(changedRecord);
-          setUpdatedBy(changedRecord, userId);
-          payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
-        })
+              increaseGeneration(changedRecord);
+              setUpdatedBy(changedRecord, userId);
+              updateLatestTransactionDate(changedRecord, mappingParameters);
+              payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
+            })
+        )
         .compose(changedRecord -> {
           String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
           if (centralTenantId != null) {

@@ -3,7 +3,7 @@ package org.folio.verticle.consumers;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
-import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeader;
+import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -173,6 +173,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
+    String expectedDate = get005FieldExpectedDate();
     String expectedParsedContent =
       "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
 
@@ -213,9 +214,11 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     Record actualRecord =
       Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-    assertEquals(getParsedContentWithoutLeader(expectedParsedContent), getParsedContentWithoutLeader(actualRecord.getParsedRecord().getContent().toString()));
+    assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+      getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+    validate005Field(expectedDate, actualRecord);
     assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));
   }
 

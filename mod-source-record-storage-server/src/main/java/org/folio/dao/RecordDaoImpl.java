@@ -327,7 +327,7 @@ public class RecordDaoImpl implements RecordDao {
     if (matchedField.isControlField()) {
       Map<String, String> params = new HashMap<>();
       params.put("partition", partition);
-      params.put("value", getValueInSqlFormat(matchedField.getValue()));
+      params.put("value", matchedField.getValue().toString());
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {

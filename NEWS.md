@@ -1,3 +1,6 @@
+## 2024-xx-xx 5.8.0-SNAPSHOT
+* [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677)  Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching
+
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table

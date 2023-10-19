@@ -68,9 +68,10 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 @RunWith(VertxUnitRunner.class)
 public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTest {
 
-  private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{ \"001\": \"12345\" }, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"12345\"}]}}, {\"024\": {\"ind1\": \"8\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"test123\"}]}}, {\"024\": {\"ind1\": \"1\", \"ind2\": \"1\", \"subfields\": [{\"a\": \"test45\"}]}}, {\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"i\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"}]}}]}";
+  private static final String PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{ \"001\": \"12345\" }, {\"007\": \"12569\"},{\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"12345\"}]}}, {\"024\": {\"ind1\": \"8\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"test123\"}]}}, {\"024\": {\"ind1\": \"1\", \"ind2\": \"1\", \"subfields\": [{\"a\": \"test45\"}]}}, {\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"i\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"}]}}]}";
   private static final String PARSED_CONTENT_WITH_NO_999_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String PARSED_CONTENT_WITH_MULTIPLE_035_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"12345\"}]}}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
+  private static final String PARSED_CONTENT_WITH_MULTIPLE_007_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"},{\"007\": \"12569\"},{\"007\": \"364345\"} , {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String PARSED_CONTENT_WITH_MULTIPLE_024_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"024\": {\"ind1\": \"1\", \"ind2\": \"2\", \"subfields\": [{\"a\": \"test\"}]}}, {\"024\": {\"ind1\": \"3\", \"ind2\": \" \", \"subfields\": [{\"a\": \"test45\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String USER_TENANTS = "/user-tenants";
@@ -274,6 +275,56 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
                 new Field().withLabel("indicator1").withValue(""),
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
+
+    recordDao.saveRecord(existingRecord, TENANT_ID)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(record -> handler.handle(dataImportEventPayload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_BIB_RECORD_MATCHED.value());
+          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_BIB_KEY)).mapTo(Record.class), record);
+          async.complete();
+        }));
+  }
+
+  @Test
+  public void shouldMatchByMultipleControlledFields(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    incomingRecord.getParsedRecord().setContent(PARSED_CONTENT_WITH_MULTIPLE_007_FIELD);
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("007"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue(""))))
+            .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("007"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue(""))))))));
 
     recordDao.saveRecord(existingRecord, TENANT_ID)
       .onComplete(context.asyncAssertSuccess())

@@ -148,7 +148,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
   static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
@@ -324,16 +324,13 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
+    Map<String, String> params = new HashMap<>();
+    params.put("partition", partition);
+    params.put("value", getValueInSqlFormat(matchedField.getValue()));
     if (matchedField.isControlField()) {
-      Map<String, String> params = new HashMap<>();
-      params.put("partition", partition);
-      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
-      Map<String, String> params = new HashMap<>();
-      params.put("partition", partition);
-      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());

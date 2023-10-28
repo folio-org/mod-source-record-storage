@@ -1,3 +1,6 @@
+## 2023-10-28 v5.7.1
+* [MODSOURCE-710](https://issues.folio.org/browse/MODSOURCE-710) Update data-import-processing-core to v4.1.1
+
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table

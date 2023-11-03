@@ -30,16 +30,14 @@ import io.vertx.core.json.JsonObject;
 public class TestMocks {
 
   private static final String SOURCE_RECORDS_FOLDER_PATH = "src/test/resources/mock/sourceRecords";
-
   private static final String SNAPSHOT_PATH_TEMPLATE = "src/test/resources/mock/snapshots/%s.json";
   private static final String RECORD_PATH_TEMPLATE = "src/test/resources/mock/records/%s.json";
+  private static final String RAW_RECORD_PATH_TEMPLATE = "src/test/resources/mock/rawRecords/%s.json";
   private static final String ERROR_RECORD_PATH_TEMPLATE = "src/test/resources/mock/errorRecords/%s.json";
 
   private static List<Snapshot> snapshots;
 
   private static List<Record> records;
-
-  private static List<RawRecord> rawRecords;
 
   private static List<ParsedRecord> parsedRecords;
 
@@ -47,7 +45,6 @@ public class TestMocks {
 
   static {
     List<SourceRecord> sourceRecords = readSourceRecords();
-    rawRecords = sourceRecords.stream().map(TestMocks::toRawRecord).collect(Collectors.toList());
     parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).collect(Collectors.toList());
     errorRecords = readErrorRecords(sourceRecords);
     records = readRecords(sourceRecords);
@@ -102,14 +99,6 @@ public class TestMocks {
     return clone(errorRecords.get(index));
   }
 
-  public static List<RawRecord> getRawRecords() {
-    return new ArrayList<>(rawRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
-  }
-
-  public static RawRecord getRawRecord(int index) {
-    return clone(rawRecords.get(index));
-  }
-
   public static List<ParsedRecord> getParsedRecords() {
     return new ArrayList<>(parsedRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
   }
@@ -130,10 +119,6 @@ public class TestMocks {
     return errorRecords.stream().map(TestMocks::clone).filter(er -> er.getId().equals(id)).findAny();
   }
 
-  public static Optional<RawRecord> getRawRecord(String id) {
-    return rawRecords.stream().map(TestMocks::clone).filter(rr -> rr.getId().equals(id)).findAny();
-  }
-
   public static Optional<ParsedRecord> getParsedRecord(String id) {
     return parsedRecords.stream().map(TestMocks::clone).filter(pr -> pr.getId().equals(id)).findAny();
   }
@@ -145,18 +130,13 @@ public class TestMocks {
     return parsedRecord;
   }
 
-  private static RawRecord toRawRecord(SourceRecord sourceRecord) {
-    return sourceRecord.getRawRecord();
-  }
-
   private static ParsedRecord toParsedRecord(SourceRecord sourceRecord) {
     return sourceRecord.getParsedRecord();
   }
 
   private static List<SourceRecord> readSourceRecords() {
     File sourceRecordsDirectory = new File(SOURCE_RECORDS_FOLDER_PATH);
-    String[] extensions = new String[]{ "json" };
-    return FileUtils.listFiles(sourceRecordsDirectory, extensions, false).stream()
+    return FileUtils.listFiles(sourceRecordsDirectory, new String[]{"json"}, false).stream()
       .map(TestMocks::readSourceRecord)
       .filter(sr -> sr.isPresent())
       .map(sr -> sr.get())
@@ -209,24 +189,25 @@ public class TestMocks {
     if (file.exists()) {
       try {
         Record record = new ObjectMapper().readValue(file, Record.class)
-          .withRawRecord(sourceRecord.getRawRecord())
+          .withRawRecord(readRawRecord(sourceRecord.getRecordId()))
           .withParsedRecord(sourceRecord.getParsedRecord())
           .withExternalIdsHolder(sourceRecord.getExternalIdsHolder())
           .withAdditionalInfo(sourceRecord.getAdditionalInfo());
         if (Objects.nonNull(sourceRecord.getMetadata())) {
           record.withMetadata(sourceRecord.getMetadata());
         }
-        Optional<ErrorRecord> errorRecord = errorRecords.stream()
-          .filter(er -> er.getId().equals(record.getId())).findAny();
-        if (errorRecord.isPresent()) {
-          record.withErrorRecord(errorRecord.get());
-        }
+        errorRecords.stream()
+          .filter(er -> er.getId().equals(record.getId())).findAny().ifPresent(record::withErrorRecord);
         return Optional.of(record);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
     return Optional.empty();
+  }
+
+  private static RawRecord readRawRecord(String recordId) throws IOException {
+    return new ObjectMapper().readValue(new File(format(RAW_RECORD_PATH_TEMPLATE, recordId)), RawRecord.class);
   }
 
   private static List<ErrorRecord> readErrorRecords(List<SourceRecord> sourceRecords) {

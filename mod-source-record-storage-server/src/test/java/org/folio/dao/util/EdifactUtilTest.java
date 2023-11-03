@@ -1,9 +1,8 @@
 package org.folio.dao.util;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.xlate.edi.stream.EDIStreamException;
+import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +20,7 @@ public class EdifactUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/e4cfe577-4015-46d8-a54d-7c9b34796955.json";
   private static final String SOURCE_RECORD_WITH_IGNORED_CODES_PATH = "src/test/resources/mock/sourceRecords/4ca9d8ac-9de5-432a-83ee-15832f09e868.json";
+  private static final String RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawEdifactRecordContent.sample";
 
   private static final String INVALID_RAW_EDIFACT_RECORD =
     "UNA:+.? '" +
@@ -51,14 +51,15 @@ public class EdifactUtilTest {
   private SourceRecord sourceRecord;
 
   @Before
-  public void readSourceRecord() throws JsonParseException, JsonMappingException, IOException {
+  public void readSourceRecord() throws IOException {
     File file = new File(SOURCE_RECORD_PATH);
     sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
   }
 
   @Test
   public void shouldFormatEdifact() throws IOException, EDIStreamException {
-    String rawEdifact = sourceRecord.getRawRecord().getContent();
+    String rawEdifact = new ObjectMapper().readValue(
+      TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class);
     String formattedEdifact = EdifactUtil.formatEdifact(rawEdifact);
     assertNotNull(formattedEdifact);
     assertEquals(sourceRecord.getParsedRecord().getFormattedContent(), formattedEdifact);

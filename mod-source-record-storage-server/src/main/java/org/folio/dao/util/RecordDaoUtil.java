@@ -264,7 +264,6 @@ public final class RecordDaoUtil {
     }
     return sourceRecord
       .withOrder(record.getOrder())
-      .withRawRecord(record.getRawRecord())
       .withParsedRecord(record.getParsedRecord())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withExternalIdsHolder(record.getExternalIdsHolder())

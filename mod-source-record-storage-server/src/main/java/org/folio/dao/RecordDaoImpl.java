@@ -150,6 +150,8 @@ public class RecordDaoImpl implements RecordDao {
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE_EMPTY_VALUE = "\"{partition}\".\"ind1\" LIKE '{ind1}' and" +
+    " \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -327,14 +329,17 @@ public class RecordDaoImpl implements RecordDao {
     Map<String, String> params = new HashMap<>();
     params.put("partition", partition);
     params.put("value", getValueInSqlFormat(matchedField.getValue()));
-    if (matchedField.isControlField()) {
+    if (matchedField.isControlField() && !params.get("value").isEmpty()) {
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
+      String sqlTemplate = params.get("value").isEmpty()
+                           ? DATA_FIELD_CONDITION_TEMPLATE_EMPTY_VALUE
+                           : DATA_FIELD_CONDITION_TEMPLATE;
+      String sql = StrSubstitutor.replace(sqlTemplate, params, "{", "}");
       return condition(sql);
     }
   }

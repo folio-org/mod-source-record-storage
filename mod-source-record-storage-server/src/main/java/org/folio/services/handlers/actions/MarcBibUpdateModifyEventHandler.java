@@ -31,6 +31,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +49,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService,
+                                         SnapshotService snapshotService,
                                          MappingParametersSnapshotCache mappingParametersCache,
                                          Vertx vertx, InstanceLinkClient instanceLinkClient,
                                          LinkingRulesCache linkingRulesCache) {
-    super(recordService, mappingParametersCache, vertx);
+    super(recordService, snapshotService, mappingParametersCache, vertx);
     this.instanceLinkClient = instanceLinkClient;
     this.linkingRulesCache = linkingRulesCache;
   }

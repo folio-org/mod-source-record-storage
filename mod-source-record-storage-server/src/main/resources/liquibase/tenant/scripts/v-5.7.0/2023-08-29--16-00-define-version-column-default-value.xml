@@ -1,0 +1,16 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2023-08-29--16-00-define-version-column-default-value" author="RuslanLavrov">
+    <dropColumn tableName="marc_indexers">
+      <column name="version"/>
+    </dropColumn>
+    <addColumn tableName="marc_indexers">
+      <column name="version" type="integer" defaultValue="0"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

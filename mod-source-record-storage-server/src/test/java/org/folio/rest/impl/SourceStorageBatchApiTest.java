@@ -769,13 +769,20 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     postSnapshots(testContext, snapshot_2);
 
     String matchedId = UUID.randomUUID().toString();
+    JsonObject parsedContent = new JsonObject((String) marcRecord.getContent());
+    parsedContent.getJsonArray("fields").add(new JsonObject().put("999", new JsonObject()
+      .put("subfields",
+        new JsonArray().add(new JsonObject().put("s", matchedId)))
+      .put("ind1", "f")
+      .put("ind2", "f")));
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent.encode());
 
     Record newRecord = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(matchedId)
       .withState(Record.State.ACTUAL)
       .withAdditionalInfo(

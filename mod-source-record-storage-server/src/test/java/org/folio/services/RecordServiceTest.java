@@ -1,14 +1,18 @@
 package org.folio.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.TestMocks;
+import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.IdType;
@@ -45,6 +49,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -56,6 +61,10 @@ import java.util.stream.Collectors;
 
 import static java.util.Comparator.comparing;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.services.RecordServiceImpl.INDICATOR;
+import static org.folio.services.RecordServiceImpl.SUBFIELD_S;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 import static org.junit.Assert.assertThrows;
 
 @RunWith(VertxUnitRunner.class)
@@ -69,8 +78,16 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private RecordService recordService;
 
+  private static RawRecord rawRecord;
+  private static ParsedRecord marcRecord;
+
   @Before
-  public void setUp(TestContext context) {
+  public void setUp(TestContext context) throws IOException {
+    rawRecord = new RawRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    marcRecord = new ParsedRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     Async async = context.async();
@@ -321,6 +338,186 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldSaveMarcBibRecordWithMatchedIdFrom999field(TestContext context) {
+    String marc999 = UUID.randomUUID().toString();
+    Record original = TestMocks.getMarcBibRecord();
+    ParsedRecord parsedRecord = new ParsedRecord().withId(marc999)
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", marc999)))
+          .put("ind1", "f")
+          .put("ind2", "f")))).encode());
+    Record record = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(original.getRawRecord())
+      .withParsedRecord(parsedRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(original.getMetadata());
+    Async async = context.async();
+
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, record, save.result());
+      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(marc999, get.result().get().getMatchedId());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveMarcBibRecordWithMatchedIdFromRecordId(TestContext context) {
+    Record original = TestMocks.getMarcBibRecord();
+    String recordId = UUID.randomUUID().toString();
+    Record record = new Record()
+      .withId(recordId)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(original.getMetadata());
+    Async async = context.async();
+
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, record, save.result());
+      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(recordId, get.result().get().getMatchedId());
+        context.assertEquals(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S), recordId);
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveEdifactRecordAndNotSet999Field(TestContext context) {
+    Async async = context.async();
+    Record record = TestMocks.getRecords(Record.RecordType.EDIFACT);
+
+    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(record.getId(), get.result().get().getMatchedId());
+        context.assertNull(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSaveMarcBibRecordWithMatchedIdFromExistingSourceRecord(TestContext context) throws IOException {
+    Async async = context.async();
+    Record original = TestMocks.getMarcBibRecord();
+    String recordId1 = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId);
+    Record record1 = new Record()
+      .withId(recordId1)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(externalIdsHolder)
+      .withMetadata(original.getMetadata());
+
+    ParsedRecord parsedRecord2 = new ParsedRecord()
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+    String recordId2 = UUID.randomUUID().toString();
+    Record record2 = new Record()
+      .withId(recordId2)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord2)
+      .withGeneration(1)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(externalIdsHolder)
+      .withMetadata(original.getMetadata());
+
+    recordService.saveRecord(record1, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      context.assertNotNull(save.result().getRawRecord());
+      context.assertNotNull(save.result().getParsedRecord());
+      compareRecords(context, record1, save.result());
+      recordDao.getRecordById(record1.getId(), TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertTrue(get.result().isPresent());
+        context.assertNotNull(get.result().get().getRawRecord());
+        context.assertNotNull(get.result().get().getParsedRecord());
+        context.assertEquals(recordId1, get.result().get().getMatchedId());
+        context.assertEquals(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S), recordId1);
+
+        recordService.saveRecord(record2, TENANT_ID).onComplete(save2 -> {
+          if (save2.failed()) {
+            context.fail(save2.cause());
+          }
+          context.assertNotNull(save2.result().getRawRecord());
+          context.assertNotNull(save2.result().getParsedRecord());
+          compareRecords(context, record2, save2.result());
+          recordDao.getRecordById(record2.getId(), TENANT_ID).onComplete(get2 -> {
+            if (get2.failed()) {
+              context.fail(get2.cause());
+            }
+            context.assertTrue(get2.result().isPresent());
+            context.assertNotNull(get2.result().get().getRawRecord());
+            context.assertNotNull(get2.result().get().getParsedRecord());
+            context.assertEquals(recordId1, get2.result().get().getMatchedId());
+            context.assertEquals(getFieldFromMarcRecord(get2.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S), recordId1);
+            async.complete();
+          });
+        });
+      });
+    });
+  }
+
+  @Test
   public void shouldSaveMarcAuthorityRecord(TestContext context) {
     saveMarcRecord(context, TestMocks.getMarcAuthorityRecord(), Record.RecordType.MARC_AUTHORITY);
   }
@@ -344,9 +541,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldFailToSaveRecord(TestContext context) {
     Async async = context.async();
     Record valid = TestMocks.getRecord(0);
+    String fakeSnapshotId = "fakeId";
     Record invalid = new Record()
       .withId(valid.getId())
-      .withSnapshotId(valid.getSnapshotId())
+      .withSnapshotId(fakeSnapshotId)
       .withRecordType(valid.getRecordType())
       .withState(valid.getState())
       .withGeneration(valid.getGeneration())
@@ -358,7 +556,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(valid.getMetadata());
     recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
       context.assertTrue(save.failed());
-      String expected = "null value in column \"matched_id\" violates not-null constraint";
+      String expected = "Invalid UUID string: " + fakeSnapshotId;
       context.assertTrue(save.cause().getMessage().contains(expected));
       async.complete();
     });

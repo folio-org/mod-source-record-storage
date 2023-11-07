@@ -75,7 +75,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
-    handler = new MarcHoldingsMatchEventHandler(recordDao);
+    handler = new MarcHoldingsMatchEventHandler(recordDao, null, vertx);
     Async async = context.async();
 
     Snapshot existingRecordSnapshot = new Snapshot()

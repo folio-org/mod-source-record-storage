@@ -173,6 +173,19 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Make sure record has matched id.
+   *
+   * @param record record
+   * @return record with matched id
+   */
+  public static Record ensureRecordHasMatchedId(Record record) {
+    if (Objects.isNull(record.getMatchedId())) {
+      record.setMatchedId(UUID.randomUUID().toString());
+    }
+    return record;
+  }
+
+  /**
    * Make sure record has additional info suppress discovery.
    *
    * @param record record
@@ -333,6 +346,17 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getHoldingsId();
     } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
       return externalIdsHolder.getAuthorityId();
+    }
+    return null;
+  }
+
+  public static IdType getExternalIdType(Record.RecordType recordType) {
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return IdType.INSTANCE;
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return IdType.HOLDINGS;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return IdType.AUTHORITY;
     }
     return null;
   }

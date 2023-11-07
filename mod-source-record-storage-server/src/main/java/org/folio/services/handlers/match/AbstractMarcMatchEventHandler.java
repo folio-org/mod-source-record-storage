@@ -1,6 +1,7 @@
 package org.folio.services.handlers.match;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
@@ -21,6 +22,8 @@ import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.services.caches.ConsortiumConfigurationCache;
+import org.folio.services.util.RestUtil;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -50,28 +54,33 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
   private static final String USER_ID_HEADER = "userId";
+  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
+  private final ConsortiumConfigurationCache consortiumConfigurationCache;
+  private final Vertx vertx;
 
-  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType, DataImportEventTypes notMatchedEventType) {
+  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType,
+                                          DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache,
+                                          Vertx vertx) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
     this.notMatchedEventType = notMatchedEventType;
+    this.consortiumConfigurationCache = consortiumConfigurationCache;
+    this.vertx = vertx;
   }
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
-    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     HashMap<String, String> context = payload.getContext();
 
     if (context == null || context.isEmpty() || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
       LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
-      future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
-      return future;
+      return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
     }
     payload.getEventsChain().add(payload.getEventType());
     payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
@@ -80,21 +89,54 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     MatchDetail matchDetail = retrieveMatchDetail(payload);
     if (isValidMatchDetail(matchDetail)) {
       MatchField matchField = prepareMatchField(record, matchDetail);
-      if (matchField.isDefaultField()) {
-        processDefaultMatchField(matchField, payload.getTenant())
-          .onSuccess(recordCollection -> processSucceededResult(recordCollection.getRecords(), payload, future))
-          .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
-      } else {
-        recordDao.getMatchedRecords(matchField, typeConnection, isNonNullExternalIdRequired(), 0, 2, payload.getTenant())
-          .onSuccess(recordList -> processSucceededResult(recordList, payload, future))
-          .onFailure(throwable -> future.completeExceptionally(new MatchingException(throwable)));
-      }
-    } else {
-      constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail));
-      future.complete(payload);
+      return retrieveMarcRecords(matchField, payload.getTenant())
+        .compose(localMatchedRecords -> {
+          if (isConsortiumAvailable()) {
+            return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchField, localMatchedRecords);
+          }
+          return Future.succeededFuture(localMatchedRecords);
+        })
+        .compose(recordList -> processSucceededResult(recordList, payload))
+        .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
+        .toCompletionStage().toCompletableFuture();
     }
-    return future;
+    constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail));
+    return CompletableFuture.completedFuture(payload);
   }
+
+  private Future<List<Record>> matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(DataImportEventPayload payload, MatchField matchField,
+                                                                                           List<Record> recordList) {
+    return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload, vertx))
+      .compose(consortiumConfigurationOptional -> {
+        if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
+          LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
+            consortiumConfigurationOptional.get().getCentralTenantId());
+          return retrieveMarcRecords(matchField, consortiumConfigurationOptional.get().getCentralTenantId())
+            .onSuccess(result -> {
+              if (!result.isEmpty()) {
+                payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
+              }
+            })
+            .map(centralTenantResult -> Stream.concat(recordList.stream(), centralTenantResult.stream()).toList());
+        }
+        return Future.succeededFuture(recordList);
+      });
+  }
+
+  private static Throwable mapToMatchException(Throwable throwable) {
+    return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
+  }
+
+  private Future<List<Record>> retrieveMarcRecords(MatchField matchField, String tenant) {
+    if (matchField.isDefaultField()) {
+      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField, tenant);
+      return processDefaultMatchField(matchField, tenant).map(RecordCollection::getRecords);
+    }
+    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField, tenant);
+    return recordDao.getMatchedRecords(matchField, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+  }
+
+  abstract boolean isConsortiumAvailable();
 
   /* Creates a {@link MatchField} from the given {@link MatchDetail} */
   private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
@@ -178,18 +220,20 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   /**
    * Prepares {@link DataImportEventPayload} for the further processing based on the number of retrieved records in {@link RecordCollection}
    */
-  private void processSucceededResult(List<Record> records, DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
+  private Future<DataImportEventPayload> processSucceededResult(List<Record> records, DataImportEventPayload payload) {
     if (records.size() == 1) {
       payload.setEventType(matchedEventType.toString());
       payload.getContext().put(getMatchedMarcKey(), Json.encode(records.get(0)));
-      future.complete(payload);
-    } else if (records.size() > 1) {
-      constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
-      future.completeExceptionally(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
-    } else {
-      constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
-      future.complete(payload);
+      LOG.debug("processSucceededResult:: Matched 1 record for tenant with id {}", payload.getTenant());
+      return Future.succeededFuture(payload);
     }
+    if (records.size() > 1) {
+      constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+      LOG.warn("processSucceededResult:: Matched multiple record for tenant with id {}", payload.getTenant());
+      return Future.failedFuture(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));
+    }
+    constructError(payload, CANNOT_FIND_RECORDS_ERROR_MESSAGE);
+    return Future.succeededFuture(payload);
   }
 
   /* Logic for processing errors */

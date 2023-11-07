@@ -96,6 +96,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
@@ -145,8 +146,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
+  static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" = '{value}'";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
@@ -322,16 +324,13 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
+    Map<String, String> params = new HashMap<>();
+    params.put("partition", partition);
+    params.put("value", getValueInSqlFormat(matchedField.getValue()));
     if (matchedField.isControlField()) {
-      Map<String, String> params = new HashMap<>();
-      params.put("partition", partition);
-      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
-      Map<String, String> params = new HashMap<>();
-      params.put("partition", partition);
-      params.put("value", getValueInSqlFormat(matchedField.getValue()));
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
@@ -556,6 +555,7 @@ public class RecordDaoImpl implements RecordDao {
       recordCollection.getRecords()
         .stream()
         .map(RecordDaoUtil::ensureRecordHasId)
+        .map(RecordDaoUtil::ensureRecordHasMatchedId)
         .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
         .map(RecordDaoUtil::ensureRecordForeignKeys)
         .forEach(record -> {
@@ -1127,31 +1127,39 @@ public class RecordDaoImpl implements RecordDao {
    */
   @Override
   public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
+    return executeInTransaction(txQE -> acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, tenantId.hashCode())
+      .compose(isLockAcquired -> {
+        if (Boolean.FALSE.equals(isLockAcquired)) {
+          LOG.info("deleteMarcIndexersOldVersions:: Previous marc_indexers old version deletion still ongoing, tenantId: '{}'", tenantId);
+          return Future.succeededFuture(false);
+        }
+        return deleteMarcIndexersOldVersions(txQE, tenantId);
+      }), tenantId);
+  }
+
+  private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
-    return executeInTransaction(txQE ->
-        Future.succeededFuture()
-          // create temporary table
-          .compose(ar -> txQE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
-            .column(MARC_ID, SQLDataType.UUID)
-            .constraint(primaryKey(MARC_ID))
-            .onCommitDrop()
-          ))
-          // delete old marc indexers versions
-          .compose(ar -> txQE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
-            .onFailure(th ->
-              LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
-          // Update tracking table to show that a marc records has had its marcIndexers cleaned
-          .compose(res -> txQE.execute(dsl -> {
-              Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
-                .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
-              return dsl.update(MARC_RECORDS_TRACKING)
-                .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
-                .where(MARC_RECORDS_TRACKING.MARC_ID
-                  .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)));
-            })
-            .onFailure(th ->
-              LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th)))
-      , tenantId)
+    // create temporary table
+    return txQE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
+        .column(MARC_ID, SQLDataType.UUID)
+        .constraint(primaryKey(MARC_ID))
+        .onCommitDrop()
+      )
+      // delete old marc indexers versions
+      .compose(ar -> txQE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+        .onFailure(th ->
+          LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
+      // Update tracking table to show that a marc records has had its marcIndexers cleaned
+      .compose(res -> txQE.execute(dsl -> {
+          Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
+            .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
+          return dsl.update(MARC_RECORDS_TRACKING)
+            .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
+            .where(MARC_RECORDS_TRACKING.MARC_ID
+              .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)));
+        })
+        .onFailure(th ->
+          LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th)))
       .map(res -> true)
       .recover(th -> Future.succeededFuture(false));
   }

@@ -1,24 +1,24 @@
 package org.folio.services.util;
 
-import java.util.List;
-import java.util.UUID;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.kafka.SimpleKafkaProducerManager;
+import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
+
+import java.util.List;
+import java.util.UUID;
 
 public final class EventHandlingUtil {
 
@@ -41,9 +41,8 @@ public final class EventHandlingUtil {
    */
   public static Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, String eventType,
                                                  List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
-    KafkaProducerRecord<String, String> producerRecord;
-
-    producerRecord = createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
+    KafkaProducerRecord<String, String> producerRecord =
+      createProducerRecord(eventPayload, eventType, key, tenantId, kafkaHeaders, kafkaConfig);
 
     Promise<Boolean> promise = Promise.promise();
 
@@ -52,17 +51,18 @@ public final class EventHandlingUtil {
     String producerName = eventType + "_Producer";
     var producer = createProducer(eventType, kafkaConfig);
 
-    producer.write(producerRecord, war -> {
-      producer.end(ear -> producer.close());
-      if (war.succeeded()) {
+    producer.send(producerRecord)
+      .<Void>mapEmpty()
+      .eventually(x -> producer.close())
+      .onSuccess(res -> {
         LOGGER.info("sendEventToKafka:: Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
         promise.complete(true);
-      } else {
-        Throwable cause = war.cause();
-        LOGGER.warn("sendEventToKafka:: {} write error for event {} with recordId {} with chunkId: {}, cause:",  producerName, eventType, recordId, chunkId, cause);
+      })
+      .onFailure(err -> {
+        Throwable cause = err.getCause();
+        LOGGER.warn("sendEventToKafka:: {} write error for event {} with recordId {} with chunkId: {}, cause:", producerName, eventType, recordId, chunkId, cause);
         promise.fail(cause);
-      }
-    });
+      });
     return promise.future();
   }
 
@@ -80,8 +80,12 @@ public final class EventHandlingUtil {
         .withPublishedBy(constructModuleName()));
 
     String topicName = createTopicName(eventType, tenantId, kafkaConfig);
+    var producerRecord = new KafkaProducerRecordBuilder<String, Object>(tenantId)
+      .key(key)
+      .value(event)
+      .topic(topicName)
+      .build();
 
-    KafkaProducerRecord<String, String> producerRecord = KafkaProducerRecord.create(topicName, key, Json.encode(event));
     producerRecord.addHeaders(kafkaHeaders);
     return producerRecord;
   }
@@ -90,6 +94,7 @@ public final class EventHandlingUtil {
     return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
       ModuleName.getModuleVersion());
   }
+
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, eventType);
@@ -100,8 +105,7 @@ public final class EventHandlingUtil {
   }
 
   public static KafkaProducer<String, String> createProducer(String eventType, KafkaConfig kafkaConfig) {
-    String producerName = eventType + "_Producer";
-    return KafkaProducer.createShared(Vertx.currentContext().owner(), producerName, kafkaConfig.getProducerProps());
+    return new SimpleKafkaProducerManager(Vertx.currentContext().owner(), kafkaConfig).createShared(eventType);
   }
 
   private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {

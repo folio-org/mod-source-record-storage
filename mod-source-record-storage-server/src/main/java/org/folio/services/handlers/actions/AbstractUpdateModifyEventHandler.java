@@ -6,7 +6,6 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import java.util.Optional;
 import java.util.function.Function;
-import io.vertx.pgclient.PgException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,8 +23,8 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
-import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.RestUtil;
 
 import java.io.IOException;
@@ -41,12 +40,14 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -54,17 +55,17 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
-  private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
-  private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
 
   protected RecordService recordService;
+  protected SnapshotService snapshotService;
   protected MappingParametersSnapshotCache mappingParametersCache;
   protected Vertx vertx;
 
-  protected AbstractUpdateModifyEventHandler(
-    RecordService recordService, MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+  protected AbstractUpdateModifyEventHandler(RecordService recordService, SnapshotService snapshotService,
+                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
     this.recordService = recordService;
+    this.snapshotService = snapshotService;
     this.mappingParametersCache = mappingParametersCache;
     this.vertx = vertx;
   }
@@ -91,37 +92,43 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
         .map(mapMappingParametersOrFail(format(MAPPING_PARAMETERS_NOT_FOUND_MSG, payload.getJobExecutionId())))
-        .compose(mappingParameters -> modifyRecord(payload, mappingProfile, mappingParameters))
-        .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
-        .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
-        .onSuccess(changedRecord -> {
-          if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
-            addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
+        .compose(mappingParameters ->
+          modifyRecord(payload, mappingProfile, mappingParameters)
+            .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
+            .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
+            .onSuccess(changedRecord -> {
+              if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
+                addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
-            String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
-            if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
-              fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
-            }
+                String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
+                if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
+                  fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
+                }
 
-            remove035WithActualHrId(changedRecord, hrId);
-            remove003FieldIfNeeded(changedRecord, hrId);
+                remove035WithActualHrId(changedRecord, hrId);
+                remove003FieldIfNeeded(changedRecord, hrId);
+              }
+
+              increaseGeneration(changedRecord);
+              setUpdatedBy(changedRecord, userId);
+              updateLatestTransactionDate(changedRecord, mappingParameters);
+              payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
+            })
+        )
+        .compose(changedRecord -> {
+          String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+          if (centralTenantId != null) {
+            return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
+              .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
           }
-
-          increaseGeneration(changedRecord);
-          setUpdatedBy(changedRecord, userId);
-          payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
+          return recordService.saveRecord(changedRecord, payload.getTenant());
         })
-        .compose(changedRecord -> recordService.saveRecord(changedRecord, payload.getTenant()))
         .onSuccess(savedRecord -> {
           payload.setEventType(getNextEventType());
           future.complete(payload);
         })
         .onFailure(throwable -> {
           LOG.warn("handle:: Error while MARC record modifying", throwable);
-          if (throwable instanceof PgException pgException && StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
-            future.completeExceptionally(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
-            return;
-          }
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {

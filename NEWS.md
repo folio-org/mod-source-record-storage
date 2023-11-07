@@ -1,17 +1,22 @@
-## 2023-xo-xo v5.7.0-SNAPSHOT
+## 2024-xx-xx 5.8.0-SNAPSHOT
+* [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677)  Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching
+
+## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17
 * [MODSOURCE-601](https://issues.folio.org/browse/MODSOURCE-601) Optimize Insert & Update of marc_records_lb table
 * [MODSOURCE-635](https://issues.folio.org/browse/MODSOURCE-635) Delete marc_indexers records associated with "OLD" source records
 * [MODSOURCE-636](https://issues.folio.org/browse/MODSOURCE-636) Implement async migration service
+* [MODSOURCE-674](https://issues.folio.org/browse/MODSOURCE-674) Ensure only one background job can be triggered to clean up outdated marc indexers
+* [MODSOURCE-530](https://issues.folio.org/browse/MODSOURCE-530) Fix duplicate records in incoming file causes problems after overlay process with no error reported
+* [MODSOURCE-690](https://issues.folio.org/browse/MODSOURCE-690) Make changes in SRS post processing handler to update MARC for shared Instance
+* [MODSOURCE-646](https://issues.folio.org/browse/MODSOURCE-646) Make changes to perform MARC To MARC Matching in Local Tenant & Central Tenant
+* [MODSOURCE-667](https://issues.folio.org/browse/MODSOURCE-667) Upgrade folio-kafka-wrapper to 3.0.0 version
 
 ### Asynchronous migration job API
 | METHOD | URL                                     | DESCRIPTION                                     |
 |--------|-----------------------------------------|-------------------------------------------------|
 | POST   | /source-storage/migrations/jobs         | Initialize asynchronous migration job           |
 | GET    | /source-storage/migrations/jobs/{jobId} | Get asynchronous migration job entity by its id |
-
-## 2023-03-xx v5.6.3-SNAPSHOT
-* [MODSOURCE-615](https://issues.folio.org/browse/MODSOURCE-615) Importing 10,000 MARC authority records > Completes with errors due to timeout - Indices added.
 
 ## 2023-03-18 v5.6.2
 * [MODSOURCE-585](https://issues.folio.org/browse/MODSOURCE-585) Data import matching takes incorrect SRS records into consideration

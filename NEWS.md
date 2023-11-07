@@ -1,3 +1,7 @@
+## 2023-11-07 v5.7.2
+* [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677) Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching
+* [MODSOURCE-642](https://issues.folio.org/browse/MODSOURCE-642) 005 is not created/updated when action profile's is set to update FOLIO record type = MARC bibliographic/MARC authority/MARC holdings
+
 ## 2023-10-28 v5.7.1
 * [MODSOURCE-710](https://issues.folio.org/browse/MODSOURCE-710) Update data-import-processing-core to v4.1.1
 

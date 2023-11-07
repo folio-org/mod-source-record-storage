@@ -1,3 +1,6 @@
+## 2023-11-09 v5.7.3
+* [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
+
 ## 2023-11-07 v5.7.2
 * [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677) Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching
 * [MODSOURCE-642](https://issues.folio.org/browse/MODSOURCE-642) 005 is not created/updated when action profile's is set to update FOLIO record type = MARC bibliographic/MARC authority/MARC holdings

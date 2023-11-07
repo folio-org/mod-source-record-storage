@@ -158,6 +158,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String WILDCARD = "*";
   private static final String PERCENT = "%";
   private static final String HASH = "#";
+  private static final String VALUE = "value";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
@@ -328,15 +329,15 @@ public class RecordDaoImpl implements RecordDao {
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
     Map<String, String> params = new HashMap<>();
     params.put("partition", partition);
-    params.put("value", getValueInSqlFormat(matchedField.getValue()));
-    if (matchedField.isControlField() && !params.get("value").isEmpty()) {
+    params.put(VALUE, getValueInSqlFormat(matchedField.getValue()));
+    if (matchedField.isControlField() && !params.get(VALUE).isEmpty()) {
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      String sqlTemplate = params.get("value").isEmpty()
+      String sqlTemplate = params.get(VALUE).isEmpty()
                            ? DATA_FIELD_CONDITION_TEMPLATE_EMPTY_VALUE
                            : DATA_FIELD_CONDITION_TEMPLATE;
       String sql = StrSubstitutor.replace(sqlTemplate, params, "{", "}");

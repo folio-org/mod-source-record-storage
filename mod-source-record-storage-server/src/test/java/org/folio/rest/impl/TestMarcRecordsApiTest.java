@@ -1,16 +1,18 @@
 package org.folio.rest.impl;
 
-import java.util.Collections;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.folio.TestMocks;
+import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 @RunWith(VertxUnitRunner.class)
 public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
@@ -18,11 +20,14 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   private static final String POPULATE_TEST_MARK_RECORDS_PATH = "/source-storage/populate-test-marc-records";
 
   @Test
-  public void shouldReturnNoContentOnPostRecordCollectionPassedInBody() {
+  public void shouldReturnNoContentOnPostRecordCollectionPassedInBody() throws IOException {
+    RawRecord rawRecord = new RawRecord().withContent(
+      new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+
     RestAssured.given()
       .spec(spec)
       .body(new TestMarcRecordsCollection()
-        .withRawRecords(TestMocks.getRawRecords()))
+        .withRawRecords(List.of(rawRecord)))
       .when()
       .post(POPULATE_TEST_MARK_RECORDS_PATH)
       .then()

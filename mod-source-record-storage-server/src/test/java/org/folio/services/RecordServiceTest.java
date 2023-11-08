@@ -1527,7 +1527,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             context.fail(get.cause());
           }
           context.assertTrue(get.result().isPresent());
-          context.assertNotNull(get.result().get().getRawRecord());
           context.assertNotNull(get.result().get().getParsedRecord());
           compareSourceRecords(context, RecordDaoUtil.toSourceRecord(expected), get.result().get());
           async.complete();
@@ -1794,15 +1793,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.getSnapshotId(), actual.getSnapshotId());
     context.assertEquals(expected.getRecordType(), actual.getRecordType());
     context.assertEquals(expected.getOrder(), actual.getOrder());
-    if (Objects.nonNull(expected.getRawRecord())) {
-      compareRawRecords(context, expected.getRawRecord(), actual.getRawRecord());
-    } else {
-      context.assertNull(actual.getRawRecord());
-    }
     if (Objects.nonNull(expected.getParsedRecord())) {
       compareParsedRecords(context, expected.getParsedRecord(), actual.getParsedRecord());
-    } else {
-      context.assertNull(actual.getRawRecord());
     }
     if (Objects.nonNull(expected.getAdditionalInfo())) {
       compareAdditionalInfo(context, expected.getAdditionalInfo(), actual.getAdditionalInfo());

@@ -2,9 +2,13 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
 
 import io.vertx.core.Future;
@@ -13,6 +17,7 @@ import io.vertx.core.Vertx;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -99,11 +104,20 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     }
     var instanceId = matchedRecord.getExternalIdsHolder().getInstanceId();
     var okapiParams = getOkapiParams(dataImportEventPayload);
+    var centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
+    if (centralTenantId != null) {
+      okapiParams = new OkapiConnectionParams(Map.of(
+        OKAPI_URL_HEADER, okapiParams.getOkapiUrl(),
+        OKAPI_TENANT_HEADER, centralTenantId,
+        OKAPI_TOKEN_HEADER, okapiParams.getToken()
+      ), vertx);
+    }
 
-    return linkingRulesCache.get(okapiParams)
-      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, okapiParams)
+    OkapiConnectionParams finalOkapiParams = okapiParams;
+    return linkingRulesCache.get(finalOkapiParams)
+      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, finalOkapiParams)
         .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
-        .compose(links -> updateInstanceLinks(instanceId, links, okapiParams)));
+        .compose(links -> updateInstanceLinks(instanceId, links, finalOkapiParams)));
   }
 
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,

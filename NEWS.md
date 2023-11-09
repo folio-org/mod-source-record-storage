@@ -1,5 +1,6 @@
 ## 2023-11-09 v5.7.3
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
+* [MODSOURCE-715](https://issues.folio.org/browse/MODSOURCE-715) Change API calls to central tenant for shared BIB
 
 ## 2023-11-07 v5.7.2
 * [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677) Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching

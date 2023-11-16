@@ -96,6 +96,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
@@ -150,15 +152,12 @@ public class RecordDaoImpl implements RecordDao {
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE_EMPTY_VALUE = "\"{partition}\".\"ind1\" LIKE '{ind1}' and" +
-    " \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
   private static final String WILDCARD = "*";
   private static final String PERCENT = "%";
   private static final String HASH = "#";
-  private static final String VALUE = "value";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
@@ -266,6 +265,9 @@ public class RecordDaoImpl implements RecordDao {
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    if (isEmpty(matchedField.getValue()))
+      return Future.succeededFuture(emptyList());
+
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
       {
         SelectOnConditionStep<org.jooq.Record> query = dsl
@@ -329,18 +331,15 @@ public class RecordDaoImpl implements RecordDao {
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
     Map<String, String> params = new HashMap<>();
     params.put("partition", partition);
-    params.put(VALUE, getValueInSqlFormat(matchedField.getValue()));
-    if (matchedField.isControlField() && !params.get(VALUE).isEmpty()) {
+    params.put("value", getValueInSqlFormat(matchedField.getValue()));
+    if (matchedField.isControlField()) {
       String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     } else {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      String sqlTemplate = params.get(VALUE).isEmpty()
-                           ? DATA_FIELD_CONDITION_TEMPLATE_EMPTY_VALUE
-                           : DATA_FIELD_CONDITION_TEMPLATE;
-      String sql = StrSubstitutor.replace(sqlTemplate, params, "{", "}");
+      String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
       return condition(sql);
     }
   }

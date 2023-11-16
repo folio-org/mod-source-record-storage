@@ -114,6 +114,20 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldReturnEmptyListIfValueFieldIsEmpty(TestContext context) {
+    var async = context.async();
+    var matchField = new MatchField("010", "1", "", "a", StringValue.of(""));
+
+    var future = recordDao.getMatchedRecords(matchField, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertEquals(0, ar.result().size());
+      async.complete();
+    });
+  }
+
+  @Test
   public void shouldReturnIdOnStreamMarcRecordIdsWhenThereIsNoTrackingRecordAndFallbackQueryEnabled(TestContext context) {
     Async async = context.async();
     ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);

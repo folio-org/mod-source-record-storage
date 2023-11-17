@@ -98,7 +98,6 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
-import static org.apache.commons.lang3.ObjectUtils.isEmpty;
 import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
 import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
 import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;

@@ -27,6 +27,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
+import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -265,7 +266,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
-    if (isEmpty(matchedField.getValue()))
+    if (matchedField.getValue() instanceof MissingValue)
       return Future.succeededFuture(emptyList());
 
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->

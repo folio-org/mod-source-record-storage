@@ -14,6 +14,7 @@ import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.StringValue;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
@@ -116,7 +117,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   @Test
   public void shouldReturnEmptyListIfValueFieldIsEmpty(TestContext context) {
     var async = context.async();
-    var matchField = new MatchField("010", "1", "", "a", StringValue.of(""));
+    var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
     var future = recordDao.getMatchedRecords(matchField, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 

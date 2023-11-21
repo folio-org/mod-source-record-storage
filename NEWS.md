@@ -1,3 +1,6 @@
+## 2023-xx-xx v5.7.4
+* [MODSOURCE-722](https://issues.folio.org/browse/MODSOURCE-722)  deleteMarcIndexersOldVersions: relation "marc_records_tracking" does not exist
+
 ## 2023-11-09 v5.7.3
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
 * [MODSOURCE-715](https://issues.folio.org/browse/MODSOURCE-715) Change API calls to central tenant for shared BIB

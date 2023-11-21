@@ -9,9 +9,9 @@ import java.util.List;
  */
 public interface TenantDataProvider {
   /**
-   * Gets all module tenants.
+   * Gets all module tenants where the given database table exists.
    *
    * @return tenant ids
    */
-  Future<List<String>> getModuleTenants();
+  Future<List<String>> getModuleTenants(String table);
 }

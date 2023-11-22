@@ -1,10 +1,10 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
+
 import org.folio.rest.persist.PostgresClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +15,7 @@ import java.util.stream.StreamSupport;
 
 @Service
 public class TenantDataProviderImpl implements TenantDataProvider {
+  private static final String SUFFIX = "_mod_source_record_storage";
   private Vertx vertx;
 
   @Autowired
@@ -23,22 +24,21 @@ public class TenantDataProviderImpl implements TenantDataProvider {
   }
 
   @Override
-  public Future<List<String>> getModuleTenants() {
+  public Future<List<String>> getModuleTenants(String table) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx);
-    Promise<RowSet<Row>> promise = Promise.promise();
-    String tenantQuery = "select nspname from pg_catalog.pg_namespace where nspname LIKE '%_mod_source_record_storage';";
-    pgClient.select(tenantQuery, promise);
-    return promise.future()
-      .map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
-        .map(this::mapToTenant)
-        .collect(Collectors.toList())
-      );
+    String tenantQuery = """
+                    select schemaname from pg_catalog.pg_tables
+                    where schemaname LIKE $1 and tablename = $2
+                    """;
+    return pgClient.execute(tenantQuery, Tuple.of("%" + SUFFIX, table))
+        .map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
+            .map(this::mapToTenant)
+            .collect(Collectors.toList()));
   }
 
   private String mapToTenant(Row row) {
-    String nsTenant = row.getString("nspname");
-    String suffix = "_mod_source_record_storage";
-    int tenantNameLength = nsTenant.length() - suffix.length();
-    return nsTenant.substring(0, tenantNameLength);
+    String schemaname = row.getString("schemaname");
+    int tenantNameLength = schemaname.length() - SUFFIX.length();
+    return schemaname.substring(0, tenantNameLength);
   }
 }

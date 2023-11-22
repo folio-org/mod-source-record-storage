@@ -442,10 +442,6 @@
         "value": "15"
       },
       {
-        "name": "test.mode",
-        "value": "true"
-      },
-      {
         "name": "KAFKA_HOST",
         "value": "10.0.2.15"
       },

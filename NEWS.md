@@ -1,5 +1,7 @@
-## 2023-xx-xx v5.7.4
-* [MODSOURCE-722](https://issues.folio.org/browse/MODSOURCE-722)  deleteMarcIndexersOldVersions: relation "marc_records_tracking" does not exist
+## 2023-11-24 v5.7.4
+* [MODSOURCE-720](https://issues.folio.org/browse/MODSOURCE-720) Remove "test.mode" entry from ModuleDescriptor
+* [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
+* [MODSOURCE-722](https://issues.folio.org/browse/MODSOURCE-722) deleteMarcIndexersOldVersions: relation "marc_records_tracking" does not exist
 
 ## 2023-11-09 v5.7.3
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field

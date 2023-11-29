@@ -26,9 +26,9 @@
     <vertx.version>4.3.7</vertx.version>
     <junit.version>4.13.2</junit.version>
     <rest-assured.version>4.5.1</rest-assured.version>
-    <kafkaclients.version>3.3.2</kafkaclients.version>
-    <kafkajunit.version>3.3.0</kafkajunit.version>
-    <spring.version>5.3.23</spring.version>
+    <kafkaclients.version>3.6.0</kafkaclients.version>
+    <kafkajunit.version>3.5.1</kafkajunit.version>
+    <spring.version>5.3.30</spring.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 

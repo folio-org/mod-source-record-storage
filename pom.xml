@@ -20,6 +20,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <log4j.version>2.19.0</log4j.version>
     <raml-module-builder.version>35.0.6</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>4.3.7</vertx.version>
@@ -33,6 +34,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>${log4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
 
       <!--
         also sets jackson version:

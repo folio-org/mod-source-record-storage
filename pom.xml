@@ -20,19 +20,27 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <log4j.version>2.19.0</log4j.version>
     <raml-module-builder.version>35.0.6</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>4.3.7</vertx.version>
     <junit.version>4.13.2</junit.version>
     <rest-assured.version>4.5.1</rest-assured.version>
-    <kafkaclients.version>3.3.2</kafkaclients.version>
-    <kafkajunit.version>3.3.0</kafkajunit.version>
-    <spring.version>5.3.23</spring.version>
+    <kafkaclients.version>3.6.0</kafkaclients.version>
+    <kafkajunit.version>3.5.1</kafkajunit.version>
+    <spring.version>5.3.30</spring.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>${log4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
 
       <!--
         also sets jackson version:

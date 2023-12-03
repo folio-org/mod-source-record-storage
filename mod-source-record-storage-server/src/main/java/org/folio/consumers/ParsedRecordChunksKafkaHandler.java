@@ -42,7 +42,6 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
-  private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
   private static final String USER_ID_HEADER = "userId";
   private static final AtomicInteger chunkCounter = new AtomicInteger();
@@ -77,7 +76,6 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
     String tenantId = okapiConnectionParams.getTenantId();
     String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
-    String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
     String key = targetRecord.key();
@@ -86,14 +84,14 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
 
     try {
-      LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}' with recordId: '{}'' ",
-        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key, recordId);
+      LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}'",
+        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key);
       setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, eventPayload.getEventType(), targetRecord));
     } catch (Exception e) {
-      LOGGER.warn("handle:: RecordCollection processing has failed with errors with event: '{}', jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}' ",
-        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key, recordId);
+      LOGGER.warn("handle:: RecordCollection processing has failed with errors with event: '{}', jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}'",
+        eventPayload.getEventType(), jobExecutionId, chunkId, chunkNumber, key);
       return Future.failedFuture(e);
     }
   }
@@ -132,10 +130,9 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       .<Void>mapEmpty()
       .eventually(x -> producer.close())
       .onSuccess(res -> {
-        String recordId = extractHeaderValue(RECORD_ID_HEADER, commonRecord.headers());
         String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
-        LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}' with recordId: '{}'",
-          eventType, chunkId, chunkNumber, targetRecord.key(), recordId);
+        LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}'",
+          eventType, chunkId, chunkNumber, targetRecord.key());
         writePromise.complete(targetRecord.key());
       })
       .onFailure(err -> {

@@ -338,7 +338,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     record, String jobExecutionId) {
     String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
-    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_ID);
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
     if (centralTenantId != null) {
       return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)

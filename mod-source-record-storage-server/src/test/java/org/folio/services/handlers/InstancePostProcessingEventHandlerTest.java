@@ -190,7 +190,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
-  public void shouldProceedIfConosrtiumTrackExists(TestContext context) {
+  public void shouldProceedIfConsortiumTrackExists(TestContext context) {
     MockitoAnnotations.openMocks(this);
 
     Async async = context.async();
@@ -213,6 +213,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     String expectedInstanceId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
+    String expectedCentralTenantId = "centralTenantId";
 
     JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
 
@@ -221,7 +222,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
     payloadContext.put("recordId", record.getId());
     payloadContext.put(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG, "true");
-    payloadContext.put(CENTRAL_TENANT_ID, "centralTenantId");
+    payloadContext.put(CENTRAL_TENANT_ID, expectedCentralTenantId);
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
@@ -238,7 +239,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       }
       verify(mockedRecordService, times(1)).updateParsedRecord(any(), anyString());
       context.assertNull(payload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG));
-      context.assertNull(payload.getContext().get(CENTRAL_TENANT_ID));
+      context.assertEquals(expectedCentralTenantId, payload.getContext().get(CENTRAL_TENANT_ID));
       async.complete();
     });
   }

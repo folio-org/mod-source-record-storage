@@ -1,3 +1,7 @@
+## 2023-12-05 v5.7.5
+* [MODSOURCE-719](https://issues.folio.org/browse/MODSOURCE-719) Bump Kafka, Spring, Snappy fixing vulnerabilities
+* [MODSOURCE-727](https://issues.folio.org/browse/MODSOURCE-727) Provide central tenant id in DI payload to ensure instance update on central tenant after instance hrid has been set to record
+
 ## 2023-11-24 v5.7.4
 * [MODSOURCE-720](https://issues.folio.org/browse/MODSOURCE-720) Remove "test.mode" entry from ModuleDescriptor
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field

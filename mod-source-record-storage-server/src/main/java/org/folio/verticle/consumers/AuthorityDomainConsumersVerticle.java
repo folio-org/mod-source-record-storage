@@ -1,11 +1,11 @@
 package org.folio.verticle.consumers;
 
-import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
 import java.util.List;
 import java.util.Optional;
-import org.folio.consumers.AuthorityLinkChunkKafkaHandler;
+import org.folio.AuthorityDomainKafkaTopic;
+import org.folio.consumers.AuthorityDomainKafkaHandler;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,15 +15,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope(SCOPE_PROTOTYPE)
-public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticle {
+public class AuthorityDomainConsumersVerticle extends AbstractConsumerVerticle {
 
-  private final AuthorityLinkChunkKafkaHandler kafkaHandler;
+  private final AuthorityDomainKafkaHandler kafkaHandler;
 
-  @Value("${srs.kafka.AuthorityLinkChunkConsumer.loadLimit:2}")
+  @Value("${srs.kafka.AuthorityDomainConsumer.loadLimit:10}")
   private int loadLimit;
 
   @Autowired
-  public AuthorityLinkChunkConsumersVerticle(KafkaConfig kafkaConfig, AuthorityLinkChunkKafkaHandler kafkaHandler) {
+  protected AuthorityDomainConsumersVerticle(KafkaConfig kafkaConfig, AuthorityDomainKafkaHandler kafkaHandler) {
     super(kafkaConfig);
     this.kafkaHandler = kafkaHandler;
   }
@@ -45,6 +45,6 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticl
 
   @Override
   protected List<String> eventTypes() {
-    return List.of(INSTANCE_AUTHORITY.moduleTopicName());
+    return List.of(AuthorityDomainKafkaTopic.AUTHORITY.moduleTopicName());
   }
 }

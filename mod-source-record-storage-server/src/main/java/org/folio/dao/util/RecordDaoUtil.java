@@ -489,9 +489,19 @@ public final class RecordDaoUtil {
    */
   public static Condition filterRecordByType(String type) {
     if (StringUtils.isNotEmpty(type)) {
-      return RECORDS_LB.RECORD_TYPE.eq(toRecordType(type));
+      return filterRecordByType(toRecordType(type));
     }
     return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by type
+   *
+   * @param recordType type to equal
+   * @return condition
+   */
+  public static Condition filterRecordByType(RecordType recordType) {
+    return RECORDS_LB.RECORD_TYPE.eq(recordType);
   }
 
   /**

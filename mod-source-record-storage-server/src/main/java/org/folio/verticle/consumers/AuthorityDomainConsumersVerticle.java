@@ -17,20 +17,21 @@ import org.springframework.stereotype.Component;
 @Scope(SCOPE_PROTOTYPE)
 public class AuthorityDomainConsumersVerticle extends AbstractConsumerVerticle {
 
-  private final AuthorityDomainKafkaHandler kafkaHandler;
+  private final AuthorityDomainKafkaHandler authorityDomainKafkaHandler;
 
   @Value("${srs.kafka.AuthorityDomainConsumer.loadLimit:10}")
-  private int loadLimit;
+  private int authorityDomainLoadLimit;
 
   @Autowired
-  protected AuthorityDomainConsumersVerticle(KafkaConfig kafkaConfig, AuthorityDomainKafkaHandler kafkaHandler) {
+  protected AuthorityDomainConsumersVerticle(KafkaConfig kafkaConfig,
+                                             AuthorityDomainKafkaHandler authorityDomainKafkaHandler) {
     super(kafkaConfig);
-    this.kafkaHandler = kafkaHandler;
+    this.authorityDomainKafkaHandler = authorityDomainKafkaHandler;
   }
 
   @Override
   protected int loadLimit() {
-    return loadLimit;
+    return authorityDomainLoadLimit;
   }
 
   @Override
@@ -40,7 +41,7 @@ public class AuthorityDomainConsumersVerticle extends AbstractConsumerVerticle {
 
   @Override
   protected AsyncRecordHandler<String, String> recordHandler() {
-    return kafkaHandler;
+    return authorityDomainKafkaHandler;
   }
 
   @Override

@@ -10,10 +10,12 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.kafka.client.consumer.impl.KafkaConsumerRecordImpl;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -29,6 +31,7 @@ import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -46,6 +49,18 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private RecordService recordService;
   private Record record;
   private AuthorityDomainKafkaHandler handler;
+
+  @BeforeClass
+  public static void setUpClass() throws IOException {
+    rawRecord = new RawRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH),
+            JsonObject.class)
+          .encode());
+  }
 
   @Before
   public void setUp(TestContext context) {
@@ -91,7 +106,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
     payload.put("deleteEventSubType", "SOFT_DELETE");
     payload.put("tenant", TENANT_ID);
 
-    handler.handle(new KafkaConsumerRecordImpl<>(new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload))))
+    handler.handle(new KafkaConsumerRecordImpl<>(getConsumerRecord(payload)))
       .onComplete(ar -> {
         if (ar.failed()) {
           context.fail(ar.cause());
@@ -117,7 +132,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
     payload.put("deleteEventSubType", "HARD_DELETE");
     payload.put("tenant", TENANT_ID);
 
-    handler.handle(new KafkaConsumerRecordImpl<>(new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload))))
+    handler.handle(new KafkaConsumerRecordImpl<>(getConsumerRecord(payload)))
       .onComplete(ar -> {
         if (ar.failed()) {
           context.fail(ar.cause());
@@ -133,16 +148,11 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       });
   }
 
-  @BeforeClass
-  public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH),
-            JsonObject.class)
-          .encode());
+  @NotNull
+  private ConsumerRecord<String, String> getConsumerRecord(HashMap<String, String> payload) {
+    ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload));
+    consumerRecord.headers().add(new RecordHeader("domain-event-type", "DELETE".getBytes(StandardCharsets.UTF_8)));
+    return consumerRecord;
   }
 
 }

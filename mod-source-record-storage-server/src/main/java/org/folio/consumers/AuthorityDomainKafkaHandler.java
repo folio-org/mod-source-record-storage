@@ -38,6 +38,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
     if (isUnexpectedDomainEvent(consumerRecord)) {
       log.trace("handle:: Expected only {} domain type. Skipping authority domain kafka record [ID: '{}']",
         DELETE_DOMAIN_EVENT_TYPE, authorityId);
+      return Future.succeededFuture(authorityId);
     }
 
     var eventPayload = new JsonObject(consumerRecord.value());

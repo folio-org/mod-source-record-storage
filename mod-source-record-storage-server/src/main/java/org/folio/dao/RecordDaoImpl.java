@@ -1108,7 +1108,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Boolean> deleteRecordsByExternalId(String externalId, String tenantId) {
-    LOG.trace("deleteRecordsBySnapshotId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
+    LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
     var externalUuid = UUID.fromString(externalId);
     return getQueryExecutor(tenantId).transaction(txQE -> txQE
       .execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB)

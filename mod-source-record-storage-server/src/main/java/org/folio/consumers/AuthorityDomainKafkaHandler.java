@@ -53,7 +53,6 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
   }
 
   private Future<String> performSoftDelete(String authorityId, String tenantId) {
-    logInput(authorityId, EventSubType.SOFT_DELETE, tenantId);
     var condition = filterRecordByExternalId(authorityId);
     return recordService.getRecords(condition, RecordType.MARC_AUTHORITY, Collections.emptyList(), 0, 1, tenantId)
       .compose(recordCollection -> {

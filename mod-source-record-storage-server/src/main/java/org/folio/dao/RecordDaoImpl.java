@@ -1,5 +1,38 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.getExternalId;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.condition;
+import static org.jooq.impl.DSL.countDistinct;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.primaryKey;
+import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
+
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -11,6 +44,24 @@ import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
@@ -76,58 +127,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
-import static java.util.Collections.emptyList;
-import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
-import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
-import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.getExternalId;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
-import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.primaryKey;
-import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -1105,6 +1104,21 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
     LOG.trace("deleteRecordsBySnapshotId:: Deleting records by snapshotId {} for tenant {}", snapshotId, tenantId);
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
+  }
+
+  @Override
+  public Future<Boolean> deleteRecordsByExternalId(String externalId, String tenantId) {
+    LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
+    var externalUuid = UUID.fromString(externalId);
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE
+      .execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB)
+        .using(RECORDS_LB)
+        .where(MARC_RECORDS_LB.ID.eq(RECORDS_LB.ID))
+        .and(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)))
+      .compose(u ->
+        txQE.execute(dsl -> dsl.deleteFrom(RECORDS_LB)
+          .where(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)))
+      )).map(u -> true);
   }
 
   @Override

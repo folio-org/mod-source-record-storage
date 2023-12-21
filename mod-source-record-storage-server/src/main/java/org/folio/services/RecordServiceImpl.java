@@ -16,12 +16,10 @@ import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecor
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -234,6 +232,11 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
     return recordDao.deleteRecordsBySnapshotId(snapshotId, tenantId);
+  }
+
+  @Override
+  public Future<Void> deleteRecordsByExternalId(String externalId, String tenantId) {
+    return recordDao.deleteRecordsByExternalId(externalId, tenantId).map(b -> null);
   }
 
   @Override

@@ -123,7 +123,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           }
           return recordService.saveRecord(changedRecord, payload.getTenant());
         })
-        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future))
+        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))
         .onFailure(throwable -> {
           LOG.warn("handle:: Error while MARC record modifying", throwable);
           future.completeExceptionally(throwable);
@@ -135,9 +135,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return future;
   }
 
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
-    payload.setEventType(getUpdateEventType());
-    future.complete(payload);
+  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
+      payload.setEventType(getUpdateEventType());
+      future.complete(payload);
   }
 
   @Override

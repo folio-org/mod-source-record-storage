@@ -99,10 +99,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
-    MappingProfile mappingProfile = retrieveMappingProfile(payload);
-    MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
-
+  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
     if (marcMappingOption.value().equals(MODIFY.value())) {
       payload.setEventType(getModifyEventType());
     }

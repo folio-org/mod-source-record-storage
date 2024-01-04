@@ -17,6 +17,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;

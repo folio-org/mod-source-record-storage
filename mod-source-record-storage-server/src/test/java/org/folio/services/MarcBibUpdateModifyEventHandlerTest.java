@@ -12,6 +12,7 @@ import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -461,7 +462,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -516,7 +517,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -570,7 +571,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -895,7 +896,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future1.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayloadOriginalRecord.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -1001,7 +1002,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
           .whenComplete((eventPayload, throwable) -> {
             var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
             context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-            context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+            context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
             context.assertNull(throwable);
 
             verifyRecords(context, getParsedContentWithoutDate(expectedParsedContent),

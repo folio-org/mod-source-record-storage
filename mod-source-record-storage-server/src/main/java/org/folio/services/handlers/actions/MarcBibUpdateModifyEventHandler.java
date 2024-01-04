@@ -2,11 +2,14 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.ActionProfile.Action.MODIFY;
+import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
@@ -19,6 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
@@ -79,13 +84,31 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected String getNextEventType() {
+  protected String getUpdateEventType() {
+    return DI_SRS_MARC_BIB_RECORD_UPDATED.value();
+  }
+
+  protected String getModifyEventType() {
     return DI_SRS_MARC_BIB_RECORD_MODIFIED.value();
   }
 
   @Override
   protected EntityType modifiedEntityType() {
     return MARC_BIBLIOGRAPHIC;
+  }
+
+  @Override
+  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
+    MappingProfile mappingProfile = retrieveMappingProfile(payload);
+    MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
+
+    if (marcMappingOption.value().equals(MODIFY.value())) {
+      payload.setEventType(getModifyEventType());
+    }
+    if (marcMappingOption.value().equals(UPDATE.value())) {
+      payload.setEventType(getUpdateEventType());
+    }
+    future.complete(payload);
   }
 
   @Override

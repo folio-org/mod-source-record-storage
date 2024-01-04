@@ -123,10 +123,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           }
           return recordService.saveRecord(changedRecord, payload.getTenant());
         })
-        .onSuccess(savedRecord -> {
-          payload.setEventType(getNextEventType());
-          future.complete(payload);
-        })
+        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future))
         .onFailure(throwable -> {
           LOG.warn("handle:: Error while MARC record modifying", throwable);
           future.completeExceptionally(throwable);
@@ -136,6 +133,11 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
+    payload.setEventType(getUpdateEventType());
+    future.complete(payload);
   }
 
   @Override
@@ -149,11 +151,11 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   protected abstract boolean isHridFillingNeeded();
 
-  protected abstract String getNextEventType();
+  protected abstract String getUpdateEventType();
 
   protected abstract EntityType modifiedEntityType();
 
-  private MappingDetail.MarcMappingOption getMarcMappingOption(MappingProfile mappingProfile) {
+  protected MappingDetail.MarcMappingOption getMarcMappingOption(MappingProfile mappingProfile) {
     return mappingProfile.getMappingDetails().getMarcMappingOption();
   }
 
@@ -209,7 +211,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return marcMappingOption == MappingDetail.MarcMappingOption.UPDATE;
   }
 
-  private MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {
+  protected MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {
     ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0);
     return new JsonObject((Map) mappingProfileWrapper.getContent()).mapTo(MappingProfile.class);
   }

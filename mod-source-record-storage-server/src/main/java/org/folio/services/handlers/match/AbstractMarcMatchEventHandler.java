@@ -76,32 +76,37 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
-    HashMap<String, String> context = payload.getContext();
+    try {
+      HashMap<String, String> context = payload.getContext();
 
-    if (context == null || context.isEmpty() || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
-      LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
-      return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
-    }
-    payload.getEventsChain().add(payload.getEventType());
-    payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
+      if (context == null || context.isEmpty() || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
+        LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
+        return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
+      }
+      payload.getEventsChain().add(payload.getEventType());
+      payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
 
-    String record = context.get(typeConnection.getMarcType().value());
-    MatchDetail matchDetail = retrieveMatchDetail(payload);
-    if (isValidMatchDetail(matchDetail)) {
-      MatchField matchField = prepareMatchField(record, matchDetail);
-      return retrieveMarcRecords(matchField, payload.getTenant())
-        .compose(localMatchedRecords -> {
-          if (isConsortiumAvailable()) {
-            return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchField, localMatchedRecords);
-          }
-          return Future.succeededFuture(localMatchedRecords);
-        })
-        .compose(recordList -> processSucceededResult(recordList, payload))
-        .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
-        .toCompletionStage().toCompletableFuture();
+      String record = context.get(typeConnection.getMarcType().value());
+      MatchDetail matchDetail = retrieveMatchDetail(payload);
+      if (isValidMatchDetail(matchDetail)) {
+        MatchField matchField = prepareMatchField(record, matchDetail);
+        return retrieveMarcRecords(matchField, payload.getTenant())
+          .compose(localMatchedRecords -> {
+            if (isConsortiumAvailable()) {
+              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchField, localMatchedRecords);
+            }
+            return Future.succeededFuture(localMatchedRecords);
+          })
+          .compose(recordList -> processSucceededResult(recordList, payload))
+          .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
+          .toCompletionStage().toCompletableFuture();
+      }
+      constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail));
+      return CompletableFuture.completedFuture(payload);
+    } catch (Exception e) {
+      LOG.warn("handle:: Error while processing event for MARC record matching", e);
+      return CompletableFuture.failedFuture(e);
     }
-    constructError(payload, format(MATCH_DETAIL_IS_NOT_VALID, matchDetail));
-    return CompletableFuture.completedFuture(payload);
   }
 
   private Future<List<Record>> matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(DataImportEventPayload payload, MatchField matchField,

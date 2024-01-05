@@ -461,6 +461,70 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldFailUpdateRecordGenerationIfDuplicateError(TestContext context) {
+    String matchedId = UUID.randomUUID().toString();
+    Record original = TestMocks.getMarcBibRecord();
+
+    Record record1 = new Record()
+      .withId(matchedId)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(original.getMetadata());
+
+    Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(matchedId)
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", matchedId)))
+          .put("ind1", "f")
+          .put("ind2", "f")))).encode());
+    Record recordToUpdateGeneration = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withGeneration(0)
+      .withOrder(original.getOrder())
+      .withRawRecord(original.getRawRecord())
+      .withParsedRecord(parsedRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(original.getMetadata());
+    Async async = context.async();
+
+    recordService.saveRecord(record1, TENANT_ID).onComplete(record1Saved -> {
+      if (record1Saved.failed()) {
+        context.fail(record1Saved.cause());
+      }
+      context.assertNotNull(record1Saved.result().getRawRecord());
+      context.assertNotNull(record1Saved.result().getParsedRecord());
+      context.assertEquals(record1Saved.result().getState(), State.ACTUAL);
+      compareRecords(context, record1, record1Saved.result());
+
+      SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
+        if (snapshotSaved.failed()) {
+          context.fail(snapshotSaved.cause());
+        }
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, TENANT_ID).onComplete(recordToUpdateGenerationSaved -> {
+          context.assertTrue(recordToUpdateGenerationSaved.failed());
+          context.assertTrue(recordToUpdateGenerationSaved.cause() instanceof BadRequestException);
+          async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
   public void shouldUpdateRecordGeneration(TestContext context) {
     String matchedId = UUID.randomUUID().toString();
     Record original = TestMocks.getMarcBibRecord();

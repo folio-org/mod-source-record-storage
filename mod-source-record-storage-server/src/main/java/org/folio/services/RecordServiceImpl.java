@@ -75,6 +75,7 @@ public class RecordServiceImpl implements RecordService {
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
+  public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
 
@@ -164,7 +165,13 @@ public class RecordServiceImpl implements RecordService {
 
     return recordDao.getRecordById(matchedId, tenantId)
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
-      .compose(v -> saveRecord(record, tenantId));
+      .compose(v -> saveRecord(record, tenantId))
+      .recover(throwable -> {
+        if (throwable instanceof DuplicateRecordException) {
+          return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
+        }
+        return Future.failedFuture(throwable);
+      });
   }
 
   @Override

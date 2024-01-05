@@ -658,6 +658,33 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldSendBadRequestWhenUpdateRecordGenerationWithDuplicate(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_1.withParsedRecord(parsedMarcRecordWith999ff$s))
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+
+    postSnapshots(testContext, snapshot_2);
+    Record recordForUpdate = createdRecord.withSnapshotId(snapshot_2.getJobExecutionId());
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordForUpdate)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getMatchedId() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+
+  @Test
   public void shouldUpdateRecordGeneration(TestContext testContext) {
     postSnapshots(testContext, snapshot_1);
 

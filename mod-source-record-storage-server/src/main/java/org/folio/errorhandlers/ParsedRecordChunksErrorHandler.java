@@ -55,18 +55,18 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
   private Vertx vertx;
 
   @Override
-  public void handle(Throwable throwable, KafkaConsumerRecord<String, byte[]> record) {
-    LOGGER.trace("handle:: Handling record {}", record);
-      Event event = null;
+  public void handle(Throwable throwable, KafkaConsumerRecord<String, byte[]> consumerRecord) {
+    LOGGER.trace("handle:: Handling record {}", consumerRecord);
+      Event event;
       try {
-          event = DatabindCodec.mapper().readValue(record.value(), Event.class);
+          event = DatabindCodec.mapper().readValue(consumerRecord.value(), Event.class);
       } catch (IOException e) {
           LOGGER.error("Something happened when deserializing record", e);
           return;
       }
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
-    List<KafkaHeader> kafkaHeaders = record.headers();
+    List<KafkaHeader> kafkaHeaders = consumerRecord.headers();
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
 
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);

@@ -90,6 +90,16 @@ public interface RecordService {
   Future<Record> updateRecord(Record record, String tenantId);
 
   /**
+   * Updates record generation with given matched id
+   *
+   * @param matchedId   matched id
+   * @param record   record to update
+   * @param tenantId tenant id
+   * @return future with updated Record generation
+   */
+  Future<Record> updateRecordGeneration(String matchedId, Record record, String tenantId);
+
+  /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    *
    * @param condition   query where condition

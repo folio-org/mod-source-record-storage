@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -12,7 +13,6 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
@@ -50,12 +50,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
+  private static final String GENERATION = "generation";
 
   private static RawRecord rawMarcRecord;
   private static ParsedRecord parsedMarcRecord;
 
   private static RawRecord rawEdifactRecord;
   private static ParsedRecord parsedEdifactRecord;
+  private static ParsedRecord parsedMarcRecordWith999ff$s;
 
   static {
     try {
@@ -67,6 +69,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
       parsedEdifactRecord = new ParsedRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      parsedMarcRecordWith999ff$s = new ParsedRecord().withId(FIRST_UUID)
+        .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+          .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+            .put("subfields",
+              new JsonArray().add(new JsonObject().put("s", FIRST_UUID)))
+            .put("ind1", "f")
+            .put("ind2", "f")))).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -586,6 +595,120 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .body("rawRecord.content", is(createdRecord.getRawRecord().getContent()))
       .body("errorRecord.content", is(createdRecord.getErrorRecord().getContent()))
       .body("additionalInfo.suppressDiscovery", is(false));
+    async.complete();
+  }
+
+  @Test
+  public void shouldSendBadRequestWhen999ff$sIsNullDuringUpdateRecordGeneration(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_1)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(createdRecord)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getId() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+  @Test
+  public void shouldSendBadRequestWhenMatchedIfNotEqualTo999ff$sDuringUpdateRecordGeneration(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_1.withParsedRecord(parsedMarcRecordWith999ff$s))
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(createdRecord)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+  @Test
+  public void shouldSendNotFoundWhenUpdateRecordGenerationForNonExistingRecord(TestContext testContext) {
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .body(record_1.withParsedRecord(parsedMarcRecordWith999ff$s))
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + record_1.getMatchedId() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+  }
+
+  @Test
+  public void shouldSendBadRequestWhenUpdateRecordGenerationWithDuplicate(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_1.withParsedRecord(parsedMarcRecordWith999ff$s))
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+
+    postSnapshots(testContext, snapshot_2);
+    Record recordForUpdate = createdRecord.withSnapshotId(snapshot_2.getJobExecutionId());
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordForUpdate)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getMatchedId() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+    async.complete();
+  }
+
+  @Test
+  public void shouldUpdateRecordGeneration(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(record_1.withParsedRecord(parsedMarcRecordWith999ff$s))
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Record createdRecord = createResponse.body().as(Record.class);
+
+    postSnapshots(testContext, snapshot_2);
+    Record recordForUpdate = createdRecord.withSnapshotId(snapshot_2.getJobExecutionId()).withGeneration(null);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(recordForUpdate)
+      .when()
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + createdRecord.getMatchedId() + "/" + GENERATION)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", not(createdRecord.getId()))
+      .body("matchedId", is(recordForUpdate.getMatchedId()))
+      .body("generation", is(1));
     async.complete();
   }
 

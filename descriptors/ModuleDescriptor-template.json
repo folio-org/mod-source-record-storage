@@ -94,6 +94,15 @@
         },
         {
           "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage/records/{id}/generation",
+          "permissionsRequired": [
+            "source-storage.records.put"
+          ]
+        },
+        {
+          "methods": [
             "DELETE"
           ],
           "pathPattern": "/source-storage/records/{id}",

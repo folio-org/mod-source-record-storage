@@ -98,6 +98,21 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       }
     });
   }
+  @Override
+  public void putSourceStorageRecordsGenerationById(String matchedId, Record entity, Map<String, String> okapiHeaders,
+                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.updateRecordGeneration(matchedId, entity, tenantId)
+          .map(updated -> PutSourceStorageRecordsGenerationByIdResponse.respond200WithApplicationJson(entity))
+          .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("putSourceStorageRecordsGenerationById:: Failed to update record generation by matchedId {}", matchedId, e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
 
   @Override
   public void deleteSourceStorageRecordsById(String id, Map<String, String> okapiHeaders,

@@ -683,7 +683,6 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
-
   @Test
   public void shouldUpdateRecordGeneration(TestContext testContext) {
     postSnapshots(testContext, snapshot_1);

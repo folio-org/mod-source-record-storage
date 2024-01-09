@@ -999,4 +999,31 @@ public class MarcBibliographicMatchEventHandlerTest extends AbstractLBServiceTes
           async.complete();
         }));
   }
+
+  @Test
+  public void shouldReturnFailedFutureIfFailedToDeserializeMatchProfile(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+
+    JsonObject invalidMatchProfileJson = new JsonObject()
+      .put("invalidField", "val");
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(invalidMatchProfileJson.getMap()));
+
+    handler.handle(dataImportEventPayload).whenComplete((resultPayload, e) -> {
+      context.assertNotNull(e);
+      async.complete();
+    });
+  }
+
 }

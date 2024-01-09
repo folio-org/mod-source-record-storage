@@ -5,6 +5,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHO
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_MATCHED;
@@ -42,6 +43,7 @@ public class DataImportConsumersVerticle extends AbstractConsumerVerticle {
     DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_HOLDING_CREATED.value(),
+    DI_INVENTORY_HOLDING_UPDATED.value(),
     DI_INVENTORY_HOLDING_MATCHED.value(),
     DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_INSTANCE_CREATED.value(),

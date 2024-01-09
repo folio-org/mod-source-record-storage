@@ -1,4 +1,5 @@
 ## 2024-xx-xx 5.8.0-SNAPSHOT
+* [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings
 * [MODSOURCE-506](https://issues.folio.org/browse/MODSOURCE-506) Remove rawRecord field from source record
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
 * [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677)  Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching

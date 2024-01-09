@@ -19,9 +19,9 @@ import org.folio.kafka.ProcessRecordErrorHandler;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.okapi.common.GenericCompositeFuture;
 
-public abstract class AbstractConsumerVerticle extends AbstractVerticle {
+public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
 
-  private final List<KafkaConsumerWrapper<String, String>> consumers = new ArrayList<>();
+  private final List<KafkaConsumerWrapper<K, V>> consumers = new ArrayList<>();
 
   private final KafkaConfig kafkaConfig;
 
@@ -31,12 +31,20 @@ public abstract class AbstractConsumerVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) {
-    eventTypes().forEach(eventType -> {
+    KafkaConfig config;
+    if (getDeserializerClass() != null) {
+      config = kafkaConfig.toBuilder()
+        .consumerValueDeserializerClass(getDeserializerClass())
+        .build();
+    } else {
+        config = kafkaConfig;
+    }
+      eventTypes().forEach(eventType -> {
       SubscriptionDefinition subscriptionDefinition = getSubscriptionDefinition(eventType);
-      consumers.add(KafkaConsumerWrapper.<String, String>builder()
+      consumers.add(KafkaConsumerWrapper.<K, V>builder()
         .context(context)
         .vertx(vertx)
-        .kafkaConfig(kafkaConfig)
+        .kafkaConfig(config)
         .loadLimit(loadLimit())
         .globalLoadSensor(new GlobalLoadSensor())
         .subscriptionDefinition(subscriptionDefinition)
@@ -64,9 +72,9 @@ public abstract class AbstractConsumerVerticle extends AbstractVerticle {
     return Optional.of(getDefaultNameSpace());
   }
 
-  protected abstract AsyncRecordHandler<String, String> recordHandler();
+  protected abstract AsyncRecordHandler<K, V> recordHandler();
 
-  protected ProcessRecordErrorHandler<String, String> processRecordErrorHandler() {
+  protected ProcessRecordErrorHandler<K, V> processRecordErrorHandler() {
     return null;
   }
 
@@ -88,5 +96,12 @@ public abstract class AbstractConsumerVerticle extends AbstractVerticle {
 
   private String getConsumerName() {
     return constructModuleName() + "_" + getClass().getSimpleName();
+  }
+
+  /**
+   * Set a custom deserializer class for this kafka consumer
+   */
+  public String getDeserializerClass() {
+    return null;
   }
 }

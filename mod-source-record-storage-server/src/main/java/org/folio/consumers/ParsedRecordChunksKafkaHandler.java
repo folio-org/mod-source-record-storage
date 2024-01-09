@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
@@ -28,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,7 +40,7 @@ import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
-public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String, String> {
+public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String, byte[]> {
   private static final Logger LOGGER = LogManager.getLogger();
 
   public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
@@ -66,10 +68,16 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+  public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
-    Event event = Json.decodeValue(targetRecord.value(), Event.class);
-    RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
+      Event event = null;
+      try {
+          event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
+      } catch (IOException e) {
+          LOGGER.error("Something happened when deserialize record", e);
+          return Future.failedFuture(e);
+      }
+      RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
     List<KafkaHeader> kafkaHeaders = targetRecord.headers();
 
@@ -96,7 +104,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber, String eventType, KafkaConsumerRecord<String, String> commonRecord) {
+  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber, String eventType, KafkaConsumerRecord<String, byte[]> commonRecord) {
     Event event;
     event = new Event()
       .withId(UUID.randomUUID().toString())

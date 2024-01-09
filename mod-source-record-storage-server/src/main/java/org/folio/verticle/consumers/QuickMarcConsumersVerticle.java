@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope(SCOPE_PROTOTYPE)
-public class QuickMarcConsumersVerticle extends AbstractConsumerVerticle {
+public class QuickMarcConsumersVerticle extends AbstractConsumerVerticle<String, String> {
 
   private final QuickMarcKafkaHandler kafkaHandler;
 

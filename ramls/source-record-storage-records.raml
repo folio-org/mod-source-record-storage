@@ -154,4 +154,19 @@ resourceTypes:
             body:
               text/plain:
                 example: "Internal server error"
-
+    /generation:
+          displayName: Generation
+          is: [validate]
+          put:
+            description: Updates a specific Record with incremented generation and state ACTUAL by matched id
+            body:
+              application/json:
+                type: record
+                example:
+                  strict: false
+                  value: !include raml-storage/examples/mod-source-record-storage/record.sample
+            responses:
+              200:
+                body:
+                  application/json:
+                    type: record

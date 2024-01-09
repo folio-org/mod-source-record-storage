@@ -3,6 +3,8 @@
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
 * [MODSOURCE-677](https://issues.folio.org/browse/MODSOURCE-677)  Import is completed with errors when control field that differs from 001 is used for marc-to-marc matching
 * [MODSOURCE-722](https://issues.folio.org/browse/MODSOURCE-722)  deleteMarcIndexersOldVersions: relation "marc_records_tracking" does not exist
+* [MODSOURMAN-1106](https://issues.folio.org/browse/MODSOURMAN-1106) The status of Instance is '-' in the Import log after uploading file. The numbers of updated SRS and Instance are not displayed in the Summary table.
+* [MODSOURCE-717](https://issues.folio.org/browse/MODSOURCE-717) MARC modifications not processed when placed after Holdings Update action in a job profile
 
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17

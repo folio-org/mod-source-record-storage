@@ -40,7 +40,7 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
   }
 
   @Override
-  protected String getNextEventType() {
+  protected String getUpdateEventType() {
     return DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value();
   }
 

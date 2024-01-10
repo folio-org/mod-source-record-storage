@@ -28,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -76,7 +75,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     String key = targetRecord.key();
 
     try {
-      Event event = Json.decodeValue(targetRecord.value(), Event.class);
+      Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
       List<KafkaHeader> kafkaHeaders = targetRecord.headers();

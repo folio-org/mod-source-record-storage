@@ -16,6 +16,8 @@ import javax.ws.rs.core.Response;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.resource.SourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -174,6 +176,23 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("putSourceStorageRecordsSuppressFromDiscoveryById:: Failed to update record's SuppressFromDiscovery flag", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void postSourceStorageRecordsMatching(RecordMatchingDto recordMatchingDto, Map<String, String> okapiHeaders,
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        Future.succeededFuture(new RecordsIdentifiersCollection())
+          .map(PostSourceStorageRecordsMatchingResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("postSourceStorageRecordsMatching:: Failed to get identifiers of records by matched criteria", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

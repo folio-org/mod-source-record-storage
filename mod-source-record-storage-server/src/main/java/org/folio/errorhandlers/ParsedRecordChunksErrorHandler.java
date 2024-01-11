@@ -3,6 +3,7 @@ package org.folio.errorhandlers;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
@@ -23,6 +24,7 @@ import org.folio.services.util.EventHandlingUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +40,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BI
  * with status 'Completed with errors' with showing error messge instead of hanging progress bar.
  */
 @Component
-public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler<String, String> {
+public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler<String, byte[]> {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -53,12 +55,18 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
   private Vertx vertx;
 
   @Override
-  public void handle(Throwable throwable, KafkaConsumerRecord<String, String> record) {
-    LOGGER.trace("handle:: Handling record {}", record);
-    Event event = Json.decodeValue(record.value(), Event.class);
-    RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
+  public void handle(Throwable throwable, KafkaConsumerRecord<String, byte[]> consumerRecord) {
+    LOGGER.trace("handle:: Handling record {}", consumerRecord);
+      Event event;
+      try {
+          event = DatabindCodec.mapper().readValue(consumerRecord.value(), Event.class);
+      } catch (IOException e) {
+          LOGGER.error("Something happened when deserializing record", e);
+          return;
+      }
+      RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
-    List<KafkaHeader> kafkaHeaders = record.headers();
+    List<KafkaHeader> kafkaHeaders = consumerRecord.headers();
     OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
 
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);

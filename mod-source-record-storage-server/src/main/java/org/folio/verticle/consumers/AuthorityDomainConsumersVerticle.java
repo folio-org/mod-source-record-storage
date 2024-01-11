@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope(SCOPE_PROTOTYPE)
-public class AuthorityDomainConsumersVerticle extends AbstractConsumerVerticle {
+public class AuthorityDomainConsumersVerticle extends AbstractConsumerVerticle<String, String> {
 
   private final AuthorityDomainKafkaHandler authorityDomainKafkaHandler;
 

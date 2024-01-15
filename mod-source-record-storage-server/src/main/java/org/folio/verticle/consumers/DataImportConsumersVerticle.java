@@ -1,5 +1,6 @@
 package org.folio.verticle.consumers;
 
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INCOMING_MARC_BIB_RECORD_PARSED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING;
@@ -62,7 +63,8 @@ public class DataImportConsumersVerticle extends AbstractConsumerVerticle<String
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(),
     DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
     DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
-    DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value()
+    DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(),
+    DI_INCOMING_MARC_BIB_RECORD_PARSED.value()
   );
 
   private final AsyncRecordHandler<String, byte[]> dataImportKafkaHandler;

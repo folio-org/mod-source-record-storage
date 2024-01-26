@@ -1,73 +1,50 @@
 package org.folio.verticle.consumers;
 
 import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
-import static org.folio.services.util.EventHandlingUtil.constructModuleName;
-import static org.folio.services.util.EventHandlingUtil.createSubscriptionPattern;
+import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Promise;
+import java.util.List;
+import java.util.Optional;
 import org.folio.consumers.AuthorityLinkChunkKafkaHandler;
-import org.folio.kafka.GlobalLoadSensor;
+import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.SubscriptionDefinition;
-import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
-public class AuthorityLinkChunkConsumersVerticle extends AbstractVerticle {
-  private static AbstractApplicationContext springGlobalContext;
+@Component
+@Scope(SCOPE_PROTOTYPE)
+public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticle<String, String> {
 
-  private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
-  public static final String AUTHORITY_INSTANCE_LINKS_TOPIC = INSTANCE_AUTHORITY.moduleTopicName();
-
-  @Autowired
-  private AuthorityLinkChunkKafkaHandler kafkaHandler;
-
-  @Autowired
-  private KafkaConfig kafkaConfig;
+  private final AuthorityLinkChunkKafkaHandler kafkaHandler;
 
   @Value("${srs.kafka.AuthorityLinkChunkConsumer.loadLimit:2}")
   private int loadLimit;
 
-  private KafkaConsumerWrapper<String, String> consumer;
-
-  /**
-   * @deprecated need to be replaced with spring global context
-   * */
-  @Deprecated(forRemoval = false)
-  public static void setSpringGlobalContext(AbstractApplicationContext springGlobalContext) {
-    AuthorityLinkChunkConsumersVerticle.springGlobalContext = springGlobalContext;
+  @Autowired
+  public AuthorityLinkChunkConsumersVerticle(KafkaConfig kafkaConfig, AuthorityLinkChunkKafkaHandler kafkaHandler) {
+    super(kafkaConfig);
+    this.kafkaHandler = kafkaHandler;
   }
 
   @Override
-  public void start(Promise<Void> startPromise) {
-    context.put("springContext", springGlobalContext);
-
-    SpringContextUtil.autowireDependencies(this, context);
-
-    SubscriptionDefinition subscriptionDefinition = SubscriptionDefinition.builder()
-      .eventType(AUTHORITY_INSTANCE_LINKS_TOPIC)
-      .subscriptionPattern(createSubscriptionPattern(kafkaConfig.getEnvId(), AUTHORITY_INSTANCE_LINKS_TOPIC))
-      .build();
-
-    consumer = KafkaConsumerWrapper.<String, String>builder()
-      .context(context)
-      .vertx(vertx)
-      .kafkaConfig(kafkaConfig)
-      .loadLimit(loadLimit)
-      .globalLoadSensor(globalLoadSensor)
-      .subscriptionDefinition(subscriptionDefinition)
-      .build();
-
-    consumer.start(kafkaHandler, constructModuleName() + "_" + getClass().getSimpleName())
-      .onComplete(ar -> startPromise.complete());
+  protected int loadLimit() {
+    return loadLimit;
   }
 
   @Override
-  public void stop(Promise<Void> stopPromise) {
-    consumer.stop().onComplete(ar -> stopPromise.complete());
+  protected Optional<String> namespace() {
+    return Optional.empty();
   }
 
+  @Override
+  protected AsyncRecordHandler<String, String> recordHandler() {
+    return kafkaHandler;
+  }
+
+  @Override
+  protected List<String> eventTypes() {
+    return List.of(INSTANCE_AUTHORITY.moduleTopicName());
+  }
 }

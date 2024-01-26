@@ -63,14 +63,13 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> record) {
-    log.trace("handle:: Handling kafka record {}", record);
-    var event = Json.decodeValue(record.value(), Event.class);
+  public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
+    log.trace("handle:: Handling kafka consumerRecord {}", consumerRecord);
 
-    var kafkaHeaders = record.headers();
+    var kafkaHeaders = consumerRecord.headers();
     var params = new OkapiConnectionParams(kafkaHeadersToMap(kafkaHeaders), vertx);
 
-    return getEventPayload(event)
+    return getEventPayload(consumerRecord)
       .compose(eventPayload -> {
         String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
         return getRecordDto(eventPayload)
@@ -78,7 +77,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
           .compose(updatedRecord -> {
             eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
             return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, params.getTenantId(), kafkaHeaders)
-              .map(aBoolean -> record.key());
+              .map(aBoolean -> consumerRecord.key());
           })
           .recover(th -> {
             log.warn("handle:: Failed to handle QM_RECORD_UPDATED event", th);
@@ -124,8 +123,9 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   }
 
   @SuppressWarnings("unchecked")
-  private Future<HashMap<String, String>> getEventPayload(Event event) {
+  private Future<HashMap<String, String>> getEventPayload(KafkaConsumerRecord<String, String> consumerRecord) {
     try {
+      var event = Json.decodeValue(consumerRecord.value(), Event.class);
       var eventPayload = Json.decodeValue(event.getEventPayload(), HashMap.class);
       return Future.succeededFuture(eventPayload);
     } catch (Exception e) {

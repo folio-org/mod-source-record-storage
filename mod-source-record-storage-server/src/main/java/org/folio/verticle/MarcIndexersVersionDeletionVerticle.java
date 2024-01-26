@@ -57,7 +57,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   Future<Boolean> deleteOldMarcIndexerVersions() {
     LOGGER.info("Performing marc_indexers old versions deletion...");
     long startTime = System.nanoTime();
-    return tenantDataProvider.getModuleTenants()
+    return tenantDataProvider.getModuleTenants("marc_records_tracking")
       .onFailure(ar ->
         LOGGER.error("could not get the list of tenants to delete marc indexer versions", ar.getCause()))
       .compose(ar -> {

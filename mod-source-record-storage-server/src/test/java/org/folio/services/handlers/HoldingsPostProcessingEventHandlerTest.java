@@ -32,6 +32,7 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -62,8 +63,8 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
-    return new HoldingsPostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
+    return new HoldingsPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -93,7 +94,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -133,9 +134,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_HOLDING)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -158,7 +157,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -237,8 +236,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
-    String expectedDate = AdditionalFieldsUtil.dateTime005Formatter
-      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+    String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
@@ -251,9 +249,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_HOLDING)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -276,7 +272,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -284,9 +280,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
         context.assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate.substring(0, 10),
-          actualDate.substring(0, 10));
+        validate005Field(context, expectedDate, updatedRecord);
 
         async.complete();
       });
@@ -317,9 +311,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_HOLDING)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -345,7 +337,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }

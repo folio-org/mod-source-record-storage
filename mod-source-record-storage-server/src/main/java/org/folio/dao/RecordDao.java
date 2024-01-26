@@ -303,6 +303,15 @@ public interface RecordDao {
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
 
   /**
+   * Deletes in transaction all records associated with externalId
+   *
+   * @param externalId  external id
+   * @param tenantId   tenant id
+   * @return future with true if succeeded
+   */
+  Future<Boolean> deleteRecordsByExternalId(String externalId, String tenantId);
+
+  /**
    *  Performs purge the 'DELETED' records.
    *  Purges a given limited number of 'DELETED' records updated more the than given number of days back.
    *

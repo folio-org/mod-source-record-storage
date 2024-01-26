@@ -173,6 +173,19 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Make sure record has matched id.
+   *
+   * @param record record
+   * @return record with matched id
+   */
+  public static Record ensureRecordHasMatchedId(Record record) {
+    if (Objects.isNull(record.getMatchedId())) {
+      record.setMatchedId(UUID.randomUUID().toString());
+    }
+    return record;
+  }
+
+  /**
    * Make sure record has additional info suppress discovery.
    *
    * @param record record
@@ -251,7 +264,6 @@ public final class RecordDaoUtil {
     }
     return sourceRecord
       .withOrder(record.getOrder())
-      .withRawRecord(record.getRawRecord())
       .withParsedRecord(record.getParsedRecord())
       .withAdditionalInfo(record.getAdditionalInfo())
       .withExternalIdsHolder(record.getExternalIdsHolder())
@@ -333,6 +345,17 @@ public final class RecordDaoUtil {
       return externalIdsHolder.getHoldingsId();
     } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
       return externalIdsHolder.getAuthorityId();
+    }
+    return null;
+  }
+
+  public static IdType getExternalIdType(Record.RecordType recordType) {
+    if (Record.RecordType.MARC_BIB == recordType) {
+      return IdType.INSTANCE;
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      return IdType.HOLDINGS;
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
+      return IdType.AUTHORITY;
     }
     return null;
   }
@@ -466,9 +489,19 @@ public final class RecordDaoUtil {
    */
   public static Condition filterRecordByType(String type) {
     if (StringUtils.isNotEmpty(type)) {
-      return RECORDS_LB.RECORD_TYPE.eq(toRecordType(type));
+      return filterRecordByType(toRecordType(type));
     }
     return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by type
+   *
+   * @param recordType type to equal
+   * @return condition
+   */
+  public static Condition filterRecordByType(RecordType recordType) {
+    return RECORDS_LB.RECORD_TYPE.eq(recordType);
   }
 
   /**

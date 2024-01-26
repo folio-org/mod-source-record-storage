@@ -32,6 +32,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -65,8 +66,8 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
-    return new AuthorityPostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
+    return new AuthorityPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -96,7 +97,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -143,7 +144,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
           if (ex != null) {
             context.fail(ex);
           }
-          recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(recordAr -> {
+          recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
               context.fail(recordAr.cause());
             }
@@ -175,9 +176,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -199,7 +198,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -279,8 +278,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
-    String expectedDate = AdditionalFieldsUtil.dateTime005Formatter
-      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+    String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
@@ -293,9 +291,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -317,7 +313,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -325,9 +321,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         context.assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate.substring(0, 10),
-          actualDate.substring(0, 10));
+        validate005Field(context, expectedDate, updatedRecord);
 
         async.complete();
       });
@@ -358,9 +352,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -384,7 +376,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }

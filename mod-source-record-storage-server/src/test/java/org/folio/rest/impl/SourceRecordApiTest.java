@@ -15,12 +15,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -134,7 +132,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRawRecord(rawRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(0)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
     record_2 = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -154,7 +155,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRawRecord(rawRecord)
       .withErrorRecord(errorRecord)
       .withMatchedId(THIRD_UUID)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid("12345"));
     record_4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -207,8 +211,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid("12345"));
+        .withAuthorityId(UUID.randomUUID().toString())
+        .withAuthorityHrid("12345"));
     record_9 = new Record()
       .withId(NINTH_UUID)
       .withSnapshotId(snapshot_5.getJobExecutionId())
@@ -219,8 +223,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
-        .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid("12345"));
+        .withHoldingsId(UUID.randomUUID().toString())
+        .withHoldingsHrid("12345"));
   }
 
   @Before
@@ -854,20 +858,19 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) throws JsonProcessingException {
+  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 
     String firstSrsId = UUID.randomUUID().toString();
     String firstInstanceId = UUID.randomUUID().toString();
 
-    String contentString = new JsonObject().put("leader", "01542dcm a2200361   4500")
-      .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
-        .put("subfields",
-          new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId))))))
-      .encode();
-    Map contentObj = new ObjectMapper().readValue(contentString, Map.class);
     ParsedRecord parsedRecord = new ParsedRecord().withId(firstSrsId)
-      .withContent(contentObj);
+      .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", firstSrsId)).add(new JsonObject().put("i", firstInstanceId)))
+          .put("ind1", "f")
+          .put("ind2", "f")))).encode());
 
     Record deleted_record_1 = new Record()
       .withId(firstSrsId)
@@ -1582,7 +1585,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, SECOND_UUID, secondHrid);
+    setExternalIds(record, recordType, FOURTH_UUID, secondHrid);
 
     RestAssured.given()
       .spec(spec)

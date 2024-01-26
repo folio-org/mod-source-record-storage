@@ -1,16 +1,8 @@
 package org.folio.dao.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-import java.io.File;
-import java.io.IOException;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Json;
-
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,22 +10,29 @@ import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.marc4j.MarcException;
 
+import java.io.File;
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 @RunWith(BlockJUnit4ClassRunner.class)
 public class MarcUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
+  private static final String RAW_RECORD_PATH = "src/test/resources/mock/rawRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
 
   private SourceRecord sourceRecord;
 
   @Before
-  public void readSourceRecord() throws JsonParseException, JsonMappingException, IOException {
+  public void readSourceRecord() throws IOException {
     File file = new File(SOURCE_RECORD_PATH);
     sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
   }
 
   @Test
   public void shouldConvertRawMarcToMarcJson() throws IOException, MarcException {
-    String rawMarc = sourceRecord.getRawRecord().getContent();
+    String rawMarc = new ObjectMapper().readValue(new File(RAW_RECORD_PATH), RawRecord.class).getContent();
     String marcJson = MarcUtil.rawMarcToMarcJson(rawMarc);
     assertNotNull(marcJson);
     assertEquals(rawMarc, MarcUtil.marcJsonToRawMarc(marcJson));

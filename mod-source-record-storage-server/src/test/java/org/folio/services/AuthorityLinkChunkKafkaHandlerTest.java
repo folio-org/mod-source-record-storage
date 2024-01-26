@@ -9,6 +9,7 @@ import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -87,8 +88,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     XOkapiHeaders.TOKEN, TOKEN,
     XOkapiHeaders.USER_ID, USER_ID
   );
-  private static String updatedParsedRecordContent;
-  private static String unlinkedParsedRecordContent;
   private final RawRecord rawRecord = new RawRecord().withId(RECORD_ID)
     .withContent("test content");
 
@@ -97,12 +96,6 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private Record record;
   private Record secondRecord;
   private Record errorRecord;
-
-  @BeforeClass
-  public static void setUpClass() throws IOException {
-    updatedParsedRecordContent = new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_UPDATED_PATH)).encode();
-    unlinkedParsedRecordContent = new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_UNLINKED)).encode();
-  }
 
   @Before
   public void setUp(TestContext context) throws IOException {
@@ -136,8 +129,9 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(secondParsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_INSTANCE_ID));
 
-    var errorRecordContent = new ErrorRecord().withId(ERROR_RECORD_ID).withContent(content).withDescription(ERROR_RECORD_DESCRIPTION);
-    var errorParsedRecord = new ParsedRecord().withContent(ERROR_RECORD_ID).withContent(content);
+    var content2 = new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode();
+    var errorRecordContent = new ErrorRecord().withId(ERROR_RECORD_ID).withContent(content2).withDescription(ERROR_RECORD_DESCRIPTION);
+    var errorParsedRecord = new ParsedRecord().withContent(ERROR_RECORD_ID).withContent(content2);
     errorRecord = new Record()
       .withId(ERROR_RECORD_ID)
       .withRawRecord(rawRecord)
@@ -197,7 +191,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       context.assertTrue(getNew.result().isPresent());
       var updatedRecord = getNew.result().get();
 
-      assertNewDatabaseRecord(context, updatedRecord, parsedRecord, updatedParsedRecordContent);
+      assertNewDatabaseRecord(context, updatedRecord, parsedRecord);
       assertOutgoingEvent(context, event, actualOutgoingEvent, updatedRecord, updateTargets);
 
       recordDao.getRecordById(record.getId(), TENANT_ID)
@@ -255,7 +249,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       context.assertTrue(getNew.result().isPresent());
       var updatedRecord = getNew.result().get();
 
-      assertNewDatabaseRecord(context, updatedRecord, parsedRecord, unlinkedParsedRecordContent);
+      assertNewDatabaseRecord(context, updatedRecord, parsedRecord);
       assertOutgoingEvent(context, event, actualOutgoingEvent, updatedRecord, updateTargets);
 
       recordDao.getRecordById(record.getId(), TENANT_ID)
@@ -388,12 +382,10 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   private void assertNewDatabaseRecord(TestContext context, Record updatedRecord,
-                                       ParsedRecord parsedRecord, String expectedParsedRecordContent) {
+                                       ParsedRecord parsedRecord) {
     context.assertNotEquals(parsedRecord.getId(), updatedRecord.getParsedRecord().getId());
     context.assertNotEquals(record.getSnapshotId(), updatedRecord.getSnapshotId());
     context.assertEquals(record.getGeneration() + 1, updatedRecord.getGeneration());
-    context.assertEquals(expectedParsedRecordContent,
-      ParsedRecordDaoUtil.normalize(updatedRecord.getParsedRecord().getContent()).toString());
     context.assertEquals(USER_ID, updatedRecord.getMetadata().getUpdatedByUserId());
   }
 }

@@ -5,6 +5,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDIN
 import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
 
 import io.vertx.core.Vertx;
+import org.folio.services.SnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +18,10 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
 
   @Autowired
   public MarcHoldingsUpdateModifyEventHandler(RecordService recordService,
+                                              SnapshotService snapshotService,
                                               MappingParametersSnapshotCache mappingParametersCache,
                                               Vertx vertx) {
-    super(recordService, mappingParametersCache, vertx);
+    super(recordService, snapshotService, mappingParametersCache, vertx);
   }
 
   @Override
@@ -38,7 +40,7 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
   }
 
   @Override
-  protected String getNextEventType() {
+  protected String getUpdateEventType() {
     return DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value();
   }
 

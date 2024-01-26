@@ -8,25 +8,20 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.spi.VerticleFactory;
+import java.util.List;
+import java.util.OptionalInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
+import org.folio.kafka.KafkaConfig;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.EventManager;
+import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.rest.resource.interfaces.InitAPI;
-import org.folio.services.handlers.AuthorityPostProcessingEventHandler;
-import org.folio.services.handlers.HoldingsPostProcessingEventHandler;
-import org.folio.services.handlers.InstancePostProcessingEventHandler;
-import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
-import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
-import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
-import org.folio.services.handlers.actions.MarcHoldingsUpdateModifyEventHandler;
-import org.folio.services.handlers.match.MarcAuthorityMatchEventHandler;
-import org.folio.services.handlers.match.MarcBibliographicMatchEventHandler;
-import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
 import org.folio.spring.SpringContextUtil;
 import org.folio.verticle.MarcIndexersVersionDeletionVerticle;
 import org.folio.verticle.SpringVerticleFactory;
+import org.folio.verticle.consumers.AuthorityDomainConsumersVerticle;
 import org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
@@ -35,42 +30,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import java.util.List;
-
 public class InitAPIImpl implements InitAPI {
 
   private static final String SPRING_CONTEXT = "springContext";
   private static final Logger LOGGER = LogManager.getLogger();
 
   @Autowired
-  private InstancePostProcessingEventHandler instancePostProcessingEventHandler;
+  private KafkaConfig kafkaConfig;
 
   @Autowired
-  private HoldingsPostProcessingEventHandler holdingsPostProcessingEventHandler;
-
-  @Autowired
-  private AuthorityPostProcessingEventHandler authorityPostProcessingEventHandler;
-
-  @Autowired
-  private MarcBibUpdateModifyEventHandler marcBibUpdateModifyEventHandler;
-
-  @Autowired
-  private MarcAuthorityUpdateModifyEventHandler marcAuthorityUpdateModifyEventHandler;
-
-  @Autowired
-  private MarcBibliographicMatchEventHandler marcBibliographicMatchEventHandler;
-
-  @Autowired
-  private MarcAuthorityMatchEventHandler marcAuthorityMatchEventHandler;
-
-  @Autowired
-  private MarcAuthorityDeleteEventHandler marcAuthorityDeleteEventHandler;
-
-  @Autowired
-  private MarcHoldingsMatchEventHandler marcHoldingsMatchEventHandler;
-
-  @Autowired
-  private MarcHoldingsUpdateModifyEventHandler marcHoldingsUpdateModifyEventHandler;
+  private List<EventHandler> eventHandlers;
 
   @Value("${srs.kafka.ParsedMarcChunkConsumer.instancesNumber:1}")
   private int parsedMarcChunkConsumerInstancesNumber;
@@ -84,6 +53,12 @@ public class InitAPIImpl implements InitAPI {
   @Value("${srs.kafka.AuthorityLinkChunkConsumer.instancesNumber:1}")
   private int authorityLinkChunkConsumerInstancesNumber;
 
+  @Value("${srs.kafka.AuthorityDomainConsumer.instancesNumber:1}")
+  private int authorityDomainConsumerInstancesNumber;
+
+  @Value("${srs.kafka.DataImportConsumerVerticle.maxDistributionNum:100}")
+  private int maxDistributionNumber;
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
     try {
@@ -93,9 +68,11 @@ public class InitAPIImpl implements InitAPI {
       VerticleFactory verticleFactory = springContext.getBean(SpringVerticleFactory.class);
       vertx.registerVerticleFactory(verticleFactory);
 
+      EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
+
       registerEventHandlers();
       deployMarcIndexersVersionDeletionVerticle(vertx, verticleFactory);
-      deployConsumerVerticles(vertx).onComplete(ar -> {
+      deployConsumerVerticles(vertx, verticleFactory).onComplete(ar -> {
         if (ar.succeeded()) {
           handler.handle(Future.succeededFuture(true));
         } else {
@@ -109,56 +86,49 @@ public class InitAPIImpl implements InitAPI {
   }
 
   private void registerEventHandlers() {
-    EventManager.registerEventHandler(instancePostProcessingEventHandler);
-    EventManager.registerEventHandler(holdingsPostProcessingEventHandler);
-    EventManager.registerEventHandler(authorityPostProcessingEventHandler);
-    EventManager.registerEventHandler(marcBibUpdateModifyEventHandler);
-    EventManager.registerEventHandler(marcAuthorityUpdateModifyEventHandler);
-    EventManager.registerEventHandler(marcBibliographicMatchEventHandler);
-    EventManager.registerEventHandler(marcAuthorityMatchEventHandler);
-    EventManager.registerEventHandler(marcAuthorityDeleteEventHandler);
-    EventManager.registerEventHandler(marcHoldingsMatchEventHandler) ;
-    EventManager.registerEventHandler(marcHoldingsUpdateModifyEventHandler);
+    eventHandlers.forEach(EventManager::registerEventHandler);
   }
 
-  private Future<?> deployConsumerVerticles(Vertx vertx) {
-    //TODO: get rid of this workaround with global spring context
-    ParsedRecordChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
-    DataImportConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
-    QuickMarcConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
-    AuthorityLinkChunkConsumersVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get(SPRING_CONTEXT));
-
+  private Future<?> deployConsumerVerticles(Vertx vertx, VerticleFactory verticleFactory) {
     Promise<String> deployConsumer1 = Promise.promise();
     Promise<String> deployConsumer2 = Promise.promise();
     Promise<String> deployConsumer3 = Promise.promise();
     Promise<String> deployConsumer4 = Promise.promise();
+    Promise<String> deployConsumer5 = Promise.promise();
 
-    vertx.deployVerticle(ParsedRecordChunkConsumersVerticle.class.getCanonicalName(),
-      new DeploymentOptions().setWorker(true).setInstances(parsedMarcChunkConsumerInstancesNumber), deployConsumer1);
-
-    vertx.deployVerticle(DataImportConsumersVerticle.class.getCanonicalName(),
-      new DeploymentOptions().setWorker(true).setInstances(dataImportConsumerInstancesNumber), deployConsumer2);
-
-    vertx.deployVerticle(QuickMarcConsumersVerticle.class.getCanonicalName(),
-      new DeploymentOptions().setWorker(true).setInstances(quickMarcConsumerInstancesNumber), deployConsumer3);
-
-    vertx.deployVerticle(AuthorityLinkChunkConsumersVerticle.class.getCanonicalName(),
-      new DeploymentOptions().setWorker(true).setInstances(authorityLinkChunkConsumerInstancesNumber), deployConsumer4);
+    deployVerticle(vertx, verticleFactory, AuthorityLinkChunkConsumersVerticle.class,
+      OptionalInt.of(authorityLinkChunkConsumerInstancesNumber), deployConsumer1);
+    deployVerticle(vertx, verticleFactory, AuthorityDomainConsumersVerticle.class,
+      OptionalInt.of(authorityDomainConsumerInstancesNumber), deployConsumer2);
+    deployVerticle(vertx, verticleFactory, DataImportConsumersVerticle.class,
+      OptionalInt.of(dataImportConsumerInstancesNumber), deployConsumer3);
+    deployVerticle(vertx, verticleFactory, ParsedRecordChunkConsumersVerticle.class,
+      OptionalInt.of(parsedMarcChunkConsumerInstancesNumber), deployConsumer4);
+    deployVerticle(vertx, verticleFactory, QuickMarcConsumersVerticle.class,
+      OptionalInt.of(quickMarcConsumerInstancesNumber), deployConsumer5);
 
     return GenericCompositeFuture.all(List.of(
       deployConsumer1.future(),
       deployConsumer2.future(),
       deployConsumer3.future(),
-      deployConsumer4.future()));
+      deployConsumer4.future(),
+      deployConsumer5.future()
+    ));
   }
 
   private <T> String getVerticleName(VerticleFactory verticleFactory, Class<T> clazz) {
     return verticleFactory.prefix() + ":" + clazz.getName();
   }
 
-  private void deployMarcIndexersVersionDeletionVerticle(Vertx vertx, VerticleFactory verticleFactory){
-    vertx.deployVerticle(getVerticleName(verticleFactory, MarcIndexersVersionDeletionVerticle.class),
+  private void deployMarcIndexersVersionDeletionVerticle(Vertx vertx, VerticleFactory verticleFactory) {
+    vertx.deployVerticle(getVerticleName(verticleFactory, (Class<?>) MarcIndexersVersionDeletionVerticle.class),
       new DeploymentOptions().setWorker(true));
+  }
+
+  private void deployVerticle(Vertx vertx, VerticleFactory verticleFactory, Class<?> verticleClass,
+                              OptionalInt instancesNumber, Promise<String> promise) {
+    vertx.deployVerticle(getVerticleName(verticleFactory, verticleClass),
+      new DeploymentOptions().setWorker(true).setInstances(instancesNumber.orElse(1)), promise);
   }
 
 }

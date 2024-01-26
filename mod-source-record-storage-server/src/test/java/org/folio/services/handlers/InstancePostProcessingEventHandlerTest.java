@@ -26,12 +26,20 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
+import org.folio.services.RecordServiceImpl;
+import org.folio.services.SnapshotService;
+import org.folio.services.SnapshotServiceImpl;
+import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -39,14 +47,15 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -54,9 +63,26 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPP
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.services.handlers.InstancePostProcessingEventHandler.POST_PROCESSING_RESULT_EVENT;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
+
+  public static final String CENTRAL_TENANT_INSTANCE_UPDATED_FLAG = "CENTRAL_TENANT_INSTANCE_UPDATED";
+  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
+
+  @Mock
+  private RecordServiceImpl mockedRecordService;
+
+  @Mock
+  private SnapshotServiceImpl mockedSnapshotService;
+  @Mock
+  private RecordCollection recordCollection;
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -67,8 +93,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Override
-  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, KafkaConfig kafkaConfig) {
-    return new InstancePostProcessingEventHandler(recordService, kafkaConfig, mappingParametersCache, vertx);
+  protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
+    return new InstancePostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
   }
 
   @Test
@@ -164,6 +190,61 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
+  public void shouldProceedIfConsortiumTrackExists(TestContext context) {
+    MockitoAnnotations.openMocks(this);
+
+    Async async = context.async();
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(new Snapshot())).when(mockedSnapshotService).copySnapshotToOtherTenant(anyString(), anyString(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), anyString());
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(recordCollection)).when(mockedRecordService).getRecords(any(), any(), any(), anyInt(), anyInt(), anyString());
+
+    doAnswer(invocationOnMock -> List.of(record)).when(recordCollection).getRecords();
+
+    doAnswer(invocationOnMock -> Future.succeededFuture(record)).when(mockedRecordService).updateRecord(any(), anyString());
+
+    InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, mockedSnapshotService, kafkaConfig, mappingParametersCache, vertx);
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+    String expectedCentralTenantId = "centralTenantId";
+
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(INSTANCE.value(), instance.encode());
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+    payloadContext.put("recordId", record.getId());
+    payloadContext.put(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG, "true");
+    payloadContext.put(CENTRAL_TENANT_ID, expectedCentralTenantId);
+
+    DataImportEventPayload dataImportEventPayload =
+      createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
+
+    handler.handle(dataImportEventPayload)
+      .thenApply(future::complete)
+      .exceptionally(future::completeExceptionally);
+
+    future.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      verify(mockedRecordService, times(1)).updateParsedRecord(any(), anyString());
+      context.assertNull(payload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG));
+      context.assertEquals(expectedCentralTenantId, payload.getContext().get(CENTRAL_TENANT_ID));
+      async.complete();
+    });
+  }
+
+  @Test
   public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
     Async async = context.async();
 
@@ -177,9 +258,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -202,7 +281,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -228,6 +307,95 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
+  public void shouldReturnExceptionForDuplicateRecord(TestContext context) throws IOException {
+    Async async = context.async();
+
+    String recordId = UUID.randomUUID().toString();
+    RawRecord rawRecord = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
+    ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
+
+    Record defaultRecord = new Record()
+      .withId(recordId)
+      .withSnapshotId(snapshotId1)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(parsedRecord);
+
+    String duplicateRecordId = UUID.randomUUID().toString();
+    RawRecord rawRecordDuplicate = new RawRecord().withId(recordId)
+      .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
+    ParsedRecord parsedRecordDuplicate = new ParsedRecord().withId(recordId)
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
+          .encode());
+
+    Record duplicateRecord = new Record()
+      .withId(duplicateRecordId)
+      .withSnapshotId(snapshotId1)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(rawRecordDuplicate)
+      .withParsedRecord(parsedRecordDuplicate);
+
+    String expectedInstanceId = UUID.randomUUID().toString();
+    String expectedHrId = UUID.randomUUID().toString();
+
+    JsonObject instance = createExternalEntity(expectedInstanceId, expectedHrId);
+
+    HashMap<String, String> payloadContextOriginalRecord = new HashMap<>();
+    payloadContextOriginalRecord.put(INSTANCE.value(), instance.encode());
+    payloadContextOriginalRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(defaultRecord));
+
+    HashMap<String, String> payloadContextDuplicateRecord = new HashMap<>();
+    payloadContextDuplicateRecord.put(INSTANCE.value(), instance.encode());
+    payloadContextDuplicateRecord.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(duplicateRecord));
+
+    DataImportEventPayload dataImportEventPayloadOriginalRecord =
+      createDataImportEventPayload(payloadContextOriginalRecord, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    DataImportEventPayload dataImportEventPayloadDuplicateRecord =
+      createDataImportEventPayload(payloadContextDuplicateRecord, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
+
+    CompletableFuture<DataImportEventPayload> future1 = handler.handle(dataImportEventPayloadOriginalRecord);
+
+    future1.whenComplete((payload, e) -> {
+      if (e != null) {
+        context.fail(e);
+      }
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
+        if (getAr.failed()) {
+          context.fail(getAr.cause());
+        }
+
+        context.assertTrue(getAr.result().isPresent());
+        Record savedRecord = getAr.result().get();
+
+        context.assertNotNull(savedRecord.getExternalIdsHolder());
+        context.assertEquals(expectedInstanceId, savedRecord.getExternalIdsHolder().getInstanceId());
+
+        context.assertNotNull(savedRecord.getParsedRecord());
+        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
+
+        JsonArray fields = parsedContent.getJsonArray("fields");
+        context.assertTrue(!fields.isEmpty());
+
+        String actualInstanceId = getInventoryId(fields);
+        context.assertEquals(expectedInstanceId, actualInstanceId);
+      });
+      CompletableFuture<DataImportEventPayload> future2 = handler.handle(dataImportEventPayloadDuplicateRecord);
+      future2.whenComplete((eventPayload, throwable) -> {
+        context.assertNotNull(throwable);
+        context.assertEquals(throwable.getClass(), DuplicateRecordException.class);
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldSaveIncomingRecordAndMarkExistingAsOldWhenIncomingRecordHasSameMatchedId(TestContext context) throws IOException {
     Async async = context.async();
     Record existingRecord = TestMocks.getRecord(0);
@@ -244,12 +412,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Record incomingRecord = new Record()
       .withRawRecord(rawRecord)
       .withId(recordId)
-      .withMatchedId(existingRecord.getMatchedId())
       .withSnapshotId(snapshotId2)
       .withRecordType(MARC_BIB)
       .withParsedRecord(parsedRecord);
 
     JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in001");
+    existingRecord.getExternalIdsHolder().setInstanceId(instanceJson.getString("id"));
+    existingRecord.getExternalIdsHolder().setInstanceHrid(instanceJson.getString("hrid"));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instanceJson.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -296,12 +465,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Record incomingRecord = new Record()
       .withRawRecord(rawRecord)
       .withId(recordId)
-      .withMatchedId(existingRecord.getMatchedId())
       .withSnapshotId(snapshotId2)
       .withRecordType(MARC_BIB)
       .withParsedRecord(parsedRecord);
 
     JsonObject instanceJson = createExternalEntity(UUID.randomUUID().toString(), "in00000000040");
+    existingRecord.getExternalIdsHolder().setInstanceId(instanceJson.getString("id"));
+    existingRecord.getExternalIdsHolder().setInstanceHrid(instanceJson.getString("hrid"));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(INSTANCE.value(), instanceJson.encode());
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -326,7 +496,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
         context.assertEquals(Record.State.ACTUAL, savedIncomingRecord.getState());
         context.assertNotNull(savedIncomingRecord.getGeneration());
         context.assertTrue(existingRec.getGeneration() < savedIncomingRecord.getGeneration());
-        context.assertFalse(((String)savedIncomingRecord.getParsedRecord().getContent()).contains("(LTSA)in00000000040"));
+        context.assertFalse(((String) savedIncomingRecord.getParsedRecord().getContent()).contains("(LTSA)in00000000040"));
 
         async.complete();
       });
@@ -340,8 +510,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     var expectedHrid = "in0002";
 
     record.withParsedRecord(new ParsedRecord()
-      .withId(recordId)
-      .withContent(PARSED_CONTENT_WITH_999_FIELD))
+        .withId(recordId)
+        .withContent(PARSED_CONTENT_WITH_999_FIELD))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001").withInstanceId(expectedInstanceId));
 
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -391,8 +561,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
     Async async = context.async();
 
-    String expectedDate = AdditionalFieldsUtil.dateTime005Formatter
-      .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+    String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
@@ -405,9 +574,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -430,7 +597,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -438,9 +605,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
         context.assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate.substring(0, 10),
-          actualDate.substring(0, 10));
+        validate005Field(context, expectedDate, updatedRecord);
 
         async.complete();
       });
@@ -471,9 +636,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     Record defaultRecord = new Record()
       .withId(recordId)
-      .withMatchedId(recordId)
       .withSnapshotId(snapshotId1)
-      .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -498,7 +661,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (throwable != null) {
         context.fail(throwable);
       }
-      recordDao.getRecordByMatchedId(defaultRecord.getMatchedId(), TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }

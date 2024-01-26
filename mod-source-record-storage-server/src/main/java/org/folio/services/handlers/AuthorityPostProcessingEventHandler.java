@@ -14,6 +14,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.springframework.stereotype.Component;
 
 import org.folio.DataImportEventPayload;
@@ -30,10 +31,10 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
 
   private final KafkaConfig kafkaConfig;
 
-  public AuthorityPostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+  public AuthorityPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
                                              MappingParametersSnapshotCache mappingParamsCache,
                                              Vertx vertx) {
-    super(recordService, kafkaConfig, mappingParamsCache, vertx);
+    super(recordService, snapshotService, kafkaConfig, mappingParamsCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 
@@ -48,6 +49,18 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
         sendLogEvent(dataImportEventPayload, DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED, key, kafkaHeaders);
       }
     }
+  }
+
+  @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED.value();
+    }
+    if (DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED.value();
+    }
+    return eventType;
   }
 
   @Override

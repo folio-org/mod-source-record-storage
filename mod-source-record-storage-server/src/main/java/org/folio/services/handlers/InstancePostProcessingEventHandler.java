@@ -15,6 +15,7 @@ import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -36,15 +37,27 @@ public class InstancePostProcessingEventHandler extends AbstractPostProcessingEv
   private final KafkaConfig kafkaConfig;
 
   @Autowired
-  public InstancePostProcessingEventHandler(RecordService recordService, KafkaConfig kafkaConfig,
+  public InstancePostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService,KafkaConfig kafkaConfig,
                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
-    super(recordService, kafkaConfig, mappingParametersCache, vertx);
+    super(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
     this.kafkaConfig = kafkaConfig;
   }
 
   @Override
   protected void sendAdditionalEvent(DataImportEventPayload dataImportEventPayload, Record record) {
     sendEventToDataImportLog(dataImportEventPayload, record);
+  }
+
+  @Override
+  protected String getNextEventType(DataImportEventPayload dataImportEventPayload) {
+    var eventType = dataImportEventPayload.getEventType();
+    if (DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return  DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value();
+    }
+    if (DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value().equals(eventType)) {
+      return DI_LOG_SRS_MARC_BIB_RECORD_UPDATED.value();
+    }
+    return eventType;
   }
 
   protected DataImportEventTypes replyEventType() {

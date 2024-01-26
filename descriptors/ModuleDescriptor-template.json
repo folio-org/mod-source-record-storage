@@ -54,7 +54,7 @@
     },
     {
       "id": "source-storage-records",
-      "version": "3.1",
+      "version": "3.2",
       "handlers": [
         {
           "methods": [
@@ -88,6 +88,15 @@
             "PUT"
           ],
           "pathPattern": "/source-storage/records/{id}",
+          "permissionsRequired": [
+            "source-storage.records.put"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage/records/{id}/generation",
           "permissionsRequired": [
             "source-storage.records.put"
           ]
@@ -440,10 +449,6 @@
       {
         "name": "DB_MAXPOOLSIZE",
         "value": "15"
-      },
-      {
-        "name": "test.mode",
-        "value": "true"
       },
       {
         "name": "KAFKA_HOST",

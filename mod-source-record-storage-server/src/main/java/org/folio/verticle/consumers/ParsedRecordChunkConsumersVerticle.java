@@ -1,81 +1,63 @@
 package org.folio.verticle.consumers;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Promise;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
+import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
+
+import java.util.List;
 import org.folio.kafka.AsyncRecordHandler;
-import org.folio.kafka.GlobalLoadSensor;
 import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaConsumerWrapper;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.kafka.SubscriptionDefinition;
 import org.folio.kafka.ProcessRecordErrorHandler;
-import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
 
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
-import static org.folio.services.util.EventHandlingUtil.constructModuleName;
+@Component
+@Scope(SCOPE_PROTOTYPE)
+public class ParsedRecordChunkConsumersVerticle extends AbstractConsumerVerticle<String, byte[]> {
 
-public class ParsedRecordChunkConsumersVerticle extends AbstractVerticle {
-  //TODO: get rid of this workaround with global spring context
-  private static AbstractApplicationContext springGlobalContext;
+  private final AsyncRecordHandler<String, byte[]> parsedRecordChunksKafkaHandler;
 
-  private static final GlobalLoadSensor globalLoadSensor = new GlobalLoadSensor();
-
-  @Autowired
-  @Qualifier("parsedRecordChunksKafkaHandler")
-  private AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler;
-
-  @Autowired
-  @Qualifier("parsedRecordChunksErrorHandler")
-  private ProcessRecordErrorHandler<String, String> parsedRecordChunksErrorHandler;
-
-  @Autowired
-  private KafkaConfig kafkaConfig;
+  private final ProcessRecordErrorHandler<String, byte[]> parsedRecordChunksErrorHandler;
 
   @Value("${srs.kafka.ParsedMarcChunkConsumer.loadLimit:5}")
   private int loadLimit;
 
-  private KafkaConsumerWrapper<String, String> consumerWrapper;
-
-  @Override
-  public void start(Promise<Void> startPromise) {
-    context.put("springContext", springGlobalContext);
-
-    SpringContextUtil.autowireDependencies(this, context);
-
-    SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), DI_RAW_RECORDS_CHUNK_PARSED.value());
-
-    consumerWrapper = KafkaConsumerWrapper.<String, String>builder()
-      .context(context)
-      .vertx(vertx)
-      .kafkaConfig(kafkaConfig)
-      .loadLimit(loadLimit)
-      .globalLoadSensor(globalLoadSensor)
-      .subscriptionDefinition(subscriptionDefinition)
-      .processRecordErrorHandler(parsedRecordChunksErrorHandler)
-      .build();
-
-    consumerWrapper.start(parsedRecordChunksKafkaHandler, constructModuleName() + "_" + getClass().getSimpleName()).onComplete(sar -> {
-      if (sar.succeeded()) {
-        startPromise.complete();
-      } else {
-        startPromise.fail(sar.cause());
-      }
-    });
+  @Autowired
+  protected ParsedRecordChunkConsumersVerticle(KafkaConfig kafkaConfig,
+                                               @Qualifier("parsedRecordChunksKafkaHandler")
+                                               AsyncRecordHandler<String, byte[]> parsedRecordChunksKafkaHandler,
+                                               @Qualifier("parsedRecordChunksErrorHandler")
+                                               ProcessRecordErrorHandler<String, byte[]> parsedRecordChunksErrorHandler) {
+    super(kafkaConfig);
+    this.parsedRecordChunksKafkaHandler = parsedRecordChunksKafkaHandler;
+    this.parsedRecordChunksErrorHandler = parsedRecordChunksErrorHandler;
   }
 
   @Override
-  public void stop(Promise<Void> stopPromise) {
-    consumerWrapper.stop().onComplete(ar -> stopPromise.complete());
+  protected ProcessRecordErrorHandler<String, byte[]> processRecordErrorHandler() {
+    return parsedRecordChunksErrorHandler;
   }
 
-  @Deprecated
-  public static void setSpringGlobalContext(AbstractApplicationContext springGlobalContext) {
-    ParsedRecordChunkConsumersVerticle.springGlobalContext = springGlobalContext;
+  @Override
+  protected int loadLimit() {
+    return loadLimit;
+  }
+
+  @Override
+  protected AsyncRecordHandler<String, byte[]> recordHandler() {
+    return parsedRecordChunksKafkaHandler;
+  }
+
+  @Override
+  protected List<String> eventTypes() {
+    return List.of(DI_RAW_RECORDS_CHUNK_PARSED.value());
+  }
+
+  @Override
+  public String getDeserializerClass() {
+    return "org.apache.kafka.common.serialization.ByteArrayDeserializer";
   }
 
 }

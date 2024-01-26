@@ -2,18 +2,29 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.ActionProfile.Action.MODIFY;
+import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
+import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
@@ -31,6 +42,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
+import org.folio.services.SnapshotService;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,10 +60,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   @Autowired
   public MarcBibUpdateModifyEventHandler(RecordService recordService,
+                                         SnapshotService snapshotService,
                                          MappingParametersSnapshotCache mappingParametersCache,
                                          Vertx vertx, InstanceLinkClient instanceLinkClient,
                                          LinkingRulesCache linkingRulesCache) {
-    super(recordService, mappingParametersCache, vertx);
+    super(recordService, snapshotService, mappingParametersCache, vertx);
     this.instanceLinkClient = instanceLinkClient;
     this.linkingRulesCache = linkingRulesCache;
   }
@@ -72,13 +85,28 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected String getNextEventType() {
+  protected String getUpdateEventType() {
+    return DI_SRS_MARC_BIB_RECORD_UPDATED.value();
+  }
+
+  protected String getModifyEventType() {
     return DI_SRS_MARC_BIB_RECORD_MODIFIED.value();
   }
 
   @Override
   protected EntityType modifiedEntityType() {
     return MARC_BIBLIOGRAPHIC;
+  }
+
+  @Override
+  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
+    if (marcMappingOption.value().equals(MODIFY.value())) {
+      payload.setEventType(getModifyEventType());
+    }
+    if (marcMappingOption.value().equals(UPDATE.value())) {
+      payload.setEventType(getUpdateEventType());
+    }
+    future.complete(payload);
   }
 
   @Override
@@ -97,11 +125,20 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     }
     var instanceId = matchedRecord.getExternalIdsHolder().getInstanceId();
     var okapiParams = getOkapiParams(dataImportEventPayload);
+    var centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
+    if (centralTenantId != null) {
+      okapiParams = new OkapiConnectionParams(Map.of(
+        OKAPI_URL_HEADER, okapiParams.getOkapiUrl(),
+        OKAPI_TENANT_HEADER, centralTenantId,
+        OKAPI_TOKEN_HEADER, okapiParams.getToken()
+      ), vertx);
+    }
 
-    return linkingRulesCache.get(okapiParams)
-      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, okapiParams)
+    OkapiConnectionParams finalOkapiParams = okapiParams;
+    return linkingRulesCache.get(finalOkapiParams)
+      .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, finalOkapiParams)
         .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
-        .compose(links -> updateInstanceLinks(instanceId, links, okapiParams)));
+        .compose(links -> updateInstanceLinks(instanceId, links, finalOkapiParams)));
   }
 
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,

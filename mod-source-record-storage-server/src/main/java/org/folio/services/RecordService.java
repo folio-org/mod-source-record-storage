@@ -90,6 +90,16 @@ public interface RecordService {
   Future<Record> updateRecord(Record record, String tenantId);
 
   /**
+   * Updates record generation with given matched id
+   *
+   * @param matchedId   matched id
+   * @param record   record to update
+   * @param tenantId tenant id
+   * @return future with updated Record generation
+   */
+  Future<Record> updateRecordGeneration(String matchedId, Record record, String tenantId);
+
+  /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
    *
    * @param condition   query where condition
@@ -201,6 +211,15 @@ public interface RecordService {
    * @return future with true if succeeded
    */
   Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId);
+
+  /**
+   * Deletes records by external id
+   *
+   * @param externalId external id
+   * @param tenantId   tenant id
+   * @return future with true if succeeded
+   */
+  Future<Void> deleteRecordsByExternalId(String externalId, String tenantId);
 
   /**
    * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,

@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>5.7.0-SNAPSHOT</version>
+    <version>5.8.0-SNAPSHOT</version>
   </parent>
 
   <dependencies>
@@ -29,6 +29,12 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>kafka</artifactId>
+      <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>toxiproxy</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
@@ -128,7 +134,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.6.0</version>
+      <version>1.7.0</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -179,7 +185,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.1.0-SNAPSHOT</version>
+      <version>4.2.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -188,7 +194,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>2.7.0</version>
+      <version>3.1.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
@@ -209,6 +215,37 @@
           <artifactId>jopt-simple</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${kafkaclients.version}</version>
+      <classifier>test</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka_2.13</artifactId>
+      <version>${kafkaclients.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka_2.13</artifactId>
+      <version>${kafkaclients.version}</version>
+      <classifier>test</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-tools</artifactId>
+      <version>${kafkaclients.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.scala-lang</groupId>
@@ -235,6 +272,11 @@
       <artifactId>HikariCP</artifactId>
       <version>5.0.1</version>
     </dependency>
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+      <version>1.14.5</version>
+    </dependency>
   </dependencies>
 
   <properties>
@@ -243,23 +285,12 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
     <vertx-jooq.version>6.5.5</vertx-jooq.version>
+    <aspectj.version>1.9.19</aspectj.version>
     <postgres.version>42.5.1</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
-    <lombok.version>1.18.24</lombok.version>
+    <lombok.version>1.18.30</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-bom</artifactId>
-        <version>2.17.2</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
   <build>
     <resources>
@@ -275,7 +306,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <release>11</release>
+          <release>17</release>
           <encoding>UTF-8</encoding>
           <annotationProcessors>
             <annotationProcessor>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</annotationProcessor>
@@ -444,7 +475,7 @@
           <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
-            <version>3.3.9</version>
+            <version>3.8.1</version>
           </dependency>
         </dependencies>
         <configuration>
@@ -482,13 +513,13 @@
       </plugin>
 
       <plugin>
-        <groupId>com.nickwongdev</groupId>
+        <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.12.6</version>
+        <version>1.13.1</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>11</complianceLevel>
+          <release>17</release>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <forceAjcCompile>true</forceAjcCompile>
@@ -510,12 +541,12 @@
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjrt</artifactId>
-            <version>1.9.6</version>
+            <version>${aspectj.version}</version>
           </dependency>
           <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjtools</artifactId>
-            <version>1.9.6</version>
+            <version>${aspectj.version}</version>
           </dependency>
         </dependencies>
       </plugin>

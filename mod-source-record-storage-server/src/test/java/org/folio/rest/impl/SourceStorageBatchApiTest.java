@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.vertx.core.json.JsonArray;
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.TestUtil;

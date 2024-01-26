@@ -41,7 +41,7 @@ public class MarcAuthorityUpdateModifyEventHandler extends AbstractUpdateModifyE
   }
 
   @Override
-  protected String getNextEventType() {
+  protected String getUpdateEventType() {
     return DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value();
   }
 

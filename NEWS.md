@@ -1,6 +1,7 @@
 ## 2023-12-05 v5.7.5
 * [MODSOURCE-719](https://issues.folio.org/browse/MODSOURCE-719) Bump Kafka, Spring, Snappy fixing vulnerabilities
 * [MODSOURCE-727](https://issues.folio.org/browse/MODSOURCE-727) Provide central tenant id in DI payload to ensure instance update on central tenant after instance hrid has been set to record
+* [MODSOURMAN-1106](https://issues.folio.org/browse/MODSOURMAN-1106) The status of Instance is '-' in the Import log after uploading file. The numbers of updated SRS and Instance are not displayed in the Summary table.
 
 ## 2023-11-24 v5.7.4
 * [MODSOURCE-720](https://issues.folio.org/browse/MODSOURCE-720) Remove "test.mode" entry from ModuleDescriptor

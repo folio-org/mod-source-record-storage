@@ -83,6 +83,7 @@ import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.IdentifiersPair;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -91,6 +92,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
@@ -489,6 +491,46 @@ public class RecordDaoImpl implements RecordDao {
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
       });
     }
+  }
+
+  @Override
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
+    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    if (matchedField.getValue() instanceof MissingValue) {
+      return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
+    }
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
+      SelectOnConditionStep<org.jooq.Record> query = dsl
+        .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
+        .distinctOn(RECORDS_LB.ID)
+        .from(RECORDS_LB)
+        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+
+      return query
+//        .where(filterRecordByType(typeConnection.getRecordType().value())  todo: is it needed to filter by recordType?
+        .where(filterRecordByState(Record.State.ACTUAL.value()))
+        .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())
+        )
+        .offset(offset)
+        .limit(limit);
+    })).map(queryResult -> toRecordsIdentifiersCollection(queryResult));
+  }
+
+  private RecordsIdentifiersCollection toRecordsIdentifiersCollection(QueryResult result) {
+    List<IdentifiersPair> identifiers = result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .map(row -> new IdentifiersPair()
+        .withRecordId(row.getUUID(ID).toString())
+        .withExternalId(row.getUUID("external_id").toString()))
+      .collect(Collectors.toList());
+
+    return new RecordsIdentifiersCollection()
+      .withIdentifiersPairs(identifiers)
+      .withTotalRecords(identifiers.size());
   }
 
   @Override

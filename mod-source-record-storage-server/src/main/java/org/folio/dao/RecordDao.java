@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
@@ -71,6 +72,8 @@ public interface RecordDao {
    * @return  {@link Future} of {@link RecordCollection}
    */
   Future<List<Record>> getMatchedRecords(MatchField matchField, TypeConnection recordType, boolean externalIdRequired, int offset, int limit, String tenantId);
+
+  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId);
 
   /**
    * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}

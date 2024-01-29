@@ -17,7 +17,6 @@ import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
-import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.resource.SourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -186,7 +185,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
                                                Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        Future.succeededFuture(new RecordsIdentifiersCollection())
+        recordService.getMatchedRecordsIdentifiers(recordMatchingDto, tenantId)
           .map(PostSourceStorageRecordsMatchingResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

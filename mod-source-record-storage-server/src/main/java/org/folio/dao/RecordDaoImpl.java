@@ -509,12 +509,10 @@ public class RecordDaoImpl implements RecordDao {
         .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
           .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
 
-      return query
-//        .where(filterRecordByType(typeConnection.getRecordType().value())  todo: is it needed to filter by recordType?
-        .where(filterRecordByState(Record.State.ACTUAL.value()))
+      return query.where(filterRecordByType(typeConnection.getRecordType().value())
+        .and(filterRecordByState(Record.State.ACTUAL.value()))
         .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())
-        )
+        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())))
         .offset(offset)
         .limit(limit);
     })).map(queryResult -> toRecordsIdentifiersCollection(queryResult));
@@ -525,7 +523,7 @@ public class RecordDaoImpl implements RecordDao {
       .map(res -> asRow(res.unwrap()))
       .map(row -> new IdentifiersPair()
         .withRecordId(row.getUUID(ID).toString())
-        .withExternalId(row.getUUID("external_id").toString()))
+        .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
       .collect(Collectors.toList());
 
     return new RecordsIdentifiersCollection()

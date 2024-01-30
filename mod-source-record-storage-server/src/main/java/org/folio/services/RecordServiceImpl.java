@@ -13,6 +13,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jaxrs.model.RecordMatchingDto.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
@@ -330,15 +331,18 @@ public class RecordServiceImpl implements RecordService {
     if (matchField.isDefaultField()) {
       return processDefaultMatchField(matchField, tenantId, recordMatchingDto.getRecordType());
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
+    boolean externalIdRequired = isNonNullExternalIdRequired(recordMatchingDto.getRecordType()); //todo: do we require externalId only for MARC-BIB type?
+    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, externalIdRequired,
+      recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
   private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
-    Filter filter = recordMatchingDto.getFilters().get(0); //todo
+    // current implementation supports only one matching filter for processing records matching
+    Filter filter = recordMatchingDto.getFilters().get(0);
     String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
     String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
     String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
-    return  new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
   }
 
   private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, String tenantId, RecordMatchingDto.RecordType recordType) {
@@ -368,6 +372,10 @@ public class RecordServiceImpl implements RecordService {
       return String.valueOf(value.getValue());
     }
     return StringUtils.EMPTY;
+  }
+
+  public boolean isNonNullExternalIdRequired(RecordMatchingDto.RecordType recordType) {
+    return MARC_BIB == recordType;
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

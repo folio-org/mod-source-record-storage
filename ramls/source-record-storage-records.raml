@@ -89,6 +89,11 @@ resourceTypes:
           body:
             application/json:
               type: recordsIdentifiersCollection
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
   /{id}:
     displayName: Record
     description: Get, Delete or Update a specific Record

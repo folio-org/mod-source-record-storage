@@ -328,4 +328,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
+  /*
+  shouldNotMatchByMatchedIdField
+  shouldNotMatchByMatchedIdFieldIfNotMatch
+   */
+
 }

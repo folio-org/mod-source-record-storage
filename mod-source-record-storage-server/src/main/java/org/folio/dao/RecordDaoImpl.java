@@ -116,6 +116,7 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
 import org.jooq.Record2;
+import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectOnConditionStep;
 import org.jooq.SortOrder;
@@ -494,31 +495,51 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection,
+                                                                           boolean externalIdRequired, int offset, int limit, String tenantId) {
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     if (matchedField.getValue() instanceof MissingValue) {
       return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
     }
 
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
-      SelectOnConditionStep<org.jooq.Record> query = dsl
+      SelectConditionStep<Record1<Integer>> countQuery = select(countDistinct(RECORDS_LB.ID))
+        .from(RECORDS_LB)
+        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+        .where(filterRecordByType(typeConnection.getRecordType().value())
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
+
+      SelectConditionStep<org.jooq.Record> searchQuery = dsl
         .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
         .distinctOn(RECORDS_LB.ID)
         .from(RECORDS_LB)
         .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
         .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
-          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+        .where(filterRecordByType(typeConnection.getRecordType().value())
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
 
-      return query.where(filterRecordByType(typeConnection.getRecordType().value())
-        .and(filterRecordByState(Record.State.ACTUAL.value()))
-        .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-        .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())))
+      return DSL.select()
+        .from(searchQuery)
+        .rightJoin(countQuery).on(DSL.trueCondition())
+        .orderBy(searchQuery.field(ID).asc())
         .offset(offset)
         .limit(limit);
     })).map(queryResult -> toRecordsIdentifiersCollection(queryResult));
   }
 
   private RecordsIdentifiersCollection toRecordsIdentifiersCollection(QueryResult result) {
+    Integer countResult = asRow(result.unwrap()).getInteger(COUNT);
+    if (countResult == null || countResult == 0) {
+      return new RecordsIdentifiersCollection().withTotalRecords(0);
+    }
+
     List<IdentifiersPair> identifiers = result.stream()
       .map(res -> asRow(res.unwrap()))
       .map(row -> new IdentifiersPair()
@@ -528,7 +549,7 @@ public class RecordDaoImpl implements RecordDao {
 
     return new RecordsIdentifiersCollection()
       .withIdentifiersPairs(identifiers)
-      .withTotalRecords(identifiers.size());
+      .withTotalRecords(countResult);
   }
 
   @Override

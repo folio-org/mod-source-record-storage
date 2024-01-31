@@ -7,13 +7,11 @@ import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValues;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdsCondition;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jaxrs.model.RecordMatchingDto.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
@@ -48,7 +46,6 @@ import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
-import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.IdentifiersPair;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
@@ -346,15 +343,15 @@ public class RecordServiceImpl implements RecordService {
 
   private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, String tenantId, RecordMatchingDto.RecordType recordType) {
     TypeConnection typeConnection = TypeConnection.valueOf(recordType.name());
-    String valueAsString = getStringValue(matchField.getValue());
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
+    List<String> values = ((ListValue) matchField.getValue()).getValue();
 
     if (matchField.isMatchedId()) {
-      condition = condition.and(filterRecordByRecordId(valueAsString));
+      condition = getExternalIdsCondition(values, IdType.RECORD);
     } else if (matchField.isExternalId()) {
-      condition = condition.and(filterRecordByExternalId(valueAsString));
+      condition = getExternalIdsCondition(values, IdType.EXTERNAL);
     } else if (matchField.isExternalHrid()) {
-      condition = condition.and(filterRecordByExternalHrid(valueAsString));
+      condition = filterRecordByExternalHridValues(values);
     }
 
     return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), 0, 2, tenantId)
@@ -364,13 +361,6 @@ public class RecordServiceImpl implements RecordService {
           .withExternalId(EXTERNAL_ID_EXTRACTORS_MAP.get(sourceRecord.getRecordType()).apply(sourceRecord)))
         .collect(Collectors.collectingAndThen(toList(), identifiersPairs -> new RecordsIdentifiersCollection()
           .withIdentifiersPairs(identifiersPairs).withTotalRecords(identifiersPairs.size()))));
-  }
-
-  private String getStringValue(Value<?> value) {
-    if (Value.ValueType.STRING.equals(value.getType())) {
-      return String.valueOf(value.getValue());
-    }
-    return StringUtils.EMPTY;
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

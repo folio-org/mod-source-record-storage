@@ -331,13 +331,12 @@ public class RecordServiceImpl implements RecordService {
     if (matchField.isDefaultField()) {
       return processDefaultMatchField(matchField, tenantId, recordMatchingDto.getRecordType());
     }
-    boolean externalIdRequired = isNonNullExternalIdRequired(recordMatchingDto.getRecordType()); //todo: do we require externalId only for MARC-BIB type?
-    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, externalIdRequired,
-      recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
+    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true, recordMatchingDto.getOffset(),
+      recordMatchingDto.getLimit(), tenantId);
   }
 
   private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
-    // current implementation supports only one matching filter for processing records matching
+    // only one matching filter is expected in the current implementation for processing records matching
     Filter filter = recordMatchingDto.getFilters().get(0);
     String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
     String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
@@ -372,10 +371,6 @@ public class RecordServiceImpl implements RecordService {
       return String.valueOf(value.getValue());
     }
     return StringUtils.EMPTY;
-  }
-
-  public boolean isNonNullExternalIdRequired(RecordMatchingDto.RecordType recordType) {
-    return MARC_BIB == recordType;
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

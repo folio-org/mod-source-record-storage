@@ -2,6 +2,7 @@ package org.folio.services;
 
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
@@ -323,14 +324,14 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(RecordMatchingDto recordMatchingDto, String tenantId) {
     MatchField matchField = prepareMatchField(recordMatchingDto);
-    TypeConnection typeConnection = TypeConnection.valueOf(recordMatchingDto.getRecordType().name());
+    TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
     if (matchField.isDefaultField()) {
-      return processDefaultMatchField(matchField, tenantId, recordMatchingDto.getRecordType()
-      );
+      return processDefaultMatchField(matchField, tenantId, typeConnection,
+        recordMatchingDto.getOffset(), recordMatchingDto.getLimit());
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true, recordMatchingDto.getOffset(),
-      recordMatchingDto.getLimit(), tenantId);
+    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true,
+      recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
   private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
@@ -342,33 +343,41 @@ public class RecordServiceImpl implements RecordService {
     return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
   }
 
-  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, String tenantId, RecordMatchingDto.RecordType recordType) {
-    TypeConnection typeConnection = TypeConnection.valueOf(recordType.name());
+  private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {
+    return switch (recordType) {
+      case MARC_BIB -> TypeConnection.MARC_BIB;
+      case MARC_HOLDING -> TypeConnection.MARC_HOLDINGS;
+      case MARC_AUTHORITY -> TypeConnection.MARC_AUTHORITY;
+    };
+  }
+
+  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, String tenantId,
+                                                                        TypeConnection typeConnection, Integer offset, Integer limit) {
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
     List<String> values = ((ListValue) matchField.getValue()).getValue();
 
     if (matchField.isMatchedId()) {
-      condition = getExternalIdsCondition(values, IdType.RECORD);
+      condition = condition.and(getExternalIdsCondition(values, IdType.RECORD));
     } else if (matchField.isExternalId()) {
-      condition = getExternalIdsCondition(values, IdType.EXTERNAL);
+      condition = condition.and(getExternalIdsCondition(values, IdType.EXTERNAL));
     } else if (matchField.isExternalHrid()) {
-      condition = filterRecordByExternalHridValues(values);
+      condition = condition.and(filterRecordByExternalHridValues(values));
     }
 
-    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), 0, 2, tenantId)
+    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), offset, limit, tenantId)
       .map(recordCollection -> recordCollection.getRecords().stream()
         .map(sourceRecord -> new RecordIdentifiersDto()
           .withRecordId(sourceRecord.getId())
           .withExternalId(EXTERNAL_ID_EXTRACTORS_MAP.get(sourceRecord.getRecordType()).apply(sourceRecord)))
-        .collect(Collectors.collectingAndThen(toList(), identifiersPairs -> new RecordsIdentifiersCollection()
-          .withIdentifiers(identifiersPairs).withTotalRecords(identifiersPairs.size()))));
+        .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
+          .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {
       // Set matched id from 999$s marc field
-      LOG.debug(format("setMatchedIdForRecord:: Set matchedId: %s from 999$s field for record with id: %s", marcField999s, record.getId()));
+      LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, record.getId());
       return Future.succeededFuture(record.withMatchedId(marcField999s));
     }
     Promise<Record> promise = Promise.promise();
@@ -445,7 +454,7 @@ public class RecordServiceImpl implements RecordService {
             .map(JsonObject.class::cast)
             .filter(field -> checkFieldRange(field, data))
             .map(JsonObject::getMap)
-            .collect(toList());
+            .collect(Collectors.toList());
 
           parsedContent.put("fields", filteredFields);
           recordToFilter.getParsedRecord().setContent(parsedContent.getMap());

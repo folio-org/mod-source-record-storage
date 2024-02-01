@@ -505,8 +505,10 @@ public class RecordDaoImpl implements RecordDao {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
       SelectConditionStep<Record1<Integer>> countQuery = select(countDistinct(RECORDS_LB.ID))
         .from(RECORDS_LB)
-        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-        .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+        .innerJoin(marcIndexersPartitionTable)
+          .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .innerJoin(MARC_RECORDS_TRACKING)
+          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
           .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
         .where(filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
@@ -517,8 +519,10 @@ public class RecordDaoImpl implements RecordDao {
         .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
         .distinctOn(RECORDS_LB.ID)
         .from(RECORDS_LB)
-        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-        .innerJoin(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+        .innerJoin(marcIndexersPartitionTable)
+          .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .innerJoin(MARC_RECORDS_TRACKING)
+          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
           .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
         .where(filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
@@ -531,7 +535,7 @@ public class RecordDaoImpl implements RecordDao {
         .orderBy(searchQuery.field(ID).asc())
         .offset(offset)
         .limit(limit);
-    })).map(queryResult -> toRecordsIdentifiersCollection(queryResult));
+    })).map(this::toRecordsIdentifiersCollection);
   }
 
   private RecordsIdentifiersCollection toRecordsIdentifiersCollection(QueryResult result) {
@@ -545,7 +549,7 @@ public class RecordDaoImpl implements RecordDao {
       .map(row -> new RecordIdentifiersDto()
         .withRecordId(row.getUUID(ID).toString())
         .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
-      .collect(Collectors.toList());
+      .toList();
 
     return new RecordsIdentifiersCollection()
       .withIdentifiers(identifiers)

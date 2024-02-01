@@ -23,11 +23,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -93,12 +91,6 @@ public class RecordServiceImpl implements RecordService {
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
-
-  private static final Map<Record.RecordType, Function<Record, String>> EXTERNAL_ID_EXTRACTORS_MAP = Map.of(
-    Record.RecordType.MARC_BIB, srcRecord -> srcRecord.getExternalIdsHolder().getInstanceId(),
-    Record.RecordType.MARC_HOLDING, srcRecord -> srcRecord.getExternalIdsHolder().getHoldingsId(),
-    Record.RecordType.MARC_AUTHORITY, srcRecord -> srcRecord.getExternalIdsHolder().getAuthorityId()
-  );
 
   @Autowired
   public RecordServiceImpl(final RecordDao recordDao) {
@@ -368,7 +360,7 @@ public class RecordServiceImpl implements RecordService {
       .map(recordCollection -> recordCollection.getRecords().stream()
         .map(sourceRecord -> new RecordIdentifiersDto()
           .withRecordId(sourceRecord.getId())
-          .withExternalId(EXTERNAL_ID_EXTRACTORS_MAP.get(sourceRecord.getRecordType()).apply(sourceRecord)))
+          .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
         .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
           .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
   }

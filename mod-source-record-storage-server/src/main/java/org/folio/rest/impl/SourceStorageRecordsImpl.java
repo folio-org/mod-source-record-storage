@@ -191,7 +191,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
-        LOG.warn("postSourceStorageRecordsMatching:: Failed to get identifiers of records by matched criteria", e);
+        LOG.warn("postSourceStorageRecordsMatching:: Failed to get identifiers of records by matching criteria", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

@@ -96,7 +96,7 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(0))
-      .body("identifiersPairs.size()", is(0));
+      .body("identifiers.size()", is(0));
   }
 
   @Test
@@ -116,9 +116,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -138,9 +138,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -157,9 +157,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -179,9 +179,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -198,9 +198,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -220,9 +220,9 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("identifiersPairs.size()", is(1))
-      .body("identifiersPairs[0].recordId", is(existingRecord.getId()))
-      .body("identifiersPairs[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test
@@ -254,7 +254,7 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(0))
-      .body("identifiersPairs.size()", is(0));
+      .body("identifiers.size()", is(0));
   }
 
   @Test
@@ -293,13 +293,13 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(4))
-      .body("identifiersPairs.size()", is(2))
-      .body("identifiersPairs.recordId",
+      .body("identifiers.size()", is(2))
+      .body("identifiers.recordId",
         everyItem(is(oneOf("00000000-0000-1000-8000-000000000003", "00000000-0000-1000-8000-000000000004"))));
   }
 
   @Test
-  public void shouldReturnUnprocessableEntityIfFiltersIsNotSpecified() {
+  public void shouldReturnUnprocessableEntityIfFilterIsNotSpecified() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -327,10 +327,5 @@ public class RecordsMatchingApi extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
-
-  /*
-  shouldNotMatchByMatchedIdField
-  shouldNotMatchByMatchedIdFieldIfNotMatch
-   */
 
 }

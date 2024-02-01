@@ -47,7 +47,7 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.Filter;
-import org.folio.rest.jaxrs.model.IdentifiersPair;
+import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.services.exceptions.DuplicateRecordException;
@@ -326,7 +326,8 @@ public class RecordServiceImpl implements RecordService {
     TypeConnection typeConnection = TypeConnection.valueOf(recordMatchingDto.getRecordType().name());
 
     if (matchField.isDefaultField()) {
-      return processDefaultMatchField(matchField, tenantId, recordMatchingDto.getRecordType());
+      return processDefaultMatchField(matchField, tenantId, recordMatchingDto.getRecordType()
+      );
     }
     return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true, recordMatchingDto.getOffset(),
       recordMatchingDto.getLimit(), tenantId);
@@ -356,11 +357,11 @@ public class RecordServiceImpl implements RecordService {
 
     return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), 0, 2, tenantId)
       .map(recordCollection -> recordCollection.getRecords().stream()
-        .map(sourceRecord -> new IdentifiersPair()
+        .map(sourceRecord -> new RecordIdentifiersDto()
           .withRecordId(sourceRecord.getId())
           .withExternalId(EXTERNAL_ID_EXTRACTORS_MAP.get(sourceRecord.getRecordType()).apply(sourceRecord)))
         .collect(Collectors.collectingAndThen(toList(), identifiersPairs -> new RecordsIdentifiersCollection()
-          .withIdentifiersPairs(identifiersPairs).withTotalRecords(identifiersPairs.size()))));
+          .withIdentifiers(identifiersPairs).withTotalRecords(identifiersPairs.size()))));
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

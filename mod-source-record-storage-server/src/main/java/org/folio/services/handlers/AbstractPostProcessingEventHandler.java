@@ -23,7 +23,6 @@ import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;

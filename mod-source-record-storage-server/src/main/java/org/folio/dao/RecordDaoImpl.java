@@ -83,7 +83,6 @@ import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.IdentifiersPair;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -91,6 +90,7 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -540,15 +540,15 @@ public class RecordDaoImpl implements RecordDao {
       return new RecordsIdentifiersCollection().withTotalRecords(0);
     }
 
-    List<IdentifiersPair> identifiers = result.stream()
+    List<RecordIdentifiersDto> identifiers = result.stream()
       .map(res -> asRow(res.unwrap()))
-      .map(row -> new IdentifiersPair()
+      .map(row -> new RecordIdentifiersDto()
         .withRecordId(row.getUUID(ID).toString())
         .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
       .collect(Collectors.toList());
 
     return new RecordsIdentifiersCollection()
-      .withIdentifiersPairs(identifiers)
+      .withIdentifiers(identifiers)
       .withTotalRecords(countResult);
   }
 

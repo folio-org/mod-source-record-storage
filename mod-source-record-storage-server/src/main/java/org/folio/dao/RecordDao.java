@@ -73,6 +73,18 @@ public interface RecordDao {
    */
   Future<List<Record>> getMatchedRecords(MatchField matchField, TypeConnection recordType, boolean externalIdRequired, int offset, int limit, String tenantId);
 
+  /**
+   * Searches for {@link Record} by {@link MatchField} with offset and limit,
+   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordsId and externalId
+   *
+   * @param matchedField        describes searching condition
+   * @param typeConnection      record type
+   * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
+   * @param offset              offset to skip over a number of elements
+   * @param limit               limit of records
+   * @param tenantId            tenant id
+   * @return {@link Future} of {@link RecordsIdentifiersCollection}
+   */
   Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId);
 
   /**

@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
@@ -135,11 +134,12 @@ public interface RecordService {
    * @return {@link Flowable} of {@link Record id}
    */
   Flowable<Row> streamMarcRecordIds(RecordSearchParameters searchParameters, String tenantId);
+
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *
    * @param ids            list of ids
-   * @param idType id type
+   * @param idType         id type
    * @param recordType     record type
    * @param deleted        filter by state DELETED or leader record status d, s, or x
    * @param tenantId       tenant id
@@ -151,12 +151,22 @@ public interface RecordService {
    * Searches for source record by id via specific id type
    *
    * @param id             for searching
-   * @param idType search type
-   * @param state search record state
+   * @param idType         search type
+   * @param state          search record state
    * @param tenantId       tenant id
    * @return future with optional source record
    */
   Future<Optional<SourceRecord>> getSourceRecordById(String id, IdType idType, RecordState state, String tenantId);
+
+  /**
+   * Searches for {@link Record} by condition specified in {@link RecordMatchingDto}
+   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordsId and externalId
+   *
+   * @param recordMatchingDto record matching request that describes matching criteria
+   * @param tenantId          tenant id
+   * @return {@link Future} of {@link RecordsIdentifiersCollection}
+   */
+  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(RecordMatchingDto recordMatchingDto, String tenantId);
 
   /**
    * Updates {@link ParsedRecord} in the db
@@ -189,7 +199,7 @@ public interface RecordService {
    * Searches for Record either by SRS id or external relation id
    *
    * @param id             either SRS id or external relation id
-   * @param idType specifies of external relation id type
+   * @param idType         specifies of external relation id type
    * @param tenantId       tenant id
    * @return future with {@link Record}
    */
@@ -257,5 +267,4 @@ public interface RecordService {
    */
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
 
-  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(RecordMatchingDto recordMatchingDto, String tenantId);
 }

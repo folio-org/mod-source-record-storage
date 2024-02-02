@@ -113,7 +113,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       }
     });
   }
-
+// delete by instance id - ticket
   @Override
   public void deleteSourceStorageRecordsById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
@@ -168,6 +168,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+
         recordService.updateSuppressFromDiscoveryForRecord(id, toExternalIdType(idType), suppress, tenantId)
           .map(PutSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)

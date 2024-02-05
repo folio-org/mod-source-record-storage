@@ -305,7 +305,6 @@ public class RecordServiceImpl implements RecordService {
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {
         record.withState(Record.State.DELETED);
-        record.setDeleted(true);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
         return record;

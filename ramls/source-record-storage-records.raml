@@ -88,6 +88,12 @@ resourceTypes:
             application/json:
               type: record
     delete:
+      queryParameters:
+        idType:
+          description: Type of Id for Record lookup
+          type: string
+          example: INSTANCE
+          default: SRS_RECORD
       responses:
         204:
     /formatted:

@@ -253,4 +253,6 @@ public interface RecordService {
    * @return void future
    */
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
+
+  Future<Void> deleteRecordById(String id, IdType idType, String tenantId);
 }

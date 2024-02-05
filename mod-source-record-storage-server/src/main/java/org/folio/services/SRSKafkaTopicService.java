@@ -1,5 +1,8 @@
 package org.folio.services;
 
+import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
+import static org.folio.kafka.services.KafkaEnvironmentProperties.environment;
+
 import org.folio.kafka.services.KafkaTopic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
@@ -90,6 +93,11 @@ public class SRSKafkaTopicService {
     @Override
     public int numPartitions() {
       return numPartitions;
+    }
+
+    @Override
+    public String fullTopicName(String tenant) {
+      return formatTopicName(environment(), tenant, topicName());
     }
   }
 }

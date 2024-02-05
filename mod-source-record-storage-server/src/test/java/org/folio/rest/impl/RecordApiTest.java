@@ -788,14 +788,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId());
-    Assert.assertEquals(deletedResponse.getStatusCode(), HttpStatus.SC_OK);
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
     Record deletedRecord = deletedResponse.body().as(Record.class);
 
-    Assert.assertEquals(deletedRecord.getDeleted(), true);
-    Assert.assertEquals(deletedRecord.getState(), Record.State.DELETED);
-    Assert.assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
-    Assert.assertEquals(deletedRecord.getAdditionalInfo().getSuppressDiscovery(), true);
-    Assert.assertEquals(ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()), "d");
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
 
     async.complete();
 
@@ -878,14 +878,14 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId());
-    Assert.assertEquals(deletedResponse.getStatusCode(), HttpStatus.SC_OK);
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
     Record deletedRecord = deletedResponse.body().as(Record.class);
 
-    Assert.assertEquals(deletedRecord.getDeleted(), true);
-    Assert.assertEquals(deletedRecord.getState(), Record.State.DELETED);
-    Assert.assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
-    Assert.assertEquals(deletedRecord.getAdditionalInfo().getSuppressDiscovery(), true);
-    Assert.assertEquals(ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()), "d");
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
 
     async.complete();
   }

@@ -43,31 +43,22 @@ public class SRSKafkaTopicService {
   private Integer diMarcAuthorityRecordDeletedPartitions;
 
   public KafkaTopic[] createTopicObjects() {
-    var marcBib = new SRSKafkaTopic("MARC_BIB", marcBibPartitions);
-    var diParsedRecordChunkSaved = new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", diParsedRecordsChunkSavedPartitions);
-    var diSrsMarcBibInstanceHridSet = new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
-      diSrsMarcBibInstanceHridSetPartitions);
-    var diSrsMarcBibRecordModified = new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", diSrsMarcBibRecordModifiedPartitions);
-    var diSrsMarcBibRecordModifiedReadyForPostProcessing = new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
-      diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions);
-    var diMarcBibRecordMatched = new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED",
-      diMarcBibRecordMatchedPartitions);
-    var diMarcBibRecordNotMatched = new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
-      diMarcBibRecordNotMatchedPartitions);
-    var diMarcAuthorityRecordMatched = new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
-      diMarcAuthorityRecordMatchedPartitions);
-
-    var diMarcAuthorityRecordNotMatched = new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
-      diMarcAuthorityRecordNotMatchedPartitions);
-
-    var diMarcAuthorityRecordDeleted = new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED",
-      diMarcAuthorityRecordDeletedPartitions);
-
-    return new SRSKafkaTopic[] {marcBib, diParsedRecordChunkSaved,
-                                diSrsMarcBibInstanceHridSet, diSrsMarcBibRecordModified,
-                                diSrsMarcBibRecordModifiedReadyForPostProcessing, diMarcBibRecordMatched,
-                                diMarcBibRecordNotMatched, diMarcAuthorityRecordMatched,
-                                diMarcAuthorityRecordNotMatched, diMarcAuthorityRecordDeleted};
+    return new SRSKafkaTopic[] {
+      new SRSKafkaTopic("MARC_BIB", marcBibPartitions),
+      new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", diParsedRecordsChunkSavedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", diSrsMarcBibInstanceHridSetPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", diSrsMarcBibRecordModifiedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+        diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED", diMarcBibRecordMatchedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
+        diMarcBibRecordNotMatchedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
+        diMarcAuthorityRecordMatchedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
+        diMarcAuthorityRecordNotMatchedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED",
+      diMarcAuthorityRecordDeletedPartitions)};
   }
 
   public static class SRSKafkaTopic implements KafkaTopic {

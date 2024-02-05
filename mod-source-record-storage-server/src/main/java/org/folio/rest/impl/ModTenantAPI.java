@@ -1,11 +1,17 @@
 package org.folio.rest.impl;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.rest.tools.utils.TenantTool.tenantId;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import java.util.Date;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.RecordStorageKafkaTopic;
@@ -17,16 +23,10 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.SRSKafkaTopicService;
 import org.folio.services.SnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import javax.ws.rs.core.Response;
-import java.util.Date;
-import java.util.Map;
-
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.folio.rest.tools.utils.TenantTool.tenantId;
 
 public class ModTenantAPI extends TenantAPI {
 
@@ -42,6 +42,9 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   private SnapshotService snapshotService;
 
+  @Autowired
+  private SRSKafkaTopicService srsKafkaTopicService;
+
   private final String tenantId;
 
   public ModTenantAPI(Vertx vertx, String tenantId) { //NOSONAR
@@ -55,14 +58,13 @@ public class ModTenantAPI extends TenantAPI {
                            Map<String, String> headers, Context context) {
     // create topics before loading data
     Vertx vertx = context.owner();
-    return new KafkaAdminClientService(vertx)
-      .createKafkaTopics(RecordStorageKafkaTopic.values(), tenantId)
-      .compose(x -> super.loadData(attributes, tenantId, headers, context))
+
+    return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> {
-        LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
-        return setLoadSampleParameter(attributes, context)
-          .compose(v -> createStubSnapshot(attributes)).map(num);
-      });
+      LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+      return setLoadSampleParameter(attributes, context)
+        .compose(v -> createStubSnapshot(attributes)).map(num);
+    });
   }
 
   @Validate
@@ -73,7 +75,16 @@ public class ModTenantAPI extends TenantAPI {
     Future<Void> result = tenantAttributes.getPurge() != null && tenantAttributes.getPurge()
       ? new KafkaAdminClientService(context.owner()).deleteKafkaTopics(RecordStorageKafkaTopic.values(), tenantId(headers))
       : Future.succeededFuture();
-    result.onComplete(x -> super.postTenant(tenantAttributes, headers, handler, context));
+    result.onComplete(x -> super.postTenant(tenantAttributes, headers, ar -> {
+      if (ar.succeeded()) {
+        Vertx vertx = context.owner();
+        var kafkaAdminClientService = new KafkaAdminClientService(vertx);
+        kafkaAdminClientService.createKafkaTopics(srsKafkaTopicService.createTopicObjects(), tenantId);
+        handler.handle(Future.succeededFuture(ar.result()));
+      } else {
+        handler.handle(Future.failedFuture(ar.cause()));
+      }
+    }, context));
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {

@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -33,6 +34,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
 import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
@@ -378,6 +380,35 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .post(RECORDS_MATCHING_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void shouldReturnBadRequestIfMoreThanOneFilterIsSpecified() {
+    List<Filter> filters = List.of(
+      new Filter()
+        .withValues(List.of("(OCoLC)63611770"))
+      .withField("035")
+      .withIndicator1("")
+      .withIndicator2("")
+      .withSubfield("a"),
+      new Filter()
+        .withValues(List.of("12345"))
+        .withField("240")
+        .withIndicator1("")
+        .withIndicator2("")
+        .withSubfield("a")
+    );
+    MatcherAssert.assertThat(filters.size(), greaterThan(1));
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(filters))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
   }
 
   @Test

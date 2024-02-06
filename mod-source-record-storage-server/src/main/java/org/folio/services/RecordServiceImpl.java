@@ -328,6 +328,10 @@ public class RecordServiceImpl implements RecordService {
 
   private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
     // only one matching filter is expected in the current implementation for processing records matching
+    if (recordMatchingDto.getFilters().size() > 1) {
+      throw new BadRequestException("Only one matching filter is allowed in the current API implementation");
+    }
+
     Filter filter = recordMatchingDto.getFilters().get(0);
     String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
     String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;

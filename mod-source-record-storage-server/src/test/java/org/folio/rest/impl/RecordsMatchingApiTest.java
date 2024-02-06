@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -39,19 +40,21 @@ import static org.hamcrest.Matchers.oneOf;
 public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   private static final String RECORDS_MATCHING_PATH = "/source-storage/records/matching";
-  private static final String MARC_BIB_PARSED_CONTENT_WITH_ADDITIONAL_FIELDS = "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{ \"001\": \"12345\" }, {\"007\": \"12569\"},{\"007\": \"1234567\"},{\"024\": {\"ind1\": \"8\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"test123\"}]}}, {\"024\": {\"ind1\": \"1\", \"ind2\": \"1\", \"subfields\": [{\"a\": \"test45\"}]}},{\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"nin00009530412\"}]}}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"12345\"}]}},{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"948\":{\"ind1\":\"\",\"ind2\":\"\",\"subfields\":[{\"a\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"},{\"b\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"},{\"d\":\"12345\"},{\"e\":\"lts\"},{\"x\":\"addfast\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"i\":\"681394b4-10d8-4cb1-a618-0f9bd6152119\"}]}}]}";
-  private static final String PARSED_CONTENT_WITHOUT_999_FIELD = "{\"leader\": \"01589ccm a2200373   4500\", \"fields\": [{\"001\": \"12345\"}, {\"035\": {\"ind1\": \" \", \"ind2\": \" \", \"subfields\": [{\"a\": \"in00009530412\"}]}}, {\"245\": {\"ind1\": \"1\", \"ind2\": \"0\", \"subfields\": [{\"a\": \"Neue Ausgabe sämtlicher Werke,\"}]}}, {\"948\": {\"ind1\": \"\", \"ind2\": \"\", \"subfields\": [{\"a\": \"acf4f6e2-115c-4509-9d4c-536c758ef917\"}, {\"b\": \"681394b4-10d8-4cb1-a618-0f9bd6152119\"}, {\"d\": \"12345\"}, {\"e\": \"lts\"}, {\"x\": \"addfast\"}]}}]}";
-  private static final String MARC_AUTHORITY_PARSED_CONTENT = "{\"leader\": \"01012cz  a2200241n  4500\", \"fields\": [{\"001\": \"sh 85001589\"}, {\"005\": \"20171119085041.0\"}, {\"008\": \"201001 n acanaaabn           n aaa     d\"}, {\"010\": {\"subfields\": [{\"a\": \"sh 85001589\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"024\": {\"subfields\": [{\"a\": \"0022-0469\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"035\": {\"subfields\": [{\"a\": \"90c37ff4-2f1e-451f-8822-87241b081617\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"100\": {\"subfields\": [{\"a\": \"Eimermacher, Karl\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"110\": {\"subfields\": [{\"a\": \"BR140\"}, {\"b\": \".J6\"}], \"ind1\": \"0\", \"ind2\": \" \"}}, {\"111\": {\"subfields\": [{\"a\": \"270.05\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"130\": {\"subfields\": [{\"a\": \"The Journal of ecclesiastical history\"}], \"ind1\": \"0\", \"ind2\": \"4\"}}, {\"150\": {\"subfields\": [{\"a\": \"The Journal of ecclesiastical history.\"}], \"ind1\": \"0\", \"ind2\": \"4\"}}, {\"999\": {\"ind1\": \"f\", \"ind2\": \"f\", \"subfields\": [{\"s\": \"b90cb1bc-601f-45d7-b99e-b11efd281dcd\"}, {\"i\": \"79653189-7d66-4203-9564-ba6677911e75\"}]}}]}";
-  private static final String MARC_HOLDINGS_PARSED_CONTENT = "{\"leader\": \"01012cu  a2200241n  4500\", \"fields\": [{\"001\": \"1000649\"}, {\"004\": \"in00000000001\"}, {\"005\": \"20171119085041.0\"}, {\"008\": \"201001 n acanaaabn           n aaa     d\"}, {\"010\": {\"subfields\": [{\"a\": \"n   58020553 \"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"035\": {\"subfields\": [{\"a\": \"90c37ff4-2f1e-451f-8822-87241b081617\"}], \"ind1\": \" \", \"ind2\": \" \"}}, {\"999\": {\"ind1\": \"f\", \"ind2\": \"f\", \"subfields\": [{\"s\": \"b90cb1bc-601f-45d7-b99e-b11efd281dcd\"}, {\"i\": \"4795613b-c47c-4564-adaa-6379dd8c1d28\"}]}}]}";
+  private static final String PARSED_MARC_BIB_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcBibContentWith999field.json";
+  private static final String PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/parsedMarcAuthorityWith999field.json";
+  private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
+  private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
 
   private static String rawRecordContent;
+  private static String parsedRecordContent;
 
   private Snapshot snapshot;
   private Record existingRecord;
 
   @BeforeClass
   public static void setUpBeforeClass() throws IOException {
-    rawRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class);
+    rawRecordContent = TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH);
+    parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_BIB_WITH_999_FIELD_SAMPLE_PATH);
   }
 
   @Before
@@ -69,7 +72,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(new RawRecord().withId(existingRecordId).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(existingRecordId).withContent(MARC_BIB_PARSED_CONTENT_WITH_ADDITIONAL_FIELDS))
+      .withParsedRecord(new ParsedRecord().withId(existingRecordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119").withInstanceHrid("12345"));
 
     postSnapshots(context, snapshot);
@@ -132,7 +135,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcAuthorityRecordByAuthorityIdField(TestContext context) {
+  public void shouldMatchMarcAuthorityRecordByAuthorityIdField(TestContext context) throws IOException {
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
       .withId(recordId)
@@ -141,7 +145,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(MARC_AUTHORITY_PARSED_CONTENT))
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(UUID.randomUUID().toString()));
 
     postRecords(context, record);
@@ -149,7 +153,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcHoldingsRecordByHoldingIdField(TestContext context) {
+  public void shouldMatchMarcHoldingsRecordByHoldingIdField(TestContext context) throws IOException {
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
       .withId(recordId)
@@ -158,7 +163,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withGeneration(0)
       .withRecordType(MARC_HOLDING)
       .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(MARC_HOLDINGS_PARSED_CONTENT))
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(UUID.randomUUID().toString()));
 
     postRecords(context, record);
@@ -270,7 +275,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) {
+  public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) throws IOException {
+    String parsedRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
       .withId(recordId)
@@ -279,7 +285,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withGeneration(0)
       .withRecordType(MARC_BIB)
       .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT_WITHOUT_999_FIELD));
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent));
 
     postRecords(context, record);
 
@@ -289,7 +295,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body(new RecordMatchingDto()
         .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
         .withFilters(List.of(new Filter()
-          .withValues(List.of("in00009530412", "oclc1234567"))
+          .withValues(List.of("(OCoLC)63611770", "1234567"))
           .withField("035")
           .withIndicator1("")
           .withIndicator2("")
@@ -302,7 +308,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset(TestContext context) {
+  public void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset(TestContext context) throws IOException {
+    String parsedRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
     List<String> recordsIds = List.of("00000000-0000-1000-8000-000000000004", "00000000-0000-1000-8000-000000000002",
       "00000000-0000-1000-8000-000000000003", "00000000-0000-1000-8000-000000000001");
 
@@ -314,7 +321,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withGeneration(0)
         .withRecordType(MARC_BIB)
         .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
-        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(PARSED_CONTENT_WITHOUT_999_FIELD))
+        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
         .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
 
       postRecords(context, record);
@@ -328,7 +335,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withLimit(2)
         .withOffset(2)
         .withFilters(List.of(new Filter()
-          .withValues(List.of("in00009530412", "oclc1234567"))
+          .withValues(List.of("(OCoLC)63611770", "1234567"))
           .withField("035")
           .withIndicator1("")
           .withIndicator2("")

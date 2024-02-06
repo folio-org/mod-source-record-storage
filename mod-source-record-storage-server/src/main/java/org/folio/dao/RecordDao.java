@@ -78,6 +78,8 @@ public interface RecordDao {
    * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordsId and externalId
    *
    * @param matchedField        describes searching condition
+   * @param returnTotalRecords  indicates that amount of total records should/shouldn't be calculated
+   *                            and populated into {@link RecordsIdentifiersCollection.totalRecords}
    * @param typeConnection      record type
    * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
    * @param offset              offset to skip over a number of elements
@@ -85,7 +87,9 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return {@link Future} of {@link RecordsIdentifiersCollection}
    */
-  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId);
+  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, boolean returnTotalRecords,
+                                                                    TypeConnection typeConnection, boolean externalIdRequired,
+                                                                    int offset, int limit, String tenantId);
 
   /**
    * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}

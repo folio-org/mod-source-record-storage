@@ -34,6 +34,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
 
 @RunWith(VertxUnitRunner.class)
@@ -377,6 +378,46 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .post(RECORDS_MATCHING_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalse(TestContext context) throws IOException {
+    String parsedRecordContent = new ObjectMapper()
+      .readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
+    int expectedRecordCount = 3;
+
+    for (int i = 0; i < expectedRecordCount; i++) {
+      String recordId = UUID.randomUUID().toString();
+      Record record = new Record()
+        .withId(recordId)
+        .withMatchedId(recordId)
+        .withSnapshotId(snapshot.getJobExecutionId())
+        .withGeneration(0)
+        .withRecordType(MARC_BIB)
+        .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
+        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
+
+      postRecords(context, record);
+    }
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withReturnTotalRecordsCount(false)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("(OCoLC)63611770", "1234567"))
+          .withField("035")
+          .withIndicator1("")
+          .withIndicator2("")
+          .withSubfield("a"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", nullValue())
+      .body("identifiers.size()", is(expectedRecordCount));
   }
 
 }

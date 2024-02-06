@@ -322,7 +322,7 @@ public class RecordServiceImpl implements RecordService {
       return processDefaultMatchField(matchField, tenantId, typeConnection,
         recordMatchingDto.getOffset(), recordMatchingDto.getLimit());
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, typeConnection, true,
+    return recordDao.getMatchedRecordsIdentifiers(matchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection, true,
       recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 

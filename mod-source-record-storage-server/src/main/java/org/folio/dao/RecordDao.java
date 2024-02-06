@@ -50,6 +50,20 @@ public interface RecordDao {
   Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId);
 
   /**
+   * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
+   *
+   * @param condition        query where condition
+   * @param recordType       record type
+   * @param orderFields      fields to order by
+   * @param offset           starting index in a list of results
+   * @param limit            limit of records for pagination
+   * @param returnTotalCount indicates that total records count should/shouldn't be calculated and returned within {@link RecordCollection#totalRecords}
+   * @param tenantId         tenant id
+   * @return {@link Future} of {@link RecordCollection}
+   */
+  Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, boolean returnTotalCount, String tenantId);
+
+  /**
    * Searches for records by {@link Condition} with only {@link ParsedRecord} content
    *
    * @param externalIds list of ids
@@ -79,7 +93,7 @@ public interface RecordDao {
    *
    * @param matchedField        describes searching condition
    * @param returnTotalRecords  indicates that amount of total records should/shouldn't be calculated
-   *                            and populated into {@link RecordsIdentifiersCollection.totalRecords}
+   *                            and populated into {@link RecordsIdentifiersCollection#totalRecords}
    * @param typeConnection      record type
    * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
    * @param offset              offset to skip over a number of elements

@@ -82,10 +82,10 @@ import org.folio.services.util.parser.SearchExpressionParser;
 public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LogManager.getLogger();
-
   private final RecordDao recordDao;
   private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
+  private static final String MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG = "Only one matching filter is allowed in the current API implementation";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
@@ -319,17 +319,16 @@ public class RecordServiceImpl implements RecordService {
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
     if (matchField.isDefaultField()) {
-      return processDefaultMatchField(matchField, tenantId, typeConnection,
-        recordMatchingDto.getOffset(), recordMatchingDto.getLimit());
+      return processDefaultMatchField(matchField, typeConnection, recordMatchingDto, tenantId);
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection, true,
-      recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
+    return recordDao.getMatchedRecordsIdentifiers(matchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
+      true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
   private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
     // only one matching filter is expected in the current implementation for processing records matching
     if (recordMatchingDto.getFilters().size() > 1) {
-      throw new BadRequestException("Only one matching filter is allowed in the current API implementation");
+      throw new BadRequestException(MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG);
     }
 
     Filter filter = recordMatchingDto.getFilters().get(0);
@@ -347,8 +346,8 @@ public class RecordServiceImpl implements RecordService {
     };
   }
 
-  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, String tenantId,
-                                                                        TypeConnection typeConnection, Integer offset, Integer limit) {
+  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, TypeConnection typeConnection,
+                                                                        RecordMatchingDto recordMatchingDto, String tenantId) {
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
     List<String> values = ((ListValue) matchField.getValue()).getValue();
 
@@ -360,7 +359,8 @@ public class RecordServiceImpl implements RecordService {
       condition = condition.and(filterRecordByExternalHridValues(values));
     }
 
-    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), offset, limit, tenantId)
+    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), recordMatchingDto.getOffset(),
+        recordMatchingDto.getLimit(), recordMatchingDto.getReturnTotalRecordsCount(), tenantId)
       .map(recordCollection -> recordCollection.getRecords().stream()
         .map(sourceRecord -> new RecordIdentifiersDto()
           .withRecordId(sourceRecord.getId())

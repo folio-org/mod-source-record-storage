@@ -451,4 +451,27 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers.size()", is(expectedRecordCount));
   }
 
+  @Test
+  public void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalseAndMatchingByMatchedIdField() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withReturnTotalRecordsCount(false)
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(existingRecord.getMatchedId()))
+          .withField("999")
+          .withIndicator1("f")
+          .withIndicator2("f")
+          .withSubfield("s"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", nullValue())
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
 }

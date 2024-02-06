@@ -117,6 +117,7 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
 import org.jooq.Record2;
+import org.jooq.ResultQuery;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectOnConditionStep;
@@ -228,22 +229,36 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return getRecords(condition, recordType, orderFields, offset, limit, true, tenantId);
+  }
+
+  @Override
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, boolean returnTotalCount, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
-        .from(RECORDS_LB)
-        .where(condition.and(recordType.getRecordImplicitCondition()))))
-      .select(getAllRecordFieldsWithCount(prt))
-        .from(RECORDS_LB)
-        .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-        .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-        .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(recordType.getRecordImplicitCondition()))
-        .orderBy(orderFields)
-        .offset(offset)
-        .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
+        ResultQuery<Record1<Integer>> countQuery;
+        if (returnTotalCount) {
+          countQuery = dsl.selectCount()
+            .from(RECORDS_LB)
+            .where(condition.and(recordType.getRecordImplicitCondition()));
+        } else {
+          countQuery = select(inline(null, Integer.class).as(COUNT));
+        }
+
+        return dsl
+          .with(cte.as(countQuery))
+          .select(getAllRecordFieldsWithCount(prt))
+          .from(RECORDS_LB)
+          .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+          .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+          .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+          .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+          .where(condition.and(recordType.getRecordImplicitCondition()))
+          .orderBy(orderFields)
+          .offset(offset)
+          .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+      }
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 

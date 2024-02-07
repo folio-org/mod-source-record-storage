@@ -59,7 +59,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     RawRecord rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord marcRecord = new ParsedRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Snapshot snapshot = TestMocks.getSnapshot(0);
     String recordId = UUID.randomUUID().toString();

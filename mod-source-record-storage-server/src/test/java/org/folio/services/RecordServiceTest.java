@@ -90,7 +90,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     marcRecord = new ParsedRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
@@ -686,7 +686,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(original.getMetadata());
 
     ParsedRecord parsedRecord2 = new ParsedRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     String recordId2 = UUID.randomUUID().toString();
     Record record2 = new Record()
       .withId(recordId2)

@@ -26,6 +26,7 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.inline;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.primaryKey;
@@ -90,7 +91,9 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
@@ -114,10 +117,13 @@ import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
 import org.jooq.Record2;
+import org.jooq.ResultQuery;
+import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
 import org.jooq.SelectOnConditionStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
+import org.jooq.TableLike;
 import org.jooq.UpdateConditionStep;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
@@ -223,22 +229,36 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
+    return getRecords(condition, recordType, orderFields, offset, limit, true, tenantId);
+  }
+
+  @Override
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, boolean returnTotalCount, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
-        .from(RECORDS_LB)
-        .where(condition.and(recordType.getRecordImplicitCondition()))))
-      .select(getAllRecordFieldsWithCount(prt))
-        .from(RECORDS_LB)
-        .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-        .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-        .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-        .where(condition.and(recordType.getRecordImplicitCondition()))
-        .orderBy(orderFields)
-        .offset(offset)
-        .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
+        ResultQuery<Record1<Integer>> countQuery;
+        if (returnTotalCount) {
+          countQuery = dsl.selectCount()
+            .from(RECORDS_LB)
+            .where(condition.and(recordType.getRecordImplicitCondition()));
+        } else {
+          countQuery = select(inline(null, Integer.class).as(COUNT));
+        }
+
+        return dsl
+          .with(cte.as(countQuery))
+          .select(getAllRecordFieldsWithCount(prt))
+          .from(RECORDS_LB)
+          .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+          .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+          .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+          .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+          .where(condition.and(recordType.getRecordImplicitCondition()))
+          .orderBy(orderFields)
+          .offset(offset)
+          .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+      }
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
@@ -489,6 +509,74 @@ public class RecordDaoImpl implements RecordDao {
         selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
       });
     }
+  }
+
+  @Override
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, boolean returnTotalRecords,
+                                                                           TypeConnection typeConnection, boolean externalIdRequired,
+                                                                           int offset, int limit, String tenantId) {
+    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    if (matchedField.getValue() instanceof MissingValue) {
+      return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
+    }
+
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
+      TableLike<Record1<Integer>> countQuery;
+      if (returnTotalRecords) {
+        countQuery = select(countDistinct(RECORDS_LB.ID))
+          .from(RECORDS_LB)
+          .innerJoin(marcIndexersPartitionTable)
+            .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+          .innerJoin(MARC_RECORDS_TRACKING)
+            .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+            .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+          .where(filterRecordByType(typeConnection.getRecordType().value())
+            .and(filterRecordByState(Record.State.ACTUAL.value()))
+            .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+            .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
+      } else {
+        countQuery = select(inline(null, Integer.class).as(COUNT));
+      }
+
+      SelectConditionStep<org.jooq.Record> searchQuery = dsl
+        .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
+        .distinctOn(RECORDS_LB.ID)
+        .from(RECORDS_LB)
+        .innerJoin(marcIndexersPartitionTable)
+          .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
+        .innerJoin(MARC_RECORDS_TRACKING)
+          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+        .where(filterRecordByType(typeConnection.getRecordType().value())
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
+
+      return DSL.select()
+        .from(searchQuery)
+        .rightJoin(countQuery).on(DSL.trueCondition())
+        .orderBy(searchQuery.field(ID).asc())
+        .offset(offset)
+        .limit(limit);
+    })).map(result -> toRecordsIdentifiersCollection(result, returnTotalRecords));
+  }
+
+  private RecordsIdentifiersCollection toRecordsIdentifiersCollection(QueryResult result, boolean returnTotalRecords) {
+    Integer countResult = asRow(result.unwrap()).getInteger(COUNT);
+    if (returnTotalRecords && (countResult == null || countResult == 0)) {
+      return new RecordsIdentifiersCollection().withTotalRecords(0);
+    }
+
+    List<RecordIdentifiersDto> identifiers = result.stream()
+      .map(res -> asRow(res.unwrap()))
+      .map(row -> new RecordIdentifiersDto()
+        .withRecordId(row.getUUID(ID).toString())
+        .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
+      .toList();
+
+    return new RecordsIdentifiersCollection()
+      .withIdentifiers(identifiers)
+      .withTotalRecords(countResult);
   }
 
   @Override

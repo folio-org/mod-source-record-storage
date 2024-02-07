@@ -279,7 +279,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) throws IOException {
-    String parsedRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
+//    String parsedRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
       .withId(recordId)
@@ -312,7 +313,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset(TestContext context) throws IOException {
-    String parsedRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     List<String> recordsIds = List.of("00000000-0000-1000-8000-000000000004", "00000000-0000-1000-8000-000000000002",
       "00000000-0000-1000-8000-000000000003", "00000000-0000-1000-8000-000000000001");
 
@@ -413,8 +414,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalse(TestContext context) throws IOException {
-    String parsedRecordContent = new ObjectMapper()
-      .readValue(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH), JsonObject.class).encode();
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     int expectedRecordCount = 3;
 
     for (int i = 0; i < expectedRecordCount; i++) {

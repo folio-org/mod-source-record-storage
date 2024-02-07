@@ -252,9 +252,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -314,9 +312,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -329,9 +325,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     RawRecord rawRecordDuplicate = new RawRecord().withId(recordId)
       .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
     ParsedRecord parsedRecordDuplicate = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record duplicateRecord = new Record()
       .withId(duplicateRecordId)
@@ -405,9 +399,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record incomingRecord = new Record()
       .withRawRecord(rawRecord)
@@ -568,9 +560,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -630,9 +620,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)

@@ -170,9 +170,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -285,9 +283,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)
@@ -346,9 +342,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-          .encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Record defaultRecord = new Record()
       .withId(recordId)

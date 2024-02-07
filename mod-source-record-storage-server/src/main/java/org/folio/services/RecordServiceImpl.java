@@ -115,7 +115,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
-    LOG.debug(format("saveRecord:: Saving record with id: %s for tenant: %s", record.getId(), tenantId));
+    LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
@@ -402,12 +402,12 @@ public class RecordServiceImpl implements RecordService {
           if (sourceRecord.isPresent()) {
             // Set matched id from existing source record
             String sourceRecordId = sourceRecord.get().getRecordId();
-            LOG.debug(format("setMatchedIdFromExistingSourceRecord:: Set matchedId: %s from source record for record with id: %s",
-              sourceRecordId, record.getId()));
+            LOG.debug("setMatchedIdFromExistingSourceRecord:: Set matchedId: {} from source record for record with id: {}",
+              sourceRecordId, record.getId());
             promise.complete(record.withMatchedId(sourceRecordId));
           } else {
             // Set matched id same as record id
-            LOG.debug(format("setMatchedIdFromExistingSourceRecord:: Set matchedId same as record id: %s", record.getId()));
+            LOG.debug("setMatchedIdFromExistingSourceRecord:: Set matchedId same as record id: {}", record.getId());
             promise.complete(record.withMatchedId(record.getId()));
           }
         } else {

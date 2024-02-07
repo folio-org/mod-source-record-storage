@@ -160,7 +160,7 @@ public interface RecordService {
 
   /**
    * Searches for {@link Record} by condition specified in {@link RecordMatchingDto}
-   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordsId and externalId
+   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordId and externalId
    *
    * @param recordMatchingDto record matching request that describes matching criteria
    * @param tenantId          tenant id

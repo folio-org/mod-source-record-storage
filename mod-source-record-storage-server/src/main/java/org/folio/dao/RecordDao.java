@@ -89,7 +89,7 @@ public interface RecordDao {
 
   /**
    * Searches for {@link Record} by {@link MatchField} with offset and limit,
-   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordsId and externalId
+   * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordId and externalId
    *
    * @param matchedField        describes searching condition
    * @param returnTotalRecords  indicates that amount of total records should/shouldn't be calculated

@@ -35,7 +35,11 @@ import io.vertx.sqlclient.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.IdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
+import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.jooq.Condition;
@@ -43,9 +47,6 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.folio.dao.RecordDao;
-import org.folio.dao.util.IdType;
-import org.folio.dao.util.RecordType;
-import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
@@ -75,6 +76,8 @@ public class RecordServiceImpl implements RecordService {
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
+  private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
+  private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
@@ -298,6 +301,19 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId) {
     return recordDao.updateRecordsState(matchedId, state, recordType, tenantId);
+  }
+
+  @Override
+  public Future<Void> deleteRecordById(String id, IdType idType, String tenantId) {
+    return recordDao.getRecordByExternalId(id, idType, tenantId)
+      .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+      .map(record -> {
+        record.withState(Record.State.DELETED);
+        record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
+        ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
+        return record;
+      })
+      .compose(record -> updateRecord(record, tenantId)).map(r -> null);
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

@@ -1,23 +1,5 @@
 package org.folio.services.kafka;
 
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.kafka.admin.KafkaAdminClient;
-import io.vertx.kafka.admin.NewTopic;
-import org.apache.kafka.common.errors.TopicExistsException;
-import org.folio.RecordStorageKafkaTopic;
-import org.folio.kafka.services.KafkaAdminClientService;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -33,18 +15,53 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.kafka.admin.KafkaAdminClient;
+import io.vertx.kafka.admin.NewTopic;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.kafka.common.errors.TopicExistsException;
+import org.folio.kafka.services.KafkaAdminClientService;
+import org.folio.kafka.services.KafkaTopic;
+import org.folio.services.SRSKafkaTopicService;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+
 @RunWith(VertxUnitRunner.class)
 public class KafkaAdminClientServiceTest {
-  private final Set<String> allExpectedTopics = Set.of("folio.foo-tenant.srs.marc-bib");
 
   private final String STUB_TENANT = "foo-tenant";
   private KafkaAdminClient mockClient;
   private Vertx vertx;
+  @Mock
+  private SRSKafkaTopicService srsKafkaTopicService;
 
   @Before
   public void setUp() {
     vertx = mock(Vertx.class);
     mockClient = mock(KafkaAdminClient.class);
+    srsKafkaTopicService = mock(SRSKafkaTopicService.class);
+    KafkaTopic[] topicObjects = {
+      new SRSKafkaTopicService.SRSKafkaTopic("MARC_BIB", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", 10),
+      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", 10)
+    };
+
+    when(srsKafkaTopicService.createTopicObjects()).thenReturn(topicObjects);
   }
 
   @Test
@@ -123,7 +140,20 @@ public class KafkaAdminClientServiceTest {
       mocked.when(() -> KafkaAdminClient.create(eq(vertx), anyMap())).thenReturn(client);
 
       return new KafkaAdminClientService(vertx)
-        .createKafkaTopics(RecordStorageKafkaTopic.values(), STUB_TENANT);
+        .createKafkaTopics(srsKafkaTopicService.createTopicObjects(), STUB_TENANT);
     }
   }
+
+  private final Set<String> allExpectedTopics = Set.of(
+    "folio.foo-tenant.MARC_BIB",
+    "folio.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
+    "folio.foo-tenant.DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
+    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED",
+    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MATCHED",
+    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
+    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
+    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
+    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED"
+  );
 }

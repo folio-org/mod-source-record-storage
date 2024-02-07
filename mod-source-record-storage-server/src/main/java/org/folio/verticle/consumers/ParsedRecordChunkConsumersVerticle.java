@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Scope(SCOPE_PROTOTYPE)
-public class ParsedRecordChunkConsumersVerticle extends AbstractConsumerVerticle {
+public class ParsedRecordChunkConsumersVerticle extends AbstractConsumerVerticle<String, byte[]> {
 
-  private final AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler;
+  private final AsyncRecordHandler<String, byte[]> parsedRecordChunksKafkaHandler;
 
-  private final ProcessRecordErrorHandler<String, String> parsedRecordChunksErrorHandler;
+  private final ProcessRecordErrorHandler<String, byte[]> parsedRecordChunksErrorHandler;
 
   @Value("${srs.kafka.ParsedMarcChunkConsumer.loadLimit:5}")
   private int loadLimit;
@@ -27,16 +27,16 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractConsumerVerticle
   @Autowired
   protected ParsedRecordChunkConsumersVerticle(KafkaConfig kafkaConfig,
                                                @Qualifier("parsedRecordChunksKafkaHandler")
-                                               AsyncRecordHandler<String, String> parsedRecordChunksKafkaHandler,
+                                               AsyncRecordHandler<String, byte[]> parsedRecordChunksKafkaHandler,
                                                @Qualifier("parsedRecordChunksErrorHandler")
-                                               ProcessRecordErrorHandler<String, String> parsedRecordChunksErrorHandler) {
+                                               ProcessRecordErrorHandler<String, byte[]> parsedRecordChunksErrorHandler) {
     super(kafkaConfig);
     this.parsedRecordChunksKafkaHandler = parsedRecordChunksKafkaHandler;
     this.parsedRecordChunksErrorHandler = parsedRecordChunksErrorHandler;
   }
 
   @Override
-  protected ProcessRecordErrorHandler<String, String> processRecordErrorHandler() {
+  protected ProcessRecordErrorHandler<String, byte[]> processRecordErrorHandler() {
     return parsedRecordChunksErrorHandler;
   }
 
@@ -46,13 +46,18 @@ public class ParsedRecordChunkConsumersVerticle extends AbstractConsumerVerticle
   }
 
   @Override
-  protected AsyncRecordHandler<String, String> recordHandler() {
+  protected AsyncRecordHandler<String, byte[]> recordHandler() {
     return parsedRecordChunksKafkaHandler;
   }
 
   @Override
   protected List<String> eventTypes() {
     return List.of(DI_RAW_RECORDS_CHUNK_PARSED.value());
+  }
+
+  @Override
+  public String getDeserializerClass() {
+    return "org.apache.kafka.common.serialization.ByteArrayDeserializer";
   }
 
 }

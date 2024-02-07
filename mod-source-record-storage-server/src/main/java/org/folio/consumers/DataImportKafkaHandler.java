@@ -4,13 +4,13 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -29,7 +29,7 @@ import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
 @Qualifier("DataImportKafkaHandler")
-public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
+public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]> {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
@@ -48,14 +48,14 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   }
 
   @Override
-  public Future<String> handle(KafkaConsumerRecord<String, String> targetRecord) {
+  public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
-      Event event = ObjectMapperTool.getMapper().readValue(targetRecord.value(), Event.class);
+      Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       LOGGER.debug("handle:: Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}' and userId: '{}'",
         eventPayload.getEventType(), eventPayload.getJobExecutionId(), recordId, chunkId, userId);

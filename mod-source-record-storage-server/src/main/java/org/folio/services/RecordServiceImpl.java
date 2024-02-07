@@ -41,8 +41,12 @@ import io.vertx.sqlclient.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.IdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.RecordType;
+import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.Filter;
@@ -56,9 +60,6 @@ import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.folio.dao.RecordDao;
-import org.folio.dao.util.IdType;
-import org.folio.dao.util.RecordType;
-import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
@@ -82,15 +83,19 @@ import org.folio.services.util.parser.SearchExpressionParser;
 public class RecordServiceImpl implements RecordService {
 
   private static final Logger LOG = LogManager.getLogger();
-  private final RecordDao recordDao;
+
   private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
   private static final String MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG = "Only one matching filter is allowed in the current API implementation";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
+  private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
+  private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
+
+  private final RecordDao recordDao;
 
   @Autowired
   public RecordServiceImpl(final RecordDao recordDao) {
@@ -325,48 +330,17 @@ public class RecordServiceImpl implements RecordService {
       true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
-  private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
-    // only one matching filter is expected in the current implementation for processing records matching
-    if (recordMatchingDto.getFilters().size() > 1) {
-      throw new BadRequestException(MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG);
-    }
-
-    Filter filter = recordMatchingDto.getFilters().get(0);
-    String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
-    String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
-    String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
-    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
-  }
-
-  private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {
-    return switch (recordType) {
-      case MARC_BIB -> TypeConnection.MARC_BIB;
-      case MARC_HOLDING -> TypeConnection.MARC_HOLDINGS;
-      case MARC_AUTHORITY -> TypeConnection.MARC_AUTHORITY;
-    };
-  }
-
-  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, TypeConnection typeConnection,
-                                                                        RecordMatchingDto recordMatchingDto, String tenantId) {
-    Condition condition = filterRecordByState(Record.State.ACTUAL.value());
-    List<String> values = ((ListValue) matchField.getValue()).getValue();
-
-    if (matchField.isMatchedId()) {
-      condition = condition.and(getExternalIdsCondition(values, IdType.RECORD));
-    } else if (matchField.isExternalId()) {
-      condition = condition.and(getExternalIdsCondition(values, IdType.EXTERNAL));
-    } else if (matchField.isExternalHrid()) {
-      condition = condition.and(filterRecordByExternalHridValues(values));
-    }
-
-    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), recordMatchingDto.getOffset(),
-        recordMatchingDto.getLimit(), recordMatchingDto.getReturnTotalRecordsCount(), tenantId)
-      .map(recordCollection -> recordCollection.getRecords().stream()
-        .map(sourceRecord -> new RecordIdentifiersDto()
-          .withRecordId(sourceRecord.getId())
-          .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
-        .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
-          .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
+  @Override
+  public Future<Void> deleteRecordById(String id, IdType idType, String tenantId) {
+    return recordDao.getRecordByExternalId(id, idType, tenantId)
+      .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+      .map(record -> {
+        record.withState(Record.State.DELETED);
+        record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
+        ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
+        return record;
+      })
+      .compose(record -> updateRecord(record, tenantId)).map(r -> null);
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
@@ -470,4 +444,49 @@ public class RecordServiceImpl implements RecordService {
     }
     return false;
   }
+
+  private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
+    // only one matching filter is expected in the current implementation for processing records matching
+    if (recordMatchingDto.getFilters().size() > 1) {
+      throw new BadRequestException(MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG);
+    }
+
+    Filter filter = recordMatchingDto.getFilters().get(0);
+    String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
+    String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
+    String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
+  }
+
+  private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {
+    return switch (recordType) {
+      case MARC_BIB -> TypeConnection.MARC_BIB;
+      case MARC_HOLDING -> TypeConnection.MARC_HOLDINGS;
+      case MARC_AUTHORITY -> TypeConnection.MARC_AUTHORITY;
+    };
+  }
+
+  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, TypeConnection typeConnection,
+                                                                        RecordMatchingDto recordMatchingDto, String tenantId) {
+    Condition condition = filterRecordByState(Record.State.ACTUAL.value());
+    List<String> values = ((ListValue) matchField.getValue()).getValue();
+
+    if (matchField.isMatchedId()) {
+      condition = condition.and(getExternalIdsCondition(values, IdType.RECORD));
+    } else if (matchField.isExternalId()) {
+      condition = condition.and(getExternalIdsCondition(values, IdType.EXTERNAL));
+    } else if (matchField.isExternalHrid()) {
+      condition = condition.and(filterRecordByExternalHridValues(values));
+    }
+
+    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), recordMatchingDto.getOffset(),
+        recordMatchingDto.getLimit(), recordMatchingDto.getReturnTotalRecordsCount(), tenantId)
+      .map(recordCollection -> recordCollection.getRecords().stream()
+        .map(sourceRecord -> new RecordIdentifiersDto()
+          .withRecordId(sourceRecord.getId())
+          .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
+        .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
+          .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
+  }
+
 }

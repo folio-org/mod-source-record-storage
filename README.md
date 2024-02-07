@@ -125,7 +125,18 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * "_srs.kafka.AuthorityLinkChunkConsumer.loadLimit_": 2
 * Relevant from the **Poppy** release, module versions from 5.7.0:
   * "_srs.linking-rules-cache.expiration.time.hours_": 12
-
+* Variables for setting number of partitions of topics:
+  * MARC_BIB
+  * DI_PARSED_RECORDS_CHUNK_SAVED
+  * DI_SRS_MARC_BIB_INSTANCE_HRID_SET
+  * DI_SRS_MARC_BIB_RECORD_MODIFIED
+  * DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING
+  * DI_SRS_MARC_BIB_RECORD_MATCHED
+  * DI_SRS_MARC_BIB_RECORD_NOT_MATCHED
+  * DI_SRS_MARC_AUTHORITY_RECORD_MATCHED
+  * DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED
+  * DI_SRS_MARC_AUTHORITY_RECORD_DELETED
+    Default value for all partitions is 1
 ## Database schemas
 
 The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.

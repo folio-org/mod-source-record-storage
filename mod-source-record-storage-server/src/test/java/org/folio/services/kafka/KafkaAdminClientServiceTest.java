@@ -145,15 +145,15 @@ public class KafkaAdminClientServiceTest {
   }
 
   private final Set<String> allExpectedTopics = Set.of(
-    "folio.foo-tenant.MARC_BIB",
-    "folio.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
-    "folio.foo-tenant.DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
-    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED",
-    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
-    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_MATCHED",
-    "folio.foo-tenant.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
-    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
-    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
-    "folio.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED"
+    "folio.Default.foo-tenant.MARC_BIB",
+    "folio.Default.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
+    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED"
   );
 }

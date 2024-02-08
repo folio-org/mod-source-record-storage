@@ -43,6 +43,30 @@ public class SRSKafkaTopicService {
   @Value("${di_marc_authority_record_deleted.partitions}")
   private Integer diMarcAuthorityRecordDeletedPartitions;
 
+  @Value("${di_marc_holdings_hrid_set.partitions}")
+  private Integer diSrsMarcHoldingsHridSetPartitions;
+
+  @Value("${di_marc_holdings_record_modified_ready_for_post_processing.partitions}")
+  private Integer diSrsMarcHoldingsModifiedReadyForPostProcessingPartitions;
+
+  @Value("${di_marc_holdings_record_updated.partitions}")
+  private Integer diMarcHoldingsRecordUpdatedPartitions;
+
+  @Value("${di_marc_bib_record_updated.partitions}")
+  private Integer diMarcBibRecordUpdatedPartitions;
+
+  @Value("${di_marc_authority_record_modified_ready_for_post_processing.partitions}")
+  private Integer diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions;
+
+  @Value("${di_marc_bib_record_modified_ready_for_post_processing.partitions}")
+  private Integer diSrsMarcBibMatchedReadyForPostProcessingPartitions;
+
+  @Value("${di_logs_srs_marc_authority_record_created.partitions}")
+  private Integer diLogSrsMarcAuthorityRecordCreatedPartitions;
+
+  @Value("${di_logs_srs_marc_authority_record_updated.partitions}")
+  private Integer diLogSrsMarcAuthorityRecordUpdatedPartitions;
+
   public KafkaTopic[] createTopicObjects() {
     return new SRSKafkaTopic[] {
       new SRSKafkaTopic("MARC_BIB", marcBibPartitions),
@@ -59,7 +83,24 @@ public class SRSKafkaTopicService {
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
         diMarcAuthorityRecordNotMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED",
-      diMarcAuthorityRecordDeletedPartitions)};
+      diMarcAuthorityRecordDeletedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET",
+        diSrsMarcHoldingsHridSetPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+        diSrsMarcHoldingsModifiedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_UPDATED",
+        diMarcHoldingsRecordUpdatedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_UPDATED",
+        diMarcBibRecordUpdatedPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+        diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING",
+        diSrsMarcBibMatchedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED",
+        diLogSrsMarcAuthorityRecordCreatedPartitions),
+      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED",
+        diLogSrsMarcAuthorityRecordUpdatedPartitions)
+    };
   }
 
   public static class SRSKafkaTopic implements KafkaTopic {

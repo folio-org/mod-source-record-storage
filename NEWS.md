@@ -1,3 +1,6 @@
+## 2024-02-09 v5.7.6
+* [MODSOURMAN-1106](https://folio-org.atlassian.net/browse/MODSOURMAN-1106) Fix missing Instance Update status and incorrect count on DI log summary page
+
 ## 2023-12-05 v5.7.5
 * [MODSOURCE-719](https://issues.folio.org/browse/MODSOURCE-719) Bump Kafka, Spring, Snappy fixing vulnerabilities
 * [MODSOURCE-727](https://issues.folio.org/browse/MODSOURCE-727) Provide central tenant id in DI payload to ensure instance update on central tenant after instance hrid has been set to record

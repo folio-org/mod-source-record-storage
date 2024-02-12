@@ -28,6 +28,7 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.kafka.services.KafkaTopic;
 import org.folio.services.SRSKafkaTopicService;
+import org.folio.services.SRSKafkaTopicService.SRSKafkaTopic;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,24 +50,27 @@ public class KafkaAdminClientServiceTest {
     mockClient = mock(KafkaAdminClient.class);
     srsKafkaTopicService = mock(SRSKafkaTopicService.class);
     KafkaTopic[] topicObjects = {
-      new SRSKafkaTopicService.SRSKafkaTopic("MARC_BIB", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_UPDATED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_UPDATED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED", 10),
-      new SRSKafkaTopicService.SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED", 10)
+      new SRSKafkaTopic("MARC_BIB", 10),
+      new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_UPDATED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_UPDATED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING", 10),
+      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED", 10),
+      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED", 10),
+      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_UPDATED", 10)
     };
 
     when(srsKafkaTopicService.createTopicObjects()).thenReturn(topicObjects);
@@ -170,6 +174,9 @@ public class KafkaAdminClientServiceTest {
     "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
     "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING",
     "folio.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED",
-    "folio.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED"
+    "folio.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED",
+    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED"
   );
 }

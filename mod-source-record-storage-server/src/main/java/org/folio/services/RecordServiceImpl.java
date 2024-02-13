@@ -321,9 +321,10 @@ public class RecordServiceImpl implements RecordService {
     return promise.future().onSuccess(r -> {
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
         System.out.println("Record type: " + record.getRecordType());
-        System.out.printf("tsaghik Record before add" + r.getParsedRecord().getContent());
+        System.out.printf("tsaghik R before add" + r.getParsedRecord().getContent());
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
-        System.out.printf("tsaghik Record after add" + r.getParsedRecord().getContent());
+        System.out.println("tsaghik Record after" + record.getParsedRecord().getContent());
+        System.out.printf("tsaghik R after add" + r.getParsedRecord().getContent());
       }
     });
   }

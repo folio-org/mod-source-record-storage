@@ -594,7 +594,11 @@ public class RecordDaoImpl implements RecordDao {
               System.out.println("tsaghik_record after : " + record.getParsedRecord().getContent());
 
               Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+              System.out.println("tsaghik_dbParsedRecord-before : " + dbParsedRecord.toString());
+
               dbParsedRecords.add(dbParsedRecord);
+              System.out.println("tsaghik_dbParsedRecord-after : " + dbParsedRecord);
+
             } catch (Exception e) {
               // create error record and remove from record
               Object content = Objects.nonNull(record.getParsedRecord())
@@ -611,11 +615,15 @@ public class RecordDaoImpl implements RecordDao {
             }
           }
           if (Objects.nonNull(record.getRawRecord())) {
+            System.out.println("tsaghik_record.getRawRecord: " + record.getRawRecord().getContent());
+            System.out.println("tsaghik_getRawRecord: " + RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
             dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
           }
           if (Objects.nonNull(record.getErrorRecord())) {
             dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
           }
+          System.out.println("tsaghik_dbRecords record : " + record.getParsedRecord().getContent().toString());
+          System.out.println("tsaghik_dbRawRecords : " + RecordDaoUtil.toDatabaseRecord(record).toString());
           dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
         });
 

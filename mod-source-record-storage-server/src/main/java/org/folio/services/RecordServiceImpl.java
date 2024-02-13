@@ -317,10 +317,13 @@ public class RecordServiceImpl implements RecordService {
       // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
-
+    System.out.println("tsaghik Record before" + record.getParsedRecord().getContent());
     return promise.future().onSuccess(r -> {
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
+        System.out.println("Record type: " + record.getRecordType());
+        System.out.printf("tsaghik Record before add" + r.getParsedRecord().getContent());
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
+        System.out.printf("tsaghik Record after add" + r.getParsedRecord().getContent());
       }
     });
   }

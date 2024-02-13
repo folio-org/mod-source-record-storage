@@ -77,7 +77,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     try {
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
-
+      System.out.println("tsaghik recordCollection: " + recordCollection.getRecords().get(0).getParsedRecord().getContent());
       List<KafkaHeader> kafkaHeaders = targetRecord.headers();
       OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
       String tenantId = okapiConnectionParams.getTenantId();

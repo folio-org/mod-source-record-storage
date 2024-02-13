@@ -563,6 +563,7 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
         .map(RecordDaoUtil::ensureRecordForeignKeys)
         .forEach(record -> {
+          System.out.println("tsaghik_record6 : " + record);
           // collect unique matched ids to query to determine generation
           matchedIds.add(UUID.fromString(record.getMatchedId()));
 

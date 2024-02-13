@@ -588,9 +588,9 @@ public class RecordDaoImpl implements RecordDao {
             try {
               RecordType recordType = toRecordType(record.getRecordType().name());
               System.out.println("tsaghik_recordType : " + recordType);
-              System.out.println("tsaghik_record before : " + record.getParsedRecord());
+              System.out.println("tsaghik_record before : " + record.getParsedRecord().getContent());
               recordType.formatRecord(record);
-              System.out.println("tsaghik_record after : " + record.getParsedRecord());
+              System.out.println("tsaghik_record after : " + record.getParsedRecord().getContent());
 
               Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
               dbParsedRecords.add(dbParsedRecord);

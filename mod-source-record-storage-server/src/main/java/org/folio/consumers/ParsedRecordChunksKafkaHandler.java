@@ -86,7 +86,11 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
         event.getEventType(), jobExecutionId, chunkId, chunkNumber, key);
       setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
-        .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, event.getEventType(), targetRecord));
+        .compose(recordsBatchResponse -> {
+          System.out.println("Records Batch Response: " + recordsBatchResponse.getRecords().get(0).getParsedRecord().getContent());
+          return sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, event.getEventType(), targetRecord);
+        });
+
     } catch (Exception e) {
       LOGGER.warn("handle:: RecordCollection processing has failed with errors jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}'",
         jobExecutionId, chunkId, chunkNumber, key);
@@ -146,6 +150,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       .stream().peek(targetRecord -> {
         if (targetRecord.getParsedRecord() != null && targetRecord.getParsedRecord().getContent() != null) {
           String content = ParsedRecordDaoUtil.normalizeContent(targetRecord.getParsedRecord());
+          System.out.println("tsaghik_normalized content: " + content);
           targetRecord.getParsedRecord().withContent(content);
         }
       }).collect(Collectors.toList()));

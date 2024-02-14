@@ -618,7 +618,7 @@ public class RecordDaoImpl implements RecordDao {
           }
           if (Objects.nonNull(record.getRawRecord())) {
             System.out.println("tsaghik_record.getRawRecord: " + record.getRawRecord().getContent());//??
-            System.out.println("tsaghik_getRawRecord: " + RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+            System.out.println("tsaghik_getRawRecord: " + RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()).getContent());
             dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
           }
           if (Objects.nonNull(record.getErrorRecord())) {

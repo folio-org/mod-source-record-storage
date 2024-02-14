@@ -589,9 +589,11 @@ public class RecordDaoImpl implements RecordDao {
             try {
               RecordType recordType = toRecordType(record.getRecordType().name());
               System.out.println("tsaghik_recordType : " + recordType);
-              System.out.println("tsaghik_record before : " + record.getParsedRecord().getContent());
+              System.out.println("tsaghik_record before : " + record.getParsedRecord().getContent()); //is ok 400
+
               recordType.formatRecord(record);
-              System.out.println("tsaghik_record after : " + record.getParsedRecord().getContent());
+
+              System.out.println("tsaghik_record after : " + record.getParsedRecord().getContent()); //is ok 400
 
               Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
               System.out.println("tsaghik_dbParsedRecord-before : " + dbParsedRecord.toString());
@@ -615,12 +617,9 @@ public class RecordDaoImpl implements RecordDao {
             }
           }
           if (Objects.nonNull(record.getRawRecord())) {
-            System.out.println("tsaghik_record.getRawRecord: " + record.getRawRecord().getContent());
-            System.out.println("tsaghik_RawRecord: " + RawRecordDaoUtil
-              .toDatabaseRawRecord(record.getRawRecord()).getContent());
-
-            dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord())
-              .setContent(record.getParsedRecord().getContent().toString())); //-
+            System.out.println("tsaghik_record.getRawRecord: " + record.getRawRecord().getContent());//??
+            System.out.println("tsaghik_getRawRecord: " + RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+            dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
           }
           if (Objects.nonNull(record.getErrorRecord())) {
             dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));

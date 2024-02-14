@@ -157,9 +157,13 @@ public enum RecordType implements ParsedRecordType {
   private static void formatMarcRecord(Record record) throws FormatRecordException {
     if (Objects.nonNull(record.getRecordType()) && Objects.nonNull(record.getParsedRecord())
       && Objects.nonNull(record.getParsedRecord().getContent())) {
+      System.out.println("tsaghik-get getParsedRecord = " + record.getParsedRecord().getContent());
       String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
+      System.out.println("tsaghik-get1 getParsedRecord = " + content);
+
       try {
         record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
+        System.out.println("tsaghik-get3 marc= " + MarcUtil.marcJsonToTxtMarc(content));
       } catch (IOException e) {
         throw new FormatRecordException(e);
       }

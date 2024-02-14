@@ -250,8 +250,11 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Record> getFormattedRecord(String id, IdType idType, String tenantId) {
     return recordDao.getRecordByExternalId(id, idType, tenantId)
-      .map(optionalRecord -> formatMarcRecord(optionalRecord.orElseThrow(() ->
-        new NotFoundException(format("Couldn't find record with id type %s and id %s", idType, id)))));
+      .map(optionalRecord -> {
+        optionalRecord.ifPresent(record -> System.out.println("Optional Record: " + record));
+        return formatMarcRecord(optionalRecord.orElseThrow(() ->
+          new NotFoundException(format("Couldn't find record with id type %s and id %s", idType, id))));
+      });
   }
 
   @Override

@@ -886,6 +886,7 @@ public class RecordDaoImpl implements RecordDao {
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
+
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
     )).map(res -> record.getParsedRecord()));
   }
@@ -1057,7 +1058,7 @@ public class RecordDaoImpl implements RecordDao {
       .onSuccess(optionalRecord -> {
         if (optionalRecord.isPresent()) {
           Record record = optionalRecord.get();
-          System.out.println("tsaghik Record found: " + record);
+          System.out.println("tsaghik Record found: " + record.getParsedRecord().getContent().toString());
         } else {
           System.out.println("tsaghik Record not found.");
         }

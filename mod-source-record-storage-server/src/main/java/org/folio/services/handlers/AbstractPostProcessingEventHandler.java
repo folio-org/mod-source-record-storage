@@ -106,9 +106,11 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           if (centralTenantOperationExists(dataImportEventPayload)) {
             return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
+          System.out.println("tsaghik_called post procc before: " + record.getParsedRecord().getContent());
           return saveRecord(record, dataImportEventPayload.getTenant());
         })
         .onSuccess(record -> {
+          System.out.println("tsaghik_called post procc after: " + record.getParsedRecord().getContent());
           sendReplyEvent(dataImportEventPayload, record);
           sendAdditionalEvent(dataImportEventPayload, record);
           future.complete(dataImportEventPayload);
@@ -306,6 +308,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
+
           return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());

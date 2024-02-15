@@ -884,9 +884,9 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
+    System.out.println("tsaghik_updateParsedRecord:: " + record.getRecordType() + record.getParsedRecord().getContent().toString());
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
-
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
     )).map(res -> record.getParsedRecord()));
   }

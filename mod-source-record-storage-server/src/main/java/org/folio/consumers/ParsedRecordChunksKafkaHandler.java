@@ -77,7 +77,11 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     try {
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
+
+      //todo so manager sends right data
+      //todo is ok 400
       System.out.println("tsaghik recordCollection: " + recordCollection.getRecords().get(0).getParsedRecord().getContent());
+
       List<KafkaHeader> kafkaHeaders = targetRecord.headers();
       OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
       String tenantId = okapiConnectionParams.getTenantId();
@@ -87,6 +91,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       setUserMetadata(recordCollection, userId);
       return recordService.saveRecords(recordCollection, tenantId)
         .compose(recordsBatchResponse -> {
+          //todo is ok 400
           System.out.println("Records Batch Response: " + recordsBatchResponse.getRecords().get(0).getParsedRecord().getContent());
           return sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, event.getEventType(), targetRecord);
         });

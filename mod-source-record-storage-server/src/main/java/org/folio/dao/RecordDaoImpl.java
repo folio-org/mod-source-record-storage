@@ -563,7 +563,6 @@ public class RecordDaoImpl implements RecordDao {
         .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
         .map(RecordDaoUtil::ensureRecordForeignKeys)
         .forEach(record -> {
-          System.out.println("tsaghik_record6 : " + record);
           // collect unique matched ids to query to determine generation
           matchedIds.add(UUID.fromString(record.getMatchedId()));
 
@@ -589,10 +588,13 @@ public class RecordDaoImpl implements RecordDao {
             try {
               RecordType recordType = toRecordType(record.getRecordType().name());
               System.out.println("tsaghik_recordType : " + recordType);
+
+              //todo is ok 400
               System.out.println("tsaghik_record before : " + record.getParsedRecord().getContent()); //is ok 400
 
               recordType.formatRecord(record);
 
+              //todo is ok 400
               System.out.println("tsaghik_record after : " + record.getParsedRecord().getContent()); //is ok 400
 
               Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
@@ -1051,7 +1053,18 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
       String tenantId) {
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
+      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType))
+      .onSuccess(optionalRecord -> {
+        if (optionalRecord.isPresent()) {
+          Record record = optionalRecord.get();
+          System.out.println("tsaghik Record found: " + record);
+        } else {
+          System.out.println("tsaghik Record not found.");
+        }
+      })
+      .onFailure(error -> {
+        System.err.println("Error occurred: " + error.getMessage());
+      });
   }
 
   @Override
@@ -1281,11 +1294,15 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     List<Future<Record>> futures = new ArrayList<>();
     futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
+      System.out.println("tsaghik rr"+ rr.get().getContent());
       rr.ifPresent(record::withRawRecord);
+      System.out.println("tsaghik record1"+ record.getRawRecord().getContent());
       return record;
     }));
     futures.add(ParsedRecordDaoUtil.findById(txQE, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
+      System.out.println("tsaghik pr"+ pr.get().getContent());
       pr.ifPresent(record::withParsedRecord);
+      System.out.println("tsaghik2 record"+ record.getParsedRecord().getContent());
       return record;
     }));
     if (includeErrorRecord) {
@@ -1300,6 +1317,7 @@ public class RecordDaoImpl implements RecordDao {
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     return RawRecordDaoUtil.save(txQE, record.getRawRecord())
       .compose(rawRecord -> {
+        System.out.println("tsaghik-rawRecord-insert: " + record.getParsedRecord().getContent());
         if (Objects.nonNull(record.getParsedRecord())) {
           return insertOrUpdateParsedRecord(txQE, record);
         }

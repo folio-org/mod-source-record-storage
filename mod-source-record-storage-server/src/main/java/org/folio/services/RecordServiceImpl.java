@@ -341,7 +341,9 @@ public class RecordServiceImpl implements RecordService {
         var content = reorderMarcRecordFields(sourceParsedRecord,targetParsedRecord);
 
         r.getParsedRecord().setContent(content);
+
         System.out.printf("tsaghik R after add" + r.getParsedRecord().getContent());
+        //todo maybe add content in record also
       }
     });
   }

@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.kafka.services.KafkaEnvironmentProperties.environment;
@@ -12,9 +13,6 @@ import org.springframework.stereotype.Service;
 @Service
 @PropertySource(value = "kafka.properties")
 public class SRSKafkaTopicService {
-
-  @Value("${marcBib.partitions}")
-  private Integer marcBibPartitions;
 
   @Value("${di_parsed_records_chunk_saved.partitions}")
   private Integer diParsedRecordsChunkSavedPartitions;
@@ -77,8 +75,8 @@ public class SRSKafkaTopicService {
   private Integer diMarcAuthorityRecordUpdatedPartitions;
 
   public KafkaTopic[] createTopicObjects() {
-    return new SRSKafkaTopic[] {
-      new SRSKafkaTopic("MARC_BIB", marcBibPartitions),
+    return new KafkaTopic[] {
+      MARC_BIB,
       new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", diParsedRecordsChunkSavedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", diSrsMarcBibInstanceHridSetPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", diSrsMarcBibRecordModifiedPartitions),

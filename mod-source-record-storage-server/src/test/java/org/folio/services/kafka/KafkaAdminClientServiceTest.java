@@ -2,6 +2,7 @@ package org.folio.services.kafka;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
@@ -50,7 +51,7 @@ public class KafkaAdminClientServiceTest {
     mockClient = mock(KafkaAdminClient.class);
     srsKafkaTopicService = mock(SRSKafkaTopicService.class);
     KafkaTopic[] topicObjects = {
-      new SRSKafkaTopic("MARC_BIB", 10),
+      MARC_BIB,
       new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", 10),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", 10),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", 10),
@@ -157,7 +158,7 @@ public class KafkaAdminClientServiceTest {
   }
 
   private final Set<String> allExpectedTopics = Set.of(
-    "folio.Default.foo-tenant.MARC_BIB",
+    "folio.foo-tenant.srs.marc-bib",
     "folio.Default.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
     "folio.Default.foo-tenant.DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
     "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED",

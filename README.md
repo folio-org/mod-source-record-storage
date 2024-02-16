@@ -126,7 +126,6 @@ After setup, it is good to check logs in all related modules for errors. Data im
 * Relevant from the **Poppy** release, module versions from 5.7.0:
   * "_srs.linking-rules-cache.expiration.time.hours_": 12
 * Variables for setting number of partitions of topics:
-  * MARC_BIB_PARTITIONS
   * DI_PARSED_RECORDS_CHUNK_SAVED_PARTITIONS
   * DI_SRS_MARC_BIB_INSTANCE_HRID_SET_PARTITIONS
   * DI_SRS_MARC_BIB_RECORD_MODIFIED_PARTITIONS
@@ -144,6 +143,9 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING_PARTITIONS
   * DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED_PARTITIONS
   * DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED_PARTITIONS
+  * DI_SRS_MARC_HOLDINGS_RECORD_MATCHED
+  * DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED
+  * DI_SRS_MARC_AUTHORITY_RECORD_UPDATED
   Default value for all partitions is 1
 ## Database schemas
 

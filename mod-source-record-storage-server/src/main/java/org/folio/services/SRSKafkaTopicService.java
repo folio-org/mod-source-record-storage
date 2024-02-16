@@ -26,12 +26,6 @@ public class SRSKafkaTopicService {
   @Value("${di_srs_marc_bib_record_modified_ready_for_post_processing.partitions}")
   private Integer diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions;
 
-  @Value("${di_marc_bib_record_matched.partitions}")
-  private Integer diMarcBibRecordMatchedPartitions;
-
-  @Value("${di_marc_bib_record_not_matched.partitions}")
-  private Integer diMarcBibRecordNotMatchedPartitions;
-
   @Value("${di_marc_authority_record_matched.partitions}")
   private Integer diMarcAuthorityRecordMatchedPartitions;
 
@@ -56,9 +50,6 @@ public class SRSKafkaTopicService {
   @Value("${di_marc_authority_record_modified_ready_for_post_processing.partitions}")
   private Integer diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions;
 
-  @Value("${di_marc_bib_record_modified_ready_for_post_processing.partitions}")
-  private Integer diSrsMarcBibMatchedReadyForPostProcessingPartitions;
-
   @Value("${di_logs_srs_marc_authority_record_created.partitions}")
   private Integer diLogSrsMarcAuthorityRecordCreatedPartitions;
 
@@ -81,8 +72,6 @@ public class SRSKafkaTopicService {
       new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", diSrsMarcBibInstanceHridSetPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", diSrsMarcBibRecordModifiedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED", diMarcBibRecordMatchedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_NOT_MATCHED", diMarcBibRecordNotMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", diMarcAuthorityRecordMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", diMarcAuthorityRecordNotMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", diMarcAuthorityRecordDeletedPartitions),
@@ -91,7 +80,6 @@ public class SRSKafkaTopicService {
       new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_UPDATED", diMarcHoldingsRecordUpdatedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_UPDATED", diMarcBibRecordUpdatedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING", diSrsMarcBibMatchedReadyForPostProcessingPartitions),
       new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED", diLogSrsMarcAuthorityRecordCreatedPartitions),
       new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED", diLogSrsMarcAuthorityRecordUpdatedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MATCHED", diMarcHoldingsMatchedPartitions),

@@ -97,6 +97,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     var eventType = dataImportEventPayload.getEventType();
     var jobExecutionId = dataImportEventPayload.getJobExecutionId();
+    System.out.println();
     try {
       mappingParamsCache.get(jobExecutionId, retrieveOkapiConnectionParams(dataImportEventPayload, vertx))
         .compose(parametersOptional -> parametersOptional
@@ -194,13 +195,18 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private Future<Record> prepareRecord(DataImportEventPayload dataImportEventPayload, MappingParameters mappingParameters) {
     Promise<Record> recordPromise = Promise.promise();
     var eventContext = dataImportEventPayload.getContext();
+    System.out.println("tsaghik_eventContext : " + eventContext);
     String entityAsString = eventContext.get(getExternalType().value());
     String recordAsString = eventContext.get(getMarcType().value());
+    System.out.println("tsaghik_recordAsString : " + recordAsString);
+    System.out.println("tsaghik_entityAsString : " + entityAsString);
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
       LOG.warn(EVENT_HAS_NO_DATA_MSG);
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
+      System.out.printf("tsaghik_record1 : " + record.getParsedRecord().getContent());
+
       updateLatestTransactionDate(record, mappingParameters);
 
       JsonObject externalEntity = new JsonObject(entityAsString);
@@ -208,6 +214,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
       recordPromise.complete(record);
+      System.out.printf("tsaghik_record2 : " + record.getParsedRecord().getContent());
     }
     return recordPromise.future();
   }

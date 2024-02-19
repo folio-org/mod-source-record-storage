@@ -154,8 +154,13 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         recordService.getFormattedRecord(id, toExternalIdType(idType), tenantId)
-          .map(GetSourceStorageRecordsByIdResponse::respond200WithApplicationJson).map(Response.class::cast)
-          .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
+          .map(record -> {
+            System.out.println("tsaghik_Formatted Record: " + record.getParsedRecord().getContent().toString());
+            return GetSourceStorageRecordsByIdResponse.respond200WithApplicationJson(record);
+          })
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("getSourceStorageRecordsFormattedById:: Failed to get record by {} id {}", idType, id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));

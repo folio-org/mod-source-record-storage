@@ -161,12 +161,8 @@ public enum RecordType implements ParsedRecordType {
       String content = ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord());
       System.out.println("tsaghik-get1 getParsedRecord = " + content);
 
-      try {
-        record.getParsedRecord().setFormattedContent(MarcUtil.marcJsonToTxtMarc(content));
-        System.out.println("tsaghik-get3 marc= " + MarcUtil.marcJsonToTxtMarc(content));
-      } catch (IOException e) {
-        throw new FormatRecordException(e);
-      }
+      record.getParsedRecord().setFormattedContent(content);
+      System.out.println("tsaghik-get3 marc= " + record.getParsedRecord().getContent().toString());
     }
   }
 

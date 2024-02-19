@@ -26,10 +26,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -91,6 +98,7 @@ public class RecordServiceImpl implements RecordService {
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
+  private static final ObjectMapper objectMapper = new ObjectMapper();
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
@@ -360,12 +368,78 @@ public class RecordServiceImpl implements RecordService {
       // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
-
     return promise.future().onSuccess(r -> {
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
+        var sourceParsedRecord = record.getParsedRecord().getContent().toString();
+
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
+
+        var targetParsedRecord = r.getParsedRecord().getContent().toString();
+
+        System.out.printf("tsaghik R before add" + r.getParsedRecord().getContent());
+
+        var content = reorderMarcRecordFields(sourceParsedRecord,targetParsedRecord);
+
+        r.getParsedRecord().setContent(content);
+
+        System.out.printf("tsaghik R after add" + r.getParsedRecord().getContent());
+        //todo maybe add content in record also
       }
     });
+  }
+
+
+  private static String reorderMarcRecordFields(String source, String parsedContentString) {
+    try {
+      JsonNode parsedContent = objectMapper.readTree(parsedContentString);
+      ArrayNode fieldsArrayNode = (ArrayNode) parsedContent.path("fields");
+
+      Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
+      fieldsArrayNode.forEach(node -> {
+        String tag = node.fieldNames().next();
+        jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
+      });
+
+      List<String> sourceFields = getSourceFields(source);
+
+      ArrayNode rearrangedArray = objectMapper.createArrayNode();
+      for (String tag : sourceFields) {
+        Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
+        if (nodes != null && !nodes.isEmpty()) {
+          rearrangedArray.add(nodes.poll());
+        }
+      }
+
+      fieldsArrayNode.forEach(node -> {
+        String tag = node.fieldNames().next();
+        if (!sourceFields.contains(tag)) {
+          rearrangedArray.add(node);
+        }
+      });
+
+      fieldsArrayNode.removeAll();
+      fieldsArrayNode.addAll(rearrangedArray);
+
+      return parsedContent.toString();
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private static List<String> getSourceFields(String source) {
+    List<String> sourceFields = new ArrayList<>();
+    try {
+      JsonNode sourceJson = objectMapper.readTree(source);
+      JsonNode fieldsNode = sourceJson.get("fields");
+      for (JsonNode fieldNode : fieldsNode) {
+        String tag = fieldNode.fieldNames().next();
+        sourceFields.add(tag);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return sourceFields;
   }
 
   private void setMatchedIdFromExistingSourceRecord(Record record, String tenantId, Promise<Record> promise, String externalId, IdType idType) {

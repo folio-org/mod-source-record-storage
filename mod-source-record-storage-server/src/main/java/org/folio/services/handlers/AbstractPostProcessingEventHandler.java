@@ -1,8 +1,5 @@
 package org.folio.services.handlers;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -36,15 +33,13 @@ import org.jooq.Condition;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
@@ -81,7 +76,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   public static final String POST_PROCESSING_INDICATOR = "POST_PROCESSING";
   public static final String CENTRAL_TENANT_INSTANCE_UPDATED_FLAG = "CENTRAL_TENANT_INSTANCE_UPDATED";
   public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
-  private static final ObjectMapper objectMapper = new ObjectMapper();
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final Vertx vertx;
@@ -205,7 +199,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
-      var sourceRecord = record.getParsedRecord().getContent().toString();
+      var sourceContent = record.getParsedRecord().getContent().toString();
       updateLatestTransactionDate(record, mappingParameters);
 
       JsonObject externalEntity = new JsonObject(entityAsString);
@@ -213,65 +207,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
 
-      var targetRecord = record.getParsedRecord().getContent().toString();
-      var content = reorderMarcRecordFields(sourceRecord, targetRecord);
+      var targetContent = record.getParsedRecord().getContent().toString();
+      var content = reorderMarcRecordFields(sourceContent, targetContent);
       record.getParsedRecord().setContent(content);
       recordPromise.complete(record);
     }
     return recordPromise.future();
-  }
-
-  private static String reorderMarcRecordFields(String source, String parsedContentString) {
-    try {
-      JsonNode parsedContent = objectMapper.readTree(parsedContentString);
-      ArrayNode fieldsArrayNode = (ArrayNode) parsedContent.path("fields");
-
-      Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
-      fieldsArrayNode.forEach(node -> {
-        String tag = node.fieldNames().next();
-        jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
-      });
-
-      List<String> sourceFields = getSourceFields(source);
-
-      ArrayNode rearrangedArray = objectMapper.createArrayNode();
-      for (String tag : sourceFields) {
-        Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
-        if (nodes != null && !nodes.isEmpty()) {
-          rearrangedArray.add(nodes.poll());
-        }
-      }
-
-      fieldsArrayNode.forEach(node -> {
-        String tag = node.fieldNames().next();
-        if (!sourceFields.contains(tag)) {
-          rearrangedArray.add(node);
-        }
-      });
-
-      fieldsArrayNode.removeAll();
-      fieldsArrayNode.addAll(rearrangedArray);
-
-      return parsedContent.toString();
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
-
-  private static List<String> getSourceFields(String source) {
-    List<String> sourceFields = new ArrayList<>();
-    try {
-      JsonNode sourceJson = objectMapper.readTree(source);
-      JsonNode fieldsNode = sourceJson.get("fields");
-      for (JsonNode fieldNode : fieldsNode) {
-        String tag = fieldNode.fieldNames().next();
-        sourceFields.add(tag);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    return sourceFields;
   }
 
   private void remove035FieldWhenUpdateAndContainsHrId(Record record, DataImportEventTypes eventType) {

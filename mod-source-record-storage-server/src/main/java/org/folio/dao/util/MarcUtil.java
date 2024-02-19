@@ -8,7 +8,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.marc4j.MarcException;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
@@ -24,6 +33,7 @@ public class MarcUtil {
 
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
   private static final String MARC_RECORD_ERROR_MESSAGE = "Unable to read marc record!";
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private MarcUtil() { }
 
@@ -126,4 +136,68 @@ public class MarcUtil {
     }
   }
 
+  /**
+   * Reorders MARC record fields
+   *
+   * @param sourceContent source parsed record
+   * @param targetContent target parsed record
+   * @return MARC txt
+   */
+  public static String reorderMarcRecordFields(String sourceContent, String targetContent) {
+    try {
+      var parsedContent = objectMapper.readTree(targetContent);
+      var fieldsArrayNode = (ArrayNode) parsedContent.path("fields");
+
+      Map<String, Queue<JsonNode>> jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
+
+      List<String> sourceFields = getSourceFields(sourceContent);
+
+      var rearrangedArray = objectMapper.createArrayNode();
+      for (String tag : sourceFields) {
+        Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
+        if (nodes != null && !nodes.isEmpty()) {
+          rearrangedArray.add(nodes.poll());
+        }
+      }
+
+      fieldsArrayNode.forEach(node -> {
+        String tag = node.fieldNames().next();
+        if (!sourceFields.contains(tag)) {
+          rearrangedArray.add(node);
+        }
+      });
+
+      fieldsArrayNode.removeAll();
+      fieldsArrayNode.addAll(rearrangedArray);
+
+      return parsedContent.toString();
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private static List<String> getSourceFields(String source) {
+    List<String> sourceFields = new ArrayList<>();
+    try {
+      var sourceJson = objectMapper.readTree(source);
+      var fieldsNode = sourceJson.get("fields");
+      for (JsonNode fieldNode : fieldsNode) {
+        String tag = fieldNode.fieldNames().next();
+        sourceFields.add(tag);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return sourceFields;
+  }
+
+  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
+    Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
+    fieldsArrayNode.forEach(node -> {
+      String tag = node.fieldNames().next();
+      jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
+    });
+    return jsonNodesByTag;
+  }
 }

@@ -159,6 +159,10 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
             return GetSourceStorageRecordsByIdResponse.respond200WithApplicationJson(record);
           })
           .map(Response.class::cast)
+          .map(response -> {
+            System.out.println("tsaghik_Formatted Response: " + response.getEntity().toString());
+            return response;
+          })
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {

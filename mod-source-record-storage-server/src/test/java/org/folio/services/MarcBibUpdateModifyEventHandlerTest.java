@@ -348,7 +348,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -398,7 +398,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
@@ -618,7 +618,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // then
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED.value(), eventPayload.getEventType());
+      context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
@@ -648,7 +648,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForActionProfile() {
+  public void shouldReturnFalseWhenHandlerIsNotEligibleForModifyMarcBibActionProfile() {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -661,7 +661,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertTrue(isEligible);
+    Assert.assertFalse(isEligible);
   }
 
   @Test

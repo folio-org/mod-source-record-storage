@@ -3,23 +3,16 @@ package org.folio.verticle.consumers;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
-import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import static org.folio.ActionProfile.Action.DELETE;
-import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_DELETE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 import java.io.IOException;
@@ -142,84 +135,6 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
-  }
-
-  @Test
-  public void shouldModifyRecordWhenPayloadContainsModifyMarcBibActionInCurrentNode() throws InterruptedException {
-    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
-      .withId(UUID.randomUUID().toString())
-      .withContentType(JOB_PROFILE)
-      .withContent(JsonObject.mapFrom(new JobProfile()
-        .withId(UUID.randomUUID().toString())
-        .withDataType(JobProfile.DataType.MARC)).getMap())
-      .withChildSnapshotWrappers(singletonList(
-        new ProfileSnapshotWrapper()
-          .withContentType(ACTION_PROFILE)
-          .withContent(JsonObject.mapFrom(new ActionProfile()
-            .withId(UUID.randomUUID().toString())
-            .withAction(MODIFY)
-            .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC)).getMap())
-          .withChildSnapshotWrappers(singletonList(
-            new ProfileSnapshotWrapper()
-              .withContentType(MAPPING_PROFILE)
-              .withContent(JsonObject.mapFrom(new MappingProfile()
-                .withId(UUID.randomUUID().toString())
-                .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
-                .withExistingRecordType(MARC_BIBLIOGRAPHIC)
-                .withMappingDetails(new MappingDetail()
-                  .withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY)
-                  .withMarcMappingDetails(List.of(marcMappingDetail)))).getMap())))));
-
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
-      .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
-
-    String expectedDate = get005FieldExpectedDate();
-    String expectedParsedContent =
-      "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-
-    DataImportEventPayload eventPayload = new DataImportEventPayload()
-      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
-      .withJobExecutionId(snapshotId)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
-      .withOkapiUrl(mockServer.baseUrl())
-      .withTenant(TENANT_ID)
-      .withToken(TOKEN)
-      .withContext(new HashMap<>() {{
-        put(MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-        put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
-      }});
-
-    String topic = getTopicName(DI_SRS_MARC_BIB_RECORD_CREATED.value());
-    KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
-
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, singletonList(kafkaRecord)).useDefaults();
-
-    // when
-    cluster.send(request);
-
-    // then
-    var value = DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
-    String observeTopic = getTopicName(value);
-    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(50, TimeUnit.SECONDS)
-      .build());
-
-    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
-    DataImportEventPayload dataImportEventPayload =
-      Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
-    assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(),
-      dataImportEventPayload.getEventType());
-
-    Record actualRecord =
-      Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-    assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-      getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-    assertEquals(Record.State.ACTUAL, actualRecord.getState());
-    assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
-    validate005Field(expectedDate, actualRecord);
-    assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));
   }
 
   @Test

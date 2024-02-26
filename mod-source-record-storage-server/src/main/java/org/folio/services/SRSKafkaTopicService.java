@@ -4,6 +4,21 @@ import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.kafka.services.KafkaEnvironmentProperties.environment;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
 
 import org.folio.kafka.services.KafkaTopic;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,21 +77,21 @@ public class SRSKafkaTopicService {
   public KafkaTopic[] createTopicObjects() {
     return new KafkaTopic[] {
       MARC_BIB,
-      new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", diParsedRecordsChunkSavedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", diSrsMarcBibInstanceHridSetPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", diMarcAuthorityRecordMatchedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", diMarcAuthorityRecordNotMatchedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", diMarcAuthorityRecordDeletedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET", diSrsMarcHoldingsHridSetPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", diSrsMarcHoldingsModifiedReadyForPostProcessingPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_UPDATED", diMarcHoldingsRecordUpdatedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_UPDATED", diMarcBibRecordUpdatedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions),
-      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED", diLogSrsMarcAuthorityRecordCreatedPartitions),
-      new SRSKafkaTopic("DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED", diLogSrsMarcAuthorityRecordUpdatedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_MATCHED", diMarcHoldingsMatchedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED", diMarcHoldingsNotMatchedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_UPDATED", diMarcAuthorityRecordUpdatedPartitions)
+      new SRSKafkaTopic(DI_PARSED_RECORDS_CHUNK_SAVED.value(), diParsedRecordsChunkSavedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_BIB_INSTANCE_HRID_SET.value(), diSrsMarcBibInstanceHridSetPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), diMarcAuthorityRecordMatchedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value(), diMarcAuthorityRecordNotMatchedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), diMarcAuthorityRecordDeletedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET.value(), diSrsMarcHoldingsHridSetPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), diSrsMarcHoldingsModifiedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), diMarcHoldingsRecordUpdatedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), diMarcBibRecordUpdatedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), diSrsMarcAuthorityModifiedReadyForPostProcessingPartitions),
+      new SRSKafkaTopic(DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED.value(), diLogSrsMarcAuthorityRecordCreatedPartitions),
+      new SRSKafkaTopic(DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), diLogSrsMarcAuthorityRecordUpdatedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(), diMarcHoldingsMatchedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), diMarcHoldingsNotMatchedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), diMarcAuthorityRecordUpdatedPartitions)
     };
   }
 

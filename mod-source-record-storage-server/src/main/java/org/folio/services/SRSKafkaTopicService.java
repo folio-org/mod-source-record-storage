@@ -20,12 +20,6 @@ public class SRSKafkaTopicService {
   @Value("${di_srs_marc_bib_instance_hrid_set.partitions}")
   private Integer diSrsMarcBibInstanceHridSetPartitions;
 
-  @Value("${di_srs_marc_bib_record_modified.partitions}")
-  private Integer diSrsMarcBibRecordModifiedPartitions;
-
-  @Value("${di_srs_marc_bib_record_modified_ready_for_post_processing.partitions}")
-  private Integer diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions;
-
   @Value("${di_marc_authority_record_matched.partitions}")
   private Integer diMarcAuthorityRecordMatchedPartitions;
 
@@ -70,8 +64,6 @@ public class SRSKafkaTopicService {
       MARC_BIB,
       new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", diParsedRecordsChunkSavedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", diSrsMarcBibInstanceHridSetPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED", diSrsMarcBibRecordModifiedPartitions),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING", diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", diMarcAuthorityRecordMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", diMarcAuthorityRecordNotMatchedPartitions),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", diMarcAuthorityRecordDeletedPartitions),

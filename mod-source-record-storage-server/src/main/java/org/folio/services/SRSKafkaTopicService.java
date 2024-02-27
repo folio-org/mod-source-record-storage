@@ -12,7 +12,6 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHOR
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED;
@@ -31,9 +30,6 @@ public class SRSKafkaTopicService {
 
   @Value("${di_parsed_records_chunk_saved.partitions}")
   private Integer diParsedRecordsChunkSavedPartitions;
-
-  @Value("${di_srs_marc_bib_instance_hrid_set.partitions}")
-  private Integer diSrsMarcBibInstanceHridSetPartitions;
 
   @Value("${di_marc_authority_record_matched.partitions}")
   private Integer diMarcAuthorityRecordMatchedPartitions;
@@ -78,7 +74,6 @@ public class SRSKafkaTopicService {
     return new KafkaTopic[] {
       MARC_BIB,
       new SRSKafkaTopic(DI_PARSED_RECORDS_CHUNK_SAVED.value(), diParsedRecordsChunkSavedPartitions),
-      new SRSKafkaTopic(DI_SRS_MARC_BIB_INSTANCE_HRID_SET.value(), diSrsMarcBibInstanceHridSetPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), diMarcAuthorityRecordMatchedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value(), diMarcAuthorityRecordNotMatchedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), diMarcAuthorityRecordDeletedPartitions),

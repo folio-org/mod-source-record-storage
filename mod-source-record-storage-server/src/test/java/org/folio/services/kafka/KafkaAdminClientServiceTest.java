@@ -53,7 +53,6 @@ public class KafkaAdminClientServiceTest {
     KafkaTopic[] topicObjects = {
       MARC_BIB,
       new SRSKafkaTopic("DI_PARSED_RECORDS_CHUNK_SAVED", 10),
-      new SRSKafkaTopic("DI_SRS_MARC_BIB_INSTANCE_HRID_SET", 10),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_MATCHED", 10),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED", 10),
       new SRSKafkaTopic("DI_SRS_MARC_AUTHORITY_RECORD_DELETED", 10),
@@ -155,7 +154,6 @@ public class KafkaAdminClientServiceTest {
   private final Set<String> allExpectedTopics = Set.of(
     "folio.foo-tenant.srs.marc-bib",
     "folio.Default.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_INSTANCE_HRID_SET",
     "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
     "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
     "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED",

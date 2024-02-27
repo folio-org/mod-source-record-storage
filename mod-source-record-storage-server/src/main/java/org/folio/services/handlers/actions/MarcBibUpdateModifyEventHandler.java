@@ -2,13 +2,9 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.MODIFY;
-import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TOKEN_HEADER;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
@@ -71,14 +67,8 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   @Override
   public boolean isPostProcessingNeeded() {
-    return true;
+    return false;
   }
-
-  @Override
-  public String getPostProcessingInitializationEventType() {
-    return DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
-  }
-
   @Override
   protected boolean isHridFillingNeeded() {
     return false;
@@ -89,10 +79,6 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
     return DI_SRS_MARC_BIB_RECORD_UPDATED.value();
   }
 
-  protected String getModifyEventType() {
-    return DI_SRS_MARC_BIB_RECORD_MODIFIED.value();
-  }
-
   @Override
   protected EntityType modifiedEntityType() {
     return MARC_BIBLIOGRAPHIC;
@@ -100,12 +86,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   @Override
   protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
-    if (marcMappingOption.value().equals(MODIFY.value())) {
-      payload.setEventType(getModifyEventType());
-    }
-    if (marcMappingOption.value().equals(UPDATE.value())) {
-      payload.setEventType(getUpdateEventType());
-    }
+    payload.setEventType(getUpdateEventType());
     future.complete(payload);
   }
 

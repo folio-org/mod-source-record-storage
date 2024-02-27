@@ -18,6 +18,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDIN
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 
 import org.folio.kafka.services.KafkaTopic;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,9 @@ public class SRSKafkaTopicService {
 
   @Value("${di_parsed_records_chunk_saved.partitions}")
   private Integer diParsedRecordsChunkSavedPartitions;
+
+  @Value("${di_srs_marc_bib_record_modified_ready_for_post_processing.partitions}")
+  private Integer diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions;
 
   @Value("${di_marc_authority_record_matched.partitions}")
   private Integer diMarcAuthorityRecordMatchedPartitions;
@@ -74,6 +78,7 @@ public class SRSKafkaTopicService {
     return new KafkaTopic[] {
       MARC_BIB,
       new SRSKafkaTopic(DI_PARSED_RECORDS_CHUNK_SAVED.value(), diParsedRecordsChunkSavedPartitions),
+      new SRSKafkaTopic(DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), diSrsMarcBibRecordModifiedReadyForPostProcessingPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), diMarcAuthorityRecordMatchedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value(), diMarcAuthorityRecordNotMatchedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), diMarcAuthorityRecordDeletedPartitions),

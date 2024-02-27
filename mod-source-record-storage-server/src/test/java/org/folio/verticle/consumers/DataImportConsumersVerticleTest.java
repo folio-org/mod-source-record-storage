@@ -84,10 +84,9 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
-
   private final String snapshotId = UUID.randomUUID().toString();
   private final String recordId = UUID.randomUUID().toString();
-
+  private Snapshot snapshotForRecordUpdate;
   private final MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
     .withOrder(0)
     .withAction(MarcMappingDetail.Action.EDIT)
@@ -126,6 +125,10 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
 
+    snapshotForRecordUpdate = new Snapshot()
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
+
     record = new Record()
       .withId(recordId)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -141,6 +144,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 
@@ -188,14 +192,14 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
-      .withJobExecutionId(snapshotId)
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
       .withOkapiUrl(mockServer.baseUrl())
       .withTenant(TENANT_ID)
       .withToken(TOKEN)
       .withContext(new HashMap<>() {{
         put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
+        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(record.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
         put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
       }});
 
@@ -213,7 +217,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     var value = DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
     String observeTopic = getTopicName(value);
     List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(100, TimeUnit.SECONDS)
+      .observeFor(50, TimeUnit.SECONDS)
       .build());
 
     Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);

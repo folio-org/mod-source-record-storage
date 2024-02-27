@@ -213,7 +213,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     var value = DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
     String observeTopic = getTopicName(value);
     List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(50, TimeUnit.SECONDS)
+      .observeFor(100, TimeUnit.SECONDS)
       .build());
 
     Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);

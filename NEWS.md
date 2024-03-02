@@ -8,6 +8,7 @@
 * [MODSOURCE-717](https://issues.folio.org/browse/MODSOURCE-717) MARC modifications not processed when placed after Holdings Update action in a job profile
 * [MODSOURCE-739](https://issues.folio.org/browse/MODSOURCE-739) Create Kafka topics instead of relying on auto create in mod-srs
 * [MODSOURCE-729](https://issues.folio.org/browse/MODSOURCE-729) Implement new endpoint to be used for matching
+* [MODINV-935](https://issues.folio.org/browse/MODINV-935) Move MARC-BIB matching handler to inventory module
 
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17

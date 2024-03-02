@@ -161,7 +161,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private boolean isEligibleActionProfile(ActionProfile actionProfile) {
     return actionProfile.getFolioRecord() == ActionProfile.FolioRecord.valueOf(modifiedEntityType().value())
-      && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
+      && actionProfile.getAction() == UPDATE;
   }
 
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,

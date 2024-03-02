@@ -21,7 +21,6 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHOR
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED;
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
@@ -61,7 +60,6 @@ public class DataImportConsumersVerticle extends AbstractConsumerVerticle<String
     DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(),
     DI_SRS_MARC_BIB_RECORD_CREATED.value(),
     DI_SRS_MARC_BIB_RECORD_MATCHED.value(),
-    DI_SRS_MARC_BIB_RECORD_MODIFIED.value(),
     DI_SRS_MARC_BIB_RECORD_NOT_MATCHED.value(),
     DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(),
     DI_INCOMING_MARC_BIB_RECORD_PARSED.value()

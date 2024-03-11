@@ -18,6 +18,9 @@ import java.util.Queue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.marc4j.MarcException;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
@@ -34,6 +37,7 @@ public class MarcUtil {
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
   private static final String MARC_RECORD_ERROR_MESSAGE = "Unable to read marc record!";
   private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private MarcUtil() { }
 
@@ -156,23 +160,18 @@ public class MarcUtil {
       for (String tag : sourceFields) {
         Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
         if (nodes != null && !nodes.isEmpty()) {
-          rearrangedArray.add(nodes.poll());
+          rearrangedArray.addAll(nodes);
+          jsonNodesByTag.remove(tag);
         }
       }
 
-      fieldsArrayNode.forEach(node -> {
-        String tag = node.fieldNames().next();
-        if (!sourceFields.contains(tag)) {
-          rearrangedArray.add(node);
-        }
-      });
+      jsonNodesByTag.values().forEach(rearrangedArray::addAll);
 
-      fieldsArrayNode.removeAll();
-      fieldsArrayNode.addAll(rearrangedArray);
+      ((ObjectNode)parsedContent).set("fields", rearrangedArray);
 
       return parsedContent.toString();
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
       return null;
     }
   }
@@ -187,7 +186,7 @@ public class MarcUtil {
         sourceFields.add(tag);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.error("An error occurred while parsing source JSON: {}", e.getMessage(), e);
     }
     return sourceFields;
   }

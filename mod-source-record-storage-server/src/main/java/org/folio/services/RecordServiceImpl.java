@@ -4,7 +4,6 @@ import static java.lang.String.format;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
-import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
@@ -361,16 +360,10 @@ public class RecordServiceImpl implements RecordService {
       // Set matched id same as record id
       promise.complete(record.withMatchedId(record.getId()));
     }
+
     return promise.future().onSuccess(r -> {
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
-        var sourceParsedRecord = r.getParsedRecord().getContent().toString();
-
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
-
-        var targetParsedRecord = r.getParsedRecord().getContent().toString();
-
-        var content = reorderMarcRecordFields(sourceParsedRecord,targetParsedRecord);
-        r.getParsedRecord().setContent(content);
       }
     });
   }

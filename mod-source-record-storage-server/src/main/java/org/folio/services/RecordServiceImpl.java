@@ -363,7 +363,7 @@ public class RecordServiceImpl implements RecordService {
     }
     return promise.future().onSuccess(r -> {
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
-        var sourceParsedRecord = record.getParsedRecord().getContent().toString();
+        var sourceParsedRecord = r.getParsedRecord().getContent().toString();
 
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
 

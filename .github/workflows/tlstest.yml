@@ -10,6 +10,21 @@ jobs:
         submodules: true
     - run: cd tlstest; docker-compose up -d
     - run: sleep 10
-    - run: 'wget -S -O - --header "Content-type: application/json" --header "x-okapi-tenant: diku" --post-data ''{"module_to": "mod-source-record-storage-99.0.0"}'' http://localhost:8081/_/tenant'
-    - run: sleep 10
+    - run: |
+        cat <<EOF > json
+        {
+          "module_to": "mod-source-record-storage-99.0.0",
+          "parameters": [
+            { "key": "loadReference", "value": "true" },
+            { "key": "loadSample",    "value": "true" }
+          ]
+        }
+        EOF
+    - run: |
+        wget -S -O out --header "Content-type: application/json" --header "x-okapi-tenant: diku" --post-file json http://localhost:8081/_/tenant
+    - run: cat out
+    - run: |
+        ID=$( cat out | jq -r .id )
+        wget -S -O - --header "x-okapi-tenant: diku" http://localhost:8081/_/tenant/$ID?wait=120000
     - run: cd tlstest; docker-compose logs
+

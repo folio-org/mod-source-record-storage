@@ -20,5 +20,5 @@ docker-compose rm -f ; docker-compose build --no-cache ; docker-compose up
 
 Enable the module for tenant diku in the second terminal.
 ```
-wget -S -O - --header "Content-type: application/json" --header "x-okapi-tenant: diku" --post-data '{"module_to": "mod-source-record-storage-99.0.0"}' http://localhost:8081/_/tenant
+wget -S -O - --header "Content-type: application/json" --header "x-okapi-tenant: diku" --post-data '{"module_to": "mod-source-record-storage-99.0.0", "parameters": [ {"key": "loadReference", "value": "true"}, {"key": "loadSample", "value": "true"} ]}' http://localhost:8081/_/tenant
 ```

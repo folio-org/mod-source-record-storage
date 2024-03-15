@@ -1,0 +1,15 @@
+name: TLS Test
+on:
+  workflow_dispatch:
+jobs:
+  tlstest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - run: cd tlstest; docker-compose up -d
+    - run: curl --retry 6 --retry-connrefused -sS http://localhost:8081/admin/health
+    - run: sleep 10
+    - run: wget -S -O - --header "Content-type: application/json" --header "x-okapi-tenant: diku" --post-data '{"module_to": "mod-source-record-storage-99.0.0"}' http://localhost:8081/_/tenant
+    - run: sleep 10

@@ -1,0 +1,36 @@
+version: '2'
+services:
+  kafka:
+    image: docker.io/confluentinc/confluent-local
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+  postgres:
+    build: ./
+    environment:
+      - POSTGRES_USER=folio
+      - POSTGRES_PASSWORD=folio
+      - POSTGRES_DB=folio
+    ports:
+      - "5432:5432"
+    command: >
+      -c ssl=on
+      -c ssl_key_file=/var/lib/postgresql/server.key
+      -c ssl_cert_file=/var/lib/postgresql/server.crt
+  mod:
+    image: docker.io/folioci/mod-source-record-storage:5.8.0-SNAPSHOT.589
+    #build: ../
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=folio
+      - DB_PASSWORD=folio
+      - DB_DATABASE=folio
+      - DB_SERVER_PEM=$SERVER_CRT
+      - KAFKA_HOST=kafka
+      - KAFKA_PORT=9092
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+      - postgres

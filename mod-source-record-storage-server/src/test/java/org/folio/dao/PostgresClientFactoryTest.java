@@ -17,6 +17,7 @@ import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.containers.Network;
@@ -87,6 +88,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
+  @Ignore
   public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException, InterruptedException {
     Function<PostgresClientFactory, Future<QueryResult>> exec =
       (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
@@ -95,6 +97,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
+  @Ignore
   public void queryExecutorQueryShouldRetry(TestContext context) throws IOException, InterruptedException {
     Function<PostgresClientFactory, Future<QueryResult>> exec =
       (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")

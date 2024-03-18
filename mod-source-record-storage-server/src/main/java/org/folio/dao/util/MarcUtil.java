@@ -172,7 +172,7 @@ public class MarcUtil {
       return parsedContent.toString();
     } catch (Exception e) {
       LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
-      return null;
+      return targetContent;
     }
   }
 

@@ -38,6 +38,7 @@ public class MarcUtil {
   private static final String MARC_RECORD_ERROR_MESSAGE = "Unable to read marc record!";
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getLogger();
+  public static final String FIELDS = "fields";
 
   private MarcUtil() { }
 
@@ -150,7 +151,7 @@ public class MarcUtil {
   public static String reorderMarcRecordFields(String sourceContent, String targetContent) {
     try {
       var parsedContent = objectMapper.readTree(targetContent);
-      var fieldsArrayNode = (ArrayNode) parsedContent.path("fields");
+      var fieldsArrayNode = (ArrayNode) parsedContent.path(FIELDS);
 
       Map<String, Queue<JsonNode>> jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
 
@@ -167,7 +168,7 @@ public class MarcUtil {
 
       jsonNodesByTag.values().forEach(rearrangedArray::addAll);
 
-      ((ObjectNode)parsedContent).set("fields", rearrangedArray);
+      ((ObjectNode)parsedContent).set(FIELDS, rearrangedArray);
 
       return parsedContent.toString();
     } catch (Exception e) {
@@ -180,7 +181,7 @@ public class MarcUtil {
     List<String> sourceFields = new ArrayList<>();
     try {
       var sourceJson = objectMapper.readTree(source);
-      var fieldsNode = sourceJson.get("fields");
+      var fieldsNode = sourceJson.get(FIELDS);
       for (JsonNode fieldNode : fieldsNode) {
         String tag = fieldNode.fieldNames().next();
         sourceFields.add(tag);

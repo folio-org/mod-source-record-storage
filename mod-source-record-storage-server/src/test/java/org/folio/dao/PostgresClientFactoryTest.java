@@ -88,7 +88,6 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  @Ignore
   public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException, InterruptedException {
     Function<PostgresClientFactory, Future<QueryResult>> exec =
       (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
@@ -97,7 +96,6 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  @Ignore
   public void queryExecutorQueryShouldRetry(TestContext context) throws IOException, InterruptedException {
     Function<PostgresClientFactory, Future<QueryResult>> exec =
       (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
@@ -110,7 +108,7 @@ public class PostgresClientFactoryTest {
     Async async = context.async();
     // Arrange
     Network network = Network.newNetwork();
-    ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
+    ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.9.0")
       .withNetwork(network).withNetworkAliases("toxiproxy");
     PostgreSQLContainer<?> postgreSQLContainer =
       new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME)

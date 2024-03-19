@@ -6,6 +6,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
+import io.vertx.sqlclient.ClosedConnectionException;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.implementation.SuperMethodCall;
@@ -125,8 +126,9 @@ public class QueryExecutorInterceptor {
     }
 
     return supplier.get().recover(err -> {
-      if (err instanceof NoStackTraceThrowable ||
-        err instanceof ClosedChannelException) {
+      if (err instanceof NoStackTraceThrowable || err instanceof ClosedChannelException
+        || err instanceof ClosedConnectionException) {
+
         Promise<U> promise = Promise.promise();
         Context currentContext = Vertx.currentContext();
         if (currentContext == null) { // don't introduce a delay

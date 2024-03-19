@@ -8,7 +8,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.marc4j.MarcException;
 import org.marc4j.MarcJsonReader;
 import org.marc4j.MarcJsonWriter;
@@ -24,6 +36,9 @@ public class MarcUtil {
 
   public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
   private static final String MARC_RECORD_ERROR_MESSAGE = "Unable to read marc record!";
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final Logger LOGGER = LogManager.getLogger();
+  public static final String FIELDS = "fields";
 
   private MarcUtil() { }
 
@@ -126,4 +141,63 @@ public class MarcUtil {
     }
   }
 
+  /**
+   * Reorders MARC record fields
+   *
+   * @param sourceContent source parsed record
+   * @param targetContent target parsed record
+   * @return MARC txt
+   */
+  public static String reorderMarcRecordFields(String sourceContent, String targetContent) {
+    try {
+      var parsedContent = objectMapper.readTree(targetContent);
+      var fieldsArrayNode = (ArrayNode) parsedContent.path(FIELDS);
+
+      Map<String, Queue<JsonNode>> jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
+
+      List<String> sourceFields = getSourceFields(sourceContent);
+
+      var rearrangedArray = objectMapper.createArrayNode();
+      for (String tag : sourceFields) {
+        Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
+        if (nodes != null && !nodes.isEmpty()) {
+          rearrangedArray.addAll(nodes);
+          jsonNodesByTag.remove(tag);
+        }
+      }
+
+      jsonNodesByTag.values().forEach(rearrangedArray::addAll);
+
+      ((ObjectNode)parsedContent).set(FIELDS, rearrangedArray);
+
+      return parsedContent.toString();
+    } catch (Exception e) {
+      LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
+      return targetContent;
+    }
+  }
+
+  private static List<String> getSourceFields(String source) {
+    List<String> sourceFields = new ArrayList<>();
+    try {
+      var sourceJson = objectMapper.readTree(source);
+      var fieldsNode = sourceJson.get(FIELDS);
+      for (JsonNode fieldNode : fieldsNode) {
+        String tag = fieldNode.fieldNames().next();
+        sourceFields.add(tag);
+      }
+    } catch (Exception e) {
+      LOGGER.error("An error occurred while parsing source JSON: {}", e.getMessage(), e);
+    }
+    return sourceFields;
+  }
+
+  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
+    Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
+    fieldsArrayNode.forEach(node -> {
+      String tag = node.fieldNames().next();
+      jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
+    });
+    return jsonNodesByTag;
+  }
 }

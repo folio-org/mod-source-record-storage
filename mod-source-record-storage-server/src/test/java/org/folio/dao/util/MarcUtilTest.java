@@ -2,6 +2,7 @@ package org.folio.dao.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Json;
+import org.apache.commons.io.FileUtils;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
@@ -20,9 +21,12 @@ import static org.junit.Assert.assertNotNull;
 public class MarcUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
+  private static final String REORDERED_PARSED_RECORD = "src/test/resources/mock/sourceRecords/parsedRecords/reorderedParsedRecord.json";
+  private static final String PARSED_RECORD = "src/test/resources/mock/sourceRecords/parsedRecords/parsedRecord.json";
   private static final String RAW_RECORD_PATH = "src/test/resources/mock/rawRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
 
   private SourceRecord sourceRecord;
+  private SourceRecord reorderedSourceRecord;
 
   @Before
   public void readSourceRecord() throws IOException {
@@ -64,4 +68,22 @@ public class MarcUtilTest {
     assertEquals(sourceRecord.getParsedRecord().getFormattedContent().trim(), txtMarc.trim());
   }
 
+  @Test
+  public void shouldReorderMarcRecordFields() throws IOException, MarcException {
+    var reorderedRecordContent = readFileFromPath(PARSED_RECORD);
+    var sourceRecordContent = readFileFromPath(REORDERED_PARSED_RECORD);
+
+    var resultcontent = MarcUtil.reorderMarcRecordFields(reorderedRecordContent, sourceRecordContent);
+
+    assertNotNull(resultcontent);
+    assertEquals(formatContent(resultcontent), formatContent(reorderedRecordContent));
+  }
+
+  private static String readFileFromPath(String path) throws IOException {
+    return new String(FileUtils.readFileToByteArray(new File(path)));
+  }
+
+  private String formatContent(String content) {
+    return content.replaceAll("\\s", "");
+  }
 }

@@ -460,6 +460,10 @@
         "value": "15"
       },
       {
+        "name": "DB_RECONNECTATTEMPTS",
+        "value": "3"
+      },
+      {
         "name": "KAFKA_HOST",
         "value": "10.0.2.15"
       },

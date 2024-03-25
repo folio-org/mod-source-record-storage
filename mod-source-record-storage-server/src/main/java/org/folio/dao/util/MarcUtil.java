@@ -189,14 +189,22 @@ public class MarcUtil {
   private static List<String> getSourceFields(String source) {
     List<String> sourceFields = new ArrayList<>();
     List<String> remainingFields = new ArrayList<>();
+    var has001 = false;
     try {
       var sourceJson = objectMapper.readTree(source);
       var fieldsNode = sourceJson.get(FIELDS);
 
       for (JsonNode fieldNode : fieldsNode) {
         String tag = fieldNode.fieldNames().next();
-        if (tag.equals("001") || tag.equals("005")) {
-          sourceFields.add(tag);
+        if (tag.equals("001")) {
+          sourceFields.add(0, tag);
+          has001 = true;
+        } else if (tag.equals("005")) {
+          if (!has001) {
+            sourceFields.add(0, tag);
+          } else {
+            sourceFields.add(1, tag);
+          }
         } else {
           remainingFields.add(tag);
         }

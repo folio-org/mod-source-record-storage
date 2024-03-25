@@ -677,6 +677,7 @@ public class RecordDaoImpl implements RecordDao {
               RecordType recordType = toRecordType(record.getRecordType().name());
               recordType.formatRecord(record);
               Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+              System.out.println( "tsaghik dbParsedRecord: " + dbParsedRecord.toString());
               dbParsedRecords.add(dbParsedRecord);
             } catch (Exception e) {
               // create error record and remove from record
@@ -791,6 +792,7 @@ public class RecordDaoImpl implements RecordDao {
             .fieldsCorresponding()
             .execute();
 
+          System.out.println("tsaghik dbParsedRecords: " + dbParsedRecords.get(0).toString());
           // batch insert parsed records
           recordType.toLoaderOptionsStep(dsl)
             .batchAfter(250)

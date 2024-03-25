@@ -130,6 +130,7 @@ public class RecordServiceImpl implements RecordService {
           if (Objects.isNull(snapshot.getProcessingStartedDate())) {
             return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
           }
+          System.out.println( "tsaghik RecordServiceImpl:: record: " + record.getParsedRecord().getContent().toString());
           return Future.succeededFuture();
         })
         .compose(v -> setMatchedIdForRecord(record, tenantId))
@@ -137,15 +138,18 @@ public class RecordServiceImpl implements RecordService {
           if (Objects.isNull(r.getGeneration())) {
             return recordDao.calculateGeneration(txQE, r);
           }
+          System.out.println( "tsaghik RecordServiceImpl:: saveRecord: " + r.getParsedRecord().getContent().toString());
           return Future.succeededFuture(r.getGeneration());
         })
         .compose(generation -> {
           if (generation > 0) {
+            System.out.println( "tsaghik RecordServiceImpl:: generation > 0 : " + generation);
             return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
                 .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
                 .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
           } else {
+            System.out.println( "tsaghik RecordServiceImpl:: generation <= 0 : " + generation);
             return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
           }
         }), tenantId)
@@ -154,6 +158,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+    System.out.println( "tsaghik RecordServiceImpl:: saveRecords RecordCollection: " + recordCollection.getRecords().get(0).getParsedRecord().getContent().toString());
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
@@ -346,6 +351,7 @@ public class RecordServiceImpl implements RecordService {
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {
+      System.out.println( "tsaghik RecordServiceImpl:: marcField999s: " + marcField999s);
       // Set matched id from 999$s marc field
       LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, record.getId());
       return Future.succeededFuture(record.withMatchedId(marcField999s));
@@ -362,6 +368,7 @@ public class RecordServiceImpl implements RecordService {
     }
 
     return promise.future().onSuccess(r -> {
+      System.out.println( "tsaghik RecordServiceImpl setMatchedIdForRecord:  " + r.getParsedRecord().getContent().toString());
       if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
       }

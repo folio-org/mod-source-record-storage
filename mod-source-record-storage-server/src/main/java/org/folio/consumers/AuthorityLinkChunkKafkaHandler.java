@@ -88,6 +88,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", consumerRecord);
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
+    System.out.println(" tsaghik AuthorityLinkChunkKafkaHandler:: userId: " + userId);
     return mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
       .compose(event -> retrieveRecords(event, event.getTenant())

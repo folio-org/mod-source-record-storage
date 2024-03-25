@@ -109,6 +109,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           return saveRecord(record, dataImportEventPayload.getTenant());
         })
         .onSuccess(record -> {
+          System.out.println("tsaghik AbstractPostProcessingEventHandler:: onSuccess:: record: " + record.getParsedRecord().getContent().toString());
           sendReplyEvent(dataImportEventPayload, record);
           sendAdditionalEvent(dataImportEventPayload, record);
           future.complete(dataImportEventPayload);
@@ -311,9 +312,11 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
+          System.out.println("tsaghik AbstractPostProcessingEventHandler0:: saveRecord:: record: " + record.getParsedRecord().getContent().toString());
           return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
+          System.out.println("tsaghik AbstractPostProcessingEventHandler:: saveRecord:: record: " + record.getParsedRecord().getContent().toString());
           return recordService.saveRecord(record, tenantId).map(record);
         }
       })

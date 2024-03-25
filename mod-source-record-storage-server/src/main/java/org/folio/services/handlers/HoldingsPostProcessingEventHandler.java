@@ -52,6 +52,7 @@ public class HoldingsPostProcessingEventHandler extends AbstractPostProcessingEv
 
   @Override
   protected void setExternalIds(ExternalIdsHolder externalIdsHolder, String externalId, String externalHrid) {
+    System.out.println("tsaghik HoldingsPostProcessingEventHandler.setExternalIds");
     externalIdsHolder.setHoldingsId(externalId);
     externalIdsHolder.setHoldingsHrid(externalHrid);
   }

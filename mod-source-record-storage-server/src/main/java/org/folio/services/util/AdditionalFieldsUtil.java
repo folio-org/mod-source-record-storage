@@ -220,7 +220,9 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
+          System.out.println("tsaghik AdditionalFieldsUtil:: addControlledFieldToMarcRecord parsedContentString : " + parsedContentString);
           var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
+          System.out.println("tsaghik AdditionalFieldsUtil:: addControlledFieldToMarcRecord content : " + content);
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(content, marcRecord);
           record.setParsedRecord(record.getParsedRecord().withContent(content));
@@ -246,6 +248,8 @@ public final class AdditionalFieldsUtil {
     boolean isFieldRemoveSucceed = false;
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
+        System.out.println("tsaghik AdditionalFieldsUtil:: removeField:: sourceParsedRecordString: " + sourceParsedRecordString);
         MarcWriter marcStreamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
         org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
@@ -262,9 +266,12 @@ public final class AdditionalFieldsUtil {
             marcJsonWriter.write(marcRecord);
 
             String parsedContentString = new JsonObject(baos.toString()).encode();
+            System.out.println("tsaghik AdditionalFieldsUtil:: removeField:: parsedContentString: " + parsedContentString);
+            var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
+            System.out.println("tsaghik AdditionalFieldsUtil:: removeField:: content: " + content);
             // save parsed content string to cache then set it on the record
-            parsedRecordContentCache.put(parsedContentString, marcRecord);
-            record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
+            parsedRecordContentCache.put(content, marcRecord);
+            record.setParsedRecord(record.getParsedRecord().withContent(content));
           }
         }
       }
@@ -381,7 +388,9 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
+          System.out.println("tsaghik AdditionalFieldsUtil:: parsedContentString: " + parsedContentString);
           var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
+          System.out.println("tsaghik AdditionalFieldsUtil:: content: " + content);
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(content, marcRecord);
           record.setParsedRecord(record.getParsedRecord().withContent(content));
@@ -452,17 +461,29 @@ public final class AdditionalFieldsUtil {
         String originalHrIdPrefix = getValueFromControlledField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
         String originalHrId = mergeFieldsFor035(originalHrIdPrefix, valueFrom001);
         if (!isFieldExist(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_SUB, originalHrId)) {
+          System.out.println("tsaghik1 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
           addDataFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, originalHrId);
         }
       }
+      System.out.println("tsaghik2 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
       removeField(recordInstancePair.getKey(), HR_ID_FROM_FIELD);
+      System.out.println("tsaghik3 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
+
       if (StringUtils.isNotEmpty(hrId)) {
+        System.out.println("tsaghik4 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
+
         addControlledFieldToMarcRecord(recordInstancePair.getKey(), HR_ID_FROM_FIELD, hrId);
+        System.out.println("tsaghik5 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
+
       }
     } else {
       remove035WithActualHrId(recordInstancePair.getKey(), hrId);
+      System.out.println("tsaghik6 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
+
     }
     removeField(recordInstancePair.getKey(), HR_ID_PREFIX_FROM_FIELD);
+    System.out.println("tsaghik7 AdditionalFieldsUtil:: fillHrIdFieldInMarcRecord: getKey: " + recordInstancePair.getKey().getParsedRecord().getContent());
+
   }
 
   public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {

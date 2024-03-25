@@ -193,6 +193,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   private Future<Record> prepareRecord(DataImportEventPayload dataImportEventPayload, MappingParameters mappingParameters) {
+    System.out.println("tsaghik AbstractPostProcessingEventHandler:: prepareRecord");
     Promise<Record> recordPromise = Promise.promise();
     var eventContext = dataImportEventPayload.getContext();
     String entityAsString = eventContext.get(getExternalType().value());
@@ -202,7 +203,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
+      System.out.println("tsaghik AbstractPostProcessingEventHandler:: record: " + record.getParsedRecord().getContent().toString();
       var sourceContent = record.getParsedRecord().getContent().toString();
+
       updateLatestTransactionDate(record, mappingParameters);
 
       JsonObject externalEntity = new JsonObject(entityAsString);
@@ -211,7 +214,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
 
       var targetContent = record.getParsedRecord().getContent().toString();
+      System.out.println("tsaghik AbstractPostProcessingEventHandler:: prepareRecord:: targetContent: " + targetContent);
       var content = reorderMarcRecordFields(sourceContent, targetContent);
+      System.out.println("tsaghik AbstractPostProcessingEventHandler:: prepareRecord:: content: " + content);
       record.getParsedRecord().setContent(content);
       recordPromise.complete(record);
     }

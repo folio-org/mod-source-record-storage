@@ -100,6 +100,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   @Override
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                       MappingParameters mappingParameters) {
+    System.out.println("tsaghik MarcBibUpdateModifyEventHandler::modifyRecord");
     if (mappingProfile.getMappingDetails().getMarcMappingOption() == MappingDetail.MarcMappingOption.MODIFY) {
       return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty(), Collections.emptyList())
         .map(v -> null);

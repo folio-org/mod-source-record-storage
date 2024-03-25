@@ -87,6 +87,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       Record newRecord = extractRecord(payload, modifiedEntityType().value());
+      System.out.println("tsaghik AbstractUpdateModifyEventHandler::handle newRecord: " + newRecord.getParsedRecord().getContent());
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
       OkapiConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
@@ -98,6 +99,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             .onSuccess(v -> prepareModificationResult(payload, marcMappingOption))
             .map(v -> Json.decodeValue(payloadContext.get(modifiedEntityType().value()), Record.class))
             .onSuccess(changedRecord -> {
+              System.out.println("tsaghik::handle changedRecord: " + changedRecord.getParsedRecord().getContent());
               if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
                 addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
@@ -122,6 +124,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
               .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
           }
+          System.out.println("tsaghik::handle saveRecord: " + changedRecord.getParsedRecord().getContent());
           return recordService.saveRecord(changedRecord, payload.getTenant());
         })
         .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))

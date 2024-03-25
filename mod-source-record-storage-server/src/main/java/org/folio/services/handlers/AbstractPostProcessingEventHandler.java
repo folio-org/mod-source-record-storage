@@ -203,7 +203,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
-      System.out.println("tsaghik AbstractPostProcessingEventHandler:: record: " + record.getParsedRecord().getContent().toString();
+      System.out.println("tsaghik AbstractPostProcessingEventHandler:: record: " + record.getParsedRecord().getContent().toString());
       var sourceContent = record.getParsedRecord().getContent().toString();
 
       updateLatestTransactionDate(record, mappingParameters);

@@ -49,6 +49,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
+    System.out.println("tsaghik DataImportKafkaHandler::handle");
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());

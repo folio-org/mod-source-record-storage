@@ -33,6 +33,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
+    System.out.println("tsaghik AuthorityDomainKafkaHandler::handle");
     log.trace("handle:: Handling kafka record: '{}'", consumerRecord);
     String authorityId = consumerRecord.key();
     if (isUnexpectedDomainEvent(consumerRecord)) {

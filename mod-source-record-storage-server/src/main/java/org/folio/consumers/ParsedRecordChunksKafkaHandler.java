@@ -67,6 +67,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
+    System.out.println(" tsaghik  ParsedRecordChunksKafkaHandler::handle");
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());

@@ -64,6 +64,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
+    System.out.println("tsaghik QuickMarcKafkaHandler::handle");
     log.trace("handle:: Handling kafka consumerRecord {}", consumerRecord);
 
     var kafkaHeaders = consumerRecord.headers();

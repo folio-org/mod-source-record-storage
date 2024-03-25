@@ -94,6 +94,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
+    System.out.println("tsaghik AbstractPostProcessingEventHandler:: handle");
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     var eventType = dataImportEventPayload.getEventType();
     var jobExecutionId = dataImportEventPayload.getJobExecutionId();
@@ -106,6 +107,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           if (centralTenantOperationExists(dataImportEventPayload)) {
             return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
+          System.out.println("tsaghik AbstractPostProcessingEventHandler:: handle:: record: " + record.getParsedRecord().getContent().toString());
           return saveRecord(record, dataImportEventPayload.getTenant());
         })
         .onSuccess(record -> {

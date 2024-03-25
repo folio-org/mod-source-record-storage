@@ -72,6 +72,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
+    System.out.println("tsaghik AbstractUpdateModifyEventHandler::handle");
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
       var payloadContext = payload.getContext();

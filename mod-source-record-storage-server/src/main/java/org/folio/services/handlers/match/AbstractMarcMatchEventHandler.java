@@ -77,6 +77,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
+    System.out.println("tsaghik AbstractMarcMatchEventHandler::handle");
     try {
       HashMap<String, String> context = payload.getContext();
 

@@ -8,12 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -177,27 +172,39 @@ public class MarcUtil {
     }
   }
 
+  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
+    Map<String, Queue<JsonNode>> jsonNodesByTag = new LinkedHashMap<>();
+    for (JsonNode node : fieldsArrayNode) {
+      String tag = getTagFromNode(node);
+      jsonNodesByTag.putIfAbsent(tag, new LinkedList<>());
+      jsonNodesByTag.get(tag).add(node);
+    }
+    return jsonNodesByTag;
+  }
+
+  private static String getTagFromNode(JsonNode node) {
+    return node.fieldNames().next();
+  }
+
   private static List<String> getSourceFields(String source) {
     List<String> sourceFields = new ArrayList<>();
+    List<String> remainingFields = new ArrayList<>();
     try {
       var sourceJson = objectMapper.readTree(source);
       var fieldsNode = sourceJson.get(FIELDS);
+
       for (JsonNode fieldNode : fieldsNode) {
         String tag = fieldNode.fieldNames().next();
-        sourceFields.add(tag);
+        if (tag.equals("001") || tag.equals("005")) {
+          sourceFields.add(tag);
+        } else {
+          remainingFields.add(tag);
+        }
       }
+      sourceFields.addAll(remainingFields);
     } catch (Exception e) {
       LOGGER.error("An error occurred while parsing source JSON: {}", e.getMessage(), e);
     }
     return sourceFields;
-  }
-
-  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
-    Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
-    fieldsArrayNode.forEach(node -> {
-      String tag = node.fieldNames().next();
-      jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
-    });
-    return jsonNodesByTag;
   }
 }

@@ -201,6 +201,7 @@ public final class AdditionalFieldsUtil {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
         if (replace) {
           removeField(record, field);
         }
@@ -217,9 +218,10 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
+          var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
           // save parsed content string to cache then set it on the record
-          parsedRecordContentCache.put(parsedContentString, marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
+          parsedRecordContentCache.put(content, marcRecord);
+          record.setParsedRecord(record.getParsedRecord().withContent(content));
           result = true;
         }
       }
@@ -363,6 +365,7 @@ public final class AdditionalFieldsUtil {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();
@@ -376,9 +379,10 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
+          var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
           // save parsed content string to cache then set it on the record
-          parsedRecordContentCache.put(parsedContentString, marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
+          parsedRecordContentCache.put(content, marcRecord);
+          record.setParsedRecord(record.getParsedRecord().withContent(content));
           result = true;
         }
       }

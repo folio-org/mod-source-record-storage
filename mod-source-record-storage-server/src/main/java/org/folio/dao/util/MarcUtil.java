@@ -1,6 +1,8 @@
 package org.folio.dao.util;
 
 import static java.lang.String.format;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -9,7 +11,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
@@ -153,23 +155,34 @@ public class MarcUtil {
       var parsedContent = objectMapper.readTree(targetContent);
       var fieldsArrayNode = (ArrayNode) parsedContent.path(FIELDS);
 
-      Map<String, Queue<JsonNode>> jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
-
-      List<String> sourceFields = getSourceFields(sourceContent);
-
+      var jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
+      var sourceFields = getSourceFields(sourceContent);
       var rearrangedArray = objectMapper.createArrayNode();
+
+      var nodes001 = jsonNodesByTag.get(HR_ID_FROM_FIELD);
+      if (nodes001 != null && !nodes001.isEmpty()) {
+        rearrangedArray.addAll(nodes001);
+        jsonNodesByTag.remove(HR_ID_FROM_FIELD);
+      }
+
+      var nodes005 = jsonNodesByTag.get(TAG_005);
+      if (nodes005 != null && !nodes005.isEmpty()) {
+        rearrangedArray.addAll(nodes005);
+        jsonNodesByTag.remove(TAG_005);
+      }
+
       for (String tag : sourceFields) {
-        Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
-        if (nodes != null && !nodes.isEmpty()) {
-          rearrangedArray.addAll(nodes);
-          jsonNodesByTag.remove(tag);
-        }
+          Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
+          if (nodes != null && !nodes.isEmpty()) {
+            rearrangedArray.addAll(nodes);
+            jsonNodesByTag.remove(tag);
+          }
+
       }
 
       jsonNodesByTag.values().forEach(rearrangedArray::addAll);
 
-      ((ObjectNode)parsedContent).set(FIELDS, rearrangedArray);
-
+      ((ObjectNode) parsedContent).set(FIELDS, rearrangedArray);
       return parsedContent.toString();
     } catch (Exception e) {
       LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
@@ -177,27 +190,47 @@ public class MarcUtil {
     }
   }
 
+  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
+    var jsonNodesByTag = new LinkedHashMap<String, Queue<JsonNode>>();
+    for (JsonNode node : fieldsArrayNode) {
+      var tag = getTagFromNode(node);
+      jsonNodesByTag.putIfAbsent(tag, new LinkedList<>());
+      jsonNodesByTag.get(tag).add(node);
+    }
+    return jsonNodesByTag;
+  }
+
+  private static String getTagFromNode(JsonNode node) {
+    return node.fieldNames().next();
+  }
+
   private static List<String> getSourceFields(String source) {
-    List<String> sourceFields = new ArrayList<>();
+    var sourceFields = new ArrayList<String>();
+    var remainingFields = new ArrayList<String>();
+    var has001 = false;
     try {
       var sourceJson = objectMapper.readTree(source);
       var fieldsNode = sourceJson.get(FIELDS);
+
       for (JsonNode fieldNode : fieldsNode) {
-        String tag = fieldNode.fieldNames().next();
-        sourceFields.add(tag);
+        var tag = fieldNode.fieldNames().next();
+        if (tag.equals(HR_ID_FROM_FIELD)) {
+          sourceFields.add(0, tag);
+          has001 = true;
+        } else if (tag.equals(TAG_005)) {
+          if (!has001) {
+            sourceFields.add(0, tag);
+          } else {
+            sourceFields.add(1, tag);
+          }
+        } else {
+          remainingFields.add(tag);
+        }
       }
+      sourceFields.addAll(remainingFields);
     } catch (Exception e) {
       LOGGER.error("An error occurred while parsing source JSON: {}", e.getMessage(), e);
     }
     return sourceFields;
-  }
-
-  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
-    Map<String, Queue<JsonNode>> jsonNodesByTag = new HashMap<>();
-    fieldsArrayNode.forEach(node -> {
-      String tag = node.fieldNames().next();
-      jsonNodesByTag.computeIfAbsent(tag, k -> new LinkedList<>()).add(node);
-    });
-    return jsonNodesByTag;
   }
 }

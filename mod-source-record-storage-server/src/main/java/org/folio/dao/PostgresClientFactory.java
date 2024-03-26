@@ -51,6 +51,8 @@ public class PostgresClientFactory {
   private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
+  private static final String DB_RECONNECTATTEMPTS = "reconnectAttempts";
+  private static final String DB_RECONNECTINTERVAL = "reconnectInterval";
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
@@ -227,6 +229,8 @@ public class PostgresClientFactory {
       .setPassword(postgresConfig.getString(PASSWORD))
       .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
       .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
+      .setReconnectAttempts(postgresConfig.getInteger(DB_RECONNECTATTEMPTS, 0))
+      .setReconnectInterval(postgresConfig.getLong(DB_RECONNECTINTERVAL, 1L))
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
   }
 

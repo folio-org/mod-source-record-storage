@@ -135,6 +135,7 @@ public final class AdditionalFieldsUtil {
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
         var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
+        System.out.println("tsaghik addFieldToMarcRecord AdditionalFieldsUtil:: sourceParsedRecordString: " + sourceParsedRecordString);
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();
@@ -159,11 +160,11 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
-          System.out.println("tsaghik AdditionalFieldsUtil:: parsedContentString: " + parsedContentString);
+          System.out.println("tsaghik addFieldToMarcRecord AdditionalFieldsUtil:: parsedContentString: " + parsedContentString);
           var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(content, marcRecord);
-          System.out.println("tsaghik AdditionalFieldsUtil:: content: " + content);
+          System.out.println("tsaghik addFieldToMarcRecord AdditionalFieldsUtil:: content: " + content);
           record.setParsedRecord(record.getParsedRecord().withContent(content));
           result = true;
         }
@@ -375,6 +376,7 @@ public final class AdditionalFieldsUtil {
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
         var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
+        System.out.println("tsaghik addDataFieldToMarcRecord AdditionalFieldsUtil:: sourceParsedRecordString: " + sourceParsedRecordString);
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();
@@ -388,9 +390,9 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
-          System.out.println("tsaghik AdditionalFieldsUtil:: parsedContentString: " + parsedContentString);
+          System.out.println("tsaghik addDataFieldToMarcRecord AdditionalFieldsUtil:: parsedContentString: " + parsedContentString);
           var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
-          System.out.println("tsaghik AdditionalFieldsUtil:: content: " + content);
+          System.out.println("tsaghik addDataFieldToMarcRecord AdditionalFieldsUtil:: content: " + content);
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(content, marcRecord);
           record.setParsedRecord(record.getParsedRecord().withContent(content));

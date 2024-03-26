@@ -145,38 +145,88 @@ public class MarcUtil {
    */
   public static String reorderMarcRecordFields(String sourceContent, String targetContent) {
     try {
-      ObjectMapper objectMapper = new ObjectMapper();
-      JsonNode sourceParsedRecordString = objectMapper.readTree(sourceContent);
-      JsonNode parsedContentString = objectMapper.readTree(targetContent);
+      var parsedContent = objectMapper.readTree(targetContent);
+      var fieldsArrayNode = (ArrayNode) parsedContent.path(FIELDS);
 
-      ArrayNode reorderedFields = objectMapper.createArrayNode();
-      ArrayNode fields001 = objectMapper.createArrayNode();
-      ArrayNode fields005 = objectMapper.createArrayNode();
-      ArrayNode otherFields = objectMapper.createArrayNode();
-      ArrayNode fields999 = objectMapper.createArrayNode();
+      Map<String, Queue<JsonNode>> jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
 
-      parsedContentString.path("fields").forEach(field -> {
-        if (field.has("001")) {
-          fields001.add(field);
-        } else if (field.has("005")) {
-          fields005.add(field);
-        } else if (field.has("999")) {
-          fields999.add(field);
-        } else {
-          otherFields.add(field);
-        }
-      });
+      List<String> sourceFields = getSourceFields(sourceContent);
 
-      reorderedFields.addAll(fields001);
-      reorderedFields.addAll(fields005);
-      reorderedFields.addAll(otherFields);
-      reorderedFields.addAll(fields999);
+      var rearrangedArray = objectMapper.createArrayNode();
 
-      ((ObjectNode) parsedContentString).set("fields", reorderedFields);
-      return parsedContentString.toString();
+      Queue<JsonNode> nodes001 = jsonNodesByTag.get("001");
+      if (nodes001 != null && !nodes001.isEmpty()) {
+        rearrangedArray.addAll(nodes001);
+        jsonNodesByTag.remove("001");
+      }
+
+      Queue<JsonNode> nodes005 = jsonNodesByTag.get("005");
+      if (nodes005 != null && !nodes005.isEmpty()) {
+        rearrangedArray.addAll(nodes005);
+        jsonNodesByTag.remove("005");
+      }
+
+      for (String tag : sourceFields) {
+          Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
+          if (nodes != null && !nodes.isEmpty()) {
+            rearrangedArray.addAll(nodes);
+            jsonNodesByTag.remove(tag);
+          }
+
+      }
+
+      jsonNodesByTag.values().forEach(rearrangedArray::addAll);
+
+      ((ObjectNode) parsedContent).set(FIELDS, rearrangedArray);
+
+      return parsedContent.toString();
     } catch (Exception e) {
-      System.err.println("An error occurred while reordering Marc record fields: " + e.getMessage());
+      LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
       return targetContent;
     }
+  }
+
+  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
+    Map<String, Queue<JsonNode>> jsonNodesByTag = new LinkedHashMap<>();
+    for (JsonNode node : fieldsArrayNode) {
+      String tag = getTagFromNode(node);
+      jsonNodesByTag.putIfAbsent(tag, new LinkedList<>());
+      jsonNodesByTag.get(tag).add(node);
+    }
+    return jsonNodesByTag;
+  }
+
+  private static String getTagFromNode(JsonNode node) {
+    return node.fieldNames().next();
+  }
+
+  private static List<String> getSourceFields(String source) {
+    List<String> sourceFields = new ArrayList<>();
+    List<String> remainingFields = new ArrayList<>();
+    var has001 = false;
+    try {
+      var sourceJson = objectMapper.readTree(source);
+      var fieldsNode = sourceJson.get(FIELDS);
+
+      for (JsonNode fieldNode : fieldsNode) {
+        String tag = fieldNode.fieldNames().next();
+        if (tag.equals("001")) {
+          sourceFields.add(0, tag);
+          has001 = true;
+        } else if (tag.equals("005")) {
+          if (!has001) {
+            sourceFields.add(0, tag);
+          } else {
+            sourceFields.add(1, tag);
+          }
+        } else {
+          remainingFields.add(tag);
+        }
+      }
+      sourceFields.addAll(remainingFields);
+    } catch (Exception e) {
+      LOGGER.error("An error occurred while parsing source JSON: {}", e.getMessage(), e);
+    }
+    return sourceFields;
   }
 }

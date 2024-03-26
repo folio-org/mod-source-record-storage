@@ -60,11 +60,14 @@ public class ModTenantAPI extends TenantAPI {
     Vertx vertx = context.owner();
 
     return super.loadData(attributes, tenantId, headers, context)
-      .compose(num -> {
-      LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
-      return setLoadSampleParameter(attributes, context)
-        .compose(v -> createStubSnapshot(attributes)).map(num);
-    });
+      .compose(num -> vertx.executeBlocking(() -> {
+            LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+            return null;
+          })
+          .compose(ar -> setLoadSampleParameter(attributes, context))
+          .compose(v -> createStubSnapshot(attributes))
+          .map(num)
+      );
   }
 
   @Validate

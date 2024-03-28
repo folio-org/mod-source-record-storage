@@ -24,6 +24,7 @@ public class MarcUtilTest {
   private static final String REORDERED_PARSED_RECORD = "src/test/resources/mock/sourceRecords/parsedRecords/reorderedParsedRecord.json";
   private static final String PARSED_RECORD = "src/test/resources/mock/sourceRecords/parsedRecords/parsedRecord.json";
   private static final String RAW_RECORD_PATH = "src/test/resources/mock/rawRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
+  private static final String REORDERING_RESULT_RECORD = "src/test/resources/mock/sourceRecords/parsedRecords/reorderingResultRecord.json";
 
   private SourceRecord sourceRecord;
   private SourceRecord reorderedSourceRecord;
@@ -72,11 +73,12 @@ public class MarcUtilTest {
   public void shouldReorderMarcRecordFields() throws IOException, MarcException {
     var reorderedRecordContent = readFileFromPath(PARSED_RECORD);
     var sourceRecordContent = readFileFromPath(REORDERED_PARSED_RECORD);
+    var reorderingResultRecord = readFileFromPath(REORDERING_RESULT_RECORD);
 
-    var resultcontent = MarcUtil.reorderMarcRecordFields(reorderedRecordContent, sourceRecordContent);
+    var resultContent = MarcUtil.reorderMarcRecordFields(sourceRecordContent, reorderedRecordContent);
 
-    assertNotNull(resultcontent);
-    assertEquals(formatContent(resultcontent), formatContent(reorderedRecordContent));
+    assertNotNull(resultContent);
+    assertEquals(formatContent(resultContent), formatContent(reorderingResultRecord));
   }
 
   private static String readFileFromPath(String path) throws IOException {

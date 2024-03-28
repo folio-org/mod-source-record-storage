@@ -12,6 +12,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +29,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.junit.Assert;
@@ -121,7 +123,9 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
           .withSnapshotId(snapshotId2)
           .withRawRecord(record.getRawRecord().withId(recordForUdateId))
           .withParsedRecord(record.getParsedRecord().withId(recordForUdateId))
-          .withGeneration(1);
+          .withGeneration(1)
+          .withMetadata(new Metadata().withCreatedByUserId(UUID.randomUUID().toString())
+            .withCreatedDate(new Date()));
 
         HashMap<String, String> payloadContextForUpdate = new HashMap<>();
         payloadContextForUpdate.put(AUTHORITY.value(), authority.encode());

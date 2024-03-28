@@ -12,9 +12,6 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -216,6 +213,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
         String actualAuthorityId = getInventoryId(fields);
         context.assertEquals(expectedAuthorityId, actualAuthorityId);
+        context.assertNotNull(savedRecord.getMetadata().getUpdatedByUserId());
         async.complete();
       });
     });

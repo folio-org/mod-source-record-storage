@@ -155,6 +155,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
             context.assertNotNull(rec.getExternalIdsHolder());
             context.assertTrue(expectedAuthorityId.equals(rec.getExternalIdsHolder().getAuthorityId()));
             context.assertNotEquals(rec.getId(), record.getId());
+            context.assertNotNull(rec.getMetadata().getUpdatedByUserId());
             async.complete();
           });
         });

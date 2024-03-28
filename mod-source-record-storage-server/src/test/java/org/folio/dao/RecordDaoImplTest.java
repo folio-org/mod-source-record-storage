@@ -12,6 +12,7 @@ import io.vertx.sqlclient.Row;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.value.MissingValue;
@@ -34,13 +35,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import javax.ws.rs.DELETE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
+import static org.folio.rest.jaxrs.model.Record.State.DELETED;
+import static org.folio.rest.jaxrs.model.Record.State.OLD;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
@@ -51,6 +56,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
   private RecordDao recordDao;
   private Record record;
+  private Record deletedRecord;
+  private String deletedRecordId;
 
   @Before
   public void setUp(TestContext context) throws IOException {
@@ -63,6 +70,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Snapshot snapshot = TestMocks.getSnapshot(0);
     String recordId = UUID.randomUUID().toString();
+    deletedRecordId = UUID.randomUUID().toString();
 
     this.record = new Record()
       .withId(recordId)
@@ -76,8 +84,22 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
+
+    this.deletedRecord = new Record()
+      .withId(deletedRecordId)
+      .withState(DELETED)
+      .withMatchedId(deletedRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord.withId(recordId))
+      .withParsedRecord(marcRecord.withId(recordId))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString()));
+
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, TENANT_ID))
+      .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, TENANT_ID))
       .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());
@@ -110,6 +132,20 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       context.assertTrue(ar.succeeded());
       context.assertEquals(1, ar.result().size());
       context.assertEquals(record.getId(), ar.result().get(0).getId());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnDeletedRecord(TestContext context) {
+    Async async = context.async();
+
+    Future<Optional<Record>> future =  recordDao.getRecordByExternalId(deletedRecordId, IdType.RECORD, TENANT_ID);
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertTrue(ar.result().isPresent());
+      context.assertEquals(deletedRecord.getId(), ar.result().get().getId());
       async.complete();
     });
   }

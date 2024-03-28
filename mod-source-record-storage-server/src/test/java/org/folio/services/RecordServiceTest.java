@@ -1187,6 +1187,27 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldGetFormattedDeletedRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getMarcBibRecord();
+    expected.setState(State.DELETED);
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getFormattedRecord(expected.getId(), IdType.RECORD, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertNotNull(get.result().getParsedRecord());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(),
+          get.result().getParsedRecord().getFormattedContent());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldUpdateSuppressFromDiscoveryForMarcBibRecord(TestContext context) {
     updateSuppressFromDiscoveryForMarcRecord(context, TestMocks.getMarcBibRecord());
   }

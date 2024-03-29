@@ -103,16 +103,9 @@ public class ModTenantAPI extends TenantAPI {
       return Future.succeededFuture();
     }
 
-    Promise<Void> promise = Promise.promise();
-    snapshotService.saveSnapshot(STUB_SNAPSHOT, tenantId).onComplete(save -> {
-      if (save.failed()) {
-        promise.fail(save.cause());
-      }
-      promise.complete();
-    });
     LOGGER.info("createStubSnapshot:: Module is being deployed in test mode, stub snapshot will be created. Check the server log for details.");
-
-    return promise.future();
+    return snapshotService.saveSnapshot(STUB_SNAPSHOT, tenantId)
+        .mapEmpty();
   }
 
   private String getTenantAttributesParameter(TenantAttributes attributes) {

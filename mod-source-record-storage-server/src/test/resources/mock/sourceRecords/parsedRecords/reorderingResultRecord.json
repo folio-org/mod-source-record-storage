@@ -1,0 +1,346 @@
+{
+  "leader": "01314nam  22003851a 4500",
+  "fields": [
+    {
+      "001": "ybp7406411"
+    },
+    {
+      "005": "20120404100627.6"
+    },
+    {
+      "040": {
+        "subfields": [
+          {
+            "a": "NhCcYBP"
+          },
+          {
+            "c": "NhCcYBP"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "003": "NhCcYBP"
+    },
+    {
+      "006": "m||||||||d|||||||"
+    },
+    {
+      "007": "cr||n|||||||||"
+    },
+    {
+      "008": "120329s2011    sz a    ob    001 0 eng d"
+    },
+    {
+      "020": {
+        "subfields": [
+          {
+            "a": "2940447241 (electronic bk.)"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "020": {
+        "subfields": [
+          {
+            "a": "9782940447244 (electronic bk.)"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "050": {
+        "subfields": [
+          {
+            "a": "Z246"
+          },
+          {
+            "b": ".A43 2011"
+          }
+        ],
+        "ind1": " ",
+        "ind2": "4"
+      }
+    },
+    {
+      "082": {
+        "subfields": [
+          {
+            "a": "686.22"
+          },
+          {
+            "2": "22"
+          }
+        ],
+        "ind1": "0",
+        "ind2": "4"
+      }
+    },
+    {
+      "100": {
+        "subfields": [
+          {
+            "a": "Ambrose, Gavin."
+          }
+        ],
+        "ind1": "1",
+        "ind2": " "
+      }
+    },
+    {
+      "245": {
+        "subfields": [
+          {
+            "a": "The fundamentals of typography"
+          },
+          {
+            "h": "[electronic resource] /"
+          },
+          {
+            "c": "Gavin Ambrose, Paul Harris."
+          }
+        ],
+        "ind1": "1",
+        "ind2": "4"
+      }
+    },
+    {
+      "250": {
+        "subfields": [
+          {
+            "a": "2nd ed."
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "260": {
+        "subfields": [
+          {
+            "a": "Lausanne ;"
+          },
+          {
+            "a": "Worthing :"
+          },
+          {
+            "b": "AVA Academia,"
+          },
+          {
+            "c": "2011."
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "300": {
+        "subfields": [
+          {
+            "a": "1 online resource."
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "490": {
+        "subfields": [
+          {
+            "a": "AVA Academia series"
+          }
+        ],
+        "ind1": "1",
+        "ind2": " "
+      }
+    },
+    {
+      "500": {
+        "subfields": [
+          {
+            "a": "Previous ed.: 2006."
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "504": {
+        "subfields": [
+          {
+            "a": "Includes bibliographical references (p. [200]) and index."
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "505": {
+        "subfields": [
+          {
+            "a": "Type and language -- A few basics -- Letterforms -- Words and paragraphs -- Using type."
+          }
+        ],
+        "ind1": "0",
+        "ind2": " "
+      }
+    },
+    {
+      "650": {
+        "subfields": [
+          {
+            "a": "Graphic design (Typography)"
+          }
+        ],
+        "ind1": " ",
+        "ind2": "0"
+      }
+    },
+    {
+      "650": {
+        "subfields": [
+          {
+            "a": "Printing."
+          }
+        ],
+        "ind1": " ",
+        "ind2": "0"
+      }
+    },
+    {
+      "700": {
+        "subfields": [
+          {
+            "a": "Harris, Paul,"
+          },
+          {
+            "d": "1971-"
+          }
+        ],
+        "ind1": "1",
+        "ind2": " "
+      }
+    },
+    {
+      "710": {
+        "subfields": [
+          {
+            "a": "EBSCOhost"
+          }
+        ],
+        "ind1": "2",
+        "ind2": " "
+      }
+    },
+    {
+      "776": {
+        "subfields": [
+          {
+            "c": "Original"
+          },
+          {
+            "z": "9782940411764"
+          },
+          {
+            "z": "294041176X"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "830": {
+        "subfields": [
+          {
+            "a": "AVA academia."
+          }
+        ],
+        "ind1": " ",
+        "ind2": "0"
+      }
+    },
+    {
+      "856": {
+        "subfields": [
+          {
+            "u": "http://search.ebscohost.com/login.aspx?direct=true&scope=site&db=nlebk&db=nlabk&AN=430135"
+          }
+        ],
+        "ind1": "4",
+        "ind2": "0"
+      }
+    },
+    {
+      "935": {
+        "subfields": [
+          {
+            "a": ".o13465259"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "980": {
+        "subfields": [
+          {
+            "a": "130307"
+          },
+          {
+            "b": "7107"
+          },
+          {
+            "e": "7107"
+          },
+          {
+            "f": "243965"
+          },
+          {
+            "g": "1"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "981": {
+        "subfields": [
+          {
+            "b": "OM"
+          },
+          {
+            "c": "nlnet"
+          }
+        ],
+        "ind1": " ",
+        "ind2": " "
+      }
+    },
+    {
+      "999": {
+        "subfields": [
+          {
+            "i": "cc3ece35-a8a9-44dd-b721-08342e776c2c"
+          }
+        ],
+        "ind1": "f",
+        "ind2": "f"
+      }
+    }
+  ]
+}

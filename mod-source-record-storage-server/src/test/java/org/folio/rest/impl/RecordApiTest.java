@@ -891,7 +891,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundIfTryingToDeleteRecordWithStateNotActual(TestContext testContext) {
+  public void shouldReturnNoContentAndDeleteRecordIfTryingToDeleteRecordWithStateNotActual(TestContext testContext) {
     postSnapshots(testContext, snapshot_1);
 
     Record newRecord1 = new Record()
@@ -945,7 +945,22 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .when()
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + newRecord2.getId())
       .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    Response deletedResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + newRecord2.getId());
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
+
+    Record deletedRecord = deletedResponse.body().as(Record.class);
+
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
+
     async.complete();
   }
 

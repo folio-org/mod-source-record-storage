@@ -20,11 +20,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <log4j.version>2.19.0</log4j.version>
+    <log4j.version>2.23.1</log4j.version>
     <raml-module-builder.version>35.2.0</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
     <vertx.version>4.5.4</vertx.version>
-    <junit.version>4.13.2</junit.version>
+    <junit.version>5.10.2</junit.version>
     <rest-assured.version>4.5.1</rest-assured.version>
     <kafkaclients.version>3.6.0</kafkaclients.version>
     <kafkajunit.version>3.5.1</kafkajunit.version>
@@ -57,6 +57,13 @@
         <groupId>org.springframework</groupId>
         <artifactId>spring-framework-bom</artifactId>
         <version>${spring.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -186,6 +193,21 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.2.5</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
   </build>
 

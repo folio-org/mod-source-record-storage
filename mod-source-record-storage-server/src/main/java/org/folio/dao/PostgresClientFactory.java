@@ -1,28 +1,17 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.sql.DataSource;
-
 import com.zaxxer.hikari.HikariDataSource;
-import io.netty.handler.ssl.OpenSsl;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.JdkSSLEngineOptions;
-import io.vertx.core.net.OpenSSLEngineOptions;
-import io.vertx.core.net.PemTrustOptions;
-import io.vertx.pgclient.SslMode;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.json.JsonObject;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.LoadConfs;
+import org.folio.rest.persist.PgConnectOptionsHelper;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
@@ -33,14 +22,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.String.format;
 
 @Component
 public class PostgresClientFactory {
@@ -58,12 +50,7 @@ public class PostgresClientFactory {
   private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
-  private static final String DB_RECONNECTATTEMPTS = "reconnectAttempts";
-  private static final String DB_RECONNECTINTERVAL = "reconnectInterval";
   private static final String MODULE_NAME = ModuleName.getModuleName();
-  private static final String VERIFICATION_ALGORITHM = "HTTPS";
-  private static final String TRANSPORT_PROTOCOL = "TLSv1.3";
-  private static final String SERVER_PEM = "server_pem";
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
 
@@ -231,33 +218,8 @@ public class PostgresClientFactory {
   }
 
   private static PgConnectOptions getConnectOptions(String tenantId) {
-    var pgConnectOptions = new PgConnectOptions()
-      .setHost(postgresConfig.getString(HOST))
-      .setPort(postgresConfig.getInteger(PORT))
-      .setDatabase(postgresConfig.getString(DATABASE))
-      .setUser(postgresConfig.getString(USERNAME))
-      .setPassword(postgresConfig.getString(PASSWORD))
-      .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
-      .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
-      .setReconnectAttempts(postgresConfig.getInteger(DB_RECONNECTATTEMPTS, 0))
-      .setReconnectInterval(postgresConfig.getLong(DB_RECONNECTINTERVAL, 1L))
+    return PgConnectOptionsHelper.createPgConnectOptions(postgresConfig)
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
-    var serverPem = postgresConfig.getString(SERVER_PEM);
-    if (serverPem != null) {
-      pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
-      pgConnectOptions.setHostnameVerificationAlgorithm(VERIFICATION_ALGORITHM);
-      pgConnectOptions.setPemTrustOptions(new PemTrustOptions().addCertValue(Buffer.buffer(serverPem)));
-      pgConnectOptions.setEnabledSecureTransportProtocols(Collections.singleton(TRANSPORT_PROTOCOL));
-      if (OpenSSLEngineOptions.isAvailable()) {
-        pgConnectOptions.setOpenSslEngineOptions(new OpenSSLEngineOptions());
-      } else {
-        pgConnectOptions.setJdkSslEngineOptions(new JdkSSLEngineOptions());
-        LOG.error("Cannot run OpenSSL, using slow JDKSSL");
-      }
-      LOG.debug("Enforcing SSL encryption for PostgreSQL connections, requiring {} with server name certificate, using {}",
-        TRANSPORT_PROTOCOL, (OpenSSLEngineOptions.isAvailable() ? "OpenSSL " + OpenSsl.versionString() : "JDKSSL"));
-    }
-    return pgConnectOptions;
   }
 
   private static DataSource getDataSource(String tenantId) {

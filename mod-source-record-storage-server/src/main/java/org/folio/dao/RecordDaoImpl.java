@@ -911,9 +911,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByExternalId(String externalId, IdType idType, RecordState state, String tenantId) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(state))
-      .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    Condition condition = buildConditionBasedOnState(externalId, idType, state);
     return getSourceRecordByCondition(condition, tenantId);
   }
 
@@ -1573,6 +1571,21 @@ public class RecordDaoImpl implements RecordDao {
     if (LOG.isTraceEnabled()) {
       recordCollection.getRecords().forEach(e -> LOG.trace("{} {} record {} for tenant {}", msg, e.getRecordType(), e.getId(), tenantId));
     }
+  }
+
+  private static Condition buildConditionBasedOnState(String externalId, IdType idType, RecordState state) {
+    Condition condition;
+    if (state == RecordState.ACTUAL) {
+      condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
+        .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+          .or(RECORDS_LB.STATE.eq(RecordState.DELETED)))
+        .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    } else {
+      condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
+        .and(RECORDS_LB.STATE.eq(state))
+        .and(RECORDS_LB.LEADER_RECORD_STATUS.isNotNull());
+    }
+    return condition;
   }
 
 }

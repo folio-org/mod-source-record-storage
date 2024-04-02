@@ -1,21 +1,17 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.sql.DataSource;
-
 import com.zaxxer.hikari.HikariDataSource;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.json.JsonObject;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.LoadConfs;
+import org.folio.rest.persist.PgConnectOptionsHelper;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
@@ -26,14 +22,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.String.format;
 
 @Component
 public class PostgresClientFactory {
@@ -51,8 +50,6 @@ public class PostgresClientFactory {
   private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
-  private static final String DB_RECONNECTATTEMPTS = "reconnectAttempts";
-  private static final String DB_RECONNECTINTERVAL = "reconnectInterval";
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
@@ -221,16 +218,7 @@ public class PostgresClientFactory {
   }
 
   private static PgConnectOptions getConnectOptions(String tenantId) {
-    return new PgConnectOptions()
-      .setHost(postgresConfig.getString(HOST))
-      .setPort(postgresConfig.getInteger(PORT))
-      .setDatabase(postgresConfig.getString(DATABASE))
-      .setUser(postgresConfig.getString(USERNAME))
-      .setPassword(postgresConfig.getString(PASSWORD))
-      .setIdleTimeout(postgresConfig.getInteger(IDLE_TIMEOUT, 60000))
-      .setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
-      .setReconnectAttempts(postgresConfig.getInteger(DB_RECONNECTATTEMPTS, 0))
-      .setReconnectInterval(postgresConfig.getLong(DB_RECONNECTINTERVAL, 1L))
+    return PgConnectOptionsHelper.createPgConnectOptions(postgresConfig)
       .addProperty(DEFAULT_SCHEMA_PROPERTY, convertToPsqlStandard(tenantId));
   }
 

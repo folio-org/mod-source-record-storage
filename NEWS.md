@@ -20,6 +20,7 @@
 * [MODINV-967](https://folio-org.atlassian.net/browse/MODINV-967) Move "Modify" action processing to inventory
 * [MODINV-935](https://folio-org.atlassian.net/browse/MODINV-935) Move Marc-Bib matching event handler to inventory
 * [MODSOURCE-749](https://folio-org.atlassian.net/browse/MODSOURCE-749) 00X fields reset position when Creating/Deriving/Editing MARC records
+* [MODSOURCE-608](https://folio-org.atlassian.net/browse/MODSOURCE-608) "PMSystem" displayed as source in "quickmarc" view when record was created by "Non-matches" action of job profile
 
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17

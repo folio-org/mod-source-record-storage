@@ -8,6 +8,7 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.LoadConfs;
@@ -30,6 +31,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.String.format;
@@ -50,6 +52,8 @@ public class PostgresClientFactory {
   private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
+  public static final String SERVER_PEM = "server_pem";
+  private static final String SSL_FACTORY = "sslfactory";
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
@@ -238,6 +242,15 @@ public class PostgresClientFactory {
     dataSource.setPassword(postgresConfig.getString(PASSWORD));
     dataSource.setIdleTimeout(postgresConfig.getLong(IDLE_TIMEOUT, 60000L));
     dataSource.setSchema(convertToPsqlStandard(tenantId));
+
+    var certificate = postgresConfig.getString(SERVER_PEM);
+    if (StringUtils.isNotBlank(certificate)) {
+      //setting the certificate as a system property to access it from socketFactory at runtime
+      System.setProperty(SERVER_PEM, certificate);
+      var sslProperties = new Properties();
+      sslProperties.put(SSL_FACTORY, PostgresSocketFactory.class.getName());
+      dataSource.setDataSourceProperties(sslProperties);
+    }
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;
   }

@@ -17,7 +17,6 @@ import io.vertx.core.json.JsonObject;
 import java.nio.file.Path;
 
 import org.folio.postgres.testing.PostgresTesterContainer;
-import org.folio.util.PostgresTester;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

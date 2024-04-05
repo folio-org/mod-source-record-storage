@@ -54,6 +54,9 @@ public class PostgresClientFactory {
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   public static final String SERVER_PEM = "server_pem";
   private static final String SSL_FACTORY = "sslfactory";
+  private static final String SSL_MODE = "sslmode";
+  private static final String DISABLE_VALUE = "disable";
+
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
@@ -250,6 +253,8 @@ public class PostgresClientFactory {
       var sslProperties = new Properties();
       sslProperties.put(SSL_FACTORY, PostgresSocketFactory.class.getName());
       dataSource.setDataSourceProperties(sslProperties);
+    } else {
+      dataSource.addDataSourceProperty(SSL_MODE, DISABLE_VALUE);
     }
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;

@@ -1,10 +1,19 @@
 package org.folio.dao;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import com.zaxxer.hikari.pool.HikariPool;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.reactivex.core.Vertx;
+import org.folio.TestUtil;
+import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.tools.utils.Envs;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.MountableFile;
 
 import java.security.cert.CertPathValidatorException;
 import java.sql.ResultSet;
@@ -13,20 +22,9 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.folio.TestUtil;
-import org.folio.postgres.testing.PostgresTesterContainer;
-import org.folio.rest.tools.utils.Envs;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.postgresql.util.PSQLException;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
-import io.vertx.reactivex.core.Vertx;
-import org.testcontainers.utility.MountableFile;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Testcontainers
 @ExtendWith(VertxExtension.class)
@@ -125,16 +123,16 @@ class PostgresClientFactorySslTest {
   void jdbcNoSsl() {
     // client without SERVER_PEM must not connect to server
     config(null);
-    var e = assertThrows(PSQLException.class, () -> jdbc3("jdbcnossl"));
-    assertThat(e.getMessage(), containsString("SSL off"));
+    var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcnossl"));
+    assertThat(e.getCause().getMessage(), containsString("SSL off"));
   }
 
   @Test
   void jdbcWrongCert() {
     // client must reject if SERVER_PEM doesn't match the server key
     config(SERVER_WRONG_PEM);
-    var e = assertThrows(PSQLException.class, () -> jdbc3("jdbcwrongssl"));
-    assertThat(e.getCause().getCause().getCause(), is(instanceOf(CertPathValidatorException.class)));
+    var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcwrongssl"));
+    assertThat(e.getCause().getCause().getCause().getCause(), is(instanceOf(CertPathValidatorException.class)));
   }
 
 }

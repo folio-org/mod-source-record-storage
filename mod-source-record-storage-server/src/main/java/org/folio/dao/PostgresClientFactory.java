@@ -54,8 +54,6 @@ public class PostgresClientFactory {
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   public static final String SERVER_PEM = "server_pem";
-  private static final String SSL_FACTORY = "sslfactory";
-  private static final String SSL_MODE = "sslmode";
   private static final String DISABLE_VALUE = "disable";
 
   private static final String MODULE_NAME = ModuleName.getModuleName();

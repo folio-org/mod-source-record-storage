@@ -1,5 +1,6 @@
 package org.folio.dao;
 
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.JsonObject;
@@ -8,6 +9,7 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.LoadConfs;
@@ -18,6 +20,7 @@ import org.folio.rest.tools.utils.ModuleName;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DefaultConfiguration;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -50,6 +53,9 @@ public class PostgresClientFactory {
   private static final String CONNECTION_TIMEOUT = "DB_CONNECTION_TIMEOUT";
   private static final String DEFAULT_CONNECTION_TIMEOUT_VALUE = "30";
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
+  public static final String SERVER_PEM = "server_pem";
+  private static final String DISABLE_VALUE = "disable";
+
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
   private static final String DEFAULT_SCHEMA_PROPERTY = "search_path";
@@ -94,8 +100,8 @@ public class PostgresClientFactory {
   @PostConstruct
   public void setupProxyExecutorClass() {
     // setup proxy class of ReactiveClassicGenericQueryExecutor
-    if(numOfRetries != null) QueryExecutorInterceptor.setNumberOfRetries(numOfRetries);
-    if(retryDelay != null) QueryExecutorInterceptor.setRetryDelay(retryDelay);
+    if (numOfRetries != null) QueryExecutorInterceptor.setNumberOfRetries(numOfRetries);
+    if (retryDelay != null) QueryExecutorInterceptor.setRetryDelay(retryDelay);
     reactiveClassicGenericQueryExecutorProxyClass = QueryExecutorInterceptor.generateClass();
   }
 
@@ -229,26 +235,39 @@ public class PostgresClientFactory {
     }
     Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
     LOG.info("getDataSource:: Creating new data source for tenant {} with poolSize {}", tenantId, maxPoolSize);
-    HikariDataSource dataSource = new HikariDataSource();
-    dataSource.setPoolName(format("%s-data-source", tenantId));
-    dataSource.setMaximumPoolSize(maxPoolSize);
-    dataSource.setMinimumIdle(0);
-    dataSource.setJdbcUrl(getJdbcUrl());
-    dataSource.setUsername(postgresConfig.getString(USERNAME));
-    dataSource.setPassword(postgresConfig.getString(PASSWORD));
-    dataSource.setIdleTimeout(postgresConfig.getLong(IDLE_TIMEOUT, 60000L));
-    dataSource.setSchema(convertToPsqlStandard(tenantId));
+
+    var config = new HikariConfig();
+    config.setDataSource(getPgSimpleDataSource());
+    config.setPoolName(format("%s-data-source", tenantId));
+    config.setMaximumPoolSize(maxPoolSize);
+    config.setMinimumIdle(0);
+    config.setIdleTimeout(postgresConfig.getLong(IDLE_TIMEOUT, 60000L));
+    config.setSchema(convertToPsqlStandard(tenantId));
+    config.setUsername(postgresConfig.getString(USERNAME));
+    config.setPassword(postgresConfig.getString(PASSWORD));
+    var dataSource = new HikariDataSource(config);
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;
   }
 
-  private static String getJdbcUrl() {
-    return String.format("jdbc:postgresql://%s:%s/%s",
-      postgresConfig.getString(HOST), postgresConfig.getInteger(PORT), postgresConfig.getString(DATABASE));
+  private static DataSource getPgSimpleDataSource() {
+    var dataSource = new PGSimpleDataSource();
+    dataSource.setServerNames(new String[]{postgresConfig.getString(HOST)});
+    dataSource.setPortNumber(postgresConfig.getInteger(PORT));
+    dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
+
+    var certificate = postgresConfig.getString(SERVER_PEM);
+    if (StringUtils.isNotBlank(certificate)) {
+      System.setProperty(SERVER_PEM, certificate);
+      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+    } else {
+      dataSource.setSslMode(DISABLE_VALUE);
+    }
+    return dataSource;
   }
 
   // using RMB convention driven tenant to schema name
-  private static String convertToPsqlStandard(String tenantId){
+  private static String convertToPsqlStandard(String tenantId) {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 

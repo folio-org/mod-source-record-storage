@@ -1,4 +1,9 @@
-## 2024-XX-XX 5.9.0-SNAPSHOT
+## 2024-04-12 5.8.1
+* [MODSOURCE-757](https://folio-org.atlassian.net/browse/MODSOURCE-757) Expose DB Reconnection Attempt Config Options
+* [MODSOURCE-608](https://folio-org.atlassian.net/browse/MODSOURCE-608) "PMSystem" displayed as source in "quickmarc" view when record was created by "Non-matches" action of job profile
+* [MODSOURCE-749](https://folio-org.atlassian.net/browse/MODSOURCE-749) 00X fields reset position when Creating/Deriving/Editing MARC records
+* [MODSOURCE-742](https://folio-org.atlassian.net/browse/MODSOURCE-742) PostgreSQL SSL connection does not work
+* [MODSOURCE-758](https://folio-org.atlassian.net/browse/MODSOURCE-758) Alleviate Blocking of Eventloop During New Tenant Initialization
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
 
 ## 2024-03-20 5.8.0

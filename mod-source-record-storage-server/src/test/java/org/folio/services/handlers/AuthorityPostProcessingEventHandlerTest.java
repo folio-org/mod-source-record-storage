@@ -198,6 +198,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
+      context.assertTrue(new JsonObject(payload.getContext().get(MARC_AUTHORITY.value())).containsKey("matchedId"));
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());

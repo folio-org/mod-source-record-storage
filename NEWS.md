@@ -1,3 +1,6 @@
+## 2024-04-25 5.8.2
+* [MODSOURCE-764](https://folio-org.atlassian.net/browse/MODSOURCE-764) SRS MARC DI log tab does not show its content
+  
 ## 2024-04-12 5.8.1
 * [MODSOURCE-757](https://folio-org.atlassian.net/browse/MODSOURCE-757) Expose DB Reconnection Attempt Config Options
 * [MODSOURCE-608](https://folio-org.atlassian.net/browse/MODSOURCE-608) "PMSystem" displayed as source in "quickmarc" view when record was created by "Non-matches" action of job profile

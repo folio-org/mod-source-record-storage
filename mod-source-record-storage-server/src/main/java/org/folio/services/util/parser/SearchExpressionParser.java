@@ -6,6 +6,7 @@ import org.folio.services.util.parser.lexeme.Lexicon;
 import org.folio.services.util.parser.lexeme.bracket.BracketLexeme;
 import org.folio.services.util.parser.lexeme.operand.BinaryOperand;
 import org.folio.services.util.parser.lexeme.operand.BinaryOperandLexeme;
+import org.folio.services.util.parser.lexeme.operand.LeaderBinaryOperand;
 import org.folio.services.util.parser.lexeme.operator.BooleanOperatorLexeme;
 
 import java.util.ArrayList;
@@ -39,8 +40,15 @@ public class SearchExpressionParser {
       parseLeaderResult.enable();
       parseLeaderResult.withWhereExpression(getWhereExpression(lexemes));
       parseLeaderResult.withBindingParams(getBindingParams(lexemes));
+      parseLeaderResult.withIndexedFieldsCriteriaOnly(isIndexedFieldsCriteriaOnly(lexemes));
     }
     return parseLeaderResult;
+  }
+
+  private static boolean isIndexedFieldsCriteriaOnly(List<Lexeme> lexemes) {
+    return lexemes.stream()
+      .allMatch(lexeme -> lexeme instanceof LeaderBinaryOperand leaderBinaryOperand
+        && leaderBinaryOperand.isIndexedFieldOperand());
   }
 
   public static ParseFieldsResult parseFieldsSearchExpression(String expression) {

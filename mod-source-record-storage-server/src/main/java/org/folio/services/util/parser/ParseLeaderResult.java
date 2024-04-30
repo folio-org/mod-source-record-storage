@@ -10,6 +10,7 @@ import java.util.List;
  */
 public class ParseLeaderResult {
   private boolean isEnabled = false;
+  private boolean indexedFieldsCriteriaOnly = false;
   private final List<String> bindingParams = new ArrayList<>();
   private String whereExpression;
 
@@ -28,6 +29,11 @@ public class ParseLeaderResult {
     return this;
   }
 
+  public ParseLeaderResult withIndexedFieldsCriteriaOnly(boolean indexedFieldsCriteriaOnly) {
+    this.indexedFieldsCriteriaOnly = indexedFieldsCriteriaOnly;
+    return this;
+  }
+
   public boolean isEnabled() {
     return isEnabled;
   }
@@ -38,5 +44,9 @@ public class ParseLeaderResult {
 
   public String getWhereExpression() {
     return whereExpression;
+  }
+
+  public boolean isIndexedFieldsCriteriaOnly() {
+    return indexedFieldsCriteriaOnly;
   }
 }

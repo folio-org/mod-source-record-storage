@@ -13,6 +13,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.services.util.parser.SearchExpressionParser.parseFieldsSearchExpression;
 import static org.folio.services.util.parser.SearchExpressionParser.parseLeaderSearchExpression;
 import static org.junit.Assert.assertEquals;
@@ -635,12 +636,13 @@ public class SearchExpressionParserUnitTest {
   public void shouldParseLeaderSearchExpression_for_EqualsOperator() {
     // given
     String leaderSearchExpression = "p_05 = 'a'";
+    String expectedWhereExpression = String.format("%s = ?", RECORDS_LB.LEADER_RECORD_STATUS.getName());
     // when
     ParseLeaderResult result = parseLeaderSearchExpression(leaderSearchExpression);
     // then
     assertTrue(result.isEnabled());
     assertEquals(singletonList("a"), result.getBindingParams());
-    assertEquals("p_05 = ?", result.getWhereExpression());
+    assertEquals(expectedWhereExpression, result.getWhereExpression());
   }
 
   @Test
@@ -659,11 +661,12 @@ public class SearchExpressionParserUnitTest {
   public void shouldParseLeaderSearchExpression_with_boolean_operators() {
     // given
     String fieldsSearchExpression = "(p_05 = 'a' and p_06 = 'b') or (p_07 = '1' and p_08 not= '2')";
+    String expectedWhereExpression = String.format("(%s = ? and p_06 = ?) or (p_07 = ? and p_08 <> ?)", RECORDS_LB.LEADER_RECORD_STATUS.getName());
     // when
     ParseLeaderResult result = parseLeaderSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
     assertEquals(asList("a", "b", "1", "2"), result.getBindingParams());
-    assertEquals("(p_05 = ? and p_06 = ?) or (p_07 = ? and p_08 <> ?)", result.getWhereExpression());
+    assertEquals(expectedWhereExpression, result.getWhereExpression());
   }
 }

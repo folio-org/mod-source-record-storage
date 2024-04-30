@@ -1,5 +1,6 @@
 ## 2024-XX-XX 5.9.0-SNAPSHOT
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
+* [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

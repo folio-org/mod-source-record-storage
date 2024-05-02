@@ -54,7 +54,6 @@ import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.normalize035;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
@@ -212,7 +211,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       setExternalIds(record, externalEntity); //operations with 001, 003, 035, 999 fields
       remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
-      normalize035(record);
       var targetContent = record.getParsedRecord().getContent().toString();
       var content = reorderMarcRecordFields(sourceContent, targetContent);
       record.getParsedRecord().setContent(content);

@@ -22,8 +22,8 @@ import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.lang.String.format;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
@@ -60,6 +61,7 @@ import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
+  private static final String USER_ID_HEADER = "userId";
   public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
   protected static final String HRID_FIELD = "hrid";
   private static final Logger LOG = LogManager.getLogger();
@@ -194,17 +196,24 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     var eventContext = dataImportEventPayload.getContext();
     String entityAsString = eventContext.get(getExternalType().value());
     String recordAsString = eventContext.get(getMarcType().value());
+    String userId = (String) dataImportEventPayload.getAdditionalProperties().get(USER_ID_HEADER);
+
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
       LOG.warn(EVENT_HAS_NO_DATA_MSG);
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
+      var sourceContent = record.getParsedRecord().getContent().toString();
+      setUpdatedBy(record, userId);
       updateLatestTransactionDate(record, mappingParameters);
 
       JsonObject externalEntity = new JsonObject(entityAsString);
       setExternalIds(record, externalEntity); //operations with 001, 003, 035, 999 fields
       remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
+      var targetContent = record.getParsedRecord().getContent().toString();
+      var content = reorderMarcRecordFields(sourceContent, targetContent);
+      record.getParsedRecord().setContent(content);
       recordPromise.complete(record);
     }
     return recordPromise.future();
@@ -345,6 +354,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     }
     else {
       return saveRecord(record, dataImportEventPayload.getTenant());
+    }
+  }
+
+  private void setUpdatedBy(Record changedRecord, String userId) {
+    if (changedRecord.getMetadata() != null) {
+      changedRecord.getMetadata().setUpdatedByUserId(userId);
+    } else {
+      changedRecord.withMetadata(new Metadata().withUpdatedByUserId(userId));
     }
   }
 }

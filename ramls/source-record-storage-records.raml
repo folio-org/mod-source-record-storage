@@ -27,6 +27,8 @@ types:
   bibAuthorityLinksUpdate: !include raml-storage/schemas/mod-entities-links/bibAuthorityLinksUpdate.json
   marcBibUpdate: !include raml-storage/schemas/mod-source-record-storage/marcBibUpdate.json
   linkUpdateReport: !include raml-storage/schemas/mod-source-record-storage/linkUpdateReport.json
+  recordMatchingDto: !include raml-storage/schemas/dto/recordMatchingRqDto.json
+  recordsIdentifiersCollection: !include raml-storage/schemas/dto/recordsIdentifiersCollection.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -73,6 +75,25 @@ resourceTypes:
         type: string[]
         example: ["order,ASC"]
         required: false
+  /matching:
+    displayName: Matched Records identifiers
+    post:
+      description: Collection of pairs of marc record ID to external entity ID (instance, holdings, authority)
+      is: [validate]
+      body:
+        application/json:
+          description: Request to search marc records identifiers
+          type: recordMatchingDto
+      responses:
+        200:
+          body:
+            application/json:
+              type: recordsIdentifiersCollection
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
   /{id}:
     displayName: Record
     description: Get, Delete or Update a specific Record
@@ -88,6 +109,12 @@ resourceTypes:
             application/json:
               type: record
     delete:
+      queryParameters:
+        idType:
+          description: Type of Id for Record lookup
+          type: string
+          example: INSTANCE
+          default: SRS_RECORD
       responses:
         204:
     /formatted:

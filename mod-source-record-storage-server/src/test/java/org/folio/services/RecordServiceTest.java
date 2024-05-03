@@ -90,7 +90,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     marcRecord = new ParsedRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     recordDao = new RecordDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
@@ -686,7 +686,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(original.getMetadata());
 
     ParsedRecord parsedRecord2 = new ParsedRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     String recordId2 = UUID.randomUUID().toString();
     Record record2 = new Record()
       .withId(recordId2)
@@ -1170,6 +1170,27 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetFormattedEdifactRecord(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getEdifactRecord();
+    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      recordService.getFormattedRecord(expected.getId(), IdType.RECORD, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        context.assertNotNull(get.result().getParsedRecord());
+        context.assertEquals(expected.getParsedRecord().getFormattedContent(),
+          get.result().getParsedRecord().getFormattedContent());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldGetFormattedDeletedRecord(TestContext context) {
+    Async async = context.async();
+    Record expected = TestMocks.getMarcBibRecord();
+    expected.setState(State.DELETED);
     recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());

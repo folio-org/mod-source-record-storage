@@ -21,6 +21,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,7 +65,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       rawMarcRecord = new RawRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       parsedMarcRecord = new ParsedRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+        .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
       rawEdifactRecord = new RawRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
       parsedEdifactRecord = new ParsedRecord()
@@ -760,7 +761,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldDeleteExistingMarcRecordOnDelete(TestContext testContext) {
+  public void shouldDeleteExistingMarcRecordOnDeleteByRecordId(TestContext testContext) {
     postSnapshots(testContext, snapshot_2);
 
     Async async = testContext.async();
@@ -783,13 +784,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    RestAssured.given()
+    Response deletedResponse = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId());
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
+    Record deletedRecord = deletedResponse.body().as(Record.class);
+
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
+
     async.complete();
 
     async = testContext.async();
@@ -818,9 +825,145 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .get(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .body("deleted", is(true))
+      .body("state", is("DELETED"))
+      .body("additionalInfo.suppressDiscovery", is(true));
     async.complete();
   }
+
+  @Test
+  public void shouldDeleteExistingMarcRecordOnDeleteByInstanceId(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    String srsId = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+
+    Record newRecord = new Record()
+      .withId(srsId)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(parsedRecord)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(instanceId))
+      .withMatchedId(UUID.randomUUID().toString());
+
+    Async async = testContext.async();
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(newRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    Record parsed = createParsed.body().as(Record.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + instanceId + "?idType=INSTANCE")
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    Response deletedResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId());
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
+    Record deletedRecord = deletedResponse.body().as(Record.class);
+
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnNoContentAndDeleteRecordIfTryingToDeleteRecordWithStateNotActual(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    Record newRecord1 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(parsedMarcRecord)
+      .withState(Record.State.OLD)
+      .withMatchedId(UUID.randomUUID().toString());
+
+    Async async = testContext.async();
+    Response createParsed = RestAssured.given()
+      .spec(spec)
+      .body(newRecord1)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + newRecord1.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
+
+    Record newRecord2 = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(parsedMarcRecord)
+      .withState(Record.State.DELETED)
+      .withMatchedId(UUID.randomUUID().toString());
+
+    async = testContext.async();
+    Response createParsed2 = RestAssured.given()
+      .spec(spec)
+      .body(newRecord2)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createParsed2.statusCode(), is(HttpStatus.SC_CREATED));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + newRecord2.getId())
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+
+    Response deletedResponse = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + newRecord2.getId());
+    Assert.assertEquals(HttpStatus.SC_OK, deletedResponse.getStatusCode());
+
+    Record deletedRecord = deletedResponse.body().as(Record.class);
+
+    Assert.assertEquals(true, deletedRecord.getDeleted());
+    Assert.assertEquals(Record.State.DELETED, deletedRecord.getState());
+    Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
+    Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
+    Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
+
+    async.complete();
+  }
+
 
   @Test
   public void shouldDeleteExistingEdifactRecordOnDelete(TestContext testContext) {

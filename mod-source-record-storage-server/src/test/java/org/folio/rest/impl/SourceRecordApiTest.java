@@ -89,9 +89,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withContent(
           new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
-        .withContent(
-          new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class)
-            .encode());
+        .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
       rawEdifactRecord = new RawRecord()
         .withContent(
           new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
@@ -552,6 +550,86 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
+  }
+
+  @Test
+  public void shouldReturnDeletedRecordByExternalIdIfStateIsEmpty(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1, snapshot_2);
+
+    Record firstRecord = new Record().withId(FIRST_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(11)
+      .withState(Record.State.ACTUAL)
+      .withLeaderRecordStatus("d")
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID));
+
+    Record secondRecord = new Record().withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.DELETED)
+      .withLeaderRecordStatus("d")
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    Record thirdRecord = new Record().withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.DELETED)
+      .withLeaderRecordStatus("d")
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID));
+
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(firstRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    async.complete();
+
+
+    async = testContext.async();
+    createResponse = RestAssured.given()
+      .spec(spec)
+      .body(secondRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    async.complete();
+
+    async = testContext.async();
+    createResponse = RestAssured.given()
+      .spec(spec)
+      .body(thirdRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH);
+    assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + FIRST_UUID + "?idType=EXTERNAL")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("recordId", is(SECOND_UUID))
+      .body("recordType", is(Record.RecordType.MARC_BIB.value()))
+      .body("externalIdsHolder.instanceId", is(FIRST_UUID))
+      .body("order", is(11));
+
+  async.complete();
   }
 
   @Test

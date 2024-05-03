@@ -17,6 +17,7 @@ import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.containers.Network;
@@ -107,7 +108,7 @@ public class PostgresClientFactoryTest {
     Async async = context.async();
     // Arrange
     Network network = Network.newNetwork();
-    ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
+    ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.9.0")
       .withNetwork(network).withNetworkAliases("toxiproxy");
     PostgreSQLContainer<?> postgreSQLContainer =
       new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME)

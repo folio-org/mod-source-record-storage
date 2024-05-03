@@ -15,7 +15,7 @@ import javax.ws.rs.core.Response;
 
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Record.State;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.resource.SourceStorageRecords;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
@@ -115,14 +115,11 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
   }
 
   @Override
-  public void deleteSourceStorageRecordsById(String id, Map<String, String> okapiHeaders,
+  public void deleteSourceStorageRecordsById(String id, String idType, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getRecordById(id, tenantId)
-          .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-            .compose(record -> record.getState().equals(State.DELETED) ? Future.succeededFuture(true)
-              : recordService.updateRecord(record.withState(State.DELETED), tenantId).map(r -> true))
+        recordService.deleteRecordById(id, toExternalIdType(idType), tenantId).map(r -> true)
             .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204()).map(Response.class::cast)
             .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -174,6 +171,23 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("putSourceStorageRecordsSuppressFromDiscoveryById:: Failed to update record's SuppressFromDiscovery flag", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void postSourceStorageRecordsMatching(RecordMatchingDto recordMatchingDto, Map<String, String> okapiHeaders,
+                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.getMatchedRecordsIdentifiers(recordMatchingDto, tenantId)
+          .map(PostSourceStorageRecordsMatchingResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("postSourceStorageRecordsMatching:: Failed to get identifiers of records by matching criteria", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

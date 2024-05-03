@@ -127,6 +127,15 @@
           "permissionsRequired": [
             "source-storage.records.update"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/records/matching",
+          "permissionsRequired": [
+            "source-storage.records.get"
+          ]
         }
       ]
     },
@@ -449,6 +458,10 @@
       {
         "name": "DB_MAXPOOLSIZE",
         "value": "15"
+      },
+      {
+        "name": "DB_RECONNECTATTEMPTS",
+        "value": "3"
       },
       {
         "name": "KAFKA_HOST",

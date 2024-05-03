@@ -71,7 +71,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       rawRecord = new RawRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
-        .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
+        .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -1067,7 +1067,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_NO_CONTENT);
     async.complete();
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setLeaderSearchExpression("p_05 = 'd' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setSuppressFromDiscovery(true);
     searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
     searchRequest.setDeleted(true);
     // when

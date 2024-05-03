@@ -1,4 +1,8 @@
-## 2024-xx-xx 5.8.0-SNAPSHOT
+## 2024-XX-XX 5.9.0-SNAPSHOT
+* [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035
+* [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
+
+## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings
 * [MODSOURCE-506](https://issues.folio.org/browse/MODSOURCE-506) Remove rawRecord field from source record
 * [MODSOURCE-709](https://issues.folio.org/browse/MODSOURCE-709) MARC authority record is not created when use Job profile with match profile by absent subfield/field
@@ -6,6 +10,18 @@
 * [MODSOURCE-722](https://issues.folio.org/browse/MODSOURCE-722)  deleteMarcIndexersOldVersions: relation "marc_records_tracking" does not exist
 * [MODSOURMAN-1106](https://issues.folio.org/browse/MODSOURMAN-1106) The status of Instance is '-' in the Import log after uploading file. The numbers of updated SRS and Instance are not displayed in the Summary table.
 * [MODSOURCE-717](https://issues.folio.org/browse/MODSOURCE-717) MARC modifications not processed when placed after Holdings Update action in a job profile
+* [MODSOURCE-739](https://issues.folio.org/browse/MODSOURCE-739) Create Kafka topics instead of relying on auto create in mod-srs
+* [MODSOURCE-729](https://issues.folio.org/browse/MODSOURCE-729) Implement new endpoint to be used for matching
+* [MODINV-935](https://issues.folio.org/browse/MODINV-935) Move MARC-BIB matching handler to inventory module
+* [MODSOURCE-750](https://folio-org.atlassian.net/browse/MODSOURCE-750) Upgrade source-record-storage to RMB 35.2.0, Vert.x 4.5.4
+* [MODSOURCE-707](https://folio-org.atlassian.net/browse/MODSOURCE-707) Consume authority domain delete events
+* [MODSOURCE-731](https://folio-org.atlassian.net/browse/MODSOURCE-731) Add PUT endpoint to update SRS record
+* [MODDATAIMP-957](https://folio-org.atlassian.net/browse/MODDATAIMP-957) Register DI_INCOMING_MARC_BIB_RECORD_PARSED
+* [MODSOURCE-732](https://folio-org.atlassian.net/browse/MODSOURCE-732) Change logic of DELETE record endpoint
+* [MODINV-967](https://folio-org.atlassian.net/browse/MODINV-967) Move "Modify" action processing to inventory
+* [MODINV-935](https://folio-org.atlassian.net/browse/MODINV-935) Move Marc-Bib matching event handler to inventory
+* [MODSOURCE-749](https://folio-org.atlassian.net/browse/MODSOURCE-749) 00X fields reset position when Creating/Deriving/Editing MARC records
+* [MODSOURCE-608](https://folio-org.atlassian.net/browse/MODSOURCE-608) "PMSystem" displayed as source in "quickmarc" view when record was created by "Non-matches" action of job profile
 
 ## 2023-10-13 v5.7.0
 * [MODSOURCE-648](https://issues.folio.org/browse/MODSOURCE-648) Upgrade mod-source-record-storage to Java 17

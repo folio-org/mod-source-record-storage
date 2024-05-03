@@ -456,9 +456,9 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by instance hrid
+   * Get {@link Condition} to filter by external entity hrid
    *
-   * @param externalHrid instance id to equal
+   * @param externalHrid external entity hrid to equal
    * @return condition
    */
   public static Condition filterRecordByExternalHrid(String externalHrid) {
@@ -466,6 +466,16 @@ public final class RecordDaoUtil {
       return RECORDS_LB.EXTERNAL_HRID.eq(externalHrid);
     }
     return DSL.noCondition();
+  }
+
+  /**
+   * Get {@link Condition} to filter by external entity hrid using specified values
+   *
+   * @param externalHridValues external entity hrid values to equal
+   * @return condition
+   */
+  public static Condition filterRecordByExternalHridValues(List<String> externalHridValues) {
+    return RECORDS_LB.EXTERNAL_HRID.in(externalHridValues);
   }
 
   /**

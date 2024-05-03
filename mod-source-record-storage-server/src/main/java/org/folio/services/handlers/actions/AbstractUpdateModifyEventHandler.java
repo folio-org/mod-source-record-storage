@@ -37,7 +37,6 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
@@ -45,6 +44,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
 import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.normalize035;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
@@ -112,6 +112,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
               increaseGeneration(changedRecord);
               setUpdatedBy(changedRecord, userId);
               updateLatestTransactionDate(changedRecord, mappingParameters);
+              normalize035(changedRecord);
               payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
             })
         )
@@ -161,7 +162,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private boolean isEligibleActionProfile(ActionProfile actionProfile) {
     return actionProfile.getFolioRecord() == ActionProfile.FolioRecord.valueOf(modifiedEntityType().value())
-      && (actionProfile.getAction() == MODIFY || actionProfile.getAction() == UPDATE);
+      && actionProfile.getAction() == UPDATE;
   }
 
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,

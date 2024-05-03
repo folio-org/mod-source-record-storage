@@ -90,13 +90,13 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
-    .withName("Modify MARC Bibs")
+    .withName("Update MARC Bibs")
     .withDataType(JobProfile.DataType.MARC);
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
-    .withName("Modify MARC Bibs")
-    .withAction(MODIFY)
+    .withName("Update MARC Bibs")
+    .withAction(ActionProfile.Action.UPDATE)
     .withFolioRecord(ActionProfile.FolioRecord.MARC_HOLDINGS);
 
   private MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
@@ -195,52 +195,6 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   }
 
   @Test
-  public void shouldModifyMarcRecord(TestContext context) {
-    // given
-    Async async = context.async();
-
-    String expectedDate = get005FieldExpectedDate();
-    String expectedParsedContent = "{\"leader\":\"00107nam  22000491a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
-    HashMap<String, String> payloadContext = new HashMap<>();
-    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
-    payloadContext.put(MARC_HOLDINGS.value(), Json.encode(record));
-
-    mappingProfile.getMappingDetails().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
-      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
-        .withProfileId(mappingProfile.getId())
-        .withContentType(MAPPING_PROFILE)
-        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
-      .withToken(TOKEN)
-      .withJobExecutionId(record.getSnapshotId())
-      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
-      .withContext(payloadContext)
-      .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
-      .withAdditionalProperty(USER_ID_HEADER, userId);
-
-    // when
-    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
-
-    // then
-    future.whenComplete((eventPayload, throwable) -> {
-      context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
-
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent), getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      context.assertEquals(userId, actualRecord.getMetadata().getUpdatedByUserId());
-      validate005Field(context, expectedDate, actualRecord);
-      async.complete();
-    });
-  }
-
-  @Test
   public void shouldUpdateMatchedMarcRecordWithFieldFromIncomingRecord(TestContext context) {
     // given
     Async async = context.async();
@@ -284,54 +238,6 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
         getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
-      validate005Field(context, expectedDate, actualRecord);
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldModifyMarcRecordAndRemove003Field(TestContext context) {
-    // given
-    Async async = context.async();
-
-    String expectedDate = get005FieldExpectedDate();
-    String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"003\":\"OCLC\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
-    Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
-    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(MARC_HOLDINGS.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
-
-    mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
-      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
-        .withProfileId(mappingProfile.getId())
-        .withContentType(MAPPING_PROFILE)
-        .withContent(JsonObject.mapFrom(mappingProfile).getMap())));
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withTenant(TENANT_ID)
-      .withOkapiUrl(mockServer.baseUrl())
-      .withToken(TOKEN)
-      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
-      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
-      .withContext(payloadContext)
-      .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
-
-    // when
-    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
-
-    // then
-    future.whenComplete((eventPayload, throwable) -> {
-      context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
-
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       validate005Field(context, expectedDate, actualRecord);
       async.complete();
     });

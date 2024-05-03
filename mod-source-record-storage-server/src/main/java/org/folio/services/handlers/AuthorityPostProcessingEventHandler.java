@@ -13,6 +13,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,8 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
     if (isLogNeeded(record, dataImportEventPayload.getEventType())) {
       var key = getEventKey();
       var kafkaHeaders = getKafkaHeaders(dataImportEventPayload);
+      record.getParsedRecord().setContent(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
+      dataImportEventPayload.getContext().put(typeConnection().getRecordType().value(), Json.encode(record));
       if (record.getGeneration() > 0) {
         sendLogEvent(dataImportEventPayload, DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED, key, kafkaHeaders);
       } else if (record.getGeneration() == 0) {

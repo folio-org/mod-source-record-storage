@@ -76,7 +76,7 @@ public class ConsortiumConfigurationCache {
         } else {
           String message = String.format("Error loading consortiumConfiguration by tenantId: '%s', status code: %s, response message: %s",
             params.getTenantId(), httpResponse.getResponse().statusCode(), httpResponse.getBody());
-          LOGGER.warn(String.format("loadConsortiumConfiguration:: %s", message));
+          LOGGER.warn("loadConsortiumConfiguration:: {}", message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));
         }
       });

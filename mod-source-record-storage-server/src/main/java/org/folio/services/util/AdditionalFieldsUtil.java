@@ -8,6 +8,11 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -43,6 +48,8 @@ import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
+
 
 /**
  * Util to work with additional fields
@@ -51,6 +58,9 @@ public final class AdditionalFieldsUtil {
 
   public static final String TAG_005 = "005";
   public static final String TAG_999 = "999";
+  public static final String TAG_035 = "035";
+  public static final char TAG_035_SUB = 'a';
+  private static final char TAG_035_IND = ' ';
 
   public static final String HR_ID_FROM_FIELD = "001";
   private static final String HR_ID_PREFIX_FROM_FIELD = "003";
@@ -60,6 +70,9 @@ public final class AdditionalFieldsUtil {
   private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
+  private static final String OCLC = "OCoLC";
+  private static final String OCLC_PATTERN = "\\((" + OCLC + ")\\)((ocm|ocn)?0*|([a-zA-Z]+)0*)(\\d+\\w*)";
+
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
 
@@ -132,6 +145,7 @@ public final class AdditionalFieldsUtil {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();
@@ -156,9 +170,10 @@ public final class AdditionalFieldsUtil {
           jsonWriter.write(marcRecord);
 
           String parsedContentString = new JsonObject(os.toString()).encode();
+          var content = reorderMarcRecordFields(sourceParsedRecordString, parsedContentString);
           // save parsed content string to cache then set it on the record
-          parsedRecordContentCache.put(parsedContentString, marcRecord);
-          record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
+          parsedRecordContentCache.put(content, marcRecord);
+          record.setParsedRecord(record.getParsedRecord().withContent(content));
           result = true;
         }
       }
@@ -427,6 +442,118 @@ public final class AdditionalFieldsUtil {
       return false;
     }
     return false;
+  }
+
+
+  public static void normalize035(Record srsRecord) {
+    List<Subfield> subfields = get035SubfieldOclcValues(srsRecord, TAG_035, TAG_035_SUB);
+    if (!subfields.isEmpty()) {
+      LOGGER.debug("normalize035:: normalizing 035 field of a record with id: {}", srsRecord.getId());
+      Set<String> normalized035Subfields = formatOclc(subfields);
+      updateOclcSubfield(srsRecord, normalized035Subfields);
+    }
+  }
+
+  private static Set<String> formatOclc(List<Subfield> subFields) {
+    Set<String> processedSet = new LinkedHashSet<>();
+    Pattern pattern = Pattern.compile(OCLC_PATTERN);
+
+    for (Subfield subfield : subFields) {
+      String data = subfield.getData();
+      var code = subfield.getCode();
+      Matcher matcher = pattern.matcher(data);
+
+      if (matcher.find()) {
+        String oclcTag = matcher.group(1); // "OCoLC"
+        String numericAndTrailing = matcher.group(5); // Numeric part and any characters that follow
+        String prefix = matcher.group(2); // Entire prefix including letters and potentially leading zeros
+
+        if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn"))) {
+          // If "ocm" or "ocn", strip entirely from the prefix
+          processedSet.add(code + "&(" + oclcTag + ")" + numericAndTrailing);
+        } else {
+          // For other cases, strip leading zeros only from the numeric part
+          numericAndTrailing = numericAndTrailing.replaceFirst("^0+", "");
+          if (prefix != null) {
+            prefix = prefix.replaceAll("\\d+", ""); // Safely remove digits from the prefix if not null
+          }
+          // Add back any other prefix that might have been included like "tfe"
+          processedSet.add(code + "&(" + oclcTag + ")" + (prefix != null ? prefix : "") + numericAndTrailing);
+        }
+      } else {
+        // If it does not match, add the data as is
+        processedSet.add(code + "&" + data);
+      }
+    }
+    return processedSet;
+  }
+
+  private static void updateOclcSubfield(Record recordForUpdate,
+                                         Set<String> normalizedValues) {
+    try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+      if (recordForUpdate != null && recordForUpdate.getParsedRecord() != null && recordForUpdate.getParsedRecord().getContent() != null) {
+        MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
+        MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
+        MarcFactory factory = MarcFactory.newInstance();
+        org.marc4j.marc.Record marcRecord = computeMarcRecord(recordForUpdate);
+        if (marcRecord != null) {
+          removeOclcField(marcRecord, TAG_035);
+
+          DataField dataField = factory.newDataField(TAG_035, TAG_035_IND, TAG_035_IND);
+
+          normalizedValues.forEach(value -> {
+            var v = value.split("&");
+            dataField.addSubfield(factory.newSubfield(v[0].charAt(0), v[1]));
+          });
+
+          addDataFieldInNumericalOrder(dataField, marcRecord);
+
+          // use stream writer to recalculate leader
+          streamWriter.write(marcRecord);
+          jsonWriter.write(marcRecord);
+
+          String parsedContentString = new JsonObject(os.toString()).encode();
+          // save parsed content string to cache then set it on the record
+          parsedRecordContentCache.put(parsedContentString, marcRecord);
+          recordForUpdate.setParsedRecord(recordForUpdate.getParsedRecord().withContent(parsedContentString));
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to update OCLC subfield for record: {}", recordForUpdate.getId(), e);
+    }
+  }
+
+  public static List<Subfield> get035SubfieldOclcValues(Record srcRecord, String tag, char subfield) {
+    return Optional.ofNullable(computeMarcRecord(srcRecord))
+      .stream()
+      .flatMap(marcRecord -> marcRecord.getVariableFields(tag).stream())
+      .flatMap(field -> get035oclcSubfields(field, subfield).stream())
+      .toList();
+  }
+
+  private static List<Subfield> get035oclcSubfields(VariableField field, char subfield) {
+    if (field instanceof DataField dataField) {
+
+      Optional<Subfield> oclcSubfield = dataField.getSubfields(subfield).stream()
+        .filter(sf -> sf.find(OCLC))
+        .findFirst();
+
+      if (oclcSubfield.isPresent()) {
+        return dataField.getSubfields();
+      } else {
+        return Collections.emptyList();
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  private static void removeOclcField(org.marc4j.marc.Record marcRecord, String fieldName) {
+    List<VariableField> variableFields = marcRecord.getVariableFields(fieldName);
+    if (!variableFields.isEmpty()) {
+      variableFields.stream()
+        .filter(variableField -> variableField.find(OCLC))
+        .forEach(marcRecord::removeVariableField);
+    }
   }
 
   /**

@@ -1,3 +1,6 @@
+## 2024-05-09 5.8.3
+* [MODSOURCE-761](https://folio-org.atlassian.net/browse/MODSOURCE-761) Do not delete Kafka topics on postTenant if collection topics is enabled
+
 ## 2024-04-25 5.8.2
 * [MODSOURCE-764](https://folio-org.atlassian.net/browse/MODSOURCE-764) SRS MARC DI log tab does not show its content
   

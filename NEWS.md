@@ -1,3 +1,6 @@
+## 2024-05-09 v5.7.7
+* [MODSOURCE-770](https://folio-org.atlassian.net/browse/MODSOURCE-770) Do not delete Kafka topics on postTenant if collection topics is enabled
+
 ## 2024-02-09 v5.7.6
 * [MODSOURMAN-1106](https://folio-org.atlassian.net/browse/MODSOURMAN-1106) Fix missing Instance Update status and incorrect count on DI log summary page
 

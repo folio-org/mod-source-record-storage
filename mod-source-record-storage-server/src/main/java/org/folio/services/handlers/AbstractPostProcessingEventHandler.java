@@ -211,7 +211,6 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       setExternalIds(record, externalEntity); //operations with 001, 003, 035, 999 fields
       remove035FieldWhenUpdateAndContainsHrId(record, DataImportEventTypes.fromValue(dataImportEventPayload.getEventType()));
       setSuppressFormDiscovery(record, externalEntity.getBoolean(DISCOVERY_SUPPRESS_FIELD, false));
-
       var targetContent = record.getParsedRecord().getContent().toString();
       var content = reorderMarcRecordFields(sourceContent, targetContent);
       record.getParsedRecord().setContent(content);

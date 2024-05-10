@@ -4,6 +4,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.*;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +24,7 @@ import org.junit.runners.BlockJUnit4ClassRunner;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.marc4j.marc.Subfield;
 
 @RunWith(BlockJUnit4ClassRunner.class)
 public class AdditionalFieldsUtilTest {
@@ -331,6 +333,49 @@ public class AdditionalFieldsUtilTest {
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 
+  @Test
+  public void shouldReturnSubfieldIfOclcExist() {
+    // given
+    String parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(ybp7406411)in001\"}," +
+      "{\"a\":\"(OCoLC)64758\"} ],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    var expectedSubfields =  List.of("(ybp7406411)in001", "(OCoLC)64758");
+
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+
+    // when
+    var subfields = get035SubfieldOclcValues(record, TAG_035, TAG_035_SUB).stream().map(Subfield::getData).toList();
+    // then
+    Assert.assertEquals(expectedSubfields.size(), subfields.size());
+    Assert.assertEquals(expectedSubfields.get(0), subfields.get(0));
+  }
+
+  @Test
+  public void shouldNotReturnSubfieldIfOclcNotExist() {
+    // given
+    String parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+
+    // when
+    var subfields = get035SubfieldOclcValues(record, TAG_035, TAG_035_SUB).stream().map(Subfield::getData).toList();
+    // then
+    Assert.assertEquals(0, subfields.size());
+  }
 
   @Test
   public void caching() throws IOException {

@@ -19,7 +19,7 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_TO;
 
 public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
-  private final static List<Lexicon> BINARY_OPERATORS = Arrays.asList(
+  private static final List<Lexicon> BINARY_OPERATORS = Arrays.asList(
     BINARY_OPERATOR_EQUALS,
     BINARY_OPERATOR_LEFT_ANCHORED_EQUALS,
     BINARY_OPERATOR_NOT_EQUALS,
@@ -32,7 +32,7 @@ public abstract class BinaryOperandLexeme implements BinaryOperand, Lexeme {
   protected Lexicon operator;
   protected String value;
 
-  public BinaryOperandLexeme(String key, Lexicon operator, String value) {
+  protected BinaryOperandLexeme(String key, Lexicon operator, String value) {
     this.key = key;
     this.operator = operator;
     this.value = value;

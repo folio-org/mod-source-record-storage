@@ -2,7 +2,10 @@ package org.folio.services.util.parser.lexeme.operand;
 
 import org.folio.services.util.parser.lexeme.Lexicon;
 
+import java.util.Map;
+
 import static java.lang.String.format;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_EQUALS;
 import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_EQUALS;
 
@@ -15,20 +18,31 @@ import static org.folio.services.util.parser.lexeme.Lexicon.BINARY_OPERATOR_NOT_
  */
 public class LeaderBinaryOperand extends BinaryOperandLexeme {
 
+  private static final Map<String, String> LEADER_POSITIONS_TO_INDEXED_COLUMNS =
+    Map.of("p_05", RECORDS_LB.LEADER_RECORD_STATUS.getName());
+
+  private final boolean indexedFieldOperand;
+
   public LeaderBinaryOperand(String key, Lexicon operator, String value) {
     super(key, operator, value);
+    indexedFieldOperand = LEADER_POSITIONS_TO_INDEXED_COLUMNS.containsKey(key);
   }
 
   public static boolean matches(String key) {
     return key.matches("^p_.*");
   }
 
+  public boolean isIndexedFieldOperand() {
+    return indexedFieldOperand;
+  }
+
   @Override
   public String toSqlRepresentation() {
+    String columnName = LEADER_POSITIONS_TO_INDEXED_COLUMNS.getOrDefault(key, key);
     if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
-      return key + " = ?";
+      return columnName + " = ?";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
-      return key + " <> ?";
+      return columnName + " <> ?";
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Leader operand. Supported operators: [%s]", getOperator().getSearchValue(), BINARY_OPERATOR_EQUALS.getSearchValue()));
   }

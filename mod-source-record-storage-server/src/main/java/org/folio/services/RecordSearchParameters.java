@@ -27,9 +27,7 @@ public class RecordSearchParameters {
     /* Temporary set record type to MARC_BIB. This parameter will come from Http request later. See MODSOURCE-281 */
     params.setRecordType(Record.RecordType.MARC_BIB);
     params.setDeleted(request.getDeleted());
-    if (request.getSuppressFromDiscovery() != null) {
-      params.setSuppressedFromDiscovery(request.getSuppressFromDiscovery());
-    }
+    params.setSuppressedFromDiscovery(request.getSuppressFromDiscovery());
     params.setLimit(request.getLimit());
     params.setOffset(request.getOffset());
     return params;

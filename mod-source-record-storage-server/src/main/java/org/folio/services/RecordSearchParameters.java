@@ -13,7 +13,7 @@ public class RecordSearchParameters {
   private String fieldsSearchExpression;
   private Record.RecordType recordType;
   private boolean deleted;
-  private boolean suppressedFromDiscovery;
+  private Boolean suppressedFromDiscovery;
   private Integer limit;
   private Integer offset;
 
@@ -27,7 +27,9 @@ public class RecordSearchParameters {
     /* Temporary set record type to MARC_BIB. This parameter will come from Http request later. See MODSOURCE-281 */
     params.setRecordType(Record.RecordType.MARC_BIB);
     params.setDeleted(request.getDeleted());
-    params.setSuppressedFromDiscovery(request.getSuppressFromDiscovery());
+    if (request.getSuppressFromDiscovery() != null) {
+      params.setSuppressedFromDiscovery(request.getSuppressFromDiscovery());
+    }
     params.setLimit(request.getLimit());
     params.setOffset(request.getOffset());
     return params;
@@ -65,11 +67,11 @@ public class RecordSearchParameters {
     this.deleted = deleted;
   }
 
-  public boolean isSuppressedFromDiscovery() {
+  public Boolean isSuppressedFromDiscovery() {
     return suppressedFromDiscovery;
   }
 
-  public void setSuppressedFromDiscovery(boolean suppressedFromDiscovery) {
+  public void setSuppressedFromDiscovery(Boolean suppressedFromDiscovery) {
     this.suppressedFromDiscovery = suppressedFromDiscovery;
   }
 

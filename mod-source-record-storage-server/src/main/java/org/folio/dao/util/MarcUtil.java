@@ -4,6 +4,10 @@ import static java.lang.String.format;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -11,16 +15,8 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.marc4j.MarcException;
@@ -144,60 +140,65 @@ public class MarcUtil {
   }
 
   /**
-   * Reorders MARC record fields
+   * Take field values from system modified record content while preserving incoming record content`s field order.
+   * Put system fields (001, 005) first, regardless of incoming record fields order.
    *
-   * @param sourceContent source parsed record
-   * @param targetContent target parsed record
-   * @return MARC txt
+   * @param sourceOrderContent content with incoming record fields order
+   * @param systemOrderContent system modified record content with reordered fields
+   * @return MARC record parsed content with desired fields order
    */
-  public static String reorderMarcRecordFields(String sourceContent, String targetContent) {
+  public static String reorderMarcRecordFields(String sourceOrderContent, String systemOrderContent) {
     try {
-      var parsedContent = objectMapper.readTree(targetContent);
+      var parsedContent = objectMapper.readTree(systemOrderContent);
       var fieldsArrayNode = (ArrayNode) parsedContent.path(FIELDS);
 
-      var jsonNodesByTag = groupNodesByTag(fieldsArrayNode);
-      var sourceFields = getSourceFields(sourceContent);
-      var rearrangedArray = objectMapper.createArrayNode();
+      var nodes = toNodeList(fieldsArrayNode);
+      var sourceOrderTags = getSourceFields(sourceOrderContent);
+      var reorderedFields = objectMapper.createArrayNode();
 
-      var nodes001 = jsonNodesByTag.get(HR_ID_FROM_FIELD);
-      if (nodes001 != null && !nodes001.isEmpty()) {
-        rearrangedArray.addAll(nodes001);
-        jsonNodesByTag.remove(HR_ID_FROM_FIELD);
+      var node001 = removeAndGetNodeByTag(nodes, HR_ID_FROM_FIELD);
+      if (node001 != null && !node001.isEmpty()) {
+        reorderedFields.add(node001);
       }
 
-      var nodes005 = jsonNodesByTag.get(TAG_005);
-      if (nodes005 != null && !nodes005.isEmpty()) {
-        rearrangedArray.addAll(nodes005);
-        jsonNodesByTag.remove(TAG_005);
+      var node005 = removeAndGetNodeByTag(nodes, TAG_005);
+      if (node005 != null && !node005.isEmpty()) {
+        reorderedFields.add(node005);
       }
 
-      for (String tag : sourceFields) {
-          Queue<JsonNode> nodes = jsonNodesByTag.get(tag);
-          if (nodes != null && !nodes.isEmpty()) {
-            rearrangedArray.addAll(nodes);
-            jsonNodesByTag.remove(tag);
-          }
-
+      for (String tag : sourceOrderTags) {
+        var node = removeAndGetNodeByTag(nodes, tag);
+        if (node != null && !node.isEmpty()) {
+          reorderedFields.add(node);
+        }
       }
 
-      jsonNodesByTag.values().forEach(rearrangedArray::addAll);
+      reorderedFields.addAll(nodes);
 
-      ((ObjectNode) parsedContent).set(FIELDS, rearrangedArray);
+      ((ObjectNode) parsedContent).set(FIELDS, reorderedFields);
       return parsedContent.toString();
     } catch (Exception e) {
       LOGGER.error("An error occurred while reordering Marc record fields: {}", e.getMessage(), e);
-      return targetContent;
+      return systemOrderContent;
     }
   }
 
-  private static Map<String, Queue<JsonNode>> groupNodesByTag(ArrayNode fieldsArrayNode) {
-    var jsonNodesByTag = new LinkedHashMap<String, Queue<JsonNode>>();
-    for (JsonNode node : fieldsArrayNode) {
-      var tag = getTagFromNode(node);
-      jsonNodesByTag.putIfAbsent(tag, new LinkedList<>());
-      jsonNodesByTag.get(tag).add(node);
+  private static List<JsonNode> toNodeList(ArrayNode fieldsArrayNode) {
+    var nodes = new LinkedList<JsonNode>();
+    for (var node : fieldsArrayNode) {
+      nodes.add(node);
     }
-    return jsonNodesByTag;
+    return nodes;
+  }
+
+  private static JsonNode removeAndGetNodeByTag(List<JsonNode> nodes, String tag) {
+    for (int i = 0; i < nodes.size(); i++) {
+      var nodeTag = getTagFromNode(nodes.get(i));
+      if (nodeTag.equals(tag)) {
+        return nodes.remove(i);
+      }
+    }
+    return null;
   }
 
   private static String getTagFromNode(JsonNode node) {

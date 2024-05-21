@@ -2,6 +2,7 @@
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
 * [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search
+* [MODSOURCE-773](https://folio-org.atlassian.net/browse/MODSOURCE-773) MARC Search omits suppressed from discovery records in default search
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

@@ -71,14 +71,14 @@ public class MarcUtilTest {
 
   @Test
   public void shouldReorderMarcRecordFields() throws IOException, MarcException {
-    var reorderedRecordContent = readFileFromPath(PARSED_RECORD);
-    var sourceRecordContent = readFileFromPath(REORDERED_PARSED_RECORD);
-    var reorderingResultRecord = readFileFromPath(REORDERING_RESULT_RECORD);
+    var systemReorderedRecordContent = readFileFromPath(PARSED_RECORD);
+    var userOrderRecordContent = readFileFromPath(REORDERED_PARSED_RECORD);
+    var expectedOrderRecord = readFileFromPath(REORDERING_RESULT_RECORD);
 
-    var resultContent = MarcUtil.reorderMarcRecordFields(sourceRecordContent, reorderedRecordContent);
+    var actualOrderRecord = MarcUtil.reorderMarcRecordFields(userOrderRecordContent, systemReorderedRecordContent);
 
-    assertNotNull(resultContent);
-    assertEquals(formatContent(resultContent), formatContent(reorderingResultRecord));
+    assertNotNull(actualOrderRecord);
+    assertEquals(formatContent(expectedOrderRecord), formatContent(actualOrderRecord));
   }
 
   private static String readFileFromPath(String path) throws IOException {

@@ -43,8 +43,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
-
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 /**
  * Abstract handler for MARC-MARC matching/not-matching of Marc record by specific fields
  */

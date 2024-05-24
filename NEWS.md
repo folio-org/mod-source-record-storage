@@ -1,3 +1,6 @@
+## 2024-05-24 5.8.4
+* [MODSOURCE-1191](https://folio-org.atlassian.net/browse/MODSOURCE-761) Don't group fields with same tags together
+
 ## 2024-05-09 5.8.3
 * [MODSOURCE-761](https://folio-org.atlassian.net/browse/MODSOURCE-761) Do not delete Kafka topics on postTenant if collection topics is enabled
 

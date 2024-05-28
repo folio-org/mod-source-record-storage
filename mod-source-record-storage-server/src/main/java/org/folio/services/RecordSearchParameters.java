@@ -13,7 +13,7 @@ public class RecordSearchParameters {
   private String fieldsSearchExpression;
   private Record.RecordType recordType;
   private boolean deleted;
-  private boolean suppressedFromDiscovery;
+  private Boolean suppressedFromDiscovery;
   private Integer limit;
   private Integer offset;
 
@@ -65,11 +65,11 @@ public class RecordSearchParameters {
     this.deleted = deleted;
   }
 
-  public boolean isSuppressedFromDiscovery() {
+  public Boolean isSuppressedFromDiscovery() {
     return suppressedFromDiscovery;
   }
 
-  public void setSuppressedFromDiscovery(boolean suppressedFromDiscovery) {
+  public void setSuppressedFromDiscovery(Boolean suppressedFromDiscovery) {
     this.suppressedFromDiscovery = suppressedFromDiscovery;
   }
 

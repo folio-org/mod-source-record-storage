@@ -1124,7 +1124,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnIdOnResponseOnSearchMarcRecordIdsWhenRecordWasSuppressed(TestContext testContext) {
+  public void shouldReturnRecordOnSearchMarcRecordWhenRecordWasSuppressedAndSetSuppressFromDiscoveryNotSetInRequest(TestContext testContext) {
     // given
     Async async = testContext.async();
     Record suppressedRecord = new Record()
@@ -1143,7 +1143,42 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
     searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
-    searchRequest.setSuppressFromDiscovery(true);
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnRecordOnSearchMarcRecordWhenRecordWasNotSuppressedAndSetSuppressFromDiscoveryNotSetInRequest(TestContext testContext) {
+    // given
+    Async async = testContext.async();
+    Record suppressedRecord = new Record()
+      .withId(marc_bib_record_2.getId())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(marc_bib_record_2.getRawRecord())
+      .withParsedRecord(marc_bib_record_2.getParsedRecord())
+      .withMatchedId(marc_bib_record_2.getMatchedId())
+      .withState(Record.State.ACTUAL)
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false))
+      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, suppressedRecord);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)

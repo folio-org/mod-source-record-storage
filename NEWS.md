@@ -1,3 +1,6 @@
+## 2024-05-29 5.8.5
+* [MODSOURCE-778](https://folio-org.atlassian.net/browse/MODSOURCE-778) Fix editing via quickMARC MARC Instance shared from Member tenant
+
 ## 2024-05-24 5.8.4
 * [MODSOURCE-1191](https://folio-org.atlassian.net/browse/MODSOURCE-761) Don't group fields with same tags together
 

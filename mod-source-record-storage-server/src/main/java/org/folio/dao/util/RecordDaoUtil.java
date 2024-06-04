@@ -591,6 +591,9 @@ public final class RecordDaoUtil {
    * @return condition
    */
   public static Condition filterRecordByDeleted(Boolean deleted) {
+    if (deleted == null) {
+      return null;
+    }
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
     if (Boolean.TRUE.equals(deleted)) {
       condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
@@ -618,7 +621,7 @@ public final class RecordDaoUtil {
 
   /**
    * Convert {@link List} of {@link String} to {@link List} or {@link OrderField}
-   *
+   * <p>
    * Relies on strong convention between dto property name and database column name.
    * Property name being lower camel case and column name being lower snake case of the property name.
    *
@@ -629,7 +632,7 @@ public final class RecordDaoUtil {
   @SuppressWarnings("squid:S1452")
   public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy, Boolean forOffset) {
     if (forOffset && orderBy.isEmpty()) {
-      return Arrays.asList(new OrderField<?>[] {RECORDS_LB.ID.asc()});
+      return Arrays.asList(new OrderField<?>[]{RECORDS_LB.ID.asc()});
     }
     return orderBy.stream()
       .map(order -> order.split(COMMA))

@@ -12,7 +12,7 @@ public class RecordSearchParameters {
   private String leaderSearchExpression;
   private String fieldsSearchExpression;
   private Record.RecordType recordType;
-  private boolean deleted;
+  private Boolean deleted;
   private Boolean suppressedFromDiscovery;
   private Integer limit;
   private Integer offset;
@@ -57,11 +57,11 @@ public class RecordSearchParameters {
     this.recordType = recordType;
   }
 
-  public boolean isDeleted() {
+  public Boolean isDeleted() {
     return deleted;
   }
 
-  public void setDeleted(boolean deleted) {
+  public void setDeleted(Boolean deleted) {
     this.deleted = deleted;
   }
 

@@ -591,10 +591,11 @@ public final class RecordDaoUtil {
    * @return condition
    */
   public static Condition filterRecordByDeleted(Boolean deleted) {
-    if (deleted == null) {
-      return null;
-    }
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
+    if (deleted == null) {
+      condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
+        .or(filterRecordByState(RecordState.ACTUAL.name()));
+    }
     if (Boolean.TRUE.equals(deleted)) {
       condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
         .or(filterRecordByState(RecordState.ACTUAL.name()).and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS)));

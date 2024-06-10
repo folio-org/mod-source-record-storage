@@ -50,18 +50,22 @@ public class DateRangeBinaryOperand extends BinaryOperandLexeme {
 
   @Override
   public String toSqlRepresentation() {
-    String iField = "\"i" + key.substring(0, key.indexOf('.')) + "\"";
-    StringBuilder builder = new StringBuilder("to_date(substring(").append(iField).append(".\"value\", 1, 8), '").append(DATE_PATTERN).append("')");
+    String[] keyParts = getKey().split("\\.");
+    String field = keyParts[0];
+    String fieldNumberToSearch = "\"field_no\" = '" + field + "'";
+
+    StringBuilder builder = new StringBuilder("("+fieldNumberToSearch + " and to_date(substring(").append("value, 1, 8), '").append(DATE_PATTERN).append("')");
+
     if (BINARY_OPERATOR_EQUALS.equals(getOperator()) && !this.rangeSearch) {
-      return builder.append(" = ?").toString();
+      return builder.append(" = ?)").toString();
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator()) && !this.rangeSearch) {
-      return builder.append(" <> ?").toString();
+      return builder.append(" <> ?)").toString();
     } else if (BINARY_OPERATOR_FROM.equals(getOperator()) && !this.rangeSearch) {
-      return builder.append(" >= ?").toString();
+      return builder.append(" >= ?)").toString();
     } else if (BINARY_OPERATOR_TO.equals(getOperator()) && !this.rangeSearch) {
-      return builder.append(" <= ?").toString();
+      return builder.append(" <= ?)").toString();
     } else if (BINARY_OPERATOR_IN.equals(getOperator()) && this.rangeSearch) {
-      return builder.append(" between ? and ?").toString();
+      return builder.append(" between ? and ?)").toString();
     }
     throw new IllegalArgumentException(format("The given expression [%s %s '%s'] is not supported", key, operator.getSearchValue(), value));
   }

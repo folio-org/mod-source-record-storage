@@ -22,27 +22,27 @@ public class PresenceBinaryOperand {
   public static String getSqlRepresentationForMarcField(String field, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + "))";
+      return "(\"field_no\" = '"+field+"' and id in (select marc_id from marc_indexers))";
     } else {
-      return "(id not in (select marc_id from marc_indexers_" + field + "))";
+      return "(\"field_no\" = '"+field+"' and id not in (select marc_id from marc_indexers))";
     }
   }
 
   public static String getSqlRepresentationForSubField(String field, String subField, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
+      return "(\"field_no\" = '" + field + "' and id in (select marc_id from marc_indexers where subfield_no = '" + subField + "'))";
     } else {
-      return "(id not in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
+      return "(\"field_no\" = '" + field + "' and id not in (select marc_id from marc_indexers where subfield_no = '" + subField + "'))";
     }
   }
 
   public static String getSqlRepresentationForIndicator(String field, String indicator, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " <> '#')) ";
+      return "(\"field_no\" = '"+field+"' and id in (select marc_id from marc_indexers where " + indicator + " <> '#'))";
     } else {
-      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " = '#')) ";
+      return "(\"field_no\" = '"+field+"' and id in (select marc_id from marc_indexers where " + indicator + " = '#'))";
     }
   }
 

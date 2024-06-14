@@ -56,6 +56,7 @@ import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
  */
 public final class AdditionalFieldsUtil {
 
+  public static final String TAG_00X_PREFIX = "00";
   public static final String TAG_005 = "005";
   public static final String TAG_999 = "999";
   public static final String TAG_035 = "035";

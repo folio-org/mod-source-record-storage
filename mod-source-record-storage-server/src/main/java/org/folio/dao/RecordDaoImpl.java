@@ -90,6 +90,7 @@ import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,7 +99,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -411,8 +411,7 @@ public class RecordDaoImpl implements RecordDao {
           .doAfterTerminate(tx::commit)));
   }
 
-
-  private String distinctCountConditions(ParseFieldsResult parseFieldsResult, List<String> conditions) {
+  private String distinctCountConditions(List<String> conditions) {
     int minPassCriteria = 1;
 
     StringBuilder combinedExpression = new StringBuilder();
@@ -429,35 +428,58 @@ public class RecordDaoImpl implements RecordDao {
     return combinedExpression.toString();
   }
 
-  private static List<String> conditionSplitter(String expression) {
-    List<String> result = new ArrayList<>();
-    int start = 0;
-    Stack<Integer> parenthesisStack = new Stack<>();
+  @Override
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
+    /* Building a search query */
 
-    for (int i = 0; i < expression.length(); i++) {
-      char c = expression.charAt(i);
-      if (c == '(') {
-        parenthesisStack.push(i);
-      } else if (c == ')') {
-        if (!parenthesisStack.isEmpty()) {
-          parenthesisStack.pop();
-          if (parenthesisStack.isEmpty()) {
-            // When the stack is empty, we're at the top level:
-            String condition = expression.substring(start, i + 1).trim();
-            if (!condition.isEmpty()) result.add(condition);
+    //      TODO: adjust bracets in condtion statements
+    List<String> conditions;
+    CommonTableExpression commonTableExpression = null;
+    if (parseFieldsResult.isEnabled()) {
+      conditions = Arrays.stream(parseFieldsResult.getWhereExpression().split("[()]")).filter(StringUtils::isNotBlank).collect(Collectors.toList());
 
-            // Look ahead for logical operators
-            int nextStart = expression.indexOf('(', i);
-            if (nextStart > i) {
-              String operator = expression.substring(i + 1, nextStart).trim();
-              if (!operator.isEmpty()) result.add(operator);
-            }
-            start = nextStart;
-          }
-        }
-      }
+      String conditionForHavingStatement = distinctCountConditions(conditions);
+      commonTableExpression = DSL.name("cte").as(
+              select(
+                      field("marc_id"))
+                      .from("marc_indexers").join(RECORDS_LB)
+                      .on("marc_indexers.marc_id = records_lb.id")
+                      .groupBy(field("marc_id"))
+                      .having(DSL.condition(conditionForHavingStatement, parseFieldsResult.getBindingParams().toArray()))
+      );
     }
-    return result;
+    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
+    if (searchParameters.getOffset() != null) {
+      searchQuery.offset(searchParameters.getOffset());
+    }
+    if (searchParameters.getLimit() != null) {
+      searchQuery.limit(searchParameters.getLimit());
+    }
+    /* Building a count query */
+    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
+    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
+    /* Join both in one query */
+    String sql = "";
+    if (parseFieldsResult.isEnabled()) {
+      sql = DSL.with(commonTableExpression).select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+    } else {
+      sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+    }
+    System.out.println(sql);
+    String finalSql = sql;
+    return getCachedPool(tenantId)
+            .rxGetConnection()
+            .flatMapPublisher(conn -> conn.rxBegin()
+                    .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
+                            .flatMapPublisher(pq -> pq.createStream(10000)
+                                    .toFlowable()
+                                    .filter(row -> !enableFallbackQuery || row.getInteger(COUNT) != 0)
+                                    .switchIfEmpty(streamMarcRecordIdsWithoutIndexersVersionUsage(conn, parseLeaderResult, parseFieldsResult, searchParameters))
+                                    .map(this::toRow))
+                            .doAfterTerminate(tx::commit)));
   }
 
   private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
@@ -973,67 +995,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
-    /* Building a search query */
-
-    //      TODO: adjust bracets in condtion statements
-    List<String> conditions;
-    CommonTableExpression commonTableExpression = null;
-    if (parseFieldsResult.isEnabled()) {
-      conditions = conditionSplitter(parseFieldsResult.getWhereExpression());
-
-      String conditionForHavingStatement = distinctCountConditions(parseFieldsResult, conditions);
-      commonTableExpression = DSL.name("cte").as(
-              select(
-                      field("marc_id"))
-                      .from("marc_indexers").join(RECORDS_LB)
-                      .on("marc_indexers.marc_id = records_lb.id")
-                      .groupBy(field("marc_id"))
-                      .having(DSL.condition(conditionForHavingStatement, parseFieldsResult.getBindingParams().toArray()))
-      );
-    }
-    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-    if (searchParameters.getOffset() != null) {
-      searchQuery.offset(searchParameters.getOffset());
-    }
-    if (searchParameters.getLimit() != null) {
-      searchQuery.limit(searchParameters.getLimit());
-    }
-    /* Building a count query */
-    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-    /* Join both in one query */
-    String sql = "";
-    if (parseFieldsResult.isEnabled()) {
-      sql = DSL.with(commonTableExpression).select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    } else {
-      sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    }
-    System.out.println(sql);
-    String finalSql = sql;
-    return getCachedPool(tenantId)
-            .rxGetConnection()
-            .flatMapPublisher(conn -> conn.rxBegin()
-                    .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
-                            .flatMapPublisher(pq -> pq.createStream(10000)
-                                    .toFlowable()
-                                    .filter(row -> !enableFallbackQuery || row.getInteger(COUNT) != 0)
-                                    .switchIfEmpty(streamMarcRecordIdsWithoutIndexersVersionUsage(conn, parseLeaderResult, parseFieldsResult, searchParameters))
-                                    .map(this::toRow))
-                            .doAfterTerminate(tx::commit)));
-  }
-
-  @Override
-  public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
-                                                        String tenantId) {
-    return getQueryExecutor(tenantId)
-      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
-  }
-
-  @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
     logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
@@ -1194,6 +1155,30 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
+                                                        String tenantId) {
+    return getQueryExecutor(tenantId)
+            .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
+  }
+
+  @Override
+  public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
+                                                        String externalId, IdType idType) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
+            .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+                    .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+    return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+                    .where(condition)
+                    .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
+                    .limit(1))
+            .map(RecordDaoUtil::toOptionalRecord)
+            .compose(optionalRecord -> optionalRecord
+                    .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
+                    .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
+            .onFailure(v -> txQE.rollback());
+  }
+
+  @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
     if (marcBibIds.isEmpty()) {
       return Future.succeededFuture(new MarcBibCollection());
@@ -1229,20 +1214,13 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
-                                                        String externalId, IdType idType) {
-    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
-        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
-    return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-                    .where(condition)
-                    .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
-                    .limit(1))
-            .map(RecordDaoUtil::toOptionalRecord)
-            .compose(optionalRecord -> optionalRecord
-                    .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-                    .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
-            .onFailure(v -> txQE.rollback());
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
+    LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
+    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
+                    .compose(optionalRecord -> optionalRecord
+                            .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
+                            .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
+            .map(u -> true);
   }
 
   @Override
@@ -1645,13 +1623,4 @@ public class RecordDaoImpl implements RecordDao {
     return condition;
   }
 
-  @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
-    LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
-                    .compose(optionalRecord -> optionalRecord
-                            .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-                            .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
-            .map(u -> true);
-  }
 }

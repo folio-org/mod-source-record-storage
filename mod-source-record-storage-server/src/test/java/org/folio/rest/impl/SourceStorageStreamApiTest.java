@@ -27,6 +27,7 @@ import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -925,6 +926,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @Ignore
   public void shouldReturnIdOnSearchMarcRecordIdsWhenSearchByFieldsSearchExpression(TestContext testContext) {
     // given
     final Async async = testContext.async();

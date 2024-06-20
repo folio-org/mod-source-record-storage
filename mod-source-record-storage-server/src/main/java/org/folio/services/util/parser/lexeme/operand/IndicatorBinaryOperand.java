@@ -38,7 +38,7 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
     var field = keyParts[0];
     var indicator = keyParts[1];
     String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
-    var sqlRepresentation = "("+fieldNumberToSearch + " and " + "\"" + indicator + "\"";
+      var sqlRepresentation = "( " + fieldNumberToSearch + " and " + "\"" + indicator + "\"";
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return sqlRepresentation + " like ?)";
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {

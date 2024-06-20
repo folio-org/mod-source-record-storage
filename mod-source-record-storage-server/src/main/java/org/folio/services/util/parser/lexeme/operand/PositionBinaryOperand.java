@@ -33,7 +33,7 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
   @Override
   public String toSqlRepresentation() {
     String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
-    String prefix = "("+fieldNumberToSearch +" and substring(\"value\", " + startPosition + ", " + endPosition + ")";
+      String prefix = "( " + fieldNumberToSearch + " and substring(\"value\", " + startPosition + ", " + endPosition + ")";
     if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
       return prefix + " = ?)";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {

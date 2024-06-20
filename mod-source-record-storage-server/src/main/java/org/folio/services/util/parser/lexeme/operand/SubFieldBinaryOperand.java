@@ -43,7 +43,7 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
     String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
     String subField = keyParts[1];
     StringBuilder stringBuilder = new StringBuilder()
-      .append("(").append(fieldNumberToSearch).append(" and \"subfield_no\" = '").append(subField).append("'")
+            .append("( ").append(fieldNumberToSearch).append(" and \"subfield_no\" = '").append(subField).append("'")
       .append(" and ")
       .append("\"value\" ");
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {

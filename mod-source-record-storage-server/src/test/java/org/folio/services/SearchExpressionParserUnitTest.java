@@ -148,7 +148,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("(OCoLC)63611770"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -161,7 +161,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("(OCoLC)%"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" like ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" like ?)", result.getWhereExpression());
   }
 
   @Test
@@ -174,7 +174,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("(OCoLC)"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("035")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -187,7 +187,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and id in (select marc_id from marc_indexers where subfield_no = 'a'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and id in (select marc_id from marc_indexers where subfield_no = 'a'))", result.getWhereExpression());
   }
 
   @Test
@@ -200,7 +200,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and id not in (select marc_id from marc_indexers where subfield_no = 'z'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and id not in (select marc_id from marc_indexers where subfield_no = 'z'))", result.getWhereExpression());
   }
 
   @Test
@@ -213,7 +213,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("1"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '036' and \"ind1\" = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '036' and \"ind1\" = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -226,7 +226,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("1%"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '036' and \"ind1\" like ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '036' and \"ind1\" like ?)", result.getWhereExpression());
   }
 
   @Test
@@ -239,7 +239,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("1"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("036")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '036' and \"ind1\" <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '036' and \"ind1\" <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -252,7 +252,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("20141107001016.0"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and \"value\" = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and \"value\" = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -265,7 +265,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("20141107%"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and \"value\" like ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and \"value\" like ?)", result.getWhereExpression());
   }
 
   @Test
@@ -278,7 +278,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("20141107"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and \"value\" <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and \"value\" <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -291,7 +291,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and id in (select marc_id from marc_indexers))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and id in (select marc_id from marc_indexers))", result.getWhereExpression());
   }
 
   @Test
@@ -304,7 +304,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '035' and id not in (select marc_id from marc_indexers))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and id not in (select marc_id from marc_indexers))", result.getWhereExpression());
   }
 
   @Test
@@ -345,7 +345,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("2014"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and substring(\"value\", 1, 4) = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and substring(\"value\", 1, 4) = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -358,7 +358,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("2014"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and substring(\"value\", 1, 4) <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and substring(\"value\", 1, 4) <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -413,7 +413,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -426,7 +426,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -439,7 +439,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') >= ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') >= ?)", result.getWhereExpression());
   }
 
   @Test
@@ -452,7 +452,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <= ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <= ?)", result.getWhereExpression());
   }
 
   @Test
@@ -465,7 +465,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(Arrays.asList("201701025", "20200213"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
   }
 
   @Test
@@ -478,7 +478,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%", "abc", "20171128", "20200114"), result.getBindingParams());
     assertEquals(new HashSet<>(asList("001", "035", "036", "005")), result.getFieldsToJoin());
-    assertEquals("((\"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?) and (\"field_no\" = '036' and \"ind1\" <> ?)) or ((\"field_no\" = '036' and \"ind1\" like ?) and (\"field_no\" = '005' and \"value\" like ?)) or ((\"field_no\" = '001' and substring(\"value\", 2, 3) = ?) and (\"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?))", result.getWhereExpression());
+    assertEquals("(( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?) and ( \"field_no\" = '036' and \"ind1\" <> ?)) or (( \"field_no\" = '036' and \"ind1\" like ?) and ( \"field_no\" = '005' and \"value\" like ?)) or (( \"field_no\" = '001' and substring(\"value\", 2, 3) = ?) and ( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?))", result.getWhereExpression());
   }
 
   @Test
@@ -491,7 +491,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '050' and id in (select marc_id from marc_indexers where ind1 <> '#'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '050' and id in (select marc_id from marc_indexers where ind1 <> '#'))", result.getWhereExpression());
   }
 
   @Test
@@ -504,7 +504,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("(\"field_no\" = '050' and id in (select marc_id from marc_indexers where ind2 = '#'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '050' and id in (select marc_id from marc_indexers where ind2 = '#'))", result.getWhereExpression());
   }
 
   @Test

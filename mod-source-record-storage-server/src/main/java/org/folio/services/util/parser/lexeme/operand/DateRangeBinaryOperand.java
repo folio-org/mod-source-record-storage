@@ -54,7 +54,7 @@ public class DateRangeBinaryOperand extends BinaryOperandLexeme {
     String field = keyParts[0];
     String fieldNumberToSearch = "\"field_no\" = '" + field + "'";
 
-    StringBuilder builder = new StringBuilder("("+fieldNumberToSearch + " and to_date(substring(").append("value, 1, 8), '").append(DATE_PATTERN).append("')");
+    StringBuilder builder = new StringBuilder("( " + fieldNumberToSearch + " and to_date(substring(").append("value, 1, 8), '").append(DATE_PATTERN).append("')");
 
     if (BINARY_OPERATOR_EQUALS.equals(getOperator()) && !this.rangeSearch) {
       return builder.append(" = ?)").toString();

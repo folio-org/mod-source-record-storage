@@ -15,7 +15,7 @@ public class PresenceBinaryOperand {
 
   private static final String PRESENT = "present";
   private static final String ABSENT = "absent";
-  private static final String FIELD_NO = "(\"field_no\" = '";
+    private static final String FIELD_NO = "( \"field_no\" = '";
 
   private PresenceBinaryOperand() {
   }

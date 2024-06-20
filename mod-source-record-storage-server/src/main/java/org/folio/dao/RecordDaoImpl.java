@@ -99,6 +99,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -411,6 +412,37 @@ public class RecordDaoImpl implements RecordDao {
           .doAfterTerminate(tx::commit)));
   }
 
+  private static List<String> conditionSplitter(String expression) {
+    List<String> result = new ArrayList<>();
+    int start = 0;
+    Stack<Integer> parenthesisStack = new Stack<>();
+
+    for (int i = 0; i < expression.length(); i++) {
+      char c = expression.charAt(i);
+      if (c == '(') {
+        parenthesisStack.push(i);
+      } else if (c == ')') {
+        if (!parenthesisStack.isEmpty()) {
+          parenthesisStack.pop();
+          if (parenthesisStack.isEmpty()) {
+            // When the stack is empty, we're at the top level:
+            String condition = expression.substring(start, i + 1).trim();
+            if (!condition.isEmpty()) result.add(condition);
+
+            // Look ahead for logical operators
+            int nextStart = expression.indexOf('(', i);
+            if (nextStart > i) {
+              String operator = expression.substring(i + 1, nextStart).trim();
+              if (!operator.isEmpty()) result.add(operator);
+            }
+            start = nextStart;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
   private String distinctCountConditions(List<String> conditions) {
     int minPassCriteria = 1;
 
@@ -418,11 +450,20 @@ public class RecordDaoImpl implements RecordDao {
     AtomicInteger counter = new AtomicInteger();
 
     for (String condition : conditions) {
-      if (condition.trim().equals("or") || condition.trim().equals("and")) {
-        combinedExpression.append(" ").append(condition).append(" ");
+//      TODO: do not forget to write test about this process
+      if (!condition.trim().equals("or") && !condition.trim().equals("and")) {
+        Map<String, Long> countOfWord = Arrays.stream(condition.split(" ")).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        if (countOfWord.getOrDefault("\"field_no\"", 1L) > 1L) {
+          combinedExpression.append(" ").append("( ");
+          List<String> formattedCondition = conditionSplitter(condition.substring(1, condition.length() - 1));
+          String recursiveCall = distinctCountConditions(formattedCondition);
+          combinedExpression.append(" ").append("\n").append(recursiveCall).append(") ");
+        } else {
+          combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(condition), counter.getAndIncrement())).eq(minPassCriteria));
+          combinedExpression.append(" ");
+        }
       } else {
-        combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(condition), counter.getAndIncrement())).eq(minPassCriteria));
-        combinedExpression.append(" ");
+        combinedExpression.append(" ").append(condition).append(" ");
       }
     }
     return combinedExpression.toString();
@@ -436,7 +477,7 @@ public class RecordDaoImpl implements RecordDao {
     List<String> conditions;
     CommonTableExpression commonTableExpression = null;
     if (parseFieldsResult.isEnabled()) {
-      conditions = Arrays.stream(parseFieldsResult.getWhereExpression().split("[()]")).filter(StringUtils::isNotBlank).toList();
+      conditions = conditionSplitter(parseFieldsResult.getWhereExpression());
 
       String conditionForHavingStatement = distinctCountConditions(conditions);
       commonTableExpression = DSL.name(CTE).as(

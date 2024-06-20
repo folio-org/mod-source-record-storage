@@ -30,7 +30,7 @@ public class ValueBinaryOperand extends BinaryOperandLexeme {
   public String toSqlRepresentation() {
     StringBuilder stringBuilder = new StringBuilder();
     String field = getKey().split("\\.")[0];
-    String fieldNumberToSearch = "(\"field_no\" = '" + field+"'";
+    String fieldNumberToSearch = "( \"field_no\" = '" + field + "'";
     String prefix = stringBuilder.append(fieldNumberToSearch).append(" and ").append("\"value\"").toString();
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return prefix + " like ?)";

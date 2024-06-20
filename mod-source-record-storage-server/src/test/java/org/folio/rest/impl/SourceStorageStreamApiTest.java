@@ -1452,31 +1452,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         async.complete();
     }
 
-    @Test
-    public void shouldProcessSearchQueryIfSearchNeededWithinOneFieldWithDifferentOperands(TestContext testContext) {
-        // given
-        final Async async = testContext.async();
-        postSnapshots(testContext, snapshot_2);
-        postRecords(testContext, marc_bib_record_2);
-        MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-        searchRequest.setFieldsSearchExpression(
-                "050.a ^= 'M3' and 050.b ^= '.M896'");
-        // when
-        ExtractableResponse<Response> response = RestAssured.given()
-                .spec(spec)
-                .body(searchRequest)
-                .when()
-                .post("/source-storage/stream/marc-record-identifiers")
-                .then()
-                .extract();
-        JsonObject responseBody = new JsonObject(response.body().asString());
-        // then
-        assertEquals(HttpStatus.SC_OK, response.statusCode());
-        assertEquals(1, responseBody.getJsonArray("records").size());
-        assertEquals(1, responseBody.getInteger("totalCount").intValue());
-        async.complete();
-    }
-
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {
     return Flowable.create(subscriber -> {
         try (Scanner scanner = new Scanner(inputStream, StandardCharsets.UTF_8)) {

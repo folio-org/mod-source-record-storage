@@ -436,20 +436,20 @@ public class RecordDaoImpl implements RecordDao {
     List<String> conditions;
     CommonTableExpression commonTableExpression = null;
     if (parseFieldsResult.isEnabled()) {
-      conditions = Arrays.stream(parseFieldsResult.getWhereExpression().split("[()]")).filter(StringUtils::isNotBlank).collect(Collectors.toList());
+      conditions = Arrays.stream(parseFieldsResult.getWhereExpression().split("[()]")).filter(StringUtils::isNotBlank).toList();
 
       String conditionForHavingStatement = distinctCountConditions(conditions);
-      commonTableExpression = DSL.name("cte").as(
+      commonTableExpression = DSL.name(CTE).as(
               select(
                       field("marc_id"))
                       .from("marc_indexers").join(RECORDS_LB)
                       .on("marc_indexers.marc_id = records_lb.id")
-                      .groupBy(field("marc_id"))
+                      .groupBy(field(MARC_ID))
                       .having(DSL.condition(conditionForHavingStatement, parseFieldsResult.getBindingParams().toArray()))
       );
     }
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    appendJoin(searchQuery, parseLeaderResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
@@ -459,7 +459,7 @@ public class RecordDaoImpl implements RecordDao {
     }
     /* Building a count query */
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
+    appendJoin(countQuery, parseLeaderResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     /* Join both in one query */
     String sql = "";
@@ -468,7 +468,6 @@ public class RecordDaoImpl implements RecordDao {
     } else {
       sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
     }
-    System.out.println(sql);
     String finalSql = sql;
     return getCachedPool(tenantId)
             .rxGetConnection()
@@ -482,7 +481,7 @@ public class RecordDaoImpl implements RecordDao {
                             .doAfterTerminate(tx::commit)));
   }
 
-  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {
     if (parseLeaderResult.isEnabled() && !parseLeaderResult.isIndexedFieldsCriteriaOnly()) {
       Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
       selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));

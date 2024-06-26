@@ -1,3 +1,6 @@
+## 2024-06-27 5.8.6
+* [MODSOURCE-780](https://folio-org.atlassian.net/browse/MODSOURCE-780) Reorder only 00X fields while preserving system order for all other
+
 ## 2024-05-29 5.8.5
 * [MODSOURCE-778](https://folio-org.atlassian.net/browse/MODSOURCE-778) Fix editing via quickMARC MARC Instance shared from Member tenant
 

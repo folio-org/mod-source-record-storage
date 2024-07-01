@@ -9,6 +9,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.reactivex.FlowableHelper;
 import io.vertx.sqlclient.Row;
+import net.sf.jsqlparser.JSQLParserException;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -176,7 +177,13 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     ArrayList<String> ids = new ArrayList<>();
 
     Future<Flowable<Row>> future = deleteTrackingRecordById(record.getId())
-      .map(v -> recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParams, TENANT_ID));
+      .map(v -> {
+        try {
+          return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParams, TENANT_ID);
+        } catch (JSQLParserException e) {
+          throw new RuntimeException(e);
+        }
+      });
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

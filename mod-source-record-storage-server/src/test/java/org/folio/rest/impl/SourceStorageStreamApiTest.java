@@ -1434,8 +1434,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         postSnapshots(testContext, snapshot_2);
         postRecords(testContext, marc_bib_record_2);
         MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-        searchRequest.setFieldsSearchExpression(
-                "050.a ^= 'M3' and 050.b ^= '.M896'");
+        searchRequest.setFieldsSearchExpression("050.a ^= 'M3' and 050.b ^= '.M896'");
         // when
         ExtractableResponse<Response> response = RestAssured.given()
                 .spec(spec)
@@ -1459,8 +1458,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         postSnapshots(testContext, snapshot_2);
         postRecords(testContext, marc_bib_record_2);
         MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-        searchRequest.setFieldsSearchExpression(
-                "(050.a ^= 'M3' and 050.b ^= '.M896') and 240.a ^= 'Works'");
+        searchRequest.setFieldsSearchExpression("(050.a ^= 'M3' and 050.b ^= '.M896') and 240.a ^= 'Works'");
         // when
         ExtractableResponse<Response> response = RestAssured.given()
                 .spec(spec)
@@ -1476,6 +1474,44 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         assertEquals(1, responseBody.getInteger("totalCount").intValue());
         async.complete();
     }
+
+  @Test
+  @Ignore
+  public void shouldReturnRecordOnSearchMarcRecordWhithExampleRequest(TestContext testContext) {
+    // given
+    Async async = testContext.async();
+    Record suppressedRecord = new Record()
+      .withId(marc_bib_record_2.getId())
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(marc_bib_record_2.getRawRecord())
+      .withParsedRecord(marc_bib_record_2.getParsedRecord())
+      .withMatchedId(marc_bib_record_2.getMatchedId())
+      .withState(Record.State.ACTUAL)
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
+      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
+    postSnapshots(testContext, snapshot_2);
+    postRecords(testContext, suppressedRecord);
+
+    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
+    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
+    searchRequest.setFieldsSearchExpression("((035.a = '(OCoLC)770') or (245.a ^= 'Semantic web' and 005.value ^= '20141107') or " +
+      "((035.a = '(OCoLC)7701' and 035.b = '(OCoLC)7702'))) and (035.a = '(OCoLC)7703')");
+    // when
+    ExtractableResponse<Response> response = RestAssured.given()
+      .spec(spec)
+      .body(searchRequest)
+      .when()
+      .post("/source-storage/stream/marc-record-identifiers")
+      .then()
+      .extract();
+    JsonObject responseBody = new JsonObject(response.body().asString());
+    // then
+    assertEquals(HttpStatus.SC_OK, response.statusCode());
+    assertEquals(1, responseBody.getJsonArray("records").size());
+    assertEquals(1, responseBody.getInteger("totalCount").intValue());
+    async.complete();
+  }
 
   private Flowable<String> flowableInputStreamScanner(InputStream inputStream) {
     return Flowable.create(subscriber -> {

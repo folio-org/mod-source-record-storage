@@ -11,6 +11,13 @@ import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
@@ -90,7 +97,6 @@ import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -99,9 +105,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Stack;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -412,83 +416,96 @@ public class RecordDaoImpl implements RecordDao {
           .doAfterTerminate(tx::commit)));
   }
 
-  private static List<String> conditionSplitter(String expression) {
-    List<String> result = new ArrayList<>();
-    int start = 0;
-    Stack<Integer> parenthesisStack = new Stack<>();
-
-    for (int i = 0; i < expression.length(); i++) {
-      char c = expression.charAt(i);
-      if (c == '(') {
-        parenthesisStack.push(i);
-      } else if (c == ')') {
-        if (!parenthesisStack.isEmpty()) {
-          parenthesisStack.pop();
-          if (parenthesisStack.isEmpty()) {
-            // When the stack is empty, we're at the top level:
-            String condition = expression.substring(start, i + 1).trim();
-            if (!condition.isEmpty()) result.add(condition);
-
-            // Look ahead for logical operators
-            int nextStart = expression.indexOf('(', i);
-            if (nextStart > i) {
-              String operator = expression.substring(i + 1, nextStart).trim();
-              if (!operator.isEmpty()) result.add(operator);
-            }
-            start = nextStart;
-          }
-        }
-      }
-    }
-    return result;
-  }
-
-  private String distinctCountConditions(List<String> conditions) {
-    int minPassCriteria = 1;
-
+  private static String buildCteDistinctCountCondition(Expression expression) {
     StringBuilder combinedExpression = new StringBuilder();
-    AtomicInteger counter = new AtomicInteger();
-
-    for (String condition : conditions) {
-//      TODO: do not forget to write test about this process
-      if (!condition.trim().equals("or") && !condition.trim().equals("and")) {
-        Map<String, Long> countOfWord = Arrays.stream(condition.split(" ")).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        if (countOfWord.getOrDefault("\"field_no\"", 1L) > 1L) {
-          combinedExpression.append(" ").append("( ");
-          List<String> formattedCondition = conditionSplitter(condition.substring(1, condition.length() - 1));
-          String recursiveCall = distinctCountConditions(formattedCondition);
-          combinedExpression.append(" ").append("\n").append(recursiveCall).append(") ");
-        } else {
-          combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(condition), counter.getAndIncrement())).eq(minPassCriteria));
-          combinedExpression.append(" ");
-        }
+    if (expression instanceof Parenthesis) {
+      Expression innerExpression = ((Parenthesis) expression).getExpression();
+      if (containsParenthesis(innerExpression)) {
+        combinedExpression.append(buildCteDistinctCountCondition(innerExpression));
       } else {
-        combinedExpression.append(" ").append(condition).append(" ");
+        combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(expression.toString()), 1)).eq(1));
+      }
+    } else if (expression instanceof BinaryExpression binaryExpression) {
+      Expression leftExpression = binaryExpression.getLeftExpression();
+      Expression rightExpression = binaryExpression.getRightExpression();
+      if (containsParenthesis(leftExpression)) {
+        combinedExpression.append("(");
+        combinedExpression.append(buildCteDistinctCountCondition(leftExpression));
+      }
+      if (expression instanceof AndExpression) {
+        combinedExpression.append(" and ");
+      } else if (expression instanceof OrExpression) {
+        combinedExpression.append(" or ");
+      }
+      if (containsParenthesis(rightExpression)) {
+        combinedExpression.append(buildCteDistinctCountCondition(rightExpression));
+        combinedExpression.append(")");
       }
     }
     return combinedExpression.toString();
   }
 
-  @Override
-  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
-    /* Building a search query */
+  private static void parseExpression(Expression expr, List<Expression> expressions) {
+    if (expr instanceof BinaryExpression) {
+      BinaryExpression binExpr = (BinaryExpression) expr;
+      parseExpression(binExpr.getLeftExpression(), expressions);
+      parseExpression(binExpr.getRightExpression(), expressions);
+    } else if (expr instanceof Parenthesis) {
+      Parenthesis parenthesis = (Parenthesis) expr;
+      if (containsParenthesis(parenthesis.getExpression())) parseExpression(parenthesis.getExpression(), expressions);
+      else expressions.add(parenthesis);
+    }
+  }
 
-    //      TODO: adjust bracets in condtion statements
-    List<String> conditions;
+  private static boolean containsParenthesis(Expression expr) {
+    if (expr instanceof Parenthesis) {
+      return true;
+    } else if (expr instanceof BinaryExpression) {
+      BinaryExpression binExpr = (BinaryExpression) expr;
+      return containsParenthesis(binExpr.getLeftExpression()) || containsParenthesis(binExpr.getRightExpression());
+    } else {
+      return false;
+    }
+  }
+
+  private String buildCteWhereCondition(String whereExpression) throws JSQLParserException {
+    List<Expression> expressions = new ArrayList<>();
+    StringBuilder cteWhereCondition = new StringBuilder();
+
+    Expression expr = CCJSqlParserUtil.parseCondExpression(whereExpression);
+    parseExpression(expr, expressions);
+    int i = 1;
+    for (Expression expression : expressions) {
+      cteWhereCondition.append(expression.toString());
+      if (i < expressions.size()) cteWhereCondition.append(" or ");
+      i++;
+    }
+    return cteWhereCondition.toString();
+  }
+
+  @Override
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
+                                           RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
+    /* Building a search query */
+    //TODO: adjust bracets in condtion statements
     CommonTableExpression commonTableExpression = null;
     if (parseFieldsResult.isEnabled()) {
-      conditions = conditionSplitter(parseFieldsResult.getWhereExpression());
+      String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
 
-      String conditionForHavingStatement = distinctCountConditions(conditions);
+      Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
+      String cteHavingExpression = buildCteDistinctCountCondition(expr);
+
       commonTableExpression = DSL.name(CTE).as(
-              select(
-                      field("marc_id"))
-                      .from("marc_indexers").join(RECORDS_LB)
-                      .on("marc_indexers.marc_id = records_lb.id")
-                      .groupBy(field(MARC_ID))
-                      .having(DSL.condition(conditionForHavingStatement, parseFieldsResult.getBindingParams().toArray()))
+        select(
+          field("marc_id"))
+          .from("marc_indexers").join(RECORDS_LB)
+          .on("marc_indexers.marc_id = records_lb.id")
+          .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
+          .groupBy(field(MARC_ID))
+          .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))
       );
     }
+
     SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);

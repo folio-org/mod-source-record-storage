@@ -505,6 +505,11 @@
                   <includeExpression>upsert_marc_record.content</includeExpression>
                   <converter>io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter</converter>
                 </forcedType>
+                <forcedType>
+                  <userType>io.vertx.core.json.JsonObject</userType>
+                  <includeExpression>update_marc_record.content</includeExpression>
+                  <converter>io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter</converter>
+                </forcedType>
               </forcedTypes>
             </database>
             <generate>

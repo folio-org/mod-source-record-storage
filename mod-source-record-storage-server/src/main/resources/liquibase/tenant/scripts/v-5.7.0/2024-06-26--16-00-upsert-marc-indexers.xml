@@ -20,4 +20,40 @@
       $$ LANGUAGE sql;
     </sql>
   </changeSet>
+  <changeSet id="2024-06-26--16-00-update-marc-record" author="okolawole">
+    <sql splitStatements="false">
+CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.update_marc_record(
+    record_id UUID,
+    content JSONB
+)
+RETURNS INTEGER AS
+$$
+DECLARE
+      affected_rows INTEGER;
+    version INTEGER;
+      BEGIN
+    -- Perform the UPDATE statement
+      UPDATE ${database.defaultSchemaName}.marc_records_lb
+      SET content = content
+      WHERE id = record_id;
+
+      -- Get the number of affected rows
+      GET DIAGNOSTICS affected_rows = ROW_COUNT;
+
+      IF affected_rows > 0 THEN
+        -- Retrieve the version from the tracking table
+      SELECT version
+      INTO version
+      FROM ${database.defaultSchemaName}.marc_records_tracking
+      WHERE marc_id = record_id;
+      ELSE
+        version := NULL;
+      END IF;
+
+    -- Return the version or NULL if no rows were affected
+      RETURN version;
+      END;
+$$ LANGUAGE plpgsql;
+    </sql>
+  </changeSet>
 </databaseChangeLog>

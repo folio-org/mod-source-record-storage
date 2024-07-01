@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.routines.UpdateMarcRecord;
 import org.folio.rest.jooq.routines.UpsertMarcRecord;
 import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.MarcIndexersRecord;
@@ -137,19 +138,18 @@ public final class ParsedRecordDaoUtil {
       ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
-    UpsertMarcRecord upsertMarcRecord = new UpsertMarcRecord();
-    upsertMarcRecord.setRecordId(id);
-    upsertMarcRecord.setContent(content);
-    return queryExecutor.executeAny(dsl -> dsl.select(upsertMarcRecord.asField()))
+    UpdateMarcRecord updateMarcRecord = new UpdateMarcRecord();
+    updateMarcRecord.setRecordId(id);
+    updateMarcRecord.setContent(content);
+    return queryExecutor.executeAny(dsl -> dsl.select(updateMarcRecord.asField()))
       .compose(res -> {
           Row row = res.iterator().next();
-          if (row == null) {
-            return Future.failedFuture(
-              String.format("update:: a version was not returned upon upsert of a marc record marRecordId=%s", id));
+          if (row != null) {
+            Integer version = row.getInteger(0);
+            return updateMarcIndexersTableAsync(queryExecutor, recordType, id, content, version)
+              .map(res);
           }
-          Integer version = row.getInteger(0);
-          return updateMarcIndexersTableAsync(queryExecutor, recordType, id, content, version)
-            .compose(ar -> Future.succeededFuture(res));
+          return Future.succeededFuture(res);
         }
       )
       .map(update -> {

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.CustomReactiveQueryExecutor;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
@@ -194,13 +195,13 @@ public interface RecordDao {
   Future<Record> saveRecord(Record record, String tenantId);
 
   /**
-   * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link Record} to the db using {@link CustomReactiveQueryExecutor}
    *
    * @param txQE   query executor
    * @param record Record to save
    * @return future with saved Record
    */
-  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+  Future<Record> saveRecord(CustomReactiveQueryExecutor txQE, Record record);
 
   /**
    * Saves {@link RecordCollection} to the db
@@ -372,7 +373,7 @@ public interface RecordDao {
    * @param oldRecord old Record that has to be marked as "old"
    * @return future with new "updated" Record
    */
-  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
+  Future<Record> saveUpdatedRecord(CustomReactiveQueryExecutor txQE, Record newRecord, Record oldRecord);
 
   /**
    * Change suppress from discovery flag for record by external relation id
@@ -393,7 +394,7 @@ public interface RecordDao {
    * @param tenantId tenant id
    * @return future with generic type
    */
-  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
+  <T> Future<T> executeInTransaction(Function<CustomReactiveQueryExecutor, Future<T>> action, String tenantId);
 
   /**
    * Search for non-existent mark bib ids in the system

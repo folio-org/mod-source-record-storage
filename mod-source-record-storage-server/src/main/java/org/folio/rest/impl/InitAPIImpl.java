@@ -10,6 +10,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.spi.VerticleFactory;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
@@ -34,6 +36,7 @@ public class InitAPIImpl implements InitAPI {
 
   private static final String SPRING_CONTEXT = "springContext";
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final AtomicBoolean shouldInit = new AtomicBoolean(true);
 
   @Autowired
   private KafkaConfig kafkaConfig;
@@ -64,21 +67,26 @@ public class InitAPIImpl implements InitAPI {
     try {
       SpringContextUtil.init(vertx, context, ApplicationConfig.class);
       SpringContextUtil.autowireDependencies(this, context);
-      AbstractApplicationContext springContext = vertx.getOrCreateContext().get(SPRING_CONTEXT);
-      VerticleFactory verticleFactory = springContext.getBean(SpringVerticleFactory.class);
-      vertx.registerVerticleFactory(verticleFactory);
+      if(shouldInit.compareAndSet(true, false)) {
+        // only one verticle should perform the actions below
+        AbstractApplicationContext springContext = vertx.getOrCreateContext().get(SPRING_CONTEXT);
+        VerticleFactory verticleFactory = springContext.getBean(SpringVerticleFactory.class);
+        vertx.registerVerticleFactory(verticleFactory);
 
-      EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
+        EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
-      registerEventHandlers();
-      deployMarcIndexersVersionDeletionVerticle(vertx, verticleFactory);
-      deployConsumerVerticles(vertx, verticleFactory).onComplete(ar -> {
-        if (ar.succeeded()) {
-          handler.handle(Future.succeededFuture(true));
-        } else {
-          handler.handle(Future.failedFuture(ar.cause()));
-        }
-      });
+        registerEventHandlers();
+        deployMarcIndexersVersionDeletionVerticle(vertx, verticleFactory);
+        deployConsumerVerticles(vertx, verticleFactory).onComplete(ar -> {
+          if (ar.succeeded()) {
+            handler.handle(Future.succeededFuture(true));
+          } else {
+            handler.handle(Future.failedFuture(ar.cause()));
+          }
+        });
+      } else {
+        handler.handle(Future.succeededFuture(true));
+      }
     } catch (Throwable th) {
       LOGGER.error("init:: Failed to init module", th);
       handler.handle(Future.failedFuture(th));

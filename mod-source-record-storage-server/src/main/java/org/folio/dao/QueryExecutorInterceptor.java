@@ -1,6 +1,6 @@
 package org.folio.dao;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.CustomReactiveQueryExecutor;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -56,12 +56,14 @@ public class QueryExecutorInterceptor {
    *
    * @return the generated subclass
    */
-  public static Class<? extends ReactiveClassicGenericQueryExecutor> generateClass() {
+  public static Class<? extends CustomReactiveQueryExecutor> generateClass() {
     return new ByteBuddy()
-      .subclass(ReactiveClassicGenericQueryExecutor.class)
+      .subclass(CustomReactiveQueryExecutor.class)
       .constructor(ElementMatchers.any()) // Match all constructors
       .intercept(SuperMethodCall.INSTANCE) // Call the original constructor
       .method(ElementMatchers.named("transaction")) // For transaction method
+      .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
+      .method(ElementMatchers.named("customTransaction")) // For custom transaction method
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
       .method(ElementMatchers.named("query")) // For query method
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
@@ -80,7 +82,7 @@ public class QueryExecutorInterceptor {
   public static <U> Future<U> query(
     @net.bytebuddy.implementation.bind.annotation.SuperCall Callable<Future<U>> superCall
   ) {
-    LOGGER.trace("query method of ReactiveClassicGenericQueryExecutor proxied");
+    LOGGER.trace("query method of CustomReactiveQueryExecutor proxied");
     return retryOf(() -> {
       try {
         return superCall.call();
@@ -101,7 +103,28 @@ public class QueryExecutorInterceptor {
   public static <U> Future<U> transaction(
     @net.bytebuddy.implementation.bind.annotation.SuperCall Callable<Future<U>> superCall
   ) {
-    LOGGER.trace("transaction method of ReactiveClassicGenericQueryExecutor proxied");
+    LOGGER.trace("transaction method of CustomReactiveQueryExecutor proxied");
+    return retryOf(() -> {
+      try {
+        return superCall.call();
+      } catch (Throwable e) {
+        LOGGER.error("Something happened while attempting to make proxied call for transaction method", e);
+        return Future.failedFuture(e);
+      }
+    }, numRetries);
+  }
+
+  /**
+   * Interceptor for the transaction method, with retry functionality.
+   *
+   * @param superCall the original method call
+   * @return the result of the transaction operation
+   */
+  @SuppressWarnings("unused")
+  public static <U> Future<U> customTransaction(
+    @net.bytebuddy.implementation.bind.annotation.SuperCall Callable<Future<U>> superCall
+  ) {
+    LOGGER.trace("customTransaction method of CustomReactiveQueryExecutor proxied");
     return retryOf(() -> {
       try {
         return superCall.call();

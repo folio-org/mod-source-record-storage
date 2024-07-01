@@ -1,22 +1,23 @@
 package org.folio.dao.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.CustomReactiveQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.Tuple;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jooq.routines.UpsertMarcRecord;
 import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
+import org.folio.rest.jooq.tables.records.MarcIndexersRecord;
 import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
 import org.jooq.DSLContext;
 import org.jooq.Field;
-import org.jooq.InsertValuesStepN;
 import org.jooq.JSONB;
 import org.jooq.Record1;
 import org.jooq.Table;
@@ -28,10 +29,10 @@ import org.jooq.impl.TableImpl;
 
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.folio.rest.jooq.Tables.MARC_INDEXERS;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
@@ -63,34 +65,12 @@ public final class ParsedRecordDaoUtil {
   public static final String PARSED_RECORD_NOT_FOUND_TEMPLATE = "Parsed Record with id '%s' was not found";
   public static final String PARSED_RECORD_CONTENT = "parsed_record_content";
   private static final MarcIndexersUpdatedIds UPDATE_MARC_INDEXERS_TEMP_TABLE = new MarcIndexersUpdatedIds();
-  public static final MarcIndexers MARC_INDEXERS_TABLE = new MarcIndexers();
 
   public static class MarcIndexersUpdatedIds extends TableImpl<Record1<UUID>> {
     public final TableField<Record1<UUID>, UUID> MARC_ID = createField(DSL.name("marc_id"), SQLDataType.UUID);
 
     private MarcIndexersUpdatedIds() {
       super(DSL.name("marc_indexers_updated_ids"));
-    }
-  }
-
-  public static class MarcIndexers extends TableImpl<org.jooq.Record> {
-    public final TableField<org.jooq.Record, String> FIELD_NO =
-      createField(name("field_no"), SQLDataType.VARCHAR);
-    public final TableField<org.jooq.Record, String> IND1 =
-      createField(name("ind1"), SQLDataType.VARCHAR);
-    public final TableField<org.jooq.Record, String> IND2 =
-      createField(name("ind2"), SQLDataType.VARCHAR);
-    public final TableField<org.jooq.Record, String> SUBFIELD_NO =
-      createField(name("subfield_no"), SQLDataType.VARCHAR);
-    public final TableField<org.jooq.Record, String> VALUE =
-      createField(name("value"), SQLDataType.VARCHAR);
-    public final TableField<org.jooq.Record, UUID> MARC_ID =
-      createField(DSL.name("marc_id"), SQLDataType.UUID);
-    public final TableField<org.jooq.Record, Integer> VERSION =
-      createField(name("version"), SQLDataType.INTEGER);
-
-    private MarcIndexers() {
-      super(DSL.name("marc_indexers"));
     }
   }
 
@@ -121,20 +101,24 @@ public final class ParsedRecordDaoUtil {
    * @param recordType    record type to save
    * @return future with updated ParsedRecord
    */
-  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
+  public static Future<ParsedRecord> save(CustomReactiveQueryExecutor queryExecutor,
       ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
-      .set(ID_FIELD, id)
-      .set(CONTENT_FIELD, content)
-      .onConflict(ID_FIELD)
-      .doUpdate()
-      .set(CONTENT_FIELD, content)
-      .returning())
-      .compose(res ->
-        updateMarcIndexersTableAsync(queryExecutor, recordType, id, JSONB.valueOf(content.encode()))
-          .compose(ar -> Future.succeededFuture(res))
+    UpsertMarcRecord upsertMarcRecord = new UpsertMarcRecord();
+    upsertMarcRecord.setRecordId(id);
+    upsertMarcRecord.setContent(content);
+    return queryExecutor.executeAny(dsl -> dsl.select(upsertMarcRecord.asField()))
+      .compose(res -> {
+        Row row = res.iterator().next();
+        if(row == null) {
+          return Future.failedFuture(
+            String.format("save:: a version was not returned upon upsert of a marc record marRecordId=%s", id));
+        }
+        Integer version = row.getInteger(0);
+        return updateMarcIndexersTableAsync(queryExecutor, recordType, id, content, version)
+            .compose(ar -> Future.succeededFuture(res));
+        }
       )
       .map(res -> parsedRecord
         .withContent(content.getMap()));
@@ -149,16 +133,24 @@ public final class ParsedRecordDaoUtil {
    * @param recordType    record type to update
    * @return future of updated ParsedRecord
    */
-  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
+  public static Future<ParsedRecord> update(CustomReactiveQueryExecutor queryExecutor,
       ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.update(table(name(recordType.getTableName())))
-      .set(CONTENT_FIELD, content)
-      .where(ID_FIELD.eq(id)))
-      .compose(res ->
-        updateMarcIndexersTableAsync(queryExecutor, recordType, id, JSONB.valueOf(content.encode()))
-          .compose(ar -> Future.succeededFuture(res))
+    UpsertMarcRecord upsertMarcRecord = new UpsertMarcRecord();
+    upsertMarcRecord.setRecordId(id);
+    upsertMarcRecord.setContent(content);
+    return queryExecutor.executeAny(dsl -> dsl.select(upsertMarcRecord.asField()))
+      .compose(res -> {
+          Row row = res.iterator().next();
+          if (row == null) {
+            return Future.failedFuture(
+              String.format("update:: a version was not returned upon upsert of a marc record marRecordId=%s", id));
+          }
+          Integer version = row.getInteger(0);
+          return updateMarcIndexersTableAsync(queryExecutor, recordType, id, content, version)
+            .compose(ar -> Future.succeededFuture(res));
+        }
       )
       .map(update -> {
         if (update.rowCount() > 0) {
@@ -220,14 +212,14 @@ public final class ParsedRecordDaoUtil {
       .map(record -> {
         JSONB jsonb = parsedRecords.get(record.value1());
         if (jsonb != null) {
-          return createMarcIndexerRecord(dsl, record.value1(), jsonb.data(), record.value2());
+          return createMarcIndexerRecords(dsl, record.value1(), new JsonObject(jsonb.data()), record.value2());
         }
         return Collections.<org.jooq.Record>emptyList();
       })
       .flatMap(Collection::stream)
       .collect(Collectors.toList());
 
-    dsl.loadInto(MARC_INDEXERS_TABLE)
+    dsl.loadInto(MARC_INDEXERS)
       .batchAfter(250)
       .onErrorAbort()
       .loadRecords(indexers)
@@ -252,49 +244,39 @@ public final class ParsedRecordDaoUtil {
    *
    * @throws RuntimeException if the MARC record with the provided id cannot be found or there are multiple such records.
    */
-  public static Future<Boolean> updateMarcIndexersTableAsync(ReactiveClassicGenericQueryExecutor queryExecutor,
+  public static Future<Boolean> updateMarcIndexersTableAsync(CustomReactiveQueryExecutor queryExecutor,
                                                              RecordType recordType,
                                                              UUID objectId,
-                                                             JSONB content) {
+                                                             JsonObject content,
+                                                             Integer version) {
     if (!recordType.getTableName().equals(RecordType.MARC_BIB.getTableName())) {
       return Future.succeededFuture(false);
     }
-    return queryExecutor.query(dsl ->
-      // get marc versions
-        dsl
-          .select(MARC_RECORDS_TRACKING.MARC_ID, MARC_RECORDS_TRACKING.VERSION, MARC_RECORDS_TRACKING.IS_DIRTY)
-          .from(MARC_RECORDS_TRACKING)
-          .where(MARC_RECORDS_TRACKING.MARC_ID.eq(objectId)))
-      .compose(ar -> {
-        if (ar.stream().count() != 1) {
-          throw new RuntimeException("Could not get version for marc record with id=" + objectId);
-        }
-        UUID marcId = ar.get(0, UUID.class);
-        Integer marcVersion = ar.get(1, Integer.class);
-        boolean isDirty = ar.get(2, Boolean.class);
-        if(!isDirty)
-        {
-          return Future.succeededFuture(false);
-        }
 
-        // insert marc indexers records
-        return queryExecutor.execute(dsl -> {
-          Collection<org.jooq.Record> marcIndexerRecords =
-            createMarcIndexerRecord(dsl, marcId, content.data(), marcVersion);
-          InsertValuesStepN<org.jooq.Record> insertStep = null;
+    DSLContext dslContext = DSL.using(queryExecutor.configuration());
+    Collection<MarcIndexersRecord> marcIndexerRecords =
+      createMarcIndexerRecords(dslContext, objectId, content, version);
+    return queryExecutor.getDelegate(sqlClient -> {
+      List<Tuple> batch = new ArrayList<>();
+      marcIndexerRecords.stream()
+        .forEach(r -> batch.add(Tuple.of(r.value1(),
+          r.value2(),
+          r.value3(),
+          r.value4(),
+          r.value5(),
+          r.value6(),
+          r.value7())));
 
-          for (var record : marcIndexerRecords) {
-            if (insertStep == null) {
-               insertStep = dsl.insertInto(MARC_INDEXERS_TABLE)
-                .values(record.intoArray());
-              continue;
-            }
-            insertStep = insertStep.values(record);
-          }
-          return insertStep;
-        }).map(true);
-      })
-      .compose(Future::succeededFuture);
+      String sql = queryExecutor.toPreparedQuery(
+        dslContext.
+          insertInto(MARC_INDEXERS, MARC_INDEXERS.fields())
+          .values(MARC_INDEXERS.newRecord().intoArray()));
+
+      // Execute the prepared batch
+      return sqlClient
+        .preparedQuery(sql)
+        .executeBatch(batch);
+    }).map(true);
   }
 
   /**
@@ -303,68 +285,64 @@ public final class ParsedRecordDaoUtil {
    * difference between this java version and the sql version are as follows:
    * - all valued are trimmed
    */
-  protected static Set<org.jooq.Record>
-  createMarcIndexerRecord(DSLContext dsl, UUID marcId, String content, int version) {
-    ObjectMapper objectMapper = new ObjectMapper();
-    JsonNode jsonObject = null;
-    try {
-      jsonObject = objectMapper.readTree(content);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Error while parsing some content to generate marc_indexers records", e);
-    }
-
-    JsonNode fieldsArray = jsonObject.get("fields");
+  protected static Collection<MarcIndexersRecord>
+  createMarcIndexerRecords(DSLContext dsl, UUID marcId, JsonObject content, int version) {
+    JsonArray fieldsArray = content.getJsonArray("fields");
     if (fieldsArray == null) {
       throw new IllegalArgumentException("Content does not contain 'fields' property");
     }
-    Set<org.jooq.Record> indexerRecords = new HashSet<>();
+    Set<MarcIndexersRecord> indexerRecords = new HashSet<>();
 
-    for (JsonNode field : fieldsArray) {
-      Iterator<Map.Entry<String, JsonNode>> fieldIterator = field.fields();
-      while (fieldIterator.hasNext()) {
-        Map.Entry<String, JsonNode> fieldEntry = fieldIterator.next();
-        String fieldNo = fieldEntry.getKey().toLowerCase();
-        JsonNode fieldValue = fieldEntry.getValue();
-        String ind1 = fieldValue.has("ind1") && !fieldValue.get("ind1").asText().trim().isEmpty()
-          ? fieldValue.get("ind1").asText().trim() : "#";
-        String ind2 = fieldValue.has("ind2") && !fieldValue.get("ind2").asText().trim().isEmpty()
-          ? fieldValue.get("ind2").asText().trim() : "#";
+    for (int i = 0; i < fieldsArray.size(); i++) {
+      JsonObject field = fieldsArray.getJsonObject(i);
 
-        if (fieldValue.has("subfields")) {
-          JsonNode subfieldsArray = fieldValue.get("subfields");
-          for (JsonNode subfield : subfieldsArray) {
-            Iterator<Map.Entry<String, JsonNode>> subfieldIterator = subfield.fields();
-            while (subfieldIterator.hasNext()) {
-              Map.Entry<String, JsonNode> subfieldEntry = subfieldIterator.next();
-              String subfieldNo = subfieldEntry.getKey();
-              String subfieldValue = subfieldEntry.getValue().asText().trim().replaceAll("\"", "");
-              var record = dsl.newRecord(MARC_INDEXERS_TABLE);
-              record.setValue(MARC_INDEXERS_TABLE.FIELD_NO, fieldNo);
-              record.setValue(MARC_INDEXERS_TABLE.IND1, ind1);
-              record.setValue(MARC_INDEXERS_TABLE.IND2, ind2);
-              record.setValue(MARC_INDEXERS_TABLE.SUBFIELD_NO, subfieldNo);
-              record.setValue(MARC_INDEXERS_TABLE.VALUE, subfieldValue);
-              record.setValue(MARC_INDEXERS_TABLE.MARC_ID, marcId);
-              record.setValue(MARC_INDEXERS_TABLE.VERSION, version);
+      for (String fieldNo : field.fieldNames()) {
+        Object fieldValueObj = field.getValue(fieldNo);
+        JsonObject fieldValue = fieldValueObj instanceof JsonObject ? (JsonObject) fieldValueObj: null;
+        String ind1 = fieldValue != null && fieldValue.containsKey("ind1") && !StringUtils.isBlank(fieldValue.getString("ind1"))
+          ? fieldValue.getString("ind1").trim() : "#";
+        String ind2 = fieldValue != null && fieldValue.containsKey("ind2") && !StringUtils.isBlank(fieldValue.getString("ind2"))
+          ? fieldValue.getString("ind2").trim() : "#";
+
+        if (fieldValue != null && fieldValue.containsKey("subfields")) {
+          JsonArray subfieldsArray = fieldValue.getJsonArray("subfields");
+          for (int j = 0; j < subfieldsArray.size(); j++) {
+            JsonObject subfield = subfieldsArray.getJsonObject(j);
+            for (String subfieldNo : subfield.fieldNames()) {
+              String subfieldValue = subfield.getString(subfieldNo);
+              subfieldValue = trimQuotes(subfieldValue.trim());
+              MarcIndexersRecord record = createMarcIndexersRecord(dsl, marcId, version, fieldNo, ind1, ind2, subfieldNo, subfieldValue);
               indexerRecords.add(record);
             }
           }
         } else {
-          String value = fieldValue.textValue().trim().replaceAll("\"", "");
-          var record = dsl.newRecord(MARC_INDEXERS_TABLE);
-          record.setValue(MARC_INDEXERS_TABLE.FIELD_NO, fieldNo);
-          record.setValue(MARC_INDEXERS_TABLE.IND1, ind1);
-          record.setValue(MARC_INDEXERS_TABLE.IND2, ind2);
-          record.setValue(MARC_INDEXERS_TABLE.SUBFIELD_NO, "0");
-          record.setValue(MARC_INDEXERS_TABLE.VALUE, value);
-          record.setValue(MARC_INDEXERS_TABLE.MARC_ID, marcId);
-          record.setValue(MARC_INDEXERS_TABLE.VERSION, version);
+          String value = trimQuotes(fieldValueObj.toString().trim());
+          MarcIndexersRecord record = createMarcIndexersRecord(dsl, marcId, version, fieldNo, ind1, ind2, "0", value);
           indexerRecords.add(record);
         }
       }
     }
 
     return indexerRecords;
+  }
+
+  private static MarcIndexersRecord createMarcIndexersRecord(DSLContext dsl, UUID marcId, int version, String fieldNo, String ind1, String ind2, String subfieldNo, String value) {
+    MarcIndexersRecord record = dsl.newRecord(MARC_INDEXERS);
+    record.setFieldNo(fieldNo);
+    record.setInd1(ind1);
+    record.setInd2(ind2);
+    record.setSubfieldNo(subfieldNo);
+    record.setValue(value);
+    record.setMarcId(marcId);
+    record.setVersion(version);
+    return record;
+  }
+
+  private static String trimQuotes(String value) {
+    if (value.startsWith("\"") && value.endsWith("\"")) {
+      return value.substring(1, value.length() - 1);
+    }
+    return value;
   }
 
   /**

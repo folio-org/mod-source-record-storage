@@ -26,10 +26,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -94,12 +97,18 @@ public class RecordServiceImpl implements RecordService {
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
+  private record SnapshotCacheKey(String tenantId, String snapshotId){}
 
   private final RecordDao recordDao;
+  private final Cache<SnapshotCacheKey, Snapshot> validSnapshotCache;
 
   @Autowired
   public RecordServiceImpl(final RecordDao recordDao) {
     this.recordDao = recordDao;
+    this.validSnapshotCache = Caffeine.newBuilder()
+      .expireAfterWrite(10, TimeUnit.MINUTES)
+      .maximumSize(100)
+      .build();
   }
 
   @Override
@@ -123,32 +132,42 @@ public class RecordServiceImpl implements RecordService {
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
-    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
-        .map(optionalSnapshot -> optionalSnapshot
-          .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
-        .compose(snapshot -> {
-          if (Objects.isNull(snapshot.getProcessingStartedDate())) {
-            return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
-          }
+    SnapshotCacheKey snapshotCacheKey = new SnapshotCacheKey(tenantId, record.getSnapshotId());
+    Snapshot validSnapshot = validSnapshotCache.getIfPresent(snapshotCacheKey);
+    return recordDao.executeInTransaction(txQE -> Future.succeededFuture()
+      .compose(notUsed -> {
+        if (validSnapshot == null) {
+          return SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+            .map(optionalSnapshot -> optionalSnapshot
+              .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
+            .compose(snapshot -> {
+              if (Objects.isNull(snapshot.getProcessingStartedDate())) {
+                return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
+              }
+              validSnapshotCache.put(snapshotCacheKey, snapshot);
+              return Future.succeededFuture();
+            });
+        } else {
           return Future.succeededFuture();
-        })
-        .compose(v -> setMatchedIdForRecord(record, tenantId))
-        .compose(r -> {
-          if (Objects.isNull(r.getGeneration())) {
-            return recordDao.calculateGeneration(txQE, r);
-          }
-          return Future.succeededFuture(r.getGeneration());
-        })
-        .compose(generation -> {
-          if (generation > 0) {
-            return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
-              .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
-                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
-          } else {
-            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
-          }
-        }), tenantId)
+        }
+      })
+      .compose(v -> setMatchedIdForRecord(record, tenantId))
+      .compose(r -> {
+        if (Objects.isNull(r.getGeneration())) {
+          return recordDao.calculateGeneration(txQE, r);
+        }
+        return Future.succeededFuture(r.getGeneration());
+      })
+      .compose(generation -> {
+        if (generation > 0) {
+          return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+            .compose(optionalMatchedRecord -> optionalMatchedRecord
+              .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
+              .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+        } else {
+          return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
+        }
+      }), tenantId)
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 

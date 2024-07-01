@@ -1,9 +1,11 @@
 package org.folio.dao.util;
 
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.folio.TestUtil;
+import org.folio.rest.jooq.tables.records.MarcIndexersRecord;
 import org.jooq.DSLContext;
 import org.jooq.Record7;
 import org.jooq.SQLDialect;
@@ -13,12 +15,13 @@ import org.junit.runner.RunWith;
 
 import java.io.FileReader;
 import java.io.Reader;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.apache.commons.csv.CSVFormat.EXCEL;
-import static org.folio.dao.util.ParsedRecordDaoUtil.MARC_INDEXERS_TABLE;
+import static org.folio.rest.jooq.Tables.MARC_INDEXERS;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
@@ -42,31 +45,31 @@ public class ParsedRecordDaoUtilTest {
    * while the SQL version did not.
    */
   @Test
-  public void createMarcIndexerRecord() throws Exception {
+  public void createMarcIndexerRecords() throws Exception {
     String content = TestUtil.readFileFromPath(PARSED_MARC_RECORD_SAMPLE_PATH);
-    Set<Record7<String, String, String, String, String, UUID, Integer>> expected = parseCSV(MARC_INDEXER_SAMPLE_PATH);
+    Collection<Record7<String, String, String, String, String, UUID, Integer>> expected = parseCSV(MARC_INDEXER_SAMPLE_PATH);
 
-    Set<org.jooq.Record> records =
-      ParsedRecordDaoUtil.createMarcIndexerRecord(DSL_CONTEXT, MARC_ID, content, VERSION);
+    Collection<MarcIndexersRecord> records =
+      ParsedRecordDaoUtil.createMarcIndexerRecords(DSL_CONTEXT, MARC_ID, new JsonObject(content), VERSION);
 
     assertEquals(expected, records);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void badParsedRecord() throws Exception {
+  public void badParsedRecord() {
     String content = TestUtil.readFileFromPath(PARSED_MARC_RECORD_BAD_SAMPLE_PATH);
 
-    ParsedRecordDaoUtil.createMarcIndexerRecord(DSL_CONTEXT, MARC_ID, content, VERSION);
+    ParsedRecordDaoUtil.createMarcIndexerRecords(DSL_CONTEXT, MARC_ID, new JsonObject(content), VERSION);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void notJsonContent() throws Exception {
+  @Test(expected = io.vertx.core.json.DecodeException.class)
+  public void notJsonContent() {
     String content = "This is a not a parsed record";
 
-    ParsedRecordDaoUtil.createMarcIndexerRecord(DSL_CONTEXT, MARC_ID, content, VERSION);
+    ParsedRecordDaoUtil.createMarcIndexerRecords(DSL_CONTEXT, MARC_ID, new JsonObject(content), VERSION);
   }
 
-  private Set<Record7<String, String, String, String, String, UUID, Integer>> parseCSV(String filePath) throws Exception {
+  private Collection<Record7<String, String, String, String, String, UUID, Integer>> parseCSV(String filePath) throws Exception {
     Set<Record7<String, String, String, String, String, UUID, Integer>> records = new HashSet<>();
 
     try (Reader in = new FileReader(filePath)) {
@@ -103,13 +106,13 @@ public class ParsedRecordDaoUtilTest {
     Integer col7
   ) {
     return DSL_CONTEXT.newRecord(
-        MARC_INDEXERS_TABLE.FIELD_NO,
-        MARC_INDEXERS_TABLE.IND1,
-        MARC_INDEXERS_TABLE.IND2,
-        MARC_INDEXERS_TABLE.SUBFIELD_NO,
-        MARC_INDEXERS_TABLE.VALUE,
-        MARC_INDEXERS_TABLE.MARC_ID,
-        MARC_INDEXERS_TABLE.VERSION)
+        MARC_INDEXERS.FIELD_NO,
+        MARC_INDEXERS.IND1,
+        MARC_INDEXERS.IND2,
+        MARC_INDEXERS.SUBFIELD_NO,
+        MARC_INDEXERS.VALUE,
+        MARC_INDEXERS.MARC_ID,
+        MARC_INDEXERS.VERSION)
       .values(col1, col2, col3, col4, col5, col6, col7);
   }
 }

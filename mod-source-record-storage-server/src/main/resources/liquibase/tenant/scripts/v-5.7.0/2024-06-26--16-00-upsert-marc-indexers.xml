@@ -1,0 +1,23 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+  <changeSet id="2024-06-26--16-00-upsert-marc-record" author="okolawole">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.upsert_marc_record(
+          record_id UUID,
+          content JSONB
+      )
+      RETURNS INTEGER AS $$
+          INSERT INTO ${database.defaultSchemaName}.marc_records_lb (id, content)
+              VALUES (record_id, content)
+              ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content;
+
+            SELECT version
+            FROM ${database.defaultSchemaName}.marc_records_tracking
+            WHERE marc_id = record_id;
+      $$ LANGUAGE sql;
+    </sql>
+  </changeSet>
+</databaseChangeLog>

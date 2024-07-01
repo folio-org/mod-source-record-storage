@@ -286,7 +286,7 @@
     <testcontainers.version>1.18.3</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
-    <jooq.version>3.16.19</jooq.version>
+    <jooq.version>3.16.23</jooq.version>
     <vertx-jooq.version>6.5.5</vertx-jooq.version>
     <aspectj.version>1.9.19</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
@@ -494,12 +494,18 @@
               <name>org.jooq.meta.postgres.PostgresDatabase</name>
               <includes>.*</includes>
               <excludes>
-                databasechangelog|databasechangeloglock|marc_indexers.*
+                databasechangelog|databasechangeloglock|marc_indexers_.*
               </excludes>
               <inputSchema>public</inputSchema>
               <outputSchemaToDefault>true</outputSchemaToDefault>
               <unsignedTypes>false</unsignedTypes>
-              <forcedTypes />
+              <forcedTypes>
+                <forcedType>
+                  <userType>io.vertx.core.json.JsonObject</userType>
+                  <includeExpression>upsert_marc_record.content</includeExpression>
+                  <converter>io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter</converter>
+                </forcedType>
+              </forcedTypes>
             </database>
             <generate>
               <daos>true</daos>

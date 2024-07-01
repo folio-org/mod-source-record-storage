@@ -71,5 +71,6 @@
   <include file="scripts/v-5.7.0/2023-08-29--16-00-define-version-column-default-value.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.7.0/2023-10-11--16-00-recreate-indexes-on-marc-indexers.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.7.0/2023-06-26--16-00-update-fill-in-trigger.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.7.0/2024-06-26--16-00-upsert-marc-indexers.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

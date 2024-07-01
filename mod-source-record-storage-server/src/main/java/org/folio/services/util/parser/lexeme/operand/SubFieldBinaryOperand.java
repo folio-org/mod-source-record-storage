@@ -40,12 +40,12 @@ public class SubFieldBinaryOperand extends BinaryOperandLexeme {
   public String toSqlRepresentation() {
     String[] keyParts = getKey().split("\\.");
     String field = keyParts[0];
-    String iField = "\"" + "i" + field + "\"";
+    String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
     String subField = keyParts[1];
     StringBuilder stringBuilder = new StringBuilder()
-      .append("(").append(iField).append(".\"subfield_no\" = '").append(subField).append("'")
+            .append("( ").append(fieldNumberToSearch).append(" and \"subfield_no\" = '").append(subField).append("'")
       .append(" and ")
-      .append(iField).append(".\"value\" ");
+      .append("\"value\" ");
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
       return stringBuilder.append("like ?)").toString();
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {

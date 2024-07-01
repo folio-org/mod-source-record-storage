@@ -38,6 +38,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -210,7 +211,13 @@ public class RecordServiceImpl implements RecordService {
     }
     ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(searchParameters.getLeaderSearchExpression());
     ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(searchParameters.getFieldsSearchExpression());
-    return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParameters, tenantId);
+    return Flowable.defer(() -> {
+      try {
+        return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParameters, tenantId);
+      } catch (JSQLParserException e) {
+        return Flowable.error(new RuntimeException("Error parsing expression", e));
+      }
+    });
   }
 
   @Override

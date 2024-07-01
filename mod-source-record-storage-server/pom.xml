@@ -194,6 +194,11 @@
       <version>3.1.1</version>
     </dependency>
     <dependency>
+      <groupId>com.github.jsqlparser</groupId>
+      <artifactId>jsqlparser</artifactId>
+      <version>4.9</version>
+    </dependency>
+    <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
       <version>${kafkajunit.version}</version>

@@ -37,13 +37,14 @@ public class IndicatorBinaryOperand extends BinaryOperandLexeme {
     String[] keyParts = getKey().split("\\.");
     var field = keyParts[0];
     var indicator = keyParts[1];
-    var sqlRepresentation = "\"" + "i" + field + "\"" + "." + "\"" + indicator + "\"";
+    String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
+      var sqlRepresentation = "( " + fieldNumberToSearch + " and " + "\"" + indicator + "\"";
     if (BINARY_OPERATOR_LEFT_ANCHORED_EQUALS.equals(getOperator())) {
-      return sqlRepresentation + " like ?";
+      return sqlRepresentation + " like ?)";
     } else if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
-      return sqlRepresentation + " = ?";
+      return sqlRepresentation + " = ?)";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
-      return sqlRepresentation + " <> ?";
+      return sqlRepresentation + " <> ?)";
     } else if (BINARY_OPERATOR_IS.equals(getOperator())) {
       return PresenceBinaryOperand.getSqlRepresentationForIndicator(field, indicator, value);
     }

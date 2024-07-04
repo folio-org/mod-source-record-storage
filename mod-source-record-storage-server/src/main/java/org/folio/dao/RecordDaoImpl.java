@@ -221,6 +221,9 @@ public class RecordDaoImpl implements RecordDao {
     "UNION " +
     "SELECT marc_id " +
     "FROM deleted_rows2";
+  public static final String OR = " or ";
+  public static final String MARC_INDEXERS = "marc_indexers";
+  public static final String RECORDS_LB1 = "records_lb";
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -435,7 +438,7 @@ public class RecordDaoImpl implements RecordDao {
       if (expression instanceof AndExpression) {
         combinedExpression.append(" and ");
       } else if (expression instanceof OrExpression) {
-        combinedExpression.append(" or ");
+        combinedExpression.append(OR);
       }
       if (containsParenthesis(rightExpression)) {
         combinedExpression.append(buildCteDistinctCountCondition(rightExpression));
@@ -477,7 +480,7 @@ public class RecordDaoImpl implements RecordDao {
     int i = 1;
     for (Expression expression : expressions) {
       cteWhereCondition.append(expression.toString());
-      if (i < expressions.size()) cteWhereCondition.append(" or ");
+      if (i < expressions.size()) cteWhereCondition.append(OR);
       i++;
     }
     return cteWhereCondition.toString();
@@ -497,9 +500,9 @@ public class RecordDaoImpl implements RecordDao {
 
       commonTableExpression = DSL.name(CTE).as(
         select(
-          field("marc_id"))
-          .from("marc_indexers").join(RECORDS_LB)
-          .on("marc_indexers.marc_id = records_lb.id")
+          field(MARC_ID))
+          .from(MARC_INDEXERS).join(RECORDS_LB.getName())
+          .on(MARC_INDEXERS + "." + MARC_ID + " = " + RECORDS_LB.getName() + "." + ID)
           .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
           .groupBy(field(MARC_ID))
           .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))

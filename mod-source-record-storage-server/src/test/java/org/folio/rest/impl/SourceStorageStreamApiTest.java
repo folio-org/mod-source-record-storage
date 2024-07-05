@@ -1565,7 +1565,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
-    searchRequest.setFieldsSearchExpression("(035.a = '(OCoLC)63611770' and 036.ind1 not= '1')");
+    searchRequest.setFieldsSearchExpression("(035.a = '(OCoLC)63611770' and 948.ind1 not= '5')");
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)

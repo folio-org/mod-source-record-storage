@@ -530,6 +530,7 @@ public class RecordDaoImpl implements RecordDao {
       sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
     }
     String finalSql = sql;
+    LOG.trace("streamMarcRecordIds :: SQL : {}", finalSql);
     return getCachedPool(tenantId)
             .rxGetConnection()
             .flatMapPublisher(conn -> conn.rxBegin()

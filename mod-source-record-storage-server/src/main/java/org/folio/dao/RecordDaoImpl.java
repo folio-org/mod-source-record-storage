@@ -421,8 +421,8 @@ public class RecordDaoImpl implements RecordDao {
 
   private static String buildCteDistinctCountCondition(Expression expression) {
     StringBuilder combinedExpression = new StringBuilder();
-    if (expression instanceof Parenthesis) {
-      Expression innerExpression = ((Parenthesis) expression).getExpression();
+    if (expression instanceof Parenthesis parenthesis) {
+      Expression innerExpression = parenthesis.getExpression();
       if (containsParenthesis(innerExpression)) {
         combinedExpression.append(buildCteDistinctCountCondition(innerExpression));
       } else {
@@ -449,12 +449,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private static void parseExpression(Expression expr, List<Expression> expressions) {
-    if (expr instanceof BinaryExpression) {
-      BinaryExpression binExpr = (BinaryExpression) expr;
+    if (expr instanceof BinaryExpression binExpr) {
       parseExpression(binExpr.getLeftExpression(), expressions);
       parseExpression(binExpr.getRightExpression(), expressions);
-    } else if (expr instanceof Parenthesis) {
-      Parenthesis parenthesis = (Parenthesis) expr;
+    } else if (expr instanceof Parenthesis parenthesis) {
       if (containsParenthesis(parenthesis.getExpression())) parseExpression(parenthesis.getExpression(), expressions);
       else expressions.add(parenthesis);
     }
@@ -463,8 +461,7 @@ public class RecordDaoImpl implements RecordDao {
   private static boolean containsParenthesis(Expression expr) {
     if (expr instanceof Parenthesis) {
       return true;
-    } else if (expr instanceof BinaryExpression) {
-      BinaryExpression binExpr = (BinaryExpression) expr;
+    } else if (expr instanceof BinaryExpression binExpr) {
       return containsParenthesis(binExpr.getLeftExpression()) || containsParenthesis(binExpr.getRightExpression());
     } else {
       return false;

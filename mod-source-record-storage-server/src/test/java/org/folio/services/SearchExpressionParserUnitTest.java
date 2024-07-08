@@ -187,7 +187,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and id in (select marc_id from marc_indexers where subfield_no = 'a'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035 where subfield_no = 'a'))", result.getWhereExpression());
   }
 
   @Test
@@ -200,7 +200,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and id not in (select marc_id from marc_indexers where subfield_no = 'z'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035 where subfield_no = 'z'))", result.getWhereExpression());
   }
 
   @Test
@@ -291,7 +291,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and id in (select marc_id from marc_indexers))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035))", result.getWhereExpression());
   }
 
   @Test
@@ -304,7 +304,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and id not in (select marc_id from marc_indexers))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers))", result.getWhereExpression());
   }
 
   @Test
@@ -491,7 +491,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '050' and id in (select marc_id from marc_indexers where ind1 <> '#'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind1 <> '#'))", result.getWhereExpression());
   }
 
   @Test
@@ -504,7 +504,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '050' and id in (select marc_id from marc_indexers where ind2 = '#'))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind2 = '#'))", result.getWhereExpression());
   }
 
   @Test

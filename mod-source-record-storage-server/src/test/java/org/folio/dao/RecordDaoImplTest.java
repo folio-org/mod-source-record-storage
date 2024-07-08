@@ -5,9 +5,6 @@ import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.reactivex.FlowableHelper;
-import io.vertx.sqlclient.Row;
-import net.sf.jsqlparser.JSQLParserException;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -17,26 +14,20 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.StringValue;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.MarcRecordSearchRequest;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
-import org.folio.services.RecordSearchParameters;
 import org.folio.services.util.TypeConnection;
-import org.folio.services.util.parser.ParseFieldsResult;
-import org.folio.services.util.parser.ParseLeaderResult;
-import org.folio.services.util.parser.SearchExpressionParser;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import javax.ws.rs.DELETE;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,9 +35,7 @@ import java.util.UUID;
 import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.DELETED;
-import static org.folio.rest.jaxrs.model.Record.State.OLD;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordDaoImplTest extends AbstractLBServiceTest {

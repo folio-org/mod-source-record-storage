@@ -1,9 +1,7 @@
 package org.folio.dao;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.reactivex.Flowable;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -162,39 +160,6 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       context.assertTrue(ar.succeeded());
       context.assertEquals(0, ar.result().size());
       async.complete();
-    });
-  }
-
-  @Test
-  public void shouldReturnIdOnStreamMarcRecordIdsWhenThereIsNoTrackingRecordAndFallbackQueryEnabled(TestContext context) {
-    Async async = context.async();
-    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest()
-      .withFieldsSearchExpression("001.value = '393893'");
-    RecordSearchParameters searchParams = RecordSearchParameters.from(searchRequest);
-    ParseLeaderResult parseLeaderResult = SearchExpressionParser.parseLeaderSearchExpression(searchParams.getLeaderSearchExpression());
-    ParseFieldsResult parseFieldsResult = SearchExpressionParser.parseFieldsSearchExpression(searchParams.getFieldsSearchExpression());
-    ArrayList<String> ids = new ArrayList<>();
-
-    Future<Flowable<Row>> future = deleteTrackingRecordById(record.getId())
-      .map(v -> {
-        try {
-          return recordDao.streamMarcRecordIds(parseLeaderResult, parseFieldsResult, searchParams, TENANT_ID);
-        } catch (JSQLParserException e) {
-          throw new RuntimeException(e);
-        }
-      });
-
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      FlowableHelper.toReadStream(ar.result())
-        .exceptionHandler(context::fail)
-        .handler(row -> ids.add(String.valueOf(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()))))
-        .endHandler(v -> {
-          context.assertEquals(1, ids.size());
-          context.assertEquals(record.getExternalIdsHolder().getInstanceId(), ids.get(0));
-          async.complete();
-        });
     });
   }
 

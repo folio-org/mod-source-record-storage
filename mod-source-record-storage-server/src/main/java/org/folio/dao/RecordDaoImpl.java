@@ -516,17 +516,15 @@ public class RecordDaoImpl implements RecordDao {
       sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
     }
     String finalSql = sql;
-    LOG.trace("streamMarcRecordIds :: SQL : {}", finalSql);
+    LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
     return getCachedPool(tenantId)
-            .rxGetConnection()
-            .flatMapPublisher(conn -> conn.rxBegin()
-                    .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
-                            .flatMapPublisher(pq -> pq.createStream(10000)
-                                    .toFlowable()
-                                    .filter(row -> !enableFallbackQuery || row.getInteger(COUNT) != 0)
-                                    .switchIfEmpty(streamMarcRecordIdsWithoutIndexersVersionUsage(conn, parseLeaderResult, parseFieldsResult, searchParameters))
-                                    .map(this::toRow))
-                            .doAfterTerminate(tx::commit)));
+      .rxGetConnection()
+      .flatMapPublisher(conn -> conn.rxBegin()
+        .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
+          .flatMapPublisher(pq -> pq.createStream(10000)
+            .toFlowable()
+            .map(this::toRow))
+          .doAfterTerminate(tx::commit)));
   }
 
   private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {

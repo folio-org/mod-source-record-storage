@@ -132,17 +132,7 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.exists;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.inline;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.primaryKey;
-import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
+import static org.jooq.impl.DSL.*;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -223,7 +213,7 @@ public class RecordDaoImpl implements RecordDao {
     "FROM deleted_rows2";
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
-  public static final String RECORDS_LB1 = "records_lb";
+  public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -496,17 +486,16 @@ public class RecordDaoImpl implements RecordDao {
       String cteHavingExpression = buildCteDistinctCountCondition(expr);
 
       commonTableExpression = DSL.name(CTE).as(
-        select(
-          field(MARC_ID))
-          .from(MARC_INDEXERS).join(RECORDS_LB.getName())
-          .on(MARC_INDEXERS + "." + MARC_ID + " = " + RECORDS_LB.getName() + "." + ID)
+        DSL.selectDistinct(MARC_INDEXERS_MARC_ID)
+          .from(MARC_INDEXERS)
+          .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
           .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
-          .groupBy(field(MARC_ID))
+          .groupBy(MARC_INDEXERS_MARC_ID)
           .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))
       );
     }
 
-    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    SelectJoinStep searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoin(searchQuery, parseLeaderResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
@@ -574,7 +563,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
-    SelectJoinStep<Record1<UUID>> searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    SelectJoinStep<Record1<UUID>> searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoinAlternative(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {

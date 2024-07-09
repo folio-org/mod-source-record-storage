@@ -74,10 +74,10 @@ public class SearchExpressionParser {
 
   private static String processExpression(String expression, List<Lexeme> lexemes) {
     if (expression.matches(MARC_FIELD.getSearchValue()) || expression.matches(LEADER_FIELD.getSearchValue())) {
-      String splitResult[] = expression.split(SPACE, 3);
+      String[] splitResult = expression.split(SPACE, 3);
       String leftOperand = splitResult[0];
       String operator = splitResult[1];
-      String rightSuffix[] = splitResult[2].split("'*'", 3);
+      String[] rightSuffix = splitResult[2].split("'*'", 3);
       String rightOperand = rightSuffix[1];
       lexemes.add(BinaryOperandLexeme.of(leftOperand, operator, rightOperand));
       return rightSuffix[2];

@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import io.vertx.sqlclient.Row;
+import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
@@ -128,7 +129,7 @@ public interface RecordDao {
    * @param tenantId              tenant id
    * @return {@link Flowable} of {@link Record id}
    */
-  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId);
+  Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException;
 
   /**
    * Searches for {@link Record} by id

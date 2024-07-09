@@ -25,7 +25,7 @@ public class PresenceBinaryOperand {
     if (PRESENT.equals(value)) {
       return FIELD_NO + field + "' and marc_indexers.marc_id in (select marc_id from marc_indexers_" + field + "))";
     } else {
-      return FIELD_NO + field + "' and marc_indexers.marc_id not in (select marc_id from marc_indexers))";
+      return FIELD_NO + field + "' and marc_indexers.marc_id not in (select marc_id from marc_indexers_" + field + "))";
     }
   }
 

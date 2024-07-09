@@ -304,7 +304,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers))", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035))", result.getWhereExpression());
   }
 
   @Test

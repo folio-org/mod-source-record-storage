@@ -360,6 +360,28 @@ public class AdditionalFieldsUtilTest {
   }
 
   @Test
+  public void shouldRemovePeriodsAndSpacesAfterNormalization() {
+    // given
+    var parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)on. 607TST .001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
+    var expectedParsedContent = "{\"leader\":\"00098nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)607TST001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+    // when
+    AdditionalFieldsUtil.normalize035(record);
+    Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  }
+
+  @Test
   public void shouldNotReturnSubfieldIfOclcNotExist() {
     // given
     String parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +

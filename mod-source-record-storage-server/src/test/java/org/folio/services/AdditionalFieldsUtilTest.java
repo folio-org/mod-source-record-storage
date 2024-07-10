@@ -360,7 +360,7 @@ public class AdditionalFieldsUtilTest {
   }
 
   @Test
-  public void shouldRemoveCommasAndSpacesAfterNormalization() {
+  public void shouldRemovePeriodsAndSpacesAfterNormalization() {
     // given
     var parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
       "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)on. 607TST .001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +

@@ -1,39 +1,5 @@
 package org.folio.dao;
 
-import static java.lang.String.format;
-import static java.util.Collections.emptyList;
-import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
-import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
-import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.getExternalId;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
-import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.inline;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.primaryKey;
-import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
-
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -45,24 +11,13 @@ import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
@@ -108,6 +63,7 @@ import org.folio.services.RecordSearchParameters;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
+import org.jooq.CommonTableExpression;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -133,6 +89,50 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.getExternalId;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.*;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -166,7 +166,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
 
-  private static final Field<?>[] RECORD_FIELDS = new Field<?>[] {
+  private static final Field<?>[] RECORD_FIELDS = new Field<?>[]{
     RECORDS_LB.ID,
     RECORDS_LB.SNAPSHOT_ID,
     RECORDS_LB.MATCHED_ID,
@@ -211,6 +211,9 @@ public class RecordDaoImpl implements RecordDao {
     "UNION " +
     "SELECT marc_id " +
     "FROM deleted_rows2";
+  public static final String OR = " or ";
+  public static final String MARC_INDEXERS = "marc_indexers";
+  public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
 
   private final PostgresClientFactory postgresClientFactory;
 
@@ -406,11 +409,94 @@ public class RecordDaoImpl implements RecordDao {
           .doAfterTerminate(tx::commit)));
   }
 
+  private static String buildCteDistinctCountCondition(Expression expression) {
+    StringBuilder combinedExpression = new StringBuilder();
+    if (expression instanceof Parenthesis parenthesis) {
+      Expression innerExpression = parenthesis.getExpression();
+      if (containsParenthesis(innerExpression)) {
+        combinedExpression.append(buildCteDistinctCountCondition(innerExpression));
+      } else {
+        combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(expression.toString()), 1)).eq(1));
+      }
+    } else if (expression instanceof BinaryExpression binaryExpression) {
+      Expression leftExpression = binaryExpression.getLeftExpression();
+      Expression rightExpression = binaryExpression.getRightExpression();
+      if (containsParenthesis(leftExpression)) {
+        combinedExpression.append("(");
+        combinedExpression.append(buildCteDistinctCountCondition(leftExpression));
+      }
+      if (expression instanceof AndExpression) {
+        combinedExpression.append(" and ");
+      } else if (expression instanceof OrExpression) {
+        combinedExpression.append(OR);
+      }
+      if (containsParenthesis(rightExpression)) {
+        combinedExpression.append(buildCteDistinctCountCondition(rightExpression));
+        combinedExpression.append(")");
+      }
+    }
+    return combinedExpression.toString();
+  }
+
+  private static void parseExpression(Expression expr, List<Expression> expressions) {
+    if (expr instanceof BinaryExpression binExpr) {
+      parseExpression(binExpr.getLeftExpression(), expressions);
+      parseExpression(binExpr.getRightExpression(), expressions);
+    } else if (expr instanceof Parenthesis parenthesis) {
+      if (containsParenthesis(parenthesis.getExpression())) parseExpression(parenthesis.getExpression(), expressions);
+      else expressions.add(parenthesis);
+    }
+  }
+
+  private static boolean containsParenthesis(Expression expr) {
+    if (expr instanceof Parenthesis) {
+      return true;
+    } else if (expr instanceof BinaryExpression binExpr) {
+      return containsParenthesis(binExpr.getLeftExpression()) || containsParenthesis(binExpr.getRightExpression());
+    } else {
+      return false;
+    }
+  }
+
+  private String buildCteWhereCondition(String whereExpression) throws JSQLParserException {
+    List<Expression> expressions = new ArrayList<>();
+    StringBuilder cteWhereCondition = new StringBuilder();
+
+    Expression expr = CCJSqlParserUtil.parseCondExpression(whereExpression);
+    parseExpression(expr, expressions);
+    int i = 1;
+    for (Expression expression : expressions) {
+      cteWhereCondition.append(expression.toString());
+      if (i < expressions.size()) cteWhereCondition.append(OR);
+      i++;
+    }
+    return cteWhereCondition.toString();
+  }
+
   @Override
-  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters, String tenantId) {
+  public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
+                                           RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
     /* Building a search query */
-    SelectJoinStep searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    //TODO: adjust bracets in condtion statements
+    CommonTableExpression commonTableExpression = null;
+    if (parseFieldsResult.isEnabled()) {
+      String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
+
+      Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
+      String cteHavingExpression = buildCteDistinctCountCondition(expr);
+
+      commonTableExpression = DSL.name(CTE).as(
+        DSL.selectDistinct(MARC_INDEXERS_MARC_ID)
+          .from(MARC_INDEXERS)
+          .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
+          .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
+          .groupBy(MARC_INDEXERS_MARC_ID)
+          .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))
+      );
+    }
+
+    SelectJoinStep searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    appendJoin(searchQuery, parseLeaderResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
@@ -420,38 +506,31 @@ public class RecordDaoImpl implements RecordDao {
     }
     /* Building a count query */
     SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoin(countQuery, parseLeaderResult, parseFieldsResult);
+    appendJoin(countQuery, parseLeaderResult);
     appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     /* Join both in one query */
-    String sql = DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-
+    String sql = "";
+    if (parseFieldsResult.isEnabled()) {
+      sql = DSL.with(commonTableExpression).select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+    } else {
+      sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
+    }
+    String finalSql = sql;
+    LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
     return getCachedPool(tenantId)
       .rxGetConnection()
       .flatMapPublisher(conn -> conn.rxBegin()
-        .flatMapPublisher(tx -> conn.rxPrepare(sql)
+        .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
           .flatMapPublisher(pq -> pq.createStream(10000)
             .toFlowable()
-            .filter(row -> !enableFallbackQuery || row.getInteger(COUNT) != 0)
-            .switchIfEmpty(streamMarcRecordIdsWithoutIndexersVersionUsage(conn, parseLeaderResult, parseFieldsResult, searchParameters))
             .map(this::toRow))
           .doAfterTerminate(tx::commit)));
   }
 
-  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
+  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {
     if (parseLeaderResult.isEnabled() && !parseLeaderResult.isIndexedFieldsCriteriaOnly()) {
       Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
       selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
-    }
-    if (parseFieldsResult.isEnabled()) {
-      parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
-        Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
-        Field<UUID> marcIndexersMarcIdField = field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID));
-        Field<Integer> marcIndexersVersionField = field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexers, name(VERSION));
-        selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))))
-          .innerJoin(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin)) // join to marc_records_tracking to return latest version
-          .on(marcIndexersMarcIdField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).MARC_ID)
-            .and(marcIndexersVersionField.eq(MARC_RECORDS_TRACKING.as("mrt_"+ fieldToJoin).VERSION)));
-      });
     }
   }
 
@@ -463,7 +542,8 @@ public class RecordDaoImpl implements RecordDao {
       ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
       : DSL.noCondition();
     Condition fieldsCondition = parseFieldsResult.isEnabled()
-      ? DSL.condition(parseFieldsResult.getWhereExpression(), parseFieldsResult.getBindingParams().toArray())
+      ? exists(select(field("*")).from("cte")
+            .where("records_lb.id = cte.marc_id"))
       : DSL.noCondition();
     step.where(leaderCondition)
       .and(fieldsCondition)
@@ -481,7 +561,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
-    SelectJoinStep<Record1<UUID>> searchQuery = DSL.selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+    SelectJoinStep<Record1<UUID>> searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
     appendJoinAlternative(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
@@ -1062,8 +1142,8 @@ public class RecordDaoImpl implements RecordDao {
             }
 
           }).map(Record::getParsedRecord)
-            .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
-            .collect(Collectors.toList());
+                .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
+                .collect(Collectors.toList());
 
         try (Connection connection = getConnection(tenantId)) {
           DSL.using(connection).transaction(ctx -> {
@@ -1103,43 +1183,44 @@ public class RecordDaoImpl implements RecordDao {
         } catch (SQLException e) {
           LOG.warn("updateParsedRecords:: Failed to update records", e);
           blockingPromise.fail(e);
-        }},
-        false,
-          result -> {
-            if (result.failed()) {
-              LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
-              promise.fail(result.cause());
-            } else {
-              LOG.debug("updateParsedRecords:: Parsed records update was successful");
-              promise.complete(result.result());
-            }
-          });
+        }
+      },
+            false,
+            result -> {
+              if (result.failed()) {
+                LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
+                promise.fail(result.cause());
+              } else {
+                LOG.debug("updateParsedRecords:: Parsed records update was successful");
+                promise.complete(result.result());
+              }
+            });
 
     return promise.future();
   }
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
-      String tenantId) {
+                                                        String tenantId) {
     return getQueryExecutor(tenantId)
-      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
+            .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
   }
 
   @Override
   public Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE,
-      String externalId, IdType idType) {
+                                                        String externalId, IdType idType) {
     Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
-      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
-        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+            .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+                    .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
     return txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-      .where(condition)
-      .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
-      .limit(1))
-        .map(RecordDaoUtil::toOptionalRecord)
-        .compose(optionalRecord -> optionalRecord
-          .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
-          .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
-        .onFailure(v -> txQE.rollback());
+                    .where(condition)
+                    .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
+                    .limit(1))
+            .map(RecordDaoUtil::toOptionalRecord)
+            .compose(optionalRecord -> optionalRecord
+                    .map(record -> lookupAssociatedRecords(txQE, record, false).map(Optional::of))
+                    .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))))
+            .onFailure(v -> txQE.rollback());
   }
 
   @Override
@@ -1181,10 +1262,10 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
     LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
-      .compose(optionalRecord -> optionalRecord
-        .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
-      .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
-        .map(u -> true);
+                    .compose(optionalRecord -> optionalRecord
+                            .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
+                            .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
+            .map(u -> true);
   }
 
   @Override
@@ -1448,19 +1529,19 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Field<?>[] getRecordFields(Name prt) {
-    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[]{
       field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT))
     });
   }
 
   private Field<?>[] getRecordFieldsWithCount(Name prt) {
-    return (Field<?>[]) ArrayUtils.addAll(getRecordFields(prt), new Field<?>[] {
+    return (Field<?>[]) ArrayUtils.addAll(getRecordFields(prt), new Field<?>[]{
       COUNT_FIELD
     });
   }
 
   private Field<?>[] getAllRecordFields(Name prt) {
-    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[] {
+    return (Field<?>[]) ArrayUtils.addAll(RECORD_FIELDS, new Field<?>[]{
       field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT),
       RAW_RECORDS_LB.CONTENT.as(RAW_RECORD_CONTENT),
       ERROR_RECORDS_LB.CONTENT.as(ERROR_RECORD_CONTENT),
@@ -1469,13 +1550,13 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Field<?>[] getAllRecordFieldsWithCount(Name prt) {
-    return (Field<?>[]) ArrayUtils.addAll(getAllRecordFields(prt), new Field<?>[] {
+    return (Field<?>[]) ArrayUtils.addAll(getAllRecordFields(prt), new Field<?>[]{
       COUNT_FIELD
     });
   }
 
   private Field<?>[] getStrippedParsedRecordWithCount(Name prt) {
-    return new Field<?>[] { COUNT_FIELD,
+    return new Field<?>[]{COUNT_FIELD,
       RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID,
       RECORDS_LB.STATE, RECORDS_LB.RECORD_TYPE,
       field(TABLE_FIELD_TEMPLATE, JSONB.class, prt, name(CONTENT)).as(PARSED_RECORD_CONTENT)
@@ -1513,8 +1594,7 @@ public class RecordDaoImpl implements RecordDao {
     // Validation to ignore records insertion to the returned recordCollection when limit equals zero
     if (limit == 0) {
       return new RecordCollection().withTotalRecords(asRow(result.unwrap()).getInteger(COUNT));
-    }
-    else {
+    } else {
       return toRecordCollection(result);
     }
   }

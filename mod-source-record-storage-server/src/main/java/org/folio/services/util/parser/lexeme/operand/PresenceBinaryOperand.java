@@ -15,6 +15,7 @@ public class PresenceBinaryOperand {
 
   private static final String PRESENT = "present";
   private static final String ABSENT = "absent";
+    private static final String FIELD_NO = "( \"field_no\" = '";
 
   private PresenceBinaryOperand() {
   }
@@ -22,27 +23,27 @@ public class PresenceBinaryOperand {
   public static String getSqlRepresentationForMarcField(String field, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + "))";
+      return FIELD_NO + field + "' and marc_indexers.marc_id in (select marc_id from marc_indexers_" + field + "))";
     } else {
-      return "(id not in (select marc_id from marc_indexers_" + field + "))";
+      return FIELD_NO + field + "' and marc_indexers.marc_id not in (select marc_id from marc_indexers_" + field + "))";
     }
   }
 
   public static String getSqlRepresentationForSubField(String field, String subField, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
+      return FIELD_NO + field + "' and marc_indexers.marc_id in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "'))";
     } else {
-      return "(id not in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "')) ";
+      return FIELD_NO + field + "' and marc_indexers.marc_id not in (select marc_id from marc_indexers_" + field + " where subfield_no = '" + subField + "'))";
     }
   }
 
   public static String getSqlRepresentationForIndicator(String field, String indicator, String value) {
     validateValue(value);
     if (PRESENT.equals(value)) {
-      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " <> '#')) ";
+      return FIELD_NO + field + "' and marc_indexers.marc_id in (select marc_id from marc_indexers_" + field + " where " + indicator + " <> '#'))";
     } else {
-      return "(id in (select marc_id from marc_indexers_" + field + " where " + indicator + " = '#')) ";
+      return FIELD_NO + field + "' and marc_indexers.marc_id in (select marc_id from marc_indexers_" + field + " where " + indicator + " = '#'))";
     }
   }
 

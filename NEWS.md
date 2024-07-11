@@ -3,6 +3,7 @@
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
 * [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search
 * [MODSOURCE-773](https://folio-org.atlassian.net/browse/MODSOURCE-773) MARC Search omits suppressed from discovery records in default search
+* [MODINV-1044](https://folio-org.atlassian.net/browse/MODINV-1044) Additional Requirements - Update Data Import logic to normalize OCLC 035 values
 * [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) Find record by match id on update generation 
 
 ## 2024-03-20 5.8.0

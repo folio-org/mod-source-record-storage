@@ -606,6 +606,89 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldUpdateRecordGenerationByMatchId(TestContext context) {
+    var mock = TestMocks.getMarcBibRecord();
+    var recordToSave = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(mock.getSnapshotId())
+      .withRecordType(mock.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(mock.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(mock.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withMetadata(mock.getMetadata());
+
+    var async = context.async();
+
+    recordService.saveRecord(recordToSave, TENANT_ID).onComplete(savedRecord -> {
+      if (savedRecord.failed()) {
+        context.fail(savedRecord.cause());
+      }
+      context.assertNotNull(savedRecord.result().getRawRecord());
+      context.assertNotNull(savedRecord.result().getParsedRecord());
+      context.assertEquals(savedRecord.result().getState(), State.ACTUAL);
+      compareRecords(context, recordToSave, savedRecord.result());
+
+      var matchedId = savedRecord.result().getMatchedId();
+      var snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+        .withProcessingStartedDate(new Date())
+        .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
+
+      var parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+        .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+          .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+            .put("subfields",
+              new JsonArray().add(new JsonObject().put("s", matchedId)))
+            .put("ind1", "f")
+            .put("ind2", "f")))).encode());
+
+      var recordToUpdateGeneration = new Record()
+        .withId(UUID.randomUUID().toString())
+        .withSnapshotId(snapshot.getJobExecutionId())
+        .withRecordType(mock.getRecordType())
+        .withState(State.ACTUAL)
+        .withOrder(mock.getOrder())
+        .withRawRecord(mock.getRawRecord())
+        .withParsedRecord(parsedRecord)
+        .withAdditionalInfo(mock.getAdditionalInfo())
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+        .withMetadata(mock.getMetadata());
+
+      SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
+        if (snapshotSaved.failed()) {
+          context.fail(snapshotSaved.cause());
+        }
+
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, TENANT_ID).onComplete(recordToUpdateGenerationSaved -> {
+          context.assertTrue(recordToUpdateGenerationSaved.succeeded());
+          context.assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
+          context.assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
+          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
+            if (get.failed()) {
+              context.fail(get.cause());
+            }
+            context.assertTrue(get.result().isPresent());
+            context.assertEquals(get.result().get().getGeneration(), 1);
+            context.assertEquals(get.result().get().getMatchedId(), matchedId);
+            context.assertNotEquals(get.result().get().getId(), matchedId);
+            context.assertEquals(get.result().get().getState(), State.ACTUAL);
+            recordDao.getRecordById(matchedId, TENANT_ID).onComplete(getRecord1 -> {
+              if (getRecord1.failed()) {
+                context.fail(get.cause());
+              }
+              context.assertTrue(getRecord1.result().isPresent());
+              context.assertEquals(getRecord1.result().get().getState(), State.OLD);
+              async.complete();
+            });
+          });
+        });
+      });
+    });
+  }
+
+  @Test
   public void shouldSaveMarcBibRecordWithMatchedIdFromRecordId(TestContext context) {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();

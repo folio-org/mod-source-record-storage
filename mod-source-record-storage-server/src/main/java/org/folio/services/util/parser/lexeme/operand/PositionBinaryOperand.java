@@ -32,12 +32,12 @@ public class PositionBinaryOperand extends BinaryOperandLexeme {
 
   @Override
   public String toSqlRepresentation() {
-    String iField = "\"" + "i" + field + "\"";
-    String prefix = "substring(" + iField + ".\"value\", " + startPosition + ", " + endPosition + ")";
+    String fieldNumberToSearch = "\"field_no\" = '" + field+"'";
+      String prefix = "( " + fieldNumberToSearch + " and substring(\"value\", " + startPosition + ", " + endPosition + ")";
     if (BINARY_OPERATOR_EQUALS.equals(getOperator())) {
-      return prefix + " = ?";
+      return prefix + " = ?)";
     } else if (BINARY_OPERATOR_NOT_EQUALS.equals(getOperator())) {
-      return prefix + " <> ?";
+      return prefix + " <> ?)";
     }
     throw new IllegalArgumentException(format("Operator [%s] is not supported for the given Position operand", getOperator().getSearchValue()));
   }

@@ -56,6 +56,7 @@ import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
  */
 public final class AdditionalFieldsUtil {
 
+  public static final String TAG_00X_PREFIX = "00";
   public static final String TAG_005 = "005";
   public static final String TAG_999 = "999";
   public static final String TAG_035 = "035";
@@ -71,7 +72,7 @@ public final class AdditionalFieldsUtil {
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
   private static final String OCLC = "OCoLC";
-  private static final String OCLC_PATTERN = "\\((" + OCLC + ")\\)((ocm|ocn)?0*|([a-zA-Z]+)0*)(\\d+\\w*)";
+  private static final String OCLC_PATTERN = "\\((" + OCLC + ")\\)((ocm|ocn|on)?0*|([a-zA-Z]+)0*)(\\d+\\w*)";
 
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
@@ -459,7 +460,7 @@ public final class AdditionalFieldsUtil {
     Pattern pattern = Pattern.compile(OCLC_PATTERN);
 
     for (Subfield subfield : subFields) {
-      String data = subfield.getData();
+      String data = subfield.getData().replaceAll("[.\\s]", "");
       var code = subfield.getCode();
       Matcher matcher = pattern.matcher(data);
 
@@ -468,7 +469,7 @@ public final class AdditionalFieldsUtil {
         String numericAndTrailing = matcher.group(5); // Numeric part and any characters that follow
         String prefix = matcher.group(2); // Entire prefix including letters and potentially leading zeros
 
-        if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn"))) {
+        if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn") || prefix.startsWith("on"))) {
           // If "ocm" or "ocn", strip entirely from the prefix
           processedSet.add(code + "&(" + oclcTag + ")" + numericAndTrailing);
         } else {
@@ -682,7 +683,7 @@ public final class AdditionalFieldsUtil {
   }
 
   private static boolean isValidIdAndHrid(String id, String hrid, String externalId, String externalHrid) {
-    return (isNotEmpty(externalId) && isNotEmpty(externalHrid)) && (id.equals(externalId) && !hrid.equals(externalHrid));
+    return (isNotEmpty(externalId)) && (id.equals(externalId) && !hrid.equals(externalHrid));
   }
 
   private static boolean isValidId(String id, String externalId) {

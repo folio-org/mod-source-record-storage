@@ -10,6 +10,7 @@ import org.folio.dao.util.RecordType;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jooq.enums.RecordState;
@@ -21,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
 /**
  * The abstraction handles the DELETE action

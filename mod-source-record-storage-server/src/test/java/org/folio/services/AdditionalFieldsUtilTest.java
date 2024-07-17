@@ -2,6 +2,8 @@ package org.folio.services;
 
 import static org.folio.services.util.AdditionalFieldsUtil.*;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.Assert.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
 
 import java.io.IOException;
 import java.util.List;
@@ -358,6 +360,28 @@ public class AdditionalFieldsUtilTest {
   }
 
   @Test
+  public void shouldRemovePeriodsAndSpacesAfterNormalization() {
+    // given
+    var parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)on. 607TST .001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
+    var expectedParsedContent = "{\"leader\":\"00098nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)607TST001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+    // when
+    AdditionalFieldsUtil.normalize035(record);
+    Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  }
+
+  @Test
   public void shouldNotReturnSubfieldIfOclcNotExist() {
     // given
     String parsedContent = "{\"leader\":\"00120nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
@@ -479,5 +503,102 @@ public class AdditionalFieldsUtilTest {
     Assert.assertEquals(7, cacheStats.hitCount());
     Assert.assertEquals(2, cacheStats.missCount());
     Assert.assertEquals(2, cacheStats.loadCount());
+  }
+
+  @Test
+  public void isFieldsFillingNeededTrue() {
+    String instanceId = UUID.randomUUID().toString();
+    String instanceHrId = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(instanceId)
+        .withInstanceHrid(UUID.randomUUID().toString()))
+      .withRecordType(Record.RecordType.MARC_BIB);
+
+    JsonObject instanceJson = new JsonObject();
+    instanceJson.put("id", instanceId);
+    instanceJson.put("hrid", instanceHrId);
+
+    Assert.assertTrue(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson));
+
+    srcRecord.getExternalIdsHolder().setInstanceHrid(null);
+    Assert.assertTrue(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson));
+  }
+
+  @Test
+  public void isFieldsFillingNeededFalse() {
+    String instanceId = UUID.randomUUID().toString();
+    String instanceHrId = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(instanceId)
+        .withInstanceHrid(instanceHrId))
+      .withRecordType(Record.RecordType.MARC_BIB);
+
+    JsonObject instanceJson = new JsonObject();
+    instanceJson.put("id", instanceId);
+    instanceJson.put("hrid", instanceHrId);
+
+    assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson));
+
+    srcRecord.getExternalIdsHolder().withInstanceId(instanceId);
+    instanceJson.put("id", UUID.randomUUID().toString());
+    assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson));
+
+    srcRecord.getExternalIdsHolder().withInstanceId(null).withInstanceHrid(null);
+    assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson));
+  }
+
+  @Test(expected = Exception.class)
+  public void isFieldsFillingNeededForExternalHolderInstanceShouldThrowException() {
+    String instanceId = UUID.randomUUID().toString();
+    String instanceHrId = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(instanceId)
+      .withInstanceHrid(instanceHrId))
+      .withRecordType(Record.RecordType.MARC_BIB);
+
+    JsonObject instanceJson = new JsonObject();
+    instanceJson.put("hrid", instanceHrId);
+    AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, instanceJson);
+  }
+
+  @Test
+  public void isFieldsFillingNeededForHoldingsExternalHolder() {
+    String holdingId = UUID.randomUUID().toString();
+    String holdingHrid = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(holdingId))
+      .withRecordType(Record.RecordType.MARC_HOLDING);
+
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.put("id", holdingId);
+    jsonObject.put("hrid", holdingHrid);
+
+    Assert.assertTrue(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
+
+    srcRecord.getExternalIdsHolder().setHoldingsHrid(holdingHrid);
+
+    Assert.assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
+  }
+
+  @Test
+  public void isFieldsFillingNeededForUnknownRecordType() {
+    String entityId = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withRecordType(any());
+
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.put("id", entityId);
+
+    Assert.assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
+  }
+
+  @Test
+  public void isFieldsFillingNeededTrueForMarcAuthority() {
+    String authorityId = UUID.randomUUID().toString();
+    Record srcRecord = new Record().withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(authorityId))
+      .withRecordType(Record.RecordType.MARC_AUTHORITY);
+
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.put("id", authorityId);
+
+    Assert.assertTrue(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
   }
 }

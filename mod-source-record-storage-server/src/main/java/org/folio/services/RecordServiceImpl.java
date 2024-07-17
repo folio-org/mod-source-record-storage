@@ -181,7 +181,7 @@ public class RecordServiceImpl implements RecordService {
     }
     record.setId(UUID.randomUUID().toString());
 
-    return recordDao.getRecordById(matchedId, tenantId)
+    return recordDao.getRecordByMatchedId(matchedId, tenantId)
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
       .compose(v -> saveRecord(record, tenantId))
       .recover(throwable -> {

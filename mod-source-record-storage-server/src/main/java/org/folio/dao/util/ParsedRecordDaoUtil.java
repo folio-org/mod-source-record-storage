@@ -258,26 +258,4 @@ public final class ParsedRecordDaoUtil {
       ? new JsonObject((String) content)
       : JsonObject.mapFrom(content);
   }
-
-  /**
-   * Update MARC Leader status 05 for the given {@link ParsedRecord} content
-   *
-   * @param parsedRecord parsedRecord parsed record
-   * @param status new MARC Leader status
-   */
-  public static void updateLeaderStatus(ParsedRecord parsedRecord, Character status) {
-    if (Objects.isNull(parsedRecord) || Objects.isNull(parsedRecord.getContent()) || Objects.isNull(status)) {
-      return;
-    }
-
-    JsonObject marcJson = normalize(parsedRecord.getContent());
-    String leader = marcJson.getString(LEADER);
-    if (Objects.nonNull(leader) && leader.length() > LEADER_STATUS_SUBFIELD_POSITION) {
-      StringBuilder builder = new StringBuilder(leader);
-      builder.setCharAt(LEADER_STATUS_SUBFIELD_POSITION, status);
-      marcJson.put(LEADER, builder.toString());
-      parsedRecord.setContent(normalize(marcJson));
-    }
-  }
-
 }

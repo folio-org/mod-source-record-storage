@@ -54,6 +54,7 @@ import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -338,6 +339,7 @@ public class RecordServiceImpl implements RecordService {
         record.withState(Record.State.DELETED);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
+        AdditionalFieldsUtil.updateLatestTransactionDate(record);
         return record;
       })
       .compose(record -> updateRecord(record, tenantId)).map(r -> null);

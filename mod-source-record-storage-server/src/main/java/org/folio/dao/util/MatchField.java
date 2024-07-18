@@ -1,6 +1,7 @@
 package org.folio.dao.util;
 
 import org.folio.processing.value.Value;
+import org.folio.rest.jaxrs.model.Filter;
 import org.marc4j.marc.impl.Verifier;
 
 /**
@@ -15,6 +16,7 @@ public class MatchField {
   private final String ind2;
   private final String subfield;
   private final Value value;
+  private final QualifierMatch qualifierMatch;
   private final String fieldPath;
 
   public MatchField(String tag, String ind1, String ind2, String subfield, Value value) {
@@ -24,6 +26,20 @@ public class MatchField {
     this.subfield = subfield;
     this.value = value;
     this.fieldPath = tag + ind1 + ind2 + subfield;
+    this.qualifierMatch = null;
+  }
+
+  public MatchField(String tag, String ind1, String ind2, String subfield, Value value, QualifierMatch qualifierMatch) {
+    this.tag = tag;
+    this.ind1 = ind1;
+    this.ind2 = ind2;
+    this.subfield = subfield;
+    this.value = value;
+    this.qualifierMatch = qualifierMatch;
+    this.fieldPath = tag + ind1 + ind2 + subfield;
+  }
+
+  public record QualifierMatch(Filter.Qualifier qualifier, String value) {
   }
 
   public String getTag() {
@@ -44,6 +60,10 @@ public class MatchField {
 
   public Value getValue() {
     return value;
+  }
+
+  public QualifierMatch getQualifierMatch() {
+    return qualifierMatch;
   }
 
   public boolean isControlField() {

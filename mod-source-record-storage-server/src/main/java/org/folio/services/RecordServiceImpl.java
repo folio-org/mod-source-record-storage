@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
@@ -343,10 +344,15 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {
+        AdditionalFieldsUtil.updateLatestTransactionDate(record);
+        var sourceContent = record.getParsedRecord().getContent().toString();
+        var targetContent = record.getParsedRecord().getContent().toString();
+        var content = reorderMarcRecordFields(sourceContent, targetContent);
+        record.getParsedRecord().setContent(content);
+
         record.withState(Record.State.DELETED);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
-        AdditionalFieldsUtil.updateLatestTransactionDate(record);
         return record;
       })
       .compose(record -> updateRecord(record, tenantId)).map(r -> null);

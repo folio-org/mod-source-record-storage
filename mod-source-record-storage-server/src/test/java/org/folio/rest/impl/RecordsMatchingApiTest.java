@@ -4,18 +4,15 @@ import io.restassured.RestAssured;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import liquibase.util.StringUtil;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Filter;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordMatchingDto;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
@@ -45,6 +42,9 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/parsedMarcAuthorityWith999field.json";
   private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
   private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
+  private static final String INSTANCE_ID = "681394b4-10d8-4cb1-a618-0f9bd6152119";
+  private static final String HR_ID = "12345";
+  private static final int SPLIT_INDEX = 2;
 
   private static String rawRecordContent;
   private static String parsedRecordContent;
@@ -118,6 +118,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body(new RecordMatchingDto()
         .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
         .withFilters(List.of(new Filter()
+            .withQualifier(Filter.Qualifier.BEGINS_WITH)
+            .withQualifierValue("acf")
         .withValues(List.of(existingRecord.getMatchedId()))
         .withField("999")
         .withIndicator1("f")
@@ -135,6 +137,16 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldMatchMarcBibRecordByInstanceIdField() {
     shouldMatchRecordByExternalIdField(existingRecord);
+  }
+
+  @Test
+  public void shouldMatchMarcBibRecordByInstanceIdFieldAndQualifier() {
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, INSTANCE_ID.substring(0, SPLIT_INDEX));
+    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, INSTANCE_ID.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, INSTANCE_ID.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    shouldMatchRecordByExternalIdField(existingRecord, beginWith);
+    shouldMatchRecordByExternalIdField(existingRecord, endWith);
+    shouldMatchRecordByExternalIdField(existingRecord, contains);
   }
 
   @Test
@@ -195,6 +207,50 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers[0].externalId", is(externalId));
   }
 
+  private void shouldMatchRecordByExternalIdField(Record sourceRecord, MatchField.QualifierMatch qualifier) {
+    var externalId = RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType());
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.valueOf(sourceRecord.getRecordType().name()))
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(externalId))
+          .withField("999")
+          .withIndicator1("f")
+          .withIndicator2("f")
+          .withSubfield("i")
+          .withQualifier(qualifier.qualifier())
+          .withQualifierValue(qualifier.value()))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(sourceRecord.getId()))
+      .body("identifiers[0].externalId", is(externalId));
+  }
+
+  private void shouldMatchRecordByInstanceHridFieldAndQualifier(MatchField.QualifierMatch qualifier) {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(existingRecord.getExternalIdsHolder().getInstanceHrid()))
+          .withField("001")
+          .withQualifier(qualifier.qualifier())
+          .withQualifierValue(qualifier.value()))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
   @Test
   public void shouldMatchRecordByInstanceHridField() {
     RestAssured.given()
@@ -212,6 +268,16 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers.size()", is(1))
       .body("identifiers[0].recordId", is(existingRecord.getId()))
       .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchRecordByInstanceHridFieldAndQualifier() {
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, HR_ID.substring(0, SPLIT_INDEX));
+    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, HR_ID.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, HR_ID.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    shouldMatchRecordByInstanceHridFieldAndQualifier(beginWith);
+    shouldMatchRecordByInstanceHridFieldAndQualifier(endWith);
+    shouldMatchRecordByInstanceHridFieldAndQualifier(contains);
   }
 
   @Test

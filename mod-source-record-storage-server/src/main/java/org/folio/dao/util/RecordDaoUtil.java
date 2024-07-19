@@ -766,7 +766,7 @@ public final class RecordDaoUtil {
 
   private static Condition getIdConditionWithQualifier(IdType idType, Function<Field<UUID>, Condition> idFieldToConditionMapper, MatchField.QualifierMatch qualifier) {
     IdType idTypeToUse = getIdType(idType);
-    RecordType recordType = getRecordType(idTypeToUse);
+    RecordType recordType = getRecordType(idType);
     var idField = RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idTypeToUse.getIdField()), UUID.class);
     var qualifierCondition = buildQualifierCondition(idField, qualifier);
     var resultCondition = idFieldToConditionMapper.apply(idField).and(getRecordTypeCondition(recordType));

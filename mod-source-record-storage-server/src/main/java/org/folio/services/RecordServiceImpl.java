@@ -499,13 +499,13 @@ public class RecordServiceImpl implements RecordService {
           .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
   }
 
-  private static void update005field(Record record) {
-    if (record.getParsedRecord() == null || record.getParsedRecord().getContent() == null) {
-      AdditionalFieldsUtil.updateLatestTransactionDate(record);
-      var sourceContent = record.getParsedRecord().getContent().toString();
-      var targetContent = record.getParsedRecord().getContent().toString();
+  private static void update005field(Record targetRecord) {
+    if (targetRecord.getParsedRecord() != null && targetRecord.getParsedRecord().getContent() != null) {
+      AdditionalFieldsUtil.updateLatestTransactionDate(targetRecord);
+      var sourceContent = targetRecord.getParsedRecord().getContent().toString();
+      var targetContent = targetRecord.getParsedRecord().getContent().toString();
       var content = reorderMarcRecordFields(sourceContent, targetContent);
-      record.getParsedRecord().setContent(content);
+      targetRecord.getParsedRecord().setContent(content);
     }
   }
 

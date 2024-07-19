@@ -344,12 +344,7 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {
-        AdditionalFieldsUtil.updateLatestTransactionDate(record);
-        var sourceContent = record.getParsedRecord().getContent().toString();
-        var targetContent = record.getParsedRecord().getContent().toString();
-        var content = reorderMarcRecordFields(sourceContent, targetContent);
-        record.getParsedRecord().setContent(content);
-
+        update005field(record);
         record.withState(Record.State.DELETED);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
@@ -502,6 +497,16 @@ public class RecordServiceImpl implements RecordService {
           .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
         .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
           .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
+  }
+
+  private static void update005field(Record record) {
+    if (record.getParsedRecord() == null || record.getParsedRecord().getContent() == null) {
+      AdditionalFieldsUtil.updateLatestTransactionDate(record);
+      var sourceContent = record.getParsedRecord().getContent().toString();
+      var targetContent = record.getParsedRecord().getContent().toString();
+      var content = reorderMarcRecordFields(sourceContent, targetContent);
+      record.getParsedRecord().setContent(content);
+    }
   }
 
 }

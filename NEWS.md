@@ -5,6 +5,7 @@
 * [MODSOURCE-773](https://folio-org.atlassian.net/browse/MODSOURCE-773) MARC Search omits suppressed from discovery records in default search
 * [MODINV-1044](https://folio-org.atlassian.net/browse/MODINV-1044) Additional Requirements - Update Data Import logic to normalize OCLC 035 values
 * [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) Find record by match id on update generation 
+* [MODSOURMAN-783](https://folio-org.atlassian.net/browse/MODSOURCE-783) Extend MARC-MARC search query to account for qualifiers
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

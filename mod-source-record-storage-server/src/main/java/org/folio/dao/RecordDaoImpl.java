@@ -156,7 +156,9 @@ public class RecordDaoImpl implements RecordDao {
   static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER = "\"{partition}\".\"value\" IN ({value}) AND \"{partition}\".\"value\" LIKE {qualifier}";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER = "\"{partition}\".\"value\" IN ({value}) AND \"{partition}\".\"value\" LIKE {qualifier} AND \"{partition}\".\"ind1\" LIKE '{ind1}' AND \"{partition}\".\"ind2\" LIKE '{ind2}' AND \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -352,24 +354,45 @@ public class RecordDaoImpl implements RecordDao {
 
   private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
     Map<String, String> params = new HashMap<>();
+    var qualifierSearch = false;
     params.put("partition", partition);
     params.put("value", getValueInSqlFormat(matchedField.getValue()));
+    if (matchedField.getQualifierMatch() != null) {
+      qualifierSearch = true;
+      params.put("qualifier", getSqlQualifier(matchedField.getQualifierMatch()));
+    }
+    String sql;
+    Condition condition;
     if (matchedField.isControlField()) {
-      String sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
-      return condition(sql);
+      sql = qualifierSearch ? StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
+        : StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     } else {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      String sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
-      return condition(sql);
+      sql = qualifierSearch ? sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
+        : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
+    return condition(sql);
   }
 
   private String getSqlInd(String ind) {
     if (ind.equals(WILDCARD)) return PERCENT;
     if (ind.isBlank()) return HASH;
     return ind;
+  }
+
+  private String getSqlQualifier(MatchField.QualifierMatch qualifierMatch) {
+    if (qualifierMatch == null) {
+      return null;
+    }
+    var value = qualifierMatch.value();
+
+    return switch (qualifierMatch.qualifier()) {
+      case BEGINS_WITH -> "'" + value + "%'";
+      case ENDS_WITH -> "'%" + value + "'";
+      case CONTAINS -> "'%" + value + "%'";
+    };
   }
 
   private String getValueInSqlFormat(Value value) {

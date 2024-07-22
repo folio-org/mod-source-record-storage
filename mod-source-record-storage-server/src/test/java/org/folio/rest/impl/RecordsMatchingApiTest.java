@@ -47,7 +47,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
   private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
   private static final String INSTANCE_ID = "681394b4-10d8-4cb1-a618-0f9bd6152119";
-  private static final String HR_ID = "12345";
+  private static final String FIELD_035 = "12569";
+  private static final String FIELD_007 = "12345";
   private static final int SPLIT_INDEX = 2;
 
   private static String rawRecordContent;
@@ -276,12 +277,37 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchRecordByInstanceHridFieldAndQualifier() {
-    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, HR_ID.substring(0, SPLIT_INDEX));
-    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, HR_ID.substring(SPLIT_INDEX));
-    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, HR_ID.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    var hrId = existingRecord.getExternalIdsHolder().getInstanceHrid();
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, hrId.substring(0, SPLIT_INDEX));
+    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, hrId.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, hrId.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
     shouldMatchRecordByInstanceHridFieldAndQualifier(beginWith);
     shouldMatchRecordByInstanceHridFieldAndQualifier(endWith);
     shouldMatchRecordByInstanceHridFieldAndQualifier(contains);
+  }
+
+  @Test
+  public void shouldNotMatchMarcBibRecordByInstanceIdFieldAndQualifier(){
+    var externalId = RecordDaoUtil.getExternalId(existingRecord.getExternalIdsHolder(), existingRecord.getRecordType());
+    var qualifier = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, "ABC");
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.valueOf(existingRecord.getRecordType().name()))
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(externalId))
+          .withField("999")
+          .withIndicator1("f")
+          .withIndicator2("f")
+          .withSubfield("i")
+          .withQualifier(qualifier.qualifier())
+          .withQualifierValue(qualifier.value()))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0))
+      .body("identifiers.size()", is(0));
   }
 
   @Test
@@ -293,6 +319,29 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
         .withFilters(List.of(new Filter()
           .withValues(List.of("12345", "oclc1234567"))
+          .withField("035")
+          .withIndicator1("")
+          .withIndicator2("")
+          .withSubfield("a"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  public void shouldMatchRecordByMultipleDataFieldsAndQualifier(MatchField.QualifierMatch qualifier) {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("12345", "oclc1234567"))
+          .withQualifier(qualifier.qualifier())
+          .withQualifierValue(qualifier.value())
           .withField("035")
           .withIndicator1("")
           .withIndicator2("")
@@ -323,6 +372,87 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers.size()", is(1))
       .body("identifiers[0].recordId", is(existingRecord.getId()))
       .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchRecordByMultipleDataFieldsAndQualifier() {
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, FIELD_007.substring(0, SPLIT_INDEX));
+    var endWith = new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, FIELD_007.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, FIELD_007.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    shouldMatchRecordByMultipleDataFieldsAndQualifier(beginWith);
+    shouldMatchRecordByMultipleDataFieldsAndQualifier(endWith);
+    shouldMatchRecordByMultipleDataFieldsAndQualifier(contains);
+  }
+
+  @Test
+  public void shouldNotMatchRecordByMultipleDataFieldsAndQualifier() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("12345", "oclc1234567"))
+          .withQualifier(Filter.Qualifier.BEGINS_WITH)
+          .withQualifierValue("ABC")
+          .withField("035")
+          .withIndicator1("")
+          .withIndicator2("")
+          .withSubfield("a"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0))
+      .body("identifiers.size()", is(0));
+  }
+
+  private void shouldMatchRecordByMultipleControlledFieldsAndQualifier(MatchField.QualifierMatch qualifier){
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("12569", "364345"))
+          .withQualifier(qualifier.qualifier())
+          .withQualifierValue(qualifier.value())
+          .withField("007"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchRecordByMultipleControlledFieldsAndQualifier() {
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, FIELD_035.substring(0, SPLIT_INDEX));
+    var endWith = new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, FIELD_035.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, FIELD_035.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    shouldMatchRecordByMultipleControlledFieldsAndQualifier(beginWith);
+    shouldMatchRecordByMultipleControlledFieldsAndQualifier(endWith);
+    shouldMatchRecordByMultipleControlledFieldsAndQualifier(contains);
+  }
+
+  @Test
+  public void shouldNotMatchRecordByMultipleControlledFieldsAndQualifier(){
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("12569", "364345"))
+          .withQualifier(Filter.Qualifier.BEGINS_WITH)
+          .withQualifierValue("ABC")
+          .withField("007"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0))
+      .body("identifiers.size()", is(0));
   }
 
   @Test

@@ -46,7 +46,6 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/parsedMarcAuthorityWith999field.json";
   private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
   private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
-  private static final String INSTANCE_ID = "681394b4-10d8-4cb1-a618-0f9bd6152119";
   private static final String FIELD_035 = "12569";
   private static final String FIELD_007 = "12345";
   private static final int SPLIT_INDEX = 2;
@@ -146,9 +145,10 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchMarcBibRecordByInstanceIdFieldAndQualifier() {
-    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, INSTANCE_ID.substring(0, SPLIT_INDEX));
-    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, INSTANCE_ID.substring(SPLIT_INDEX));
-    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, INSTANCE_ID.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    var instanceId = existingRecord.getExternalIdsHolder().getInstanceId();
+    var beginWith = new MatchField.QualifierMatch(Filter.Qualifier.BEGINS_WITH, instanceId.substring(0, SPLIT_INDEX));
+    var endWith =  new MatchField.QualifierMatch(Filter.Qualifier.ENDS_WITH, instanceId.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(Filter.Qualifier.CONTAINS, instanceId.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
     shouldMatchRecordByExternalIdField(existingRecord, beginWith);
     shouldMatchRecordByExternalIdField(existingRecord, endWith);
     shouldMatchRecordByExternalIdField(existingRecord, contains);

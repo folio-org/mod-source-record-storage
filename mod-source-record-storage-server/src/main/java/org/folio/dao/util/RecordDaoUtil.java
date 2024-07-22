@@ -83,6 +83,7 @@ public final class RecordDaoUtil {
    *
    * @param externalIds list of external id
    * @param idType      external id type
+   * @param qualifier qualifier type and value
    * @return condition
    */
   public static Condition getExternalIdsConditionWithQualifier(List<String> externalIds, IdType idType, MatchField.QualifierMatch qualifier) {
@@ -494,6 +495,7 @@ public final class RecordDaoUtil {
    * Get {@link Condition} to filter by external entity hrid using specified values and match by qualifier value
    *
    * @param externalHridValues external entity hrid values to equal
+   * @param qualifier qualifier type and value
    * @return condition
    */
   public static Condition filterRecordByExternalHridValuesWithQualifier(List<String> externalHridValues, MatchField.QualifierMatch qualifier) {

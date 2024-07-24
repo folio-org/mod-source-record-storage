@@ -258,5 +258,4 @@ public final class ParsedRecordDaoUtil {
       ? new JsonObject((String) content)
       : JsonObject.mapFrom(content);
   }
-
 }

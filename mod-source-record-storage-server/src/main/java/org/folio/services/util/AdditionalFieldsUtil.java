@@ -623,17 +623,25 @@ public final class AdditionalFieldsUtil {
   /**
    * Updates field 005 for case when this field is not protected.
    *
-   * @param record            record to update
+   * @param targetRecord            record to update
    * @param mappingParameters mapping parameters
    */
-  public static void updateLatestTransactionDate(Record record, MappingParameters mappingParameters) {
-    if (isField005NeedToUpdate(record, mappingParameters)) {
-      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
-      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
-      if (!isLatestTransactionDateUpdated) {
-        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", record.getId()));
-      }
+  public static void updateLatestTransactionDate(Record targetRecord, MappingParameters mappingParameters) {
+    if (isField005NeedToUpdate(targetRecord, mappingParameters)) {
+      updateLatestTransactionDate(targetRecord);
     }
+  }
+
+  /**
+   * Updates field 005.
+   * @param targetRecord            record to update
+   */
+  public static void updateLatestTransactionDate(Record targetRecord) {
+      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(targetRecord, AdditionalFieldsUtil.TAG_005, date, true);
+      if (!isLatestTransactionDateUpdated) {
+        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", targetRecord.getId()));
+      }
   }
 
   /**

@@ -6,6 +6,7 @@
 * [MODINV-1044](https://folio-org.atlassian.net/browse/MODINV-1044) Additional Requirements - Update Data Import logic to normalize OCLC 035 values
 * [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) Find record by match id on update generation 
 * [MODINV-1049](https://folio-org.atlassian.net/browse/MODINV-1049) Existing "035" field is not retained the original position in imported record 
+* [MODSOURCE-785](https://folio-org.atlassian.net/browse/MODSOURCE-785) Update 005 field when set MARC for deletion
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

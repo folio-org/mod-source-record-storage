@@ -1,16 +1,26 @@
 package org.folio.services;
 
-import static org.folio.services.util.AdditionalFieldsUtil.*;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_035;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_035_SUB;
+import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.addDataFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.get035SubfieldOclcValues;
+import static org.folio.services.util.AdditionalFieldsUtil.getCacheStats;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.isFieldExist;
+import static org.folio.services.util.AdditionalFieldsUtil.removeField;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.TestUtil;
@@ -23,9 +33,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
-
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import org.marc4j.marc.Subfield;
 
 @RunWith(BlockJUnit4ClassRunner.class)
@@ -369,6 +376,41 @@ public class AdditionalFieldsUtilTest {
     var expectedParsedContent = "{\"leader\":\"00098nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"}," +
       "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)607TST001\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
       "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+
+    Record record = new Record().withId(UUID.randomUUID().toString())
+      .withParsedRecord(parsedRecord)
+      .withGeneration(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
+    // when
+    AdditionalFieldsUtil.normalize035(record);
+    Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  }
+
+  @Test
+  public void shouldPreserveOrderOf035FieldsAfterNormalization() {
+    // given
+    var parsedContent = "{\"leader\":\"00198cama 22003611a 4500\",\"fields\":[" +
+      "{\"001\":\"10065352\"}," +
+      "{\"005\":\"20220127143948.0\"}," +
+      "{\"008\":\"761216s1853mauch0010eng\"}," +
+      "{\"906\":{\"subfields\":[{\"a\":\"7\"},{\"b\":\"cbc\"},{\"c\":\"oclcrpl\"},{\"d\":\"u\"},{\"e\":\"ncip\"},{\"f\":\"19\"},{\"g\":\"y-gencatlg\"}],\"ind1\":\"\",\"ind2\":\"\"}}," +
+      "{\"035\":{\"subfields\":[{\"9\":\"(DLC)01012052\"}],\"ind1\":\"\",\"ind2\":\"\"}}," +
+      "{\"010\":{\"subfields\":[{\"a\":\"01012052\"}],\"ind1\":\"\",\"ind2\":\"\"}}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)2628488\"}],\"ind1\":\"\",\"ind2\":\"\"}}," +
+      "{\"040\":{\"subfields\":[{\"a\":\"DLC\"},{\"b\":\"eng\"},{\"c\":\"O\"},{\"d\":\"O\"},{\"d\":\"DLC\"}],\"ind1\":\"\",\"ind2\":\"\"}}]}";
+
+    var expectedParsedContent = "{\"leader\":\"00291cama 22001211a 4500\",\"fields\":[" +
+      "{\"001\":\"10065352\"}," +
+      "{\"005\":\"20220127143948.0\"}," +
+      "{\"008\":\"761216s1853mauch0010eng\"}," +
+      "{\"906\":{\"subfields\":[{\"a\":\"7\"},{\"b\":\"cbc\"},{\"c\":\"oclcrpl\"},{\"d\":\"u\"},{\"e\":\"ncip\"},{\"f\":\"19\"},{\"g\":\"y-gencatlg\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"035\":{\"subfields\":[{\"9\":\"(DLC)01012052\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"010\":{\"subfields\":[{\"a\":\"01012052\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)2628488\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+      "{\"040\":{\"subfields\":[{\"a\":\"DLC\"},{\"b\":\"eng\"},{\"c\":\"O\"},{\"d\":\"O\"},{\"d\":\"DLC\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
     Record record = new Record().withId(UUID.randomUUID().toString())

@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -189,10 +190,10 @@ public interface RecordDao {
    * Saves {@link Record} to the db
    *
    * @param record   Record to save
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
@@ -201,25 +202,25 @@ public interface RecordDao {
    * @param record Record to save
    * @return future with saved Record
    */
-  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db
    *
    * @param recordCollection Record collection to save
-   * @param tenantId         tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved {@link RecordsBatchResponse}
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db
    *
    * @param record   Record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Increments generation in case a record with the same matchedId exists

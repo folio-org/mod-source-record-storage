@@ -1,13 +1,27 @@
 package org.folio.services.util;
 
+import static java.util.Objects.nonNull;
+import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
+import static org.folio.okapi.common.XOkapiHeaders.URL;
+import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_TOPIC;
+import static org.folio.services.domainevent.RecordDomainEventPublisher.SOURCE_RECORD_CREATED;
+import static org.folio.services.domainevent.RecordDomainEventPublisher.SOURCE_RECORD_UPDATED;
+import static org.folio.services.util.KafkaUtil.extractHeaderValue;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.DataImportEventPayload;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SimpleKafkaProducerManager;
@@ -16,9 +30,6 @@ import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
-
-import java.util.List;
-import java.util.UUID;
 
 public final class EventHandlingUtil {
 
@@ -96,6 +107,9 @@ public final class EventHandlingUtil {
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
+    if (SOURCE_RECORD_CREATED.equals(eventType) || SOURCE_RECORD_UPDATED.equals(eventType)) {
+      return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), tenantId, RECORD_DOMAIN_TOPIC);
+    }
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
       tenantId, eventType);
   }
@@ -106,6 +120,22 @@ public final class EventHandlingUtil {
 
   public static KafkaProducer<String, String> createProducer(String eventType, KafkaConfig kafkaConfig) {
     return new SimpleKafkaProducerManager(Vertx.currentContext().owner(), kafkaConfig).createShared(eventType);
+  }
+
+  public static Map<String, String> toOkapiHeaders(DataImportEventPayload eventPayload) {
+    var okapiHeaders = new HashMap<String, String>();
+    okapiHeaders.put(URL, eventPayload.getOkapiUrl());
+    okapiHeaders.put(TENANT, eventPayload.getTenant());
+    okapiHeaders.put(TOKEN, eventPayload.getToken());
+    return okapiHeaders;
+  }
+
+  public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders, String eventTenantId) {
+    var okapiHeaders = new HashMap<String, String>();
+    okapiHeaders.put(URL, extractHeaderValue(URL, kafkaHeaders));
+    okapiHeaders.put(TENANT, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(TENANT, kafkaHeaders));
+    okapiHeaders.put(TOKEN, extractHeaderValue(TOKEN, kafkaHeaders));
+    return okapiHeaders;
   }
 
   private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {

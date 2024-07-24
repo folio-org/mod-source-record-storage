@@ -38,6 +38,7 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
@@ -48,6 +49,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.normalize035;
 import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -118,11 +120,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         )
         .compose(changedRecord -> {
           String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+          var okapiHeaders = toOkapiHeaders(payload);
           if (centralTenantId != null) {
+            okapiHeaders.put(TENANT, centralTenantId);
             return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
-              .compose(snapshot -> recordService.saveRecord(changedRecord, centralTenantId));
+              .compose(snapshot -> recordService.saveRecord(changedRecord, okapiHeaders));
           }
-          return recordService.saveRecord(changedRecord, payload.getTenant());
+          return recordService.saveRecord(changedRecord, okapiHeaders);
         })
         .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))
         .onFailure(throwable -> {

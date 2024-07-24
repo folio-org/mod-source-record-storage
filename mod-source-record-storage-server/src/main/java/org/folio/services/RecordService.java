@@ -2,6 +2,7 @@ package org.folio.services;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import io.vertx.sqlclient.Row;
@@ -68,38 +69,38 @@ public interface RecordService {
    * Saves record
    *
    * @param record   record to save
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves collection of records
    *
    * @param recordsCollection records to save
-   * @param tenantId          tenant id
+   * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String tenantId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id
    *
    * @param record   record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Updates record generation with given matched id
    *
    * @param matchedId   matched id
    * @param record   record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record generation
    */
-  Future<Record> updateRecordGeneration(String matchedId, Record record, String tenantId);
+  Future<Record> updateRecordGeneration(String matchedId, Record record, Map<String, String> okapiHeaders);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
@@ -267,5 +268,5 @@ public interface RecordService {
    */
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
 
-  Future<Void> deleteRecordById(String id, IdType idType, String tenantId);
+  Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders);
 }

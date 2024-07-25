@@ -140,7 +140,7 @@ public final class ParsedRecordDaoUtil {
     JsonObject content = normalize(parsedRecord.getContent());
     UpdateMarcRecord updateMarcRecord = new UpdateMarcRecord();
     updateMarcRecord.setRecordId(id);
-    updateMarcRecord.setContent(content);
+    updateMarcRecord.setNewContent(content);
     return queryExecutor.executeAny(dsl -> dsl.select(updateMarcRecord.asField()))
       .compose(res -> {
           Row row = res.iterator().next();

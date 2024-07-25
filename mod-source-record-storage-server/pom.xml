@@ -507,7 +507,7 @@
                 </forcedType>
                 <forcedType>
                   <userType>io.vertx.core.json.JsonObject</userType>
-                  <includeExpression>update_marc_record.content</includeExpression>
+                  <includeExpression>update_marc_record.new_content</includeExpression>
                   <converter>io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter</converter>
                 </forcedType>
               </forcedTypes>

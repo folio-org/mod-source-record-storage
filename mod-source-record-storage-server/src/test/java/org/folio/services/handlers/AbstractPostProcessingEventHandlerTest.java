@@ -33,10 +33,12 @@ import org.folio.services.RecordServiceImpl;
 import org.folio.services.SnapshotService;
 import org.folio.services.SnapshotServiceImpl;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import org.folio.DataImportEventPayload;
@@ -65,6 +67,8 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   private static ParsedRecord parsedRecord;
   protected final String snapshotId1 = UUID.randomUUID().toString();
   protected final String snapshotId2 = UUID.randomUUID().toString();
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   protected Record record;
   protected RecordDao recordDao;
   protected RecordService recordService;
@@ -100,7 +104,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
     mappingParametersCache = new MappingParametersSnapshotCache(vertx);
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     handler = createHandler(recordService, snapshotService, kafkaConfig);

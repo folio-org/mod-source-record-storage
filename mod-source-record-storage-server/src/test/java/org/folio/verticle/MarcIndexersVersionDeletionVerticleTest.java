@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Map;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -15,6 +16,7 @@ import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
 import org.folio.services.TenantDataProvider;
 import org.folio.services.TenantDataProviderImpl;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Field;
 import org.jooq.Table;
 import org.junit.After;
@@ -23,7 +25,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.UUID;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
+import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.OLD;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -38,6 +43,8 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   private static final String MARC_ID_FIELD = "marc_id";
   private static final String VERSION_FIELD = "version";
 
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
   private TenantDataProvider tenantDataProvider;
   private RecordService recordService;
@@ -46,8 +53,9 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
 
   @Before
   public void setUp(TestContext context) {
+    MockitoAnnotations.openMocks(this);
     Async async = context.async();
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     tenantDataProvider = new TenantDataProviderImpl(vertx);
     recordService = new RecordServiceImpl(recordDao);
     marcIndexersVersionDeletionVerticle = new MarcIndexersVersionDeletionVerticle(recordDao, tenantDataProvider);
@@ -65,8 +73,9 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(recordId))
       .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId));
 
+    var okapiHeaders = Map.of(TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
+      .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());
@@ -90,9 +99,10 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   public void shouldDeleteOldVersionsOfMarcIndexers(TestContext context) {
     Async async = context.async();
 
+    var okapiHeaders = Map.of(TENANT, TENANT_ID);
     // performs record update in the DB that leads to new indexers creation with incremented version
     // so that previous existing indexers become old and should be deleted
-    Future<Boolean> future = recordService.updateRecord(record, TENANT_ID)
+    Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
       .compose(v -> existOldMarcIndexersVersions())
       .onSuccess(context::assertTrue)
       .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions())
@@ -109,7 +119,8 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   public void shouldDeleteMarcIndexersRelatedToRecordInOldState(TestContext context) {
     Async async = context.async();
 
-    Future<Boolean> future = recordService.updateRecord(record.withState(OLD), TENANT_ID)
+    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
       .onSuccess(context::assertTrue)
       .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions())
@@ -149,6 +160,3 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   }
 
 }
-
-
-

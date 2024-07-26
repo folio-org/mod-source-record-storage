@@ -4,12 +4,12 @@ import static java.util.Collections.singletonList;
 import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
+import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -34,7 +34,6 @@ import org.apache.commons.lang3.RandomUtils;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.services.KafkaTopic;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -52,11 +51,13 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Subfield;
 import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 @RunWith(VertxUnitRunner.class)
@@ -90,7 +91,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   );
   private final RawRecord rawRecord = new RawRecord().withId(RECORD_ID)
     .withContent("test content");
-
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
   private RecordService recordService;
   private Record record;
@@ -99,7 +101,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) throws IOException {
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    MockitoAnnotations.openMocks(this);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
 
     var async = context.async();
@@ -142,10 +145,11 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID));
 
+    var okapiHeaders = Map.of(TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordService.saveRecord(record, TENANT_ID))
-      .compose(savedRecord -> recordService.saveRecord(secondRecord, TENANT_ID))
-      .compose(savedRecord -> recordService.saveRecord(errorRecord, TENANT_ID))
+      .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
+      .compose(savedRecord -> recordService.saveRecord(secondRecord, okapiHeaders))
+      .compose(savedRecord -> recordService.saveRecord(errorRecord, okapiHeaders))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
   }

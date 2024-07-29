@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "Source record domain event data model",
+  "javaType": "org.folio.rest.jaxrs.model.SourceRecordDomainEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "UUID",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": ["SOURCE_RECORD_CREATED", "SOURCE_RECORD_UPDATED"],
+      "description": "Source record domain event type"
+    },
+    "sourceRecordDomainEventMetadata": {
+      "description": "Event metadata",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventTTL": {
+          "description": "Time-to-live (TTL) for event in minutes",
+          "type": "integer"
+        },
+        "correlationId": {
+          "description": "Id to track related events, can be a meaningful string or a UUID",
+          "type": "string"
+        },
+        "originalEventId": {
+          "description": "Id of the event that started the sequence of related events",
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+        },
+        "publisherCallback": {
+          "description": "Allows a publisher to provide a callback endpoint or an error Event Type to be notified that despite the fact that there are subscribers for such an event type no one has received the event within the specified period of time",
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "description": "Callback endpoint",
+              "type": "string"
+            },
+            "eventType": {
+              "description": "Error Event Type",
+              "type": "string"
+            }
+          }
+        },
+        "createdDate": {
+          "description": "Timestamp when event was created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "publishedDate": {
+          "description": "Timestamp when event was initially published to the underlying topic",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "description": "Username of the user whose action caused an event",
+          "type": "string"
+        },
+        "publishedBy": {
+          "description": "Name and version of the module that published an event",
+          "type": "string"
+        }
+      },
+      "required": [
+        "eventTTL",
+        "publishedBy"
+      ]
+    },
+    "eventPayload": {
+      "type": "string",
+      "description": "The source record JSON string"
+    },
+    "tenant": {
+      "description": "Tenant id",
+      "type": "string"
+    },
+    "ts": {
+      "description": "Message timestamp",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "excludedFromEqualsAndHashCode": [
+    "eventMetadata",
+    "tenant",
+    "ts"
+  ],
+  "required": [
+    "id",
+    "eventType"
+  ]
+}

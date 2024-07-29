@@ -1,12 +1,12 @@
 package org.folio.services.util;
 
+import static java.util.Arrays.stream;
 import static java.util.Objects.nonNull;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
 import static org.folio.okapi.common.XOkapiHeaders.URL;
+import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType;
 import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_TOPIC;
-import static org.folio.services.domainevent.RecordDomainEventPublisher.SOURCE_RECORD_CREATED;
-import static org.folio.services.domainevent.RecordDomainEventPublisher.SOURCE_RECORD_UPDATED;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 import io.vertx.core.Future;
@@ -107,7 +107,7 @@ public final class EventHandlingUtil {
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
-    if (SOURCE_RECORD_CREATED.equals(eventType) || SOURCE_RECORD_UPDATED.equals(eventType)) {
+    if (stream(EventType.values()).anyMatch(et -> et.value().equals(eventType))) {
       return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), tenantId, RECORD_DOMAIN_TOPIC);
     }
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),

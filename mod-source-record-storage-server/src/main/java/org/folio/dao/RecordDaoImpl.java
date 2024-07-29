@@ -373,7 +373,6 @@ public class RecordDaoImpl implements RecordDao {
       params.put("qualifier", getSqlQualifier(matchedField.getQualifierMatch()));
     }
     String sql;
-    Condition condition;
     if (matchedField.isControlField()) {
       sql = qualifierSearch ? StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
         : StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");

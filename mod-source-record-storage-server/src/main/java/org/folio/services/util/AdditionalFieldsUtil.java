@@ -1,5 +1,11 @@
 package org.folio.services.util;
 
+import static java.lang.String.format;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
+
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -8,9 +14,19 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringUtils;
@@ -33,23 +49,6 @@ import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Subfield;
 import org.marc4j.marc.VariableField;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ForkJoinPool;
-
-import static java.lang.String.format;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
-
 
 /**
  * Util to work with additional fields
@@ -58,6 +57,7 @@ public final class AdditionalFieldsUtil {
 
   public static final String TAG_00X_PREFIX = "00";
   public static final String TAG_005 = "005";
+  private static final String TAG_010 = "010";
   public static final String TAG_999 = "999";
   public static final String TAG_035 = "035";
   public static final char TAG_035_SUB = 'a';
@@ -498,16 +498,14 @@ public final class AdditionalFieldsUtil {
         MarcFactory factory = MarcFactory.newInstance();
         org.marc4j.marc.Record marcRecord = computeMarcRecord(recordForUpdate);
         if (marcRecord != null) {
-          removeOclcField(marcRecord, TAG_035);
 
           DataField dataField = factory.newDataField(TAG_035, TAG_035_IND, TAG_035_IND);
-
           normalizedValues.forEach(value -> {
             var v = value.split("&");
             dataField.addSubfield(factory.newSubfield(v[0].charAt(0), v[1]));
           });
 
-          addDataFieldInNumericalOrder(dataField, marcRecord);
+          replaceOclc035FieldWithNormalizedData(marcRecord, dataField);
 
           // use stream writer to recalculate leader
           streamWriter.write(marcRecord);
@@ -548,12 +546,21 @@ public final class AdditionalFieldsUtil {
     return Collections.emptyList();
   }
 
-  private static void removeOclcField(org.marc4j.marc.Record marcRecord, String fieldName) {
-    List<VariableField> variableFields = marcRecord.getVariableFields(fieldName);
+  private static void replaceOclc035FieldWithNormalizedData(org.marc4j.marc.Record marcRecord, DataField dataField) {
+    var variableFields = marcRecord.getVariableFields(TAG_035);
     if (!variableFields.isEmpty()) {
       variableFields.stream()
         .filter(variableField -> variableField.find(OCLC))
         .forEach(marcRecord::removeVariableField);
+
+      var dataFields = marcRecord.getDataFields();
+      for (int i = 0; i < dataFields.size(); i++) {
+        if (dataFields.get(i).getTag().equals(TAG_010)) {
+          marcRecord.getDataFields().add(i + 1, dataField);
+          return;
+        }
+      }
+      addDataFieldInNumericalOrder(dataField, marcRecord);
     }
   }
 
@@ -616,17 +623,25 @@ public final class AdditionalFieldsUtil {
   /**
    * Updates field 005 for case when this field is not protected.
    *
-   * @param record            record to update
+   * @param targetRecord            record to update
    * @param mappingParameters mapping parameters
    */
-  public static void updateLatestTransactionDate(Record record, MappingParameters mappingParameters) {
-    if (isField005NeedToUpdate(record, mappingParameters)) {
-      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
-      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_005, date, true);
-      if (!isLatestTransactionDateUpdated) {
-        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", record.getId()));
-      }
+  public static void updateLatestTransactionDate(Record targetRecord, MappingParameters mappingParameters) {
+    if (isField005NeedToUpdate(targetRecord, mappingParameters)) {
+      updateLatestTransactionDate(targetRecord);
     }
+  }
+
+  /**
+   * Updates field 005.
+   * @param targetRecord            record to update
+   */
+  public static void updateLatestTransactionDate(Record targetRecord) {
+      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(targetRecord, AdditionalFieldsUtil.TAG_005, date, true);
+      if (!isLatestTransactionDateUpdated) {
+        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", targetRecord.getId()));
+      }
   }
 
   /**

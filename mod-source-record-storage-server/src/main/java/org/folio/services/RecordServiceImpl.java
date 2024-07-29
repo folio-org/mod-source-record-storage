@@ -4,6 +4,7 @@ import static java.lang.String.format;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
@@ -55,6 +56,7 @@ import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -342,6 +344,7 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {
+        update005field(record);
         record.withState(Record.State.DELETED);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
@@ -499,6 +502,16 @@ public class RecordServiceImpl implements RecordService {
           .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
         .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
           .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
+  }
+
+  private static void update005field(Record targetRecord) {
+    if (targetRecord.getParsedRecord() != null && targetRecord.getParsedRecord().getContent() != null) {
+      AdditionalFieldsUtil.updateLatestTransactionDate(targetRecord);
+      var sourceContent = targetRecord.getParsedRecord().getContent().toString();
+      var targetContent = targetRecord.getParsedRecord().getContent().toString();
+      var content = reorderMarcRecordFields(sourceContent, targetContent);
+      targetRecord.getParsedRecord().setContent(content);
+    }
   }
 
 }

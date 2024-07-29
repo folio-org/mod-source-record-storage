@@ -9,6 +9,8 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -832,15 +834,18 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldDeleteExistingMarcRecordOnDeleteByInstanceId(TestContext testContext) {
+  public void shouldDeleteExistingMarcRecordOnDeleteByInstanceIdAndUpdate005FieldWithCurrentDate(TestContext testContext) {
     postSnapshots(testContext, snapshot_1);
 
     String srsId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
 
+    String currentDate = "20240718132044.6";
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
-        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+        .put("fields", new JsonArray()
+          .add(new JsonObject().put("005", currentDate))
+          .add(new JsonObject().put("999", new JsonObject()
           .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
 
     Record newRecord = new Record()
@@ -886,6 +891,13 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Assert.assertEquals("d", deletedRecord.getLeaderRecordStatus());
     Assert.assertEquals(true, deletedRecord.getAdditionalInfo().getSuppressDiscovery());
     Assert.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(deletedRecord.getParsedRecord()));
+
+    //Complex verifying "005" field is NOT empty inside parsed record.
+    LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content = (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) deletedRecord.getParsedRecord().getContent();
+    LinkedHashMap<String, String> map = content.get("fields").get(0);
+    String resulted005FieldValue = map.get("005");
+    Assert.assertNotNull(resulted005FieldValue);
+    Assert.assertNotEquals(currentDate, resulted005FieldValue);
 
     async.complete();
   }

@@ -132,7 +132,18 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.*;
+import static org.jooq.impl.DSL.condition;
+import static org.jooq.impl.DSL.countDistinct;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.inline;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.primaryKey;
+import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
+import static org.jooq.impl.DSL.selectDistinct;
+import static org.jooq.impl.DSL.exists;
 
 @Component
 public class RecordDaoImpl implements RecordDao {

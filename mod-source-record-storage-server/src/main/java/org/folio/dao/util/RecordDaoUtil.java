@@ -51,6 +51,7 @@ public final class RecordDaoUtil {
   public static final String RECORD_NOT_FOUND_TEMPLATE = "Record with id '%s' was not found";
 
   private static final String COMMA = ",";
+  private static final String LIKE_OPERATOR = "%";
   private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
 
   private RecordDaoUtil() {}
@@ -75,6 +76,18 @@ public final class RecordDaoUtil {
    */
   public static Condition getExternalIdsCondition(List<String> externalIds, IdType idType) {
     return getIdCondition(idType, idField -> idField.in(toUUIDs(externalIds)));
+  }
+
+  /**
+   * Get {@link Condition} where in external list ids and {@link IdType} and match by qualifier value
+   *
+   * @param externalIds list of external id
+   * @param idType      external id type
+   * @param qualifier qualifier type and value
+   * @return condition
+   */
+  public static Condition getExternalIdsConditionWithQualifier(List<String> externalIds, IdType idType, MatchField.QualifierMatch qualifier) {
+    return getIdConditionWithQualifier(idType, idField -> idField.in(toUUIDs(externalIds)), qualifier);
   }
 
   /**
@@ -479,6 +492,19 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} to filter by external entity hrid using specified values and match by qualifier value
+   *
+   * @param externalHridValues external entity hrid values to equal
+   * @param qualifier qualifier type and value
+   * @return condition
+   */
+  public static Condition filterRecordByExternalHridValuesWithQualifier(List<String> externalHridValues, MatchField.QualifierMatch qualifier) {
+    var qualifierCondition = buildQualifierCondition(RECORDS_LB.EXTERNAL_HRID, qualifier);
+    var resultCondition = RECORDS_LB.EXTERNAL_HRID.in(externalHridValues);
+    return qualifierCondition != null ? resultCondition.and(qualifierCondition) : resultCondition;
+  }
+
+  /**
    * Get {@link Condition} to filter by snapshotId id
    *
    * @param snapshotId snapshot id to equal
@@ -734,20 +760,47 @@ public final class RecordDaoUtil {
   }
 
   private static Condition getIdCondition(IdType idType, Function<Field<UUID>, Condition> idFieldToConditionMapper) {
-    IdType idTypeToUse = idType;
-    RecordType recordType = null;
-    if (idType == IdType.HOLDINGS) {
-      idTypeToUse = IdType.EXTERNAL;
-      recordType = RecordType.MARC_HOLDING;
-    } else if (idType == IdType.INSTANCE) {
-      idTypeToUse = IdType.EXTERNAL;
-      recordType = RecordType.MARC_BIB;
-    } else if (idType == IdType.AUTHORITY) {
-      idTypeToUse = IdType.EXTERNAL;
-      recordType = RecordType.MARC_AUTHORITY;
-    }
+    IdType idTypeToUse = getIdType(idType);
+    RecordType recordType = getRecordType(idTypeToUse);
     var idField = RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idTypeToUse.getIdField()), UUID.class);
     return idFieldToConditionMapper.apply(idField).and(getRecordTypeCondition(recordType));
+  }
+
+  private static Condition getIdConditionWithQualifier(IdType idType, Function<Field<UUID>, Condition> idFieldToConditionMapper, MatchField.QualifierMatch qualifier) {
+    IdType idTypeToUse = getIdType(idType);
+    RecordType recordType = getRecordType(idType);
+    var idField = RECORDS_LB.field(LOWER_CAMEL.to(LOWER_UNDERSCORE, idTypeToUse.getIdField()), UUID.class);
+    var qualifierCondition = buildQualifierCondition(idField, qualifier);
+    var resultCondition = idFieldToConditionMapper.apply(idField).and(getRecordTypeCondition(recordType));
+    return qualifierCondition != null ? resultCondition.and(qualifierCondition) : resultCondition;
+  }
+
+  private static Condition buildQualifierCondition(Field field, MatchField.QualifierMatch qualifier) {
+    if (qualifier == null) {
+      return null;
+    }
+    var value = qualifier.value();
+    return switch (qualifier.qualifier()) {
+      case BEGINS_WITH -> field.like(value + LIKE_OPERATOR);
+      case ENDS_WITH -> field.like(LIKE_OPERATOR + value);
+      case CONTAINS -> field.like(LIKE_OPERATOR + value + LIKE_OPERATOR);
+    };
+  }
+
+  private static RecordType getRecordType(IdType idType) {
+    return switch (idType) {
+      case HOLDINGS -> RecordType.MARC_HOLDING;
+      case INSTANCE -> RecordType.MARC_BIB;
+      case AUTHORITY -> RecordType.MARC_AUTHORITY;
+      default -> null;
+    };
+  }
+
+  private static IdType getIdType(IdType idType) {
+    return switch (idType) {
+      case HOLDINGS, INSTANCE, AUTHORITY -> IdType.EXTERNAL;
+      default -> idType;
+    };
   }
 
 }

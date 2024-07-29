@@ -9,9 +9,9 @@ import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValues;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.getExternalIdsCondition;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
@@ -465,7 +465,11 @@ public class RecordServiceImpl implements RecordService {
     String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
     String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
     String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
-    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()));
+    MatchField.QualifierMatch qualifier = null;
+    if (filter.getQualifier() != null && filter.getQualifierValue() != null) {
+      qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
+    }
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier);
   }
 
   private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {
@@ -480,13 +484,14 @@ public class RecordServiceImpl implements RecordService {
                                                                         RecordMatchingDto recordMatchingDto, String tenantId) {
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
     List<String> values = ((ListValue) matchField.getValue()).getValue();
+    var qualifier = matchField.getQualifierMatch();
 
     if (matchField.isMatchedId()) {
-      condition = condition.and(getExternalIdsCondition(values, IdType.RECORD));
+      condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier));
     } else if (matchField.isExternalId()) {
-      condition = condition.and(getExternalIdsCondition(values, IdType.EXTERNAL));
+      condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.EXTERNAL, qualifier));
     } else if (matchField.isExternalHrid()) {
-      condition = condition.and(filterRecordByExternalHridValues(values));
+      condition = condition.and(filterRecordByExternalHridValuesWithQualifier(values, qualifier));
     }
 
     return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), recordMatchingDto.getOffset(),

@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.SourceRecordDomainEvent;
 import org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -29,6 +30,8 @@ public class RecordDomainEventPublisher {
   public static final String RECORD_DOMAIN_TOPIC = "srs.source_records";
   private static final String RECORD_TYPE = "folio.srs.recordType";
   private static final Logger LOG = LogManager.getLogger();
+  @Value("${ENABLE_DOMAIN_EVENTS:true}")
+  private boolean enableDomainEvents;
 
   @Autowired
   private KafkaConfig kafkaConfig;

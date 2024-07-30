@@ -25,7 +25,7 @@ BEGIN
     SELECT was_updated INTO v_was_updated FROM upserted; -- Get the was_updated value
 
     -- Decide what to return based on whether it was an insert or an update
-    IF was_updated THEN
+    IF v_was_updated THEN
         SELECT version INTO v_version
         FROM ${database.defaultSchemaName}.marc_records_tracking
         WHERE marc_id = record_id;

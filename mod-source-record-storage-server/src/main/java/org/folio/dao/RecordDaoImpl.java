@@ -735,8 +735,7 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(TENANT);
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record, okapiHeaders))
-      .onSuccess(created -> recordDomainEventPublisher.publishRecordCreated(created, okapiHeaders));
+    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record, okapiHeaders));
   }
 
   @Override
@@ -971,8 +970,9 @@ public class RecordDaoImpl implements RecordDao {
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(r -> saveRecord(txQE, record, okapiHeaders))
-        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
+        .map(r -> insertOrUpdateRecord(txQE, record))
+        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))))
+      .onSuccess(updated -> recordDomainEventPublisher.publishRecordUpdated(updated, okapiHeaders));
   }
 
   @Override
@@ -1299,9 +1299,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders) {
     LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
-    return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
+    return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord))
+      .onSuccess(r -> recordDomainEventPublisher.publishRecordUpdated(r, okapiHeaders));
   }
 
   @Override

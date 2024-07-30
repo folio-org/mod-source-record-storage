@@ -1,14 +1,17 @@
 package org.folio.dao;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-
-import io.vertx.sqlclient.Row;
 import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -22,16 +25,11 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
-import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
 
 /**
  * Data access object for {@link Record}
@@ -372,9 +370,10 @@ public interface RecordDao {
    * @param txQE      query execution
    * @param newRecord new Record to create
    * @param oldRecord old Record that has to be marked as "old"
+   * @param okapiHeaders okapi headers
    * @return future with new "updated" Record
    */
-  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
+  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
   /**
    * Change suppress from discovery flag for record by external relation id

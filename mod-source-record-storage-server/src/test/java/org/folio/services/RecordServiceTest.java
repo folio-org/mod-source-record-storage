@@ -965,8 +965,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(TENANT, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DRAFT, RecordType.MARC_BIB, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -1002,7 +1002,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(TENANT, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -1191,7 +1191,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(TENANT, TENANT_ID);
 
     recordDao.saveRecord(expected, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
@@ -1361,7 +1361,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withAdditionalInfo(expected.getAdditionalInfo())
         .withExternalIdsHolder(expected.getExternalIdsHolder())
         .withMetadata(expected.getMetadata());
-      recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID).onComplete(update -> {
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }

@@ -241,10 +241,10 @@ public interface RecordService {
    *
    * @param parsedRecordDto parsed record DTO containing updates to parsed record
    * @param snapshotId      snapshot id to which new Record should be linked
-   * @param tenantId        tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
+  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders);
 
   /**
    * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,

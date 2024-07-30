@@ -149,7 +149,8 @@ public class RecordServiceImpl implements RecordService {
           if (generation > 0) {
             return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)),
+                  matchedRecord.withState(Record.State.OLD), okapiHeaders))
                 .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders)));
           } else {
             return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
@@ -293,7 +294,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders) {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
@@ -313,9 +314,9 @@ public class RecordServiceImpl implements RecordService {
             .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
             .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
             .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
+            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
-          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(TENANT));
   }
 
   @Override

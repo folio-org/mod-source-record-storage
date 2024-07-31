@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringUtils;
@@ -57,7 +58,6 @@ public final class AdditionalFieldsUtil {
 
   public static final String TAG_00X_PREFIX = "00";
   public static final String TAG_005 = "005";
-  private static final String TAG_010 = "010";
   public static final String TAG_999 = "999";
   public static final String TAG_035 = "035";
   public static final char TAG_035_SUB = 'a';
@@ -548,19 +548,16 @@ public final class AdditionalFieldsUtil {
 
   private static void replaceOclc035FieldWithNormalizedData(org.marc4j.marc.Record marcRecord, DataField dataField) {
     var variableFields = marcRecord.getVariableFields(TAG_035);
+    var index = new AtomicInteger();
     if (!variableFields.isEmpty()) {
       variableFields.stream()
         .filter(variableField -> variableField.find(OCLC))
-        .forEach(marcRecord::removeVariableField);
-
-      var dataFields = marcRecord.getDataFields();
-      for (int i = 0; i < dataFields.size(); i++) {
-        if (dataFields.get(i).getTag().equals(TAG_010)) {
-          marcRecord.getDataFields().add(i + 1, dataField);
-          return;
-        }
-      }
-      addDataFieldInNumericalOrder(dataField, marcRecord);
+        .forEach(variableField -> {
+          if (index.get() == 0)
+            index.set(marcRecord.getDataFields().indexOf(variableField));
+          marcRecord.removeVariableField(variableField);
+        });
+      marcRecord.getDataFields().add(index.get(), dataField);
     }
   }
 

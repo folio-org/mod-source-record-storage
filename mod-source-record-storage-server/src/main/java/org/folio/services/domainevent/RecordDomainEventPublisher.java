@@ -1,22 +1,19 @@
 package org.folio.services.domainevent;
 
+import static java.util.Objects.isNull;
 import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
 import static org.folio.okapi.common.XOkapiHeaders.URL;
 import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_UPDATED;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.kafka.KafkaConfig;
+import org.folio.services.kafka.KafkaSender;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.SourceRecordDomainEvent;
 import org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType;
@@ -27,14 +24,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class RecordDomainEventPublisher {
 
-  public static final String RECORD_DOMAIN_TOPIC = "srs.source_records";
+  public static final String RECORD_DOMAIN_EVENT_TOPIC = "srs.source_records";
   private static final String RECORD_TYPE = "folio.srs.recordType";
   private static final Logger LOG = LogManager.getLogger();
-  @Value("${ENABLE_DOMAIN_EVENTS:true}")
-  private boolean enableDomainEvents;
-
+  @Value("${DOMAIN_EVENTS_ENABLED:true}")
+  private boolean domainEventsEnabled;
   @Autowired
-  private KafkaConfig kafkaConfig;
+  private KafkaSender kafkaSender;
 
   public void publishRecordCreated(Record created, Map<String, String> okapiHeaders) {
     publishRecord(created, okapiHeaders, SOURCE_RECORD_CREATED);
@@ -45,25 +41,42 @@ public class RecordDomainEventPublisher {
   }
 
   private void publishRecord(Record aRecord, Map<String, String> okapiHeaders, EventType eventType) {
-    Vertx.vertx().executeBlocking(() -> {
-      try {
-        var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
-        var key = aRecord.getId();
-        return sendEventToKafka(okapiHeaders.get(TENANT), getEvent(aRecord, eventType),
-          eventType.value(), kafkaHeaders, kafkaConfig, key);
-      } catch (Exception e) {
-        LOG.error("Exception during Record domain event sending", e);
-        return Future.failedFuture(e);
-      }
-    });
+    if (!domainEventsEnabled || notValidForPublishing(aRecord)) {
+      return;
+    }
+    try {
+      var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
+      var key = aRecord.getId();
+      kafkaSender.sendEventToKafka(okapiHeaders.get(TENANT), getEvent(aRecord, eventType), eventType.value(),
+        kafkaHeaders, key);
+    } catch (Exception e) {
+      LOG.error("Exception during Record domain event sending", e);
+    }
+  }
+
+  private boolean notValidForPublishing(Record aRecord) {
+    if (isNull(aRecord.getRecordType())) {
+      LOG.error("Record [with id {}] contains no type information and won't be sent as domain event", aRecord.getId());
+      return true;
+    }
+    if (isNull(aRecord.getRawRecord())) {
+      LOG.error("Record [with id {}] contains no raw record and won't be sent as domain event", aRecord.getId());
+      return true;
+    }
+    if (isNull(aRecord.getRawRecord().getContent())) {
+      LOG.error("Record [with id {}] contains no raw record content and won't be sent as domain event",
+        aRecord.getId());
+      return true;
+    }
+    return false;
   }
 
   private List<KafkaHeader> getKafkaHeaders(Map<String, String> okapiHeaders, Record.RecordType recordType) {
-    return new ArrayList<>(List.of(
+    return List.of(
       KafkaHeader.header(URL, okapiHeaders.get(URL)),
       KafkaHeader.header(TENANT, okapiHeaders.get(TENANT)),
       KafkaHeader.header(TOKEN, okapiHeaders.get(TOKEN)),
-      KafkaHeader.header(RECORD_TYPE, recordType.value()))
+      KafkaHeader.header(RECORD_TYPE, recordType.value())
     );
   }
 
@@ -71,7 +84,7 @@ public class RecordDomainEventPublisher {
     var event = new SourceRecordDomainEvent()
       .withId(eventRecord.getId())
       .withEventType(type)
-      .withEventPayload((String) eventRecord.getParsedRecord().getContent());
+      .withEventPayload(eventRecord.getRawRecord().getContent());
     return Json.encode(event);
   }
 

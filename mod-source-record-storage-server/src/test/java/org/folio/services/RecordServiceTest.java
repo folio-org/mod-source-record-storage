@@ -1938,7 +1938,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<ParsedRecord> expected = updated.stream()
         .map(Record::getParsedRecord)
         .collect(Collectors.toList());
-      recordService.updateParsedRecords(recordCollection, TENANT_ID).onComplete(update -> {
+      var okapiHeaders = Map.of(TENANT, TENANT_ID);
+      recordService.updateParsedRecords(recordCollection, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }

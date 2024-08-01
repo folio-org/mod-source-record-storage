@@ -1077,21 +1077,26 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
+  public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(TENANT);
+    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
+      record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-    )).map(res -> record.getParsedRecord()));
+    )).onSuccess(updated -> recordDomainEventPublisher.publishRecordUpdated(record, okapiHeaders))
+      .map(res -> record.getParsedRecord()));
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(TENANT);
     logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
 
+    var recordsUpdated = new ArrayList<Record>();
     context.owner().<ParsedRecordsBatchResponse>executeBlocking(blockingPromise ->
       {
         Set<String> recordTypes = new HashSet<>();
@@ -1105,7 +1110,7 @@ public class RecordDaoImpl implements RecordDao {
         Field<UUID> prtId = field(name(ID), UUID.class);
         Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
 
-        List<ParsedRecord> parsedRecords = recordCollection.getRecords()
+        List<Record> processedRecords = recordCollection.getRecords()
           .stream()
           .map(this::validateParsedRecordId)
           .peek(record -> {
@@ -1187,9 +1192,9 @@ public class RecordDaoImpl implements RecordDao {
                 .setId(null);
             }
 
-          }).map(Record::getParsedRecord)
-                .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
-                .collect(Collectors.toList());
+          })
+          .filter(processedRecord -> Objects.nonNull(processedRecord.getParsedRecord().getId()))
+          .toList();
 
         try (Connection connection = getConnection(tenantId)) {
           DSL.using(connection).transaction(ctx -> {
@@ -1210,21 +1215,21 @@ public class RecordDaoImpl implements RecordDao {
             int[] parsedRecordUpdateResults = dsl.batch(parsedRecordUpdates).execute();
 
             // check parsed record update results
-            List<ParsedRecord> parsedRecordsUpdated = new ArrayList<>();
             for (int i = 0; i < parsedRecordUpdateResults.length; i++) {
               int result = parsedRecordUpdateResults[i];
-              ParsedRecord parsedRecord = parsedRecords.get(i);
+              var processedRecord = processedRecords.get(i);
               if (result == 0) {
-                errorMessages.add(format("Parsed Record with id '%s' was not updated", parsedRecord.getId()));
+                errorMessages.add(format("Parsed Record with id '%s' was not updated",
+                  processedRecord.getParsedRecord().getId()));
               } else {
-                parsedRecordsUpdated.add(parsedRecord);
+                recordsUpdated.add(processedRecord);
               }
             }
 
             blockingPromise.complete(new ParsedRecordsBatchResponse()
               .withErrorMessages(errorMessages)
-              .withParsedRecords(parsedRecordsUpdated)
-              .withTotalRecords(parsedRecordsUpdated.size()));
+              .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).collect(Collectors.toList()))
+              .withTotalRecords(recordsUpdated.size()));
           });
         } catch (SQLException e) {
           LOG.warn("updateParsedRecords:: Failed to update records", e);
@@ -1242,7 +1247,10 @@ public class RecordDaoImpl implements RecordDao {
               }
             });
 
-    return promise.future();
+    return promise.future()
+      .onSuccess(response ->
+        recordsUpdated.forEach(updated -> recordDomainEventPublisher.publishRecordUpdated(updated, okapiHeaders))
+      );
   }
 
   @Override

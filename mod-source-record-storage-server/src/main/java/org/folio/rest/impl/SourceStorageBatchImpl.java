@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+
 import java.util.List;
 import java.util.Map;
 
@@ -57,6 +59,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
+      okapiHeaders.put(TENANT, tenantId);
       try {
         MetadataUtil.populateMetadata(entity.getRecords(), okapiHeaders);
         recordService.saveRecords(entity, okapiHeaders)
@@ -82,9 +85,10 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   public void putSourceStorageBatchParsedRecords(RecordCollection entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
+      okapiHeaders.put(TENANT, tenantId);
       try {
         MetadataUtil.populateMetadata(entity.getRecords(), okapiHeaders);
-        recordService.updateParsedRecords(entity, tenantId)
+        recordService.updateParsedRecords(entity, okapiHeaders)
           .map(parsedRecordsBatchResponse -> {
             if (!parsedRecordsBatchResponse.getParsedRecords().isEmpty()) {
               return PutSourceStorageBatchParsedRecordsResponse.respond200WithApplicationJson(parsedRecordsBatchResponse);

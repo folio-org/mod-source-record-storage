@@ -201,7 +201,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
 
-    doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), anyString());
+    doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), any());
 
     doAnswer(invocationOnMock -> Future.succeededFuture(recordCollection)).when(mockedRecordService).getRecords(any(), any(), any(), anyInt(), anyInt(), anyString());
 
@@ -237,7 +237,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      verify(mockedRecordService, times(1)).updateParsedRecord(any(), anyString());
+      verify(mockedRecordService, times(1)).updateParsedRecord(any(), any());
       context.assertNull(payload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG));
       context.assertEquals(expectedCentralTenantId, payload.getContext().get(CENTRAL_TENANT_ID));
       async.complete();

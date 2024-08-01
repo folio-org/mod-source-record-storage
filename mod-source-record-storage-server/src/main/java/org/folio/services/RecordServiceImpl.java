@@ -238,18 +238,18 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    return recordDao.updateParsedRecord(record, tenantId);
+  public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
+    return recordDao.updateParsedRecord(record, okapiHeaders);
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
       promise.complete(new ParsedRecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    return recordDao.updateParsedRecords(recordCollection, tenantId);
+    return recordDao.updateParsedRecords(recordCollection, okapiHeaders);
   }
 
   @Override

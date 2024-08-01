@@ -234,19 +234,19 @@ public interface RecordDao {
    * Updates {@link ParsedRecord} in the db
    *
    * @param record   record dto from which {@link ParsedRecord} will be updated
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
    *
    * @param recordCollection collection of records from which parsed records will be updated
-   * @param tenantId         tenant id
+   * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully updated records and error messages for records that were not updated
    */
-  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
+  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record

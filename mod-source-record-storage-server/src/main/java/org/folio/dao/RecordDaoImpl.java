@@ -1,6 +1,7 @@
 package org.folio.dao;
 
 import com.google.common.collect.Lists;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.CustomReactiveQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.reactivex.Flowable;
@@ -21,6 +22,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ErrorRecordDaoUtil;
@@ -239,8 +241,8 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(action);
+  public <T> Future<T> executeInTransaction(Function<CustomReactiveQueryExecutor, Future<T>> action, String tenantId) {
+    return getQueryExecutor(tenantId).customTransaction(action);
   }
 
   @Override
@@ -730,11 +732,11 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Record> saveRecord(Record record, String tenantId) {
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
+    return getQueryExecutor(tenantId).customTransaction(txQE -> saveRecord(txQE, record));
   }
 
   @Override
-  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  public Future<Record> saveRecord(CustomReactiveQueryExecutor txQE, Record record) {
     LOG.trace("saveRecord:: Saving {} record {}", record.getRecordType(), record.getId());
     return insertOrUpdateRecord(txQE, record);
   }
@@ -914,6 +916,11 @@ public class RecordDaoImpl implements RecordDao {
             .fieldsCorresponding()
             .execute();
 
+          // update marc_indexers if record type is MARC_RECORDS_LB
+          ParsedRecordDaoUtil.updateMarcIndexersTableSync(dsl,
+            recordType,
+            dbParsedRecords.stream().collect(Collectors.toMap(Record2::value1, Record2::value2)));
+
           if (!dbErrorRecords.isEmpty()) {
             // batch insert error records
             dsl.loadInto(ERROR_RECORDS_LB)
@@ -956,7 +963,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Record> updateRecord(Record record, String tenantId) {
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
+    return getQueryExecutor(tenantId).customTransaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
         .map(r -> saveRecord(txQE, record))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
@@ -1066,7 +1073,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
+    return getQueryExecutor(tenantId).customTransaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
     )).map(res -> record.getParsedRecord()));
@@ -1088,6 +1095,7 @@ public class RecordDaoImpl implements RecordDao {
 
         List<UpdateConditionStep<RecordsLbRecord>> recordUpdates = new ArrayList<>();
         List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates = new ArrayList<>();
+        Map<String, JSONB> parsedMarcIndexersInput = new HashMap<>(); // used to insert marc_indexers
 
         Field<UUID> prtId = field(name(ID), UUID.class);
         Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
@@ -1160,12 +1168,15 @@ public class RecordDaoImpl implements RecordDao {
             try {
               RecordType recordType = toRecordType(record.getRecordType().name());
               recordType.formatRecord(record);
-
+              UUID id = UUID.fromString(record.getParsedRecord().getId());
+              JSONB content = JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
               parsedRecordUpdates.add(
                 DSL.update(table(name(recordType.getTableName())))
-                  .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
-                  .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
+                  .set(prtContent, content)
+                  .where(prtId.eq(id))
               );
+
+              parsedMarcIndexersInput.put(record.getParsedRecord().getId(), content);
 
             } catch (Exception e) {
               errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
@@ -1206,6 +1217,15 @@ public class RecordDaoImpl implements RecordDao {
               } else {
                 parsedRecordsUpdated.add(parsedRecord);
               }
+            }
+
+            // update MARC_INDEXERS
+            Map<UUID, JSONB> parsedRecordMap = parsedRecordsUpdated.stream()
+              .map(rec -> Pair.of(UUID.fromString(rec.getId()), parsedMarcIndexersInput.get(rec.getId())))
+              .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+            Optional<String> recordTypeOptional = recordTypes.stream().findFirst();
+            if (recordTypeOptional.isPresent()) {
+              ParsedRecordDaoUtil.updateMarcIndexersTableSync(dsl, toRecordType(recordTypeOptional.get()), parsedRecordMap);
             }
 
             blockingPromise.complete(new ParsedRecordsBatchResponse()
@@ -1286,7 +1306,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+  public Future<Record> saveUpdatedRecord(CustomReactiveQueryExecutor txQE, Record newRecord, Record oldRecord) {
     LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
     return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
   }
@@ -1403,7 +1423,7 @@ public class RecordDaoImpl implements RecordDao {
 
   public Future<Void> updateMarcAuthorityRecordsStateAsDeleted(String matchedId, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId));
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
+    return getQueryExecutor(tenantId).customTransaction(txQE -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
       .compose(recordCollection -> {
         List<Future<Record>> futures = recordCollection.getRecords().stream()
           .map(recordToUpdate -> updateMarcAuthorityRecordWithDeletedState(txQE, ensureRecordForeignKeys(recordToUpdate)))
@@ -1422,7 +1442,7 @@ public class RecordDaoImpl implements RecordDao {
       }));
   }
 
-  private Future<Record> updateMarcAuthorityRecordWithDeletedState(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  private Future<Record> updateMarcAuthorityRecordWithDeletedState(CustomReactiveQueryExecutor txQE, Record record) {
     record.withState(Record.State.DELETED);
     if (Objects.nonNull(record.getParsedRecord())) {
       record.getParsedRecord().setId(record.getId());
@@ -1437,7 +1457,7 @@ public class RecordDaoImpl implements RecordDao {
 
   }
 
-  private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+  private CustomReactiveQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
@@ -1483,7 +1503,7 @@ public class RecordDaoImpl implements RecordDao {
     return GenericCompositeFuture.all(futures).map(res -> record);
   }
 
-  private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  private Future<Record> insertOrUpdateRecord(CustomReactiveQueryExecutor txQE, Record record) {
     return RawRecordDaoUtil.save(txQE, record.getRawRecord())
       .compose(rawRecord -> {
         if (Objects.nonNull(record.getParsedRecord())) {
@@ -1511,7 +1531,7 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
-  private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  private Future<ParsedRecord> insertOrUpdateParsedRecord(CustomReactiveQueryExecutor txQE, Record record) {
     try {
       LOG.trace("insertOrUpdateParsedRecord:: Inserting or updating {} parsed record", record.getRecordType());
       // attempt to format record to validate

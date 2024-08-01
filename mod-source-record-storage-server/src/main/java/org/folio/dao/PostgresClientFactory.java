@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.CustomReactiveQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
@@ -72,7 +73,7 @@ public class PostgresClientFactory {
 
   private final Vertx vertx;
 
-  private static Class<? extends ReactiveClassicGenericQueryExecutor> reactiveClassicGenericQueryExecutorProxyClass;
+  private static Class<? extends CustomReactiveQueryExecutor> reactiveClassicGenericQueryExecutorProxyClass;
 
   @Value("${srs.db.reactive.numRetries:3}")
   private Integer numOfRetries;
@@ -123,13 +124,13 @@ public class PostgresClientFactory {
    * @param tenantId tenant id
    * @return reactive query executor
    */
-  public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+  public CustomReactiveQueryExecutor getQueryExecutor(String tenantId) {
     if (reactiveClassicGenericQueryExecutorProxyClass == null) setupProxyExecutorClass();
-    ReactiveClassicGenericQueryExecutor queryExecutorProxy;
+    CustomReactiveQueryExecutor queryExecutorProxy;
     try {
       queryExecutorProxy = reactiveClassicGenericQueryExecutorProxyClass
-        .getDeclaredConstructor(Configuration.class, SqlClient.class)
-        .newInstance(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
+        .getDeclaredConstructor(Configuration.class, SqlClient.class, String.class)
+        .newInstance(configuration, getCachedPool(this.vertx, tenantId).getDelegate(), tenantId);
     } catch (Exception e) {
       throw new RuntimeException("Something happened while creating proxied reactiveClassicGenericQueryExecutor", e);
     }

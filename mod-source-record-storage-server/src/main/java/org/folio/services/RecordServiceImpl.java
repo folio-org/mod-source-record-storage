@@ -14,12 +14,20 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 
+import io.reactivex.Flowable;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.pgclient.PgException;
+import io.vertx.sqlclient.Row;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,41 +40,22 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
-
-import io.reactivex.Flowable;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.pgclient.PgException;
-import io.vertx.sqlclient.Row;
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.RecordDao;
 import org.folio.dao.util.IdType;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.MatchField;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
-import org.folio.rest.jaxrs.model.Filter;
-import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
-import org.folio.rest.jaxrs.model.RecordMatchingDto;
-import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
-import org.folio.services.exceptions.DuplicateRecordException;
-import org.folio.services.util.AdditionalFieldsUtil;
-import org.folio.services.util.TypeConnection;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.folio.dao.RecordDao;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
+import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -74,15 +63,25 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -125,7 +124,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
@@ -168,7 +167,7 @@ public class RecordServiceImpl implements RecordService {
     }
     List<Future> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
-      okapiHeaders.get(TENANT))));
+      okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded() ?
         recordDao.saveRecords(recordCollection, okapiHeaders)
@@ -189,7 +188,7 @@ public class RecordServiceImpl implements RecordService {
     }
     record.setId(UUID.randomUUID().toString());
 
-    return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(TENANT))
+    return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(OKAPI_TENANT_HEADER))
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
       .compose(v -> saveRecord(record, okapiHeaders))
       .recover(throwable -> {
@@ -316,7 +315,7 @@ public class RecordServiceImpl implements RecordService {
             .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
             .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
-          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(TENANT));
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
   }
 
   @Override
@@ -346,7 +345,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {

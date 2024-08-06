@@ -1,12 +1,17 @@
 package org.folio.rest.impl;
 
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import java.util.List;
 import java.util.Map;
-
 import javax.ws.rs.core.Response;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -16,14 +21,6 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class SourceStorageBatchImpl implements SourceStorageBatch {
 
@@ -59,7 +56,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   public void postSourceStorageBatchRecords(RecordCollection entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      okapiHeaders.put(TENANT, tenantId);
+      okapiHeaders.put(OKAPI_TENANT_HEADER, tenantId);
       try {
         MetadataUtil.populateMetadata(entity.getRecords(), okapiHeaders);
         recordService.saveRecords(entity, okapiHeaders)
@@ -85,7 +82,7 @@ public class SourceStorageBatchImpl implements SourceStorageBatch {
   public void putSourceStorageBatchParsedRecords(RecordCollection entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
-      okapiHeaders.put(TENANT, tenantId);
+      okapiHeaders.put(OKAPI_TENANT_HEADER, tenantId);
       try {
         MetadataUtil.populateMetadata(entity.getRecords(), okapiHeaders);
         recordService.updateParsedRecords(entity, okapiHeaders)

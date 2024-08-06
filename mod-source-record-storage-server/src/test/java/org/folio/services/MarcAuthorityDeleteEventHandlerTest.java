@@ -1,11 +1,23 @@
 package org.folio.services;
 
+import static org.folio.ActionProfile.Action.DELETE;
+import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.dao.RecordDaoImpl;
@@ -23,21 +35,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static org.folio.ActionProfile.Action.DELETE;
-import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
@@ -96,7 +95,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY)
         )
       );
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordService.saveRecord(record, okapiHeaders)
       // when
       .onSuccess(ar -> eventHandler.handle(dataImportEventPayload)

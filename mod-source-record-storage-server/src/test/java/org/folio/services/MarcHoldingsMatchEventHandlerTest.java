@@ -1,9 +1,8 @@
 package org.folio.services;
 
 import static java.util.Collections.singletonList;
-
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDING_RECORD_CREATED;
@@ -12,14 +11,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import io.vertx.core.json.Json;
@@ -27,16 +18,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.folio.services.domainevent.RecordDomainEventPublisher;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.MatchDetail;
@@ -55,7 +43,16 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
@@ -177,7 +174,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
               )))
           ))));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -227,7 +224,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("recordSubfield").withValue("")
               )))))));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -278,7 +275,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
               )))
           ))));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -326,7 +323,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -372,7 +369,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> handler.handle(dataImportEventPayload)

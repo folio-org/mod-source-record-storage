@@ -15,7 +15,6 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -23,6 +22,7 @@ import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
@@ -733,7 +733,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record, okapiHeaders));
   }
@@ -748,7 +748,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
@@ -966,7 +966,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
@@ -1078,7 +1078,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
       record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
@@ -1090,7 +1090,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(TENANT);
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();

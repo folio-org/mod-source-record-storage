@@ -1,7 +1,7 @@
 package org.folio.consumers;
 
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.Json;
@@ -84,7 +84,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onSuccess(ar -> async.complete())

@@ -2,10 +2,9 @@ package org.folio.services.util;
 
 import static java.util.Arrays.stream;
 import static java.util.Objects.nonNull;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
-import static org.folio.okapi.common.XOkapiHeaders.URL;
-import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
@@ -30,6 +29,7 @@ import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
 import org.folio.rest.tools.utils.ModuleName;
+import org.folio.services.domainevent.SourceRecordDomainEventType;
 
 public final class EventHandlingUtil {
 
@@ -107,7 +107,7 @@ public final class EventHandlingUtil {
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
-    if (stream(EventType.values()).anyMatch(et -> et.value().equals(eventType))) {
+    if (stream(SourceRecordDomainEventType.values()).anyMatch(et -> et.name().equals(eventType))) {
       return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), tenantId, RECORD_DOMAIN_EVENT_TOPIC);
     }
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), KafkaTopicNameHelper.getDefaultNameSpace(),
@@ -124,17 +124,21 @@ public final class EventHandlingUtil {
 
   public static Map<String, String> toOkapiHeaders(DataImportEventPayload eventPayload) {
     var okapiHeaders = new HashMap<String, String>();
-    okapiHeaders.put(URL, eventPayload.getOkapiUrl());
-    okapiHeaders.put(TENANT, eventPayload.getTenant());
-    okapiHeaders.put(TOKEN, eventPayload.getToken());
+    okapiHeaders.put(OKAPI_URL_HEADER, eventPayload.getOkapiUrl());
+    okapiHeaders.put(OKAPI_TENANT_HEADER, eventPayload.getTenant());
+    okapiHeaders.put(OKAPI_TOKEN_HEADER, eventPayload.getToken());
     return okapiHeaders;
+  }
+
+  public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders) {
+    return toOkapiHeaders(kafkaHeaders, null);
   }
 
   public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders, String eventTenantId) {
     var okapiHeaders = new HashMap<String, String>();
-    okapiHeaders.put(URL, extractHeaderValue(URL, kafkaHeaders));
-    okapiHeaders.put(TENANT, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(TENANT, kafkaHeaders));
-    okapiHeaders.put(TOKEN, extractHeaderValue(TOKEN, kafkaHeaders));
+    okapiHeaders.put(OKAPI_URL_HEADER, extractHeaderValue(OKAPI_URL_HEADER, kafkaHeaders));
+    okapiHeaders.put(OKAPI_TENANT_HEADER, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(OKAPI_TENANT_HEADER, kafkaHeaders));
+    okapiHeaders.put(OKAPI_TOKEN_HEADER, extractHeaderValue(OKAPI_TOKEN_HEADER, kafkaHeaders));
     return okapiHeaders;
   }
 

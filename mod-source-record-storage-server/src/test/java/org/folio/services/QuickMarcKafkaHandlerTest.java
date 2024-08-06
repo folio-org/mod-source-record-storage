@@ -1,12 +1,27 @@
 package org.folio.services;
 
+import static org.folio.dao.util.QMEventTypes.QM_ERROR;
+import static org.folio.dao.util.QMEventTypes.QM_RECORD_UPDATED;
+import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
@@ -34,22 +49,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static org.folio.dao.util.QMEventTypes.QM_ERROR;
-import static org.folio.dao.util.QMEventTypes.QM_RECORD_UPDATED;
-import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
-import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 
 @RunWith(VertxUnitRunner.class)
 public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
@@ -96,7 +95,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onSuccess(ar -> async.complete())
@@ -120,7 +119,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
 
     ParsedRecord parsedRecord = record.getParsedRecord();
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     Future<Record> future = recordService.saveRecord(record, okapiHeaders);
 
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()

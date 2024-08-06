@@ -1,10 +1,33 @@
 package org.folio.services.handlers.actions;
 
+import static java.lang.String.format;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
+import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.normalize035;
+import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -26,30 +49,6 @@ import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.util.RestUtil;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static java.lang.String.format;
-import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
-import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
-import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.normalize035;
-import static org.folio.services.util.AdditionalFieldsUtil.remove003FieldIfNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
-import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
@@ -122,7 +121,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
           var okapiHeaders = toOkapiHeaders(payload);
           if (centralTenantId != null) {
-            okapiHeaders.put(TENANT, centralTenantId);
+            okapiHeaders.put(OKAPI_TENANT_HEADER, centralTenantId);
             return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
               .compose(snapshot -> recordService.saveRecord(changedRecord, okapiHeaders));
           }

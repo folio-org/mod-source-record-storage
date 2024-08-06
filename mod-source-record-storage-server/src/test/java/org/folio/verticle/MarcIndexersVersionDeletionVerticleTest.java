@@ -1,10 +1,19 @@
 package org.folio.verticle;
 
+import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
+import static org.folio.rest.jaxrs.model.Record.State.OLD;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
+
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
+import java.util.UUID;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -23,18 +32,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.util.UUID;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
-import static org.folio.rest.jaxrs.model.Record.State.OLD;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.table;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTest {
@@ -73,7 +72,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(recordId))
       .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onComplete(save -> {
@@ -99,7 +98,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   public void shouldDeleteOldVersionsOfMarcIndexers(TestContext context) {
     Async async = context.async();
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     // performs record update in the DB that leads to new indexers creation with incremented version
     // so that previous existing indexers become old and should be deleted
     Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
@@ -119,7 +118,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   public void shouldDeleteMarcIndexersRelatedToRecordInOldState(TestContext context) {
     Async async = context.async();
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
       .onSuccess(context::assertTrue)

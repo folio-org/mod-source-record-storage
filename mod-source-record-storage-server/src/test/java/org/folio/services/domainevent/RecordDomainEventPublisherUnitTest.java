@@ -1,10 +1,10 @@
 package org.folio.services.domainevent;
 
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
-import static org.folio.okapi.common.XOkapiHeaders.URL;
-import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_UPDATED;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
+import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -35,7 +35,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -49,7 +49,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, headers);
@@ -63,7 +63,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -77,7 +77,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, headers);
@@ -91,7 +91,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -105,7 +105,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
-    var headers = Map.of(TENANT, "TENANT", URL, "OKAPI_URL", TOKEN, "TOKEN");
+    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, headers);
@@ -123,24 +123,18 @@ public class RecordDomainEventPublisherUnitTest {
       .withId(UUID.randomUUID().toString())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(new RawRecord().withContent(rawContent));
-    var tenantId = "TENANT";
+    var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
-    var givenHeaders = Map.of(TENANT, tenantId, URL, okapiUrl, TOKEN, token);
+    var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
-    var eventType = SOURCE_RECORD_CREATED.value();
-    var expectedPayload = "{"
-      + "\"id\":\"" + aRecord.getId() + "\""
-      + ",\"eventType\":\"" + eventType + "\""
-      + ",\"eventPayload\":\"" + rawContent + "\""
-      + "}";
+    var eventType = SOURCE_RECORD_CREATED.name();
 
     // when
     publisher.publishRecordCreated(aRecord, givenHeaders);
 
     // then
-    verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders,
-      aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, rawContent, eventType, expectedHeaders, aRecord.getId());
   }
 
   @Test
@@ -155,28 +149,22 @@ public class RecordDomainEventPublisherUnitTest {
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
-    var givenHeaders = Map.of(TENANT, tenantId, URL, okapiUrl, TOKEN, token);
+    var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
-    var eventType = SOURCE_RECORD_UPDATED.value();
-    var expectedPayload = "{"
-      + "\"id\":\"" + aRecord.getId() + "\""
-      + ",\"eventType\":\"" + eventType + "\""
-      + ",\"eventPayload\":\"" + rawContent + "\""
-      + "}";
+    var eventType = SOURCE_RECORD_UPDATED.name();
 
     // when
     publisher.publishRecordUpdated(aRecord, givenHeaders);
 
     // thenÏ
-    verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders,
-      aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, rawContent, eventType, expectedHeaders, aRecord.getId());
   }
 
   private List<KafkaHeader> getKafkaHeaders(String okapiUrl, String tenantId, String token, Record aRecord) {
     return List.of(
-      KafkaHeader.header(URL, okapiUrl),
-      KafkaHeader.header(TENANT, tenantId),
-      KafkaHeader.header(TOKEN, token),
+      KafkaHeader.header(OKAPI_URL_HEADER, okapiUrl),
+      KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, token),
       KafkaHeader.header("folio.srs.recordType", aRecord.getRecordType().value())
     );
   }

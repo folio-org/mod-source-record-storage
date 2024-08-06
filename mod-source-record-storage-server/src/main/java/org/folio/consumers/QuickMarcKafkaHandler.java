@@ -2,7 +2,7 @@ package org.folio.consumers;
 
 import static org.folio.dao.util.QMEventTypes.QM_ERROR;
 import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
 import static org.folio.services.util.EventHandlingUtil.createProducerRecord;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
@@ -65,12 +65,12 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     log.trace("handle:: Handling kafka consumerRecord {}", consumerRecord);
 
     var kafkaHeaders = consumerRecord.headers();
-    var okapiHeaders = toOkapiHeaders(kafkaHeaders, null);
+    var okapiHeaders = toOkapiHeaders(kafkaHeaders);
 
     return getEventPayload(consumerRecord)
       .compose(eventPayload -> {
         String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
-        var tenantId = okapiHeaders.get(TENANT);
+        var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
         return getRecordDto(eventPayload)
           .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, okapiHeaders))
           .compose(updatedRecord -> {

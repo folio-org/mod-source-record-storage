@@ -86,7 +86,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}'",
         event.getEventType(), jobExecutionId, chunkId, chunkNumber, key);
       setUserMetadata(recordCollection, userId);
-      return recordService.saveRecords(recordCollection, toOkapiHeaders(kafkaHeaders, null))
+      return recordService.saveRecords(recordCollection, toOkapiHeaders(kafkaHeaders))
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, event.getEventType(), targetRecord));
     } catch (Exception e) {
       LOGGER.warn("handle:: RecordCollection processing has failed with errors jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}'",

@@ -1,11 +1,21 @@
 package org.folio.dao;
 
+import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
+import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
+import static org.folio.rest.jaxrs.model.Record.State.DELETED;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -22,7 +32,6 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.util.TypeConnection;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,17 +39,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
-import static org.folio.rest.jaxrs.model.Record.State.DELETED;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordDaoImplTest extends AbstractLBServiceTest {
@@ -92,7 +90,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
-    var okapiHeaders = Map.of(TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))

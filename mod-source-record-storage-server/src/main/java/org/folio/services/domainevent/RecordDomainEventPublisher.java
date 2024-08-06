@@ -1,22 +1,19 @@
 package org.folio.services.domainevent;
 
 import static java.util.Objects.isNull;
-import static org.folio.okapi.common.XOkapiHeaders.TENANT;
-import static org.folio.okapi.common.XOkapiHeaders.TOKEN;
-import static org.folio.okapi.common.XOkapiHeaders.URL;
-import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType.SOURCE_RECORD_UPDATED;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
+import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
 
-import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.services.kafka.KafkaSender;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.SourceRecordDomainEvent;
-import org.folio.rest.jaxrs.model.SourceRecordDomainEvent.EventType;
+import org.folio.services.kafka.KafkaSender;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -40,15 +37,15 @@ public class RecordDomainEventPublisher {
     publishRecord(updated, okapiHeaders, SOURCE_RECORD_UPDATED);
   }
 
-  private void publishRecord(Record aRecord, Map<String, String> okapiHeaders, EventType eventType) {
+  private void publishRecord(Record aRecord, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
     if (!domainEventsEnabled || notValidForPublishing(aRecord)) {
       return;
     }
     try {
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      kafkaSender.sendEventToKafka(okapiHeaders.get(TENANT), getEvent(aRecord, eventType), eventType.value(),
-        kafkaHeaders, key);
+      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), aRecord.getRawRecord().getContent(),
+        eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
       LOG.error("Exception during Record domain event sending", e);
     }
@@ -73,19 +70,11 @@ public class RecordDomainEventPublisher {
 
   private List<KafkaHeader> getKafkaHeaders(Map<String, String> okapiHeaders, Record.RecordType recordType) {
     return List.of(
-      KafkaHeader.header(URL, okapiHeaders.get(URL)),
-      KafkaHeader.header(TENANT, okapiHeaders.get(TENANT)),
-      KafkaHeader.header(TOKEN, okapiHeaders.get(TOKEN)),
+      KafkaHeader.header(OKAPI_URL_HEADER, okapiHeaders.get(OKAPI_URL_HEADER)),
+      KafkaHeader.header(OKAPI_TENANT_HEADER, okapiHeaders.get(OKAPI_TENANT_HEADER)),
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, okapiHeaders.get(OKAPI_TOKEN_HEADER)),
       KafkaHeader.header(RECORD_TYPE, recordType.value())
     );
-  }
-
-  private String getEvent(Record eventRecord, EventType type) {
-    var event = new SourceRecordDomainEvent()
-      .withId(eventRecord.getId())
-      .withEventType(type)
-      .withEventPayload(eventRecord.getRawRecord().getContent());
-    return Json.encode(event);
   }
 
 }

@@ -14,11 +14,11 @@ import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
-
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,18 +35,17 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -80,6 +79,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.handlers.actions.MarcBibUpdateModifyEventHandler;
 import org.junit.After;
@@ -89,6 +89,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
@@ -115,6 +117,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
   private SnapshotDao snapshotDao;
   private RecordService recordService;
@@ -231,11 +235,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) {
+    MockitoAnnotations.openMocks(this);
     wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     snapshotDao = new SnapshotDaoImpl(postgresClientFactory);
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
@@ -285,10 +290,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     ReactiveClassicGenericQueryExecutor queryExecutorCentralTenant = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
 
     SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
-      .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> recordService.saveRecord(record, Map.of(OKAPI_TENANT_HEADER, TENANT_ID)))
       .compose(v -> SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshotForRecordUpdate))
       .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot_2))
-      .compose(v -> recordService.saveRecord(record_2, CENTRAL_TENANT_ID))
+      .compose(v -> recordService.saveRecord(record_2, Map.of(OKAPI_TENANT_HEADER, CENTRAL_TENANT_ID)))
       .onComplete(context.asyncAssertSuccess());
   }
 
@@ -705,8 +710,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
       .withMetadata(new Metadata());
 
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
-      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
@@ -882,8 +888,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
       .withMetadata(new Metadata());
 
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
-      .compose(v -> recordService.saveRecord(secondRecord, TENANT_ID))
+      .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {

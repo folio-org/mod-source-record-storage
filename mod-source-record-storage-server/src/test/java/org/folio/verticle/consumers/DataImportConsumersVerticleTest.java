@@ -3,32 +3,24 @@ package org.folio.verticle.consumers;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
-import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
-import static org.junit.Assert.assertEquals;
-
 import static org.folio.ActionProfile.Action.DELETE;
+import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_DELETE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -42,14 +34,17 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import org.folio.ActionProfile;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
@@ -74,6 +69,13 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
@@ -99,6 +101,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         .withSubaction(MarcSubfield.Subaction.INSERT)
         .withPosition(MarcSubfield.Position.BEFORE_STRING)
         .withData(new Data().withText("http://libproxy.smith.edu?url=")))));
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
 
   @Rule
   public WireMockRule mockServer = new WireMockRule(
@@ -110,6 +114,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) throws IOException {
+    MockitoAnnotations.openMocks(this);
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
@@ -140,10 +145,11 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory);
+    RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
 
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordDao.saveRecord(record, TENANT_ID))
+      .compose(v -> recordDao.saveRecord(record, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }

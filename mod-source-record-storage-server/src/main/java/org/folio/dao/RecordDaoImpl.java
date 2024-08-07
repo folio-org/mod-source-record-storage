@@ -1,5 +1,42 @@
 package org.folio.dao;
 
+import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
+import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
+import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
+import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
+import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
+import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
+import static org.folio.dao.util.RecordDaoUtil.getExternalId;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
+import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
+import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
+import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.QueryParamUtil.toRecordType;
+import static org.jooq.impl.DSL.condition;
+import static org.jooq.impl.DSL.countDistinct;
+import static org.jooq.impl.DSL.exists;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.inline;
+import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.primaryKey;
+import static org.jooq.impl.DSL.select;
+import static org.jooq.impl.DSL.selectDistinct;
+import static org.jooq.impl.DSL.table;
+import static org.jooq.impl.DSL.trueCondition;
+
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -11,6 +48,24 @@ import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -60,6 +115,7 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -89,61 +145,6 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
-import static java.util.Collections.emptyList;
-import static org.folio.dao.util.AdvisoryLockUtil.acquireLock;
-import static org.folio.dao.util.ErrorRecordDaoUtil.ERROR_RECORD_CONTENT;
-import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
-import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
-import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
-import static org.folio.dao.util.RecordDaoUtil.getExternalId;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
-import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
-import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
-import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
-import static org.folio.rest.util.QueryParamUtil.toRecordType;
-import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.inline;
-import static org.jooq.impl.DSL.max;
-import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.primaryKey;
-import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.table;
-import static org.jooq.impl.DSL.trueCondition;
-import static org.jooq.impl.DSL.selectDistinct;
-import static org.jooq.impl.DSL.exists;
 
 @Component
 public class RecordDaoImpl implements RecordDao {
@@ -229,13 +230,16 @@ public class RecordDaoImpl implements RecordDao {
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
 
   private final PostgresClientFactory postgresClientFactory;
+  private final RecordDomainEventPublisher recordDomainEventPublisher;
 
   @org.springframework.beans.factory.annotation.Value("${srs.record.matching.fallback-query.enable:false}")
   private boolean enableFallbackQuery;
 
   @Autowired
-  public RecordDaoImpl(final PostgresClientFactory postgresClientFactory) {
+  public RecordDaoImpl(final PostgresClientFactory postgresClientFactory,
+                       final RecordDomainEventPublisher recordDomainEventPublisher) {
     this.postgresClientFactory = postgresClientFactory;
+    this.recordDomainEventPublisher = recordDomainEventPublisher;
   }
 
   @Override
@@ -728,19 +732,23 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveRecord(Record record, String tenantId) {
+  public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record));
+    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record, okapiHeaders));
   }
 
   @Override
-  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record,
+                                   Map<String, String> okapiHeaders) {
     LOG.trace("saveRecord:: Saving {} record {}", record.getRecordType(), record.getId());
-    return insertOrUpdateRecord(txQE, record);
+    return insertOrUpdateRecord(txQE, record)
+      .onSuccess(created -> recordDomainEventPublisher.publishRecordCreated(created, okapiHeaders));
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
@@ -950,16 +958,21 @@ public class RecordDaoImpl implements RecordDao {
       }
     });
 
-    return finalPromise.future();
+    return finalPromise.future()
+      .onSuccess(response -> response.getRecords()
+        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
+      );
   }
 
   @Override
-  public Future<Record> updateRecord(Record record, String tenantId) {
+  public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(r -> saveRecord(txQE, record))
-        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
+        .map(r -> insertOrUpdateRecord(txQE, record))
+        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))))
+      .onSuccess(updated -> recordDomainEventPublisher.publishRecordUpdated(updated, okapiHeaders));
   }
 
   @Override
@@ -1064,21 +1077,26 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
+  public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
+      record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> GenericCompositeFuture.all(Lists.newArrayList(
       updateExternalIdsForRecord(txQE, record),
       ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-    )).map(res -> record.getParsedRecord()));
+    )).onSuccess(updated -> recordDomainEventPublisher.publishRecordUpdated(record, okapiHeaders))
+      .map(res -> record.getParsedRecord()));
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
 
+    var recordsUpdated = new ArrayList<Record>();
     context.owner().<ParsedRecordsBatchResponse>executeBlocking(blockingPromise ->
       {
         Set<String> recordTypes = new HashSet<>();
@@ -1092,7 +1110,7 @@ public class RecordDaoImpl implements RecordDao {
         Field<UUID> prtId = field(name(ID), UUID.class);
         Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
 
-        List<ParsedRecord> parsedRecords = recordCollection.getRecords()
+        List<Record> processedRecords = recordCollection.getRecords()
           .stream()
           .map(this::validateParsedRecordId)
           .peek(record -> {
@@ -1174,9 +1192,9 @@ public class RecordDaoImpl implements RecordDao {
                 .setId(null);
             }
 
-          }).map(Record::getParsedRecord)
-                .filter(parsedRecord -> Objects.nonNull(parsedRecord.getId()))
-                .collect(Collectors.toList());
+          })
+          .filter(processedRecord -> Objects.nonNull(processedRecord.getParsedRecord().getId()))
+          .toList();
 
         try (Connection connection = getConnection(tenantId)) {
           DSL.using(connection).transaction(ctx -> {
@@ -1197,21 +1215,21 @@ public class RecordDaoImpl implements RecordDao {
             int[] parsedRecordUpdateResults = dsl.batch(parsedRecordUpdates).execute();
 
             // check parsed record update results
-            List<ParsedRecord> parsedRecordsUpdated = new ArrayList<>();
             for (int i = 0; i < parsedRecordUpdateResults.length; i++) {
               int result = parsedRecordUpdateResults[i];
-              ParsedRecord parsedRecord = parsedRecords.get(i);
+              var processedRecord = processedRecords.get(i);
               if (result == 0) {
-                errorMessages.add(format("Parsed Record with id '%s' was not updated", parsedRecord.getId()));
+                errorMessages.add(format("Parsed Record with id '%s' was not updated",
+                  processedRecord.getParsedRecord().getId()));
               } else {
-                parsedRecordsUpdated.add(parsedRecord);
+                recordsUpdated.add(processedRecord);
               }
             }
 
             blockingPromise.complete(new ParsedRecordsBatchResponse()
               .withErrorMessages(errorMessages)
-              .withParsedRecords(parsedRecordsUpdated)
-              .withTotalRecords(parsedRecordsUpdated.size()));
+              .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).collect(Collectors.toList()))
+              .withTotalRecords(recordsUpdated.size()));
           });
         } catch (SQLException e) {
           LOG.warn("updateParsedRecords:: Failed to update records", e);
@@ -1229,7 +1247,10 @@ public class RecordDaoImpl implements RecordDao {
               }
             });
 
-    return promise.future();
+    return promise.future()
+      .onSuccess(response ->
+        recordsUpdated.forEach(updated -> recordDomainEventPublisher.publishRecordUpdated(updated, okapiHeaders))
+      );
   }
 
   @Override
@@ -1286,9 +1307,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord) {
+  public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders) {
     LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
-    return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord));
+    return insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord))
+      .onSuccess(r -> recordDomainEventPublisher.publishRecordUpdated(r, okapiHeaders));
   }
 
   @Override

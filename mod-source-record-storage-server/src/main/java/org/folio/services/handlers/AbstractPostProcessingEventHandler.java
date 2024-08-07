@@ -1,11 +1,40 @@
 package org.folio.services.handlers;
 
+import static java.lang.String.format;
+import static org.apache.commons.lang.StringUtils.isEmpty;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
+import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
+import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
+import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
+import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,34 +59,6 @@ import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.exceptions.PostProcessingException;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
-import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
-import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.fillHrIdFieldInMarcRecord;
-import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
-import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
-import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
-import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
@@ -108,7 +109,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           if (centralTenantOperationExists(dataImportEventPayload)) {
             return saveRecordForCentralTenant(dataImportEventPayload, record, jobExecutionId);
           }
-          return saveRecord(record, dataImportEventPayload.getTenant());
+          return saveRecord(record, toOkapiHeaders(dataImportEventPayload));
         })
         .onSuccess(record -> {
           sendReplyEvent(dataImportEventPayload, record);
@@ -247,17 +248,17 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     }
   }
 
-  private Future<Void> updatePreviousRecordsState(String externalId, String snapshotId, String tenantId) {
+  private Future<Void> updatePreviousRecordsState(String externalId, String snapshotId, Map<String, String> okapiHeaders) {
     Condition condition = filterRecordByNotSnapshotId(snapshotId)
       .and(filterRecordByExternalId(externalId));
 
-    return recordService.getRecords(condition, getDbType(), new ArrayList<>(), 0, 999, tenantId)
-      .compose(recordCollection -> {
+    return recordService.getRecords(condition, getDbType(), new ArrayList<>(), 0, 999,
+      okapiHeaders.get(OKAPI_TENANT_HEADER)).compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")
         List<Future<Record>> futures = new ArrayList<>();
         recordCollection.getRecords()
-          .forEach(record -> futures.add(recordService.updateRecord(record.withState(Record.State.OLD), tenantId)));
+          .forEach(record -> futures.add(recordService.updateRecord(record.withState(Record.State.OLD), okapiHeaders)));
         GenericCompositeFuture.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
@@ -308,21 +309,22 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
    * Updates specific record. If it doesn't exist - then just save it.
    *
    * @param record   - target record
-   * @param tenantId - tenantId
+   * @param okapiHeaders - okapi headers
    * @return - Future with Record result
    */
-  private Future<Record> saveRecord(Record record, String tenantId) {
+  private Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
-          return recordService.updateParsedRecord(record, tenantId).map(record.withGeneration(r.get().getGeneration()));
+          return recordService.updateParsedRecord(record, okapiHeaders).map(record.withGeneration(r.get().getGeneration()));
         } else {
           record.getRawRecord().setId(record.getId());
-          return recordService.saveRecord(record, tenantId).map(record);
+          return recordService.saveRecord(record, okapiHeaders).map(record);
         }
       })
       .compose(updatedRecord ->
-        updatePreviousRecordsState(getExternalId(updatedRecord), updatedRecord.getSnapshotId(), tenantId)
+        updatePreviousRecordsState(getExternalId(updatedRecord), updatedRecord.getSnapshotId(), okapiHeaders)
           .map(updatedRecord)
       );
   }
@@ -348,12 +350,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
     dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
+    var okapiHeaders = toOkapiHeaders(dataImportEventPayload);
     if (centralTenantId != null) {
+      okapiHeaders.put(OKAPI_TENANT_HEADER, centralTenantId);
       return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)
-        .compose(f -> saveRecord(record, centralTenantId));
+        .compose(f -> saveRecord(record, okapiHeaders));
     }
     else {
-      return saveRecord(record, dataImportEventPayload.getTenant());
+      return saveRecord(record, okapiHeaders);
     }
   }
 

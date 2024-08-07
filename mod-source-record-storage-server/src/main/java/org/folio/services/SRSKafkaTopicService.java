@@ -19,6 +19,7 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDIN
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
+import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
 
 import org.folio.kafka.services.KafkaTopic;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,6 +75,9 @@ public class SRSKafkaTopicService {
   @Value("${di_marc_authority_record_updated.partitions}")
   private Integer diMarcAuthorityRecordUpdatedPartitions;
 
+  @Value("${source_records.partitions}")
+  private Integer sourceRecordsPartitions;
+
   public KafkaTopic[] createTopicObjects() {
     return new KafkaTopic[] {
       MARC_BIB,
@@ -91,7 +95,8 @@ public class SRSKafkaTopicService {
       new SRSKafkaTopic(DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), diLogSrsMarcAuthorityRecordUpdatedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(), diMarcHoldingsMatchedPartitions),
       new SRSKafkaTopic(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), diMarcHoldingsNotMatchedPartitions),
-      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), diMarcAuthorityRecordUpdatedPartitions)
+      new SRSKafkaTopic(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), diMarcAuthorityRecordUpdatedPartitions),
+      new SRSKafkaTopic(RECORD_DOMAIN_EVENT_TOPIC, sourceRecordsPartitions, false)
     };
   }
 
@@ -99,10 +104,18 @@ public class SRSKafkaTopicService {
 
     private final String topic;
     private final int numPartitions;
+    private final boolean includeNamespace;
 
     public SRSKafkaTopic(String topic, int numPartitions) {
       this.topic = topic;
       this.numPartitions = numPartitions;
+      this.includeNamespace = true;
+    }
+
+    public SRSKafkaTopic(String topic, int numPartitions, boolean includeNamespace) {
+      this.topic = topic;
+      this.numPartitions = numPartitions;
+      this.includeNamespace = includeNamespace;
     }
 
     @Override
@@ -122,7 +135,11 @@ public class SRSKafkaTopicService {
 
     @Override
     public String fullTopicName(String tenant) {
-      return formatTopicName(environment(), getDefaultNameSpace(), tenant, topicName());
+      if (includeNamespace) {
+        return formatTopicName(environment(), getDefaultNameSpace(), tenant, topicName());
+      } else {
+        return formatTopicName(environment(), tenant, topicName());
+      }
     }
   }
 }

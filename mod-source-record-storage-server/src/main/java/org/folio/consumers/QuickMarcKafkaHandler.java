@@ -2,15 +2,10 @@ package org.folio.consumers;
 
 import static org.folio.dao.util.QMEventTypes.QM_ERROR;
 import static org.folio.dao.util.QMEventTypes.QM_SRS_MARC_RECORD_UPDATED;
-import static org.folio.kafka.KafkaHeaderUtils.kafkaHeadersToMap;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
 import static org.folio.services.util.EventHandlingUtil.createProducerRecord;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -19,19 +14,22 @@ import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.services.RecordService;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import org.folio.dao.util.QMEventTypes;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
-import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.RecordService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 @Component
 public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String> {
@@ -67,22 +65,23 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     log.trace("handle:: Handling kafka consumerRecord {}", consumerRecord);
 
     var kafkaHeaders = consumerRecord.headers();
-    var params = new OkapiConnectionParams(kafkaHeadersToMap(kafkaHeaders), vertx);
+    var okapiHeaders = toOkapiHeaders(kafkaHeaders);
 
     return getEventPayload(consumerRecord)
       .compose(eventPayload -> {
         String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
+        var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
         return getRecordDto(eventPayload)
-          .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, params.getTenantId()))
+          .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, okapiHeaders))
           .compose(updatedRecord -> {
             eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
-            return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, params.getTenantId(), kafkaHeaders)
+            return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, tenantId, kafkaHeaders)
               .map(aBoolean -> consumerRecord.key());
           })
           .recover(th -> {
             log.warn("handle:: Failed to handle QM_RECORD_UPDATED event", th);
             eventPayload.put(ERROR_KEY, th.getMessage());
-            return sendEvent(eventPayload, QM_ERROR, params.getTenantId(), kafkaHeaders)
+            return sendEvent(eventPayload, QM_ERROR, tenantId, kafkaHeaders)
               .map(aBoolean -> th.getMessage());
           });
       })

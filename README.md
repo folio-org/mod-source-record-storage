@@ -141,7 +141,9 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * DI_SRS_MARC_HOLDINGS_RECORD_MATCHED
   * DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED
   * DI_SRS_MARC_AUTHORITY_RECORD_UPDATED
+  * SRS_SOURCE_RECORDS_PARTITIONS
   Default value for all partitions is 1
+* DOMAIN_EVENTS_ENABLED env variable defines if Source Record Domain Event publishing should occur. True by default.
 ## Database schemas
 
 The mod-source-record-storage module uses relational approach and Liquibase to define database schemas.

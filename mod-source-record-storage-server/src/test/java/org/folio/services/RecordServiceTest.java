@@ -1,5 +1,14 @@
 package org.folio.services;
 
+import static java.util.Comparator.comparing;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.rest.jooq.Tables.RECORDS_LB;
+import static org.folio.services.RecordServiceImpl.INDICATOR;
+import static org.folio.services.RecordServiceImpl.SUBFIELD_S;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
+import static org.junit.Assert.assertThrows;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
@@ -11,6 +20,19 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -40,6 +62,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -49,27 +72,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static java.util.Comparator.comparing;
-import static org.folio.rest.jooq.Tables.RECORDS_LB;
-import static org.folio.services.RecordServiceImpl.INDICATOR;
-import static org.folio.services.RecordServiceImpl.SUBFIELD_S;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
-import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
-import static org.junit.Assert.assertThrows;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordServiceTest extends AbstractLBServiceTest {
@@ -78,6 +82,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private static final String MARC_AUTHORITY_RECORD_SNAPSHOT_ID = "ee561342-3098-47a8-ab6e-0f3eba120b04";
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
 
   private RecordService recordService;
@@ -87,12 +93,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @Before
   public void setUp(TestContext context) throws IOException {
+    MockitoAnnotations.openMocks(this);
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     marcRecord = new ParsedRecord()
       .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
-
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     Async async = context.async();
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
@@ -364,8 +370,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+    recordService.saveRecord(record, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -409,8 +416,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.updateRecordGeneration(matchedId, record, TENANT_ID).onComplete(save -> {
+    recordService.updateRecordGeneration(matchedId, record, okapiHeaders).onComplete(save -> {
       context.assertTrue(save.failed());
       context.assertTrue(save.cause() instanceof BadRequestException);
       recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
@@ -446,8 +454,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.updateRecordGeneration(matchedId, record, TENANT_ID).onComplete(save -> {
+    recordService.updateRecordGeneration(matchedId, record, okapiHeaders).onComplete(save -> {
       context.assertTrue(save.failed());
       context.assertTrue(save.cause() instanceof NotFoundException);
       recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
@@ -501,8 +510,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record1, TENANT_ID).onComplete(record1Saved -> {
+    recordService.saveRecord(record1, okapiHeaders).onComplete(record1Saved -> {
       if (record1Saved.failed()) {
         context.fail(record1Saved.cause());
       }
@@ -515,7 +525,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (snapshotSaved.failed()) {
           context.fail(snapshotSaved.cause());
         }
-        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, TENANT_ID).onComplete(recordToUpdateGenerationSaved -> {
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
           context.assertTrue(recordToUpdateGenerationSaved.failed());
           context.assertTrue(recordToUpdateGenerationSaved.cause() instanceof BadRequestException);
           async.complete();
@@ -564,8 +574,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record1, TENANT_ID).onComplete(record1Saved -> {
+    recordService.saveRecord(record1, okapiHeaders).onComplete(record1Saved -> {
       if (record1Saved.failed()) {
         context.fail(record1Saved.cause());
       }
@@ -578,7 +589,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (snapshotSaved.failed()) {
           context.fail(snapshotSaved.cause());
         }
-        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, TENANT_ID).onComplete(recordToUpdateGenerationSaved -> {
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
           context.assertTrue(recordToUpdateGenerationSaved.succeeded());
           context.assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
           context.assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
@@ -621,8 +632,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(mock.getMetadata());
 
     var async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(recordToSave, TENANT_ID).onComplete(savedRecord -> {
+    recordService.saveRecord(recordToSave, okapiHeaders).onComplete(savedRecord -> {
       if (savedRecord.failed()) {
         context.fail(savedRecord.cause());
       }
@@ -661,7 +673,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           context.fail(snapshotSaved.cause());
         }
 
-        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, TENANT_ID).onComplete(recordToUpdateGenerationSaved -> {
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
           context.assertTrue(recordToUpdateGenerationSaved.succeeded());
           context.assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
           context.assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
@@ -704,8 +716,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
       .withMetadata(original.getMetadata());
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+    recordService.saveRecord(record, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -730,8 +743,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldSaveEdifactRecordAndNotSet999Field(TestContext context) {
     Async async = context.async();
     Record record = TestMocks.getRecords(Record.RecordType.EDIFACT);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record, TENANT_ID).onComplete(save -> {
+    recordService.saveRecord(record, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -783,8 +797,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(original.getAdditionalInfo())
       .withExternalIdsHolder(externalIdsHolder)
       .withMetadata(original.getMetadata());
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordService.saveRecord(record1, TENANT_ID).onComplete(save -> {
+    recordService.saveRecord(record1, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -801,7 +816,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertEquals(recordId1, get.result().get().getMatchedId());
         context.assertEquals(getFieldFromMarcRecord(get.result().get(), TAG_999, INDICATOR, INDICATOR, SUBFIELD_S), recordId1);
 
-        recordService.saveRecord(record2, TENANT_ID).onComplete(save2 -> {
+        recordService.saveRecord(record2, okapiHeaders).onComplete(save2 -> {
           if (save2.failed()) {
             context.fail(save2.cause());
           }
@@ -861,7 +876,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(valid.getAdditionalInfo())
       .withExternalIdsHolder(valid.getExternalIdsHolder())
       .withMetadata(valid.getMetadata());
-    recordService.saveRecord(invalid, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordService.saveRecord(invalid, okapiHeaders).onComplete(save -> {
       context.assertTrue(save.failed());
       String expected = "Invalid UUID string: " + fakeSnapshotId;
       context.assertTrue(save.cause().getMessage().contains(expected));
@@ -893,7 +909,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldUpdateMarcRecord(TestContext context) {
     Async async = context.async();
     Record original = TestMocks.getRecord(0);
-    recordDao.saveRecord(original, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(original, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -910,7 +927,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withAdditionalInfo(original.getAdditionalInfo())
         .withExternalIdsHolder(original.getExternalIdsHolder())
         .withMetadata(original.getMetadata());
-      recordService.updateRecord(expected, TENANT_ID).onComplete(update -> {
+      recordService.updateRecord(expected, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }
@@ -945,10 +962,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(original.getAdditionalInfo())
       .withExternalIdsHolder(original.getExternalIdsHolder())
       .withMetadata(original.getMetadata());
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordDao.saveRecord(original, TENANT_ID)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+    recordDao.saveRecord(original, okapiHeaders)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DRAFT, RecordType.MARC_BIB, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -981,9 +999,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(original.getAdditionalInfo())
       .withExternalIdsHolder(original.getExternalIdsHolder())
       .withMetadata(original.getMetadata());
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordDao.saveRecord(original, TENANT_ID)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+    recordDao.saveRecord(original, okapiHeaders)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -1009,7 +1028,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldUpdateEdifactRecord(TestContext context) {
     Async async = context.async();
     Record original = TestMocks.getEdifactRecord();
-    recordDao.saveRecord(original, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(original, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1026,7 +1047,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withAdditionalInfo(original.getAdditionalInfo())
         .withExternalIdsHolder(original.getExternalIdsHolder())
         .withMetadata(original.getMetadata());
-      recordService.updateRecord(expected, TENANT_ID).onComplete(update -> {
+      recordService.updateRecord(expected, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }
@@ -1053,12 +1074,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldFailToUpdateRecord(TestContext context) {
     Async async = context.async();
     Record record = TestMocks.getRecord(0);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
     recordDao.getRecordById(record.getMatchedId(), TENANT_ID).onComplete(get -> {
       if (get.failed()) {
         context.fail(get.cause());
       }
       context.assertFalse(get.result().isPresent());
-      recordService.updateRecord(record, TENANT_ID).onComplete(update -> {
+      recordService.updateRecord(record, okapiHeaders).onComplete(update -> {
         context.assertTrue(update.failed());
         String expected = String.format("Record with id '%s' was not found", record.getId());
         context.assertEquals(expected, update.cause().getMessage());
@@ -1165,9 +1188,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withAdditionalInfo(expected.getAdditionalInfo())
       .withExternalIdsHolder(expected.getExternalIdsHolder())
       .withMetadata(expected.getMetadata());
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
-    recordDao.saveRecord(expected, TENANT_ID)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID))
+    recordDao.saveRecord(expected, okapiHeaders)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
       .onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
@@ -1253,7 +1277,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldGetFormattedEdifactRecord(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getEdifactRecord();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1274,7 +1300,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record expected = TestMocks.getMarcBibRecord();
     expected.setState(State.DELETED);
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1319,7 +1347,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldUpdateSourceRecord(TestContext context) {
     Async async = context.async();
     Record expected = TestMocks.getRecord(0);
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1331,7 +1361,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withAdditionalInfo(expected.getAdditionalInfo())
         .withExternalIdsHolder(expected.getExternalIdsHolder())
         .withMetadata(expected.getMetadata());
-      recordService.updateSourceRecord(parsedRecordDto, snapshotId, TENANT_ID).onComplete(update -> {
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }
@@ -1384,8 +1414,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    List<Future<RecordsBatchResponse>> futures = List.of(recordService.saveRecords(recordCollection, TENANT_ID),
-      recordService.saveRecords(recordCollection, TENANT_ID));
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    List<Future<RecordsBatchResponse>> futures = List.of(recordService.saveRecords(recordCollection, okapiHeaders),
+      recordService.saveRecords(recordCollection, okapiHeaders));
 
     GenericCompositeFuture.all(futures).onComplete(ar -> {
       context.assertTrue(ar.failed());
@@ -1517,7 +1548,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void getMarcRecordById(TestContext context, Record expected) {
     Async async = context.async();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1536,7 +1569,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void saveMarcRecord(TestContext context, Record expected, Record.RecordType marcBib) {
     Async async = context.async();
-    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordService.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1560,7 +1595,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void saveMarcRecordWithGenerationGreaterThanZero(TestContext context, Record expected, Record.RecordType marcBib) {
     Async async = context.async();
     expected.setGeneration(1);
-    recordService.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordService.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1591,7 +1628,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordService.saveRecords(recordCollection, okapiHeaders).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -1621,7 +1659,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
-    recordService.saveRecords(recordCollection, TENANT_ID).onComplete(batch -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordService.saveRecords(recordCollection, okapiHeaders).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
@@ -1844,7 +1883,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void getMarcSourceRecordById(TestContext context, Record expected) {
     Async async = context.async();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1897,7 +1938,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<ParsedRecord> expected = updated.stream()
         .map(Record::getParsedRecord)
         .collect(Collectors.toList());
-      recordService.updateParsedRecords(recordCollection, TENANT_ID).onComplete(update -> {
+      var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+      recordService.updateParsedRecords(recordCollection, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }
@@ -1925,10 +1967,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void updateParsedMarcRecordsAndGetOnlyActualRecord(TestContext context, Record expected) {
     Async async = context.async();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       context.assertTrue(save.succeeded());
       expected.setLeaderRecordStatus("a");
-      recordService.updateRecord(expected, TENANT_ID)
+      recordService.updateRecord(expected, okapiHeaders)
         .compose(v -> recordService.getFormattedRecord(expected.getMatchedId(), IdType.RECORD, TENANT_ID))
         .onComplete(get -> {
           context.assertTrue(get.succeeded());
@@ -1943,7 +1987,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void getFormattedMarcRecord(TestContext context, Record expected) {
     Async async = context.async();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -1963,7 +2009,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void updateSuppressFromDiscoveryForMarcRecord(TestContext context, Record expected) {
     Async async = context.async();
-    recordDao.saveRecord(expected, TENANT_ID).onComplete(save -> {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(expected, okapiHeaders).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -2037,8 +2085,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   private CompositeFuture saveRecords(List<Record> records) {
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     return GenericCompositeFuture.all(records.stream()
-      .map(record -> recordService.saveRecord(record, AbstractLBServiceTest.TENANT_ID))
+      .map(record -> recordService.saveRecord(record, okapiHeaders))
       .collect(Collectors.toList())
     );
   }

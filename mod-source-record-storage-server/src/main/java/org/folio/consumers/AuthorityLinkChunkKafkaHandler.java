@@ -10,6 +10,7 @@ import static org.folio.consumers.RecordMappingUtils.mapObjectRepresentationToPa
 import static org.folio.consumers.RecordMappingUtils.readParsedContentToObjectRepresentation;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 import io.vertx.core.Future;
@@ -92,7 +93,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .compose(this::createSnapshot)
       .compose(event -> retrieveRecords(event, event.getTenant())
         .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
-        .compose(recordCollection -> recordService.saveRecords(recordCollection, event.getTenant()))
+        .compose(recordCollection -> recordService.saveRecords(recordCollection,
+          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
         .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
         .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
         .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))

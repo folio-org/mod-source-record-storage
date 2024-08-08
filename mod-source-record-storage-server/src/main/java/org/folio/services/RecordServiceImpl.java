@@ -14,20 +14,9 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.*;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
 
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
@@ -37,32 +26,34 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.RecordDao;
 import org.folio.dao.util.IdType;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.MatchField;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
-import org.folio.rest.jaxrs.model.Filter;
-import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
-import org.folio.rest.jaxrs.model.RecordMatchingDto;
-import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
-import org.folio.services.exceptions.DuplicateRecordException;
-import org.folio.services.util.AdditionalFieldsUtil;
-import org.folio.services.util.TypeConnection;
-import org.jooq.Condition;
-import org.jooq.OrderField;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.folio.dao.RecordDao;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
+import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordDto;
@@ -70,15 +61,25 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
+import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
+import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.util.AdditionalFieldsUtil;
+import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.folio.services.util.parser.SearchExpressionParser;
+import org.jooq.Condition;
+import org.jooq.OrderField;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class RecordServiceImpl implements RecordService {
@@ -121,7 +122,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> saveRecord(Record record, String tenantId) {
+  public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
@@ -149,47 +151,49 @@ public class RecordServiceImpl implements RecordService {
           if (generation > 0) {
             return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), matchedRecord.withState(Record.State.OLD)))
-                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)))));
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)),
+                  matchedRecord.withState(Record.State.OLD), okapiHeaders))
+                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders)));
           } else {
-            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)));
+            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
           }
         }), tenantId)
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
     List<Future> setMatchedIdsFutures = new ArrayList<>();
-    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record, tenantId)));
+    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
+      okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded() ?
-        recordDao.saveRecords(recordCollection, tenantId)
+        recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 
   @Override
-  public Future<Record> updateRecord(Record record, String tenantId) {
-    return recordDao.updateRecord(ensureRecordForeignKeys(record), tenantId);
+  public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
+    return recordDao.updateRecord(ensureRecordForeignKeys(record), okapiHeaders);
   }
 
   @Override
-  public Future<Record> updateRecordGeneration(String matchedId, Record record, String tenantId) {
+  public Future<Record> updateRecordGeneration(String matchedId, Record record, Map<String, String> okapiHeaders) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (!matchedId.equals(marcField999s)) {
       return Future.failedFuture(new BadRequestException(format(MATCHED_ID_NOT_EQUAL_TO_999_FIELD, matchedId, marcField999s)));
     }
     record.setId(UUID.randomUUID().toString());
 
-    return recordDao.getRecordByMatchedId(matchedId, tenantId)
+    return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(OKAPI_TENANT_HEADER))
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
-      .compose(v -> saveRecord(record, tenantId))
+      .compose(v -> saveRecord(record, okapiHeaders))
       .recover(throwable -> {
         if (throwable instanceof DuplicateRecordException) {
           return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
@@ -236,18 +240,18 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, String tenantId) {
-    return recordDao.updateParsedRecord(record, tenantId);
+  public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
+    return recordDao.updateParsedRecord(record, okapiHeaders);
   }
 
   @Override
-  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId) {
+  public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
       promise.complete(new ParsedRecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    return recordDao.updateParsedRecords(recordCollection, tenantId);
+    return recordDao.updateParsedRecords(recordCollection, okapiHeaders);
   }
 
   @Override
@@ -292,7 +296,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId) {
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders) {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
@@ -312,9 +316,9 @@ public class RecordServiceImpl implements RecordService {
             .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
             .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
             .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD))))
+            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
-          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), tenantId);
+          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
   }
 
   @Override
@@ -343,7 +347,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Void> deleteRecordById(String id, IdType idType, String tenantId) {
+  public Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(record -> {
@@ -353,7 +358,7 @@ public class RecordServiceImpl implements RecordService {
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
         return record;
       })
-      .compose(record -> updateRecord(record, tenantId)).map(r -> null);
+      .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

@@ -1,10 +1,23 @@
 package org.folio.services;
 
+import static org.folio.ActionProfile.Action.DELETE;
+import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.dao.RecordDaoImpl;
@@ -16,35 +29,31 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static org.folio.ActionProfile.Action.DELETE;
-import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT =
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-  private final RecordService recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory));
-  private final EventHandler eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
+  private RecordService recordService;
+  private EventHandler eventHandler;
   private Record record;
 
   @Before
   public void before(TestContext testContext) throws IOException {
+    MockitoAnnotations.openMocks(this);
+    recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher));
+    eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
@@ -86,7 +95,8 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY)
         )
       );
-    recordService.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordService.saveRecord(record, okapiHeaders)
       // when
       .onSuccess(ar -> eventHandler.handle(dataImportEventPayload)
         // then

@@ -1,5 +1,25 @@
 package org.folio.services.handlers;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
+import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
+import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.services.handlers.InstancePostProcessingEventHandler.POST_PROCESSING_RESULT_EVENT;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
@@ -12,6 +32,13 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
@@ -40,32 +67,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ORDER_CREATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.EntityType.INSTANCE;
-import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.services.handlers.InstancePostProcessingEventHandler.POST_PROCESSING_RESULT_EVENT;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 @RunWith(VertxUnitRunner.class)
 public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
@@ -112,7 +113,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
@@ -159,7 +161,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
           createDataImportEventPayload(payloadContextForUpdate, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
 
         CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
-        recordDao.saveRecord(recordForUpdate, TENANT_ID)
+        recordDao.saveRecord(recordForUpdate, okapiHeaders)
           .onFailure(future2::completeExceptionally)
           .onSuccess(record -> handler.handle(dataImportEventPayloadForUpdate)
             .thenApply(future2::complete)
@@ -198,13 +200,13 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
 
     doAnswer(invocationOnMock -> Future.succeededFuture(Optional.of(record))).when(mockedRecordService).getRecordById(anyString(), anyString());
 
-    doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), anyString());
+    doAnswer(invocationOnMock -> Future.succeededFuture(record.getParsedRecord())).when(mockedRecordService).updateParsedRecord(any(), any());
 
     doAnswer(invocationOnMock -> Future.succeededFuture(recordCollection)).when(mockedRecordService).getRecords(any(), any(), any(), anyInt(), anyInt(), anyString());
 
     doAnswer(invocationOnMock -> List.of(record)).when(recordCollection).getRecords();
 
-    doAnswer(invocationOnMock -> Future.succeededFuture(record)).when(mockedRecordService).updateRecord(any(), anyString());
+    doAnswer(invocationOnMock -> Future.succeededFuture(record)).when(mockedRecordService).updateRecord(any(), any());
 
     InstancePostProcessingEventHandler handler = new InstancePostProcessingEventHandler(mockedRecordService, mockedSnapshotService, kafkaConfig, mappingParametersCache, vertx);
 
@@ -234,7 +236,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       if (e != null) {
         context.fail(e);
       }
-      verify(mockedRecordService, times(1)).updateParsedRecord(any(), anyString());
+      verify(mockedRecordService, times(1)).updateParsedRecord(any(), any());
       context.assertNull(payload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG));
       context.assertEquals(expectedCentralTenantId, payload.getContext().get(CENTRAL_TENANT_ID));
       async.complete();
@@ -415,7 +417,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
 
-    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, okapiHeaders)
       .compose(v -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
 
     future.onComplete(ar -> {
@@ -468,7 +471,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING);
 
-    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord, okapiHeaders)
       .compose(v -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
 
     future.onComplete(ar -> {
@@ -511,7 +515,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(rec -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
@@ -682,7 +687,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(rec -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
@@ -754,7 +760,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
       .withToken(TOKEN);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
@@ -886,7 +893,8 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     dataImportEventPayload.getContext().put(POST_PROCESSING_RESULT_EVENT, DI_ORDER_CREATED_READY_FOR_POST_PROCESSING.value());
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    recordDao.saveRecord(record, TENANT_ID)
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)

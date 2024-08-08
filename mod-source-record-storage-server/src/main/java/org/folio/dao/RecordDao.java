@@ -1,13 +1,17 @@
 package org.folio.dao;
 
+import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-
-import io.vertx.sqlclient.Row;
 import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -21,16 +25,11 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
-import org.folio.dao.util.MatchField;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
 
 /**
  * Data access object for {@link Record}
@@ -189,10 +188,10 @@ public interface RecordDao {
    * Saves {@link Record} to the db
    *
    * @param record   Record to save
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
@@ -201,25 +200,25 @@ public interface RecordDao {
    * @param record Record to save
    * @return future with saved Record
    */
-  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
+  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db
    *
    * @param recordCollection Record collection to save
-   * @param tenantId         tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved {@link RecordsBatchResponse}
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db
    *
    * @param record   Record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Increments generation in case a record with the same matchedId exists
@@ -235,19 +234,19 @@ public interface RecordDao {
    * Updates {@link ParsedRecord} in the db
    *
    * @param record   record dto from which {@link ParsedRecord} will be updated
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
    *
    * @param recordCollection collection of records from which parsed records will be updated
-   * @param tenantId         tenant id
+   * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully updated records and error messages for records that were not updated
    */
-  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
+  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record
@@ -371,9 +370,10 @@ public interface RecordDao {
    * @param txQE      query execution
    * @param newRecord new Record to create
    * @param oldRecord old Record that has to be marked as "old"
+   * @param okapiHeaders okapi headers
    * @return future with new "updated" Record
    */
-  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord);
+  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
   /**
    * Change suppress from discovery flag for record by external relation id

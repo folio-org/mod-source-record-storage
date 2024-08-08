@@ -53,7 +53,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.saveRecord(entity, tenantId)
+        recordService.saveRecord(entity, okapiHeaders)
           .map((Response) PostSourceStorageRecordsResponse.respond201WithApplicationJson(entity, PostSourceStorageRecordsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {
@@ -88,7 +88,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     vertxContext.runOnContext(v -> {
       try {
         entity.setId(id);
-        recordService.updateRecord(entity, tenantId)
+        recordService.updateRecord(entity, okapiHeaders)
           .map(updated -> PutSourceStorageRecordsByIdResponse.respond200WithApplicationJson(entity))
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
@@ -103,7 +103,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.updateRecordGeneration(matchedId, entity, tenantId)
+        recordService.updateRecordGeneration(matchedId, entity, okapiHeaders)
           .map(updated -> PutSourceStorageRecordsGenerationByIdResponse.respond200WithApplicationJson(entity))
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
@@ -119,7 +119,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.deleteRecordById(id, toExternalIdType(idType), tenantId).map(r -> true)
+        recordService.deleteRecordById(id, toExternalIdType(idType), okapiHeaders).map(r -> true)
             .map(updated -> DeleteSourceStorageRecordsByIdResponse.respond204()).map(Response.class::cast)
             .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
       } catch (Exception e) {

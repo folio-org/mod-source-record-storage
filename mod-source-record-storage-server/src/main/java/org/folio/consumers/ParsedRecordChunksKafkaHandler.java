@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
@@ -85,7 +86,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}'",
         event.getEventType(), jobExecutionId, chunkId, chunkNumber, key);
       setUserMetadata(recordCollection, userId);
-      return recordService.saveRecords(recordCollection, tenantId)
+      return recordService.saveRecords(recordCollection, toOkapiHeaders(kafkaHeaders))
         .compose(recordsBatchResponse -> sendBackRecordsBatchResponse(recordsBatchResponse, kafkaHeaders, tenantId, chunkNumber, event.getEventType(), targetRecord));
     } catch (Exception e) {
       LOGGER.warn("handle:: RecordCollection processing has failed with errors jobExecutionId '{}', chunkId: '{}', chunkNumber '{}'-'{}'",

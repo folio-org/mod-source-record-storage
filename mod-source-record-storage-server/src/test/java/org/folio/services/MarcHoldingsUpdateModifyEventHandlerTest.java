@@ -1,7 +1,6 @@
 package org.folio.services;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED;
@@ -11,17 +10,8 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -37,14 +27,16 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -66,7 +58,17 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcHoldingsUpdateModifyEventHandler;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
@@ -74,13 +76,13 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_HOLDINGS";
-  private static final String USER_ID_HEADER = "userId";
 
   private static String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
-  private static String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
+  @Mock
+  private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
   private RecordService recordService;
   private MarcHoldingsUpdateModifyEventHandler modifyRecordEventHandler;
@@ -154,11 +156,12 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
   @Before
   public void setUp(TestContext context) {
+    MockitoAnnotations.openMocks(this);
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    recordDao = new RecordDaoImpl(postgresClientFactory);
+    recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     modifyRecordEventHandler = new MarcHoldingsUpdateModifyEventHandler(recordService, null, new MappingParametersSnapshotCache(vertx), vertx);
 
@@ -181,8 +184,9 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
       .withParsedRecord(parsedRecord);
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordService.saveRecord(record, TENANT_ID))
+      .compose(v -> recordService.saveRecord(record, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }

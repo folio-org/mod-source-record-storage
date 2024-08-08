@@ -2,6 +2,7 @@ package org.folio.services;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import io.vertx.sqlclient.Row;
@@ -68,38 +69,38 @@ public interface RecordService {
    * Saves record
    *
    * @param record   record to save
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, String tenantId);
+  Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Saves collection of records
    *
    * @param recordsCollection records to save
-   * @param tenantId          tenant id
+   * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String tenantId);
+  Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id
    *
    * @param record   record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateRecord(Record record, String tenantId);
+  Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Updates record generation with given matched id
    *
    * @param matchedId   matched id
    * @param record   record to update
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record generation
    */
-  Future<Record> updateRecordGeneration(String matchedId, Record record, String tenantId);
+  Future<Record> updateRecordGeneration(String matchedId, Record record, Map<String, String> okapiHeaders);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
@@ -172,19 +173,19 @@ public interface RecordService {
    * Updates {@link ParsedRecord} in the db
    *
    * @param record   record dto from which {@link ParsedRecord} will be updated
-   * @param tenantId tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(Record record, String tenantId);
+  Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
    *
    * @param recordCollection collection of records from which parsed records will be updated
-   * @param tenantId         tenant id
+   * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully updated records and error messages for records that were not updated
    */
-  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, String tenantId);
+  Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
    * Fetch stripped parsed records by ids and filter marc fields by provided range of fields
@@ -240,10 +241,10 @@ public interface RecordService {
    *
    * @param parsedRecordDto parsed record DTO containing updates to parsed record
    * @param snapshotId      snapshot id to which new Record should be linked
-   * @param tenantId        tenant id
+   * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String tenantId);
+  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders);
 
   /**
    * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,
@@ -267,5 +268,5 @@ public interface RecordService {
    */
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
 
-  Future<Void> deleteRecordById(String id, IdType idType, String tenantId);
+  Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders);
 }

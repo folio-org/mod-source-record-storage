@@ -127,7 +127,7 @@ public class RecordServiceImpl implements RecordService {
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
-    if (isRecordContainsRequiredField(record)) {
+    if (!isRecordContainsRequiredField(record)) {
       LOG.error("saveRecord:: record with id: {} does not contain required fields", record.getId());
       return Future.failedFuture(new BadRequestException("record does not contain required fields"));
     }

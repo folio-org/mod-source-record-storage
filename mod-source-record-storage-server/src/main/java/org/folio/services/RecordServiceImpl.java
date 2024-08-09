@@ -336,10 +336,12 @@ public class RecordServiceImpl implements RecordService {
     MatchField matchField = prepareMatchField(recordMatchingDto);
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
+    Filter.ComparisonPartType comparisonPartType = recordMatchingDto.getFilters().get(0).getComparisonPartType();
+
     if (matchField.isDefaultField()) {
       return processDefaultMatchField(matchField, typeConnection, recordMatchingDto, tenantId);
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
+    return recordDao.getMatchedRecordsIdentifiers(matchField, comparisonPartType, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
       true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 

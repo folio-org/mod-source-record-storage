@@ -119,8 +119,9 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
+    //TODO: Filter.ComparisonPartType comparisonPartType = ?
     Future<List<Record>> future = deleteTrackingRecordById(record.getId())
-      .compose(v -> recordDao.getMatchedRecords(matchField, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
@@ -149,7 +150,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     var async = context.async();
     var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
-    var future = recordDao.getMatchedRecords(matchField, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+    //TODO: Filter.ComparisonPartType comparisonPartType = ?
+    var future = recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

@@ -92,8 +92,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       MatchDetail matchDetail = retrieveMatchDetail(payload);
       if (isValidMatchDetail(matchDetail)) {
         MatchField matchField = prepareMatchField(record, matchDetail);
-        //TODO Filter.ComparisonPartType comparisonPartType = ?
-        return retrieveMarcRecords(matchField, null, payload.getTenant())
+        return retrieveMarcRecords(matchField, payload.getTenant())
           .compose(localMatchedRecords -> {
             if (isConsortiumAvailable()) {
               return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchField, localMatchedRecords);
@@ -119,8 +118,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
           LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
             consortiumConfigurationOptional.get().getCentralTenantId());
-          //TODO: Filter.ComparisonPartType comparisonPartType = ?
-          return retrieveMarcRecords(matchField, null, consortiumConfigurationOptional.get().getCentralTenantId())
+          return retrieveMarcRecords(matchField, consortiumConfigurationOptional.get().getCentralTenantId())
             .onSuccess(result -> {
               if (!result.isEmpty()) {
                 payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
@@ -136,13 +134,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
   }
 
-  private Future<List<Record>> retrieveMarcRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType, String tenant) {
+  private Future<List<Record>> retrieveMarcRecords(MatchField matchField, String tenant) {
     if (matchField.isDefaultField()) {
       LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField, tenant);
       return processDefaultMatchField(matchField, tenant).map(RecordCollection::getRecords);
     }
+    //TODO is Filter.ComparisonPartType needed?
     LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField, tenant);
-    return recordDao.getMatchedRecords(matchField, comparisonPartType, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+    return recordDao.getMatchedRecords(matchField, null, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 
   abstract boolean isConsortiumAvailable();

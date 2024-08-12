@@ -15,6 +15,7 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.ALPHANUMERICS_ONLY;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -169,7 +170,9 @@ public class RecordDaoImpl implements RecordDao {
   static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER = "\"{partition}\".\"value\" IN ({value}) AND \"{partition}\".\"value\" LIKE {qualifier}";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
+    "\"{partition}\".\"value\" LIKE {qualifier}" +
+      " AND {comparisonValue} IN ({value}) ";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
   public static final String DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
     "\"{partition}\".\"value\" LIKE {qualifier} " +
@@ -387,13 +390,7 @@ public class RecordDaoImpl implements RecordDao {
       qualifierSearch = true;
       params.put("qualifier", getSqlQualifier(matchedField.getQualifierMatch()));
     }
-    if (comparisonPartType != null) {
-      params.put("comparisonValue",  comparisonPartType == Filter.ComparisonPartType.ALPHANUMERICS_ONLY ?
-        "regexp_replace(\"{partition}\".\"value\", '[^a-zA-Z0-9]', '', 'g')"
-        : "regexp_replace(\"{partition}\".\"value\", '[^0-9]', '', 'g')");
-    } else {
-      params.put("comparisonValue", "\"{partition}\".\"value\"");
-    }
+    params.put("comparisonValue", getComparisonValue(comparisonPartType));
 
     String sql;
     if (matchedField.isControlField()) {
@@ -407,6 +404,18 @@ public class RecordDaoImpl implements RecordDao {
         : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
     return condition(sql);
+  }
+
+  private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
+    if (comparisonPartType == null) {
+      return "\"{partition}\".\"value\"";
+    } else {
+      if (comparisonPartType == ALPHANUMERICS_ONLY) {
+        return "regexp_replace(\"{partition}\".\"value\", '[^a-zA-Z0-9]', '', 'g')";
+      } else {
+        return "regexp_replace(\"{partition}\".\"value\", '[^0-9]', '', 'g')";
+      }
+    }
   }
 
   private String getSqlInd(String ind) {

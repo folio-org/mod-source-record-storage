@@ -79,6 +79,7 @@ public interface RecordDao {
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit
    *
    * @param matchField          Marc field that needs to be matched
+   * @param comparisonPartType  describes type of comparison part
    * @param recordType          record type
    * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
    * @param offset              starting index in a list of results
@@ -86,7 +87,9 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return  {@link Future} of {@link RecordCollection}
    */
-  Future<List<Record>> getMatchedRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType, TypeConnection recordType, boolean externalIdRequired, int offset, int limit, String tenantId);
+  Future<List<Record>> getMatchedRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType,
+                                         TypeConnection recordType, boolean externalIdRequired,
+                                         int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by {@link MatchField} with offset and limit,

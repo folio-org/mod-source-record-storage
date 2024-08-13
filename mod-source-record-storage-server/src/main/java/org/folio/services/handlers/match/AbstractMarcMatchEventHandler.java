@@ -20,7 +20,6 @@ import org.folio.processing.matching.reader.util.MarcValueReaderUtil;
 import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Field;
-import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;

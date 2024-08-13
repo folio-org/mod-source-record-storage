@@ -25,7 +25,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;

@@ -493,6 +493,8 @@ public class RecordServiceImpl implements RecordService {
     List<String> values = ((ListValue) matchField.getValue()).getValue();
     var qualifier = matchField.getQualifierMatch();
 
+    //ComparationPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
+
     if (matchField.isMatchedId()) {
       condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier));
     } else if (matchField.isExternalId()) {

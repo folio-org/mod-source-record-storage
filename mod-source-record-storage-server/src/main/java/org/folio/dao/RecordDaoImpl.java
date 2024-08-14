@@ -15,7 +15,6 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.ALPHANUMERICS_ONLY;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -407,15 +406,17 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
+
+    String DEFAULT_VALUE = "\"{partition}\".\"value\"";
     if (comparisonPartType == null) {
-      return "\"{partition}\".\"value\"";
-    } else {
-      if (comparisonPartType == ALPHANUMERICS_ONLY) {
-        return "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
-      } else {
-        return "regexp_replace(\"{partition}\".\"value\", '[^0-9]', '', 'g')";
-      }
+      return DEFAULT_VALUE;
     }
+
+    return switch (comparisonPartType) {
+      case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      default -> DEFAULT_VALUE;
+    };
   }
 
   private String getSqlInd(String ind) {

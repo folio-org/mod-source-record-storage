@@ -18,7 +18,6 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Record;
-import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -38,6 +37,7 @@ import static org.folio.rest.jaxrs.model.Filter.Qualifier.ENDS_WITH;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
@@ -264,22 +264,22 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
     var endWith =  new MatchField.QualifierMatch(ENDS_WITH, incomingValueNumeric.substring(SPLIT_INDEX));
     var contains = new MatchField.QualifierMatch(CONTAINS, incomingValueNumeric.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
 
-    shouldMatchRecordByExternalIdField(record, beginWith, NUMERICS_ONLY);
-    shouldMatchRecordByExternalIdField(record, endWith, NUMERICS_ONLY);
-    shouldMatchRecordByExternalIdField(record, contains, NUMERICS_ONLY);
+    shouldMatchRecordByExternalIdField(record, beginWith, NUMERICS_ONLY, "Case 1");
+    shouldMatchRecordByExternalIdField(record, endWith, NUMERICS_ONLY, "Case 2");
+    shouldMatchRecordByExternalIdField(record, contains, NUMERICS_ONLY, "Case 3");
 
     var incomingValueAlphaNumeric = "(OCoLC)63611770";
     var beginWithAlphaNumeric = new MatchField.QualifierMatch(BEGINS_WITH, incomingValueAlphaNumeric.substring(0, SPLIT_INDEX));
     var endWithAlphaNumeric =  new MatchField.QualifierMatch(ENDS_WITH, incomingValueAlphaNumeric.substring(SPLIT_INDEX));
     var containsAlphaNumeric = new MatchField.QualifierMatch(CONTAINS, incomingValueAlphaNumeric.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
 
-    shouldMatchRecordByExternalIdField(record, beginWithAlphaNumeric, ALPHANUMERICS_ONLY);
-    shouldMatchRecordByExternalIdField(record, endWithAlphaNumeric, ALPHANUMERICS_ONLY);
-    shouldMatchRecordByExternalIdField(record, containsAlphaNumeric, ALPHANUMERICS_ONLY);
+    shouldMatchRecordByExternalIdField(record, beginWithAlphaNumeric, ALPHANUMERICS_ONLY, "Case 4");
+    shouldMatchRecordByExternalIdField(record, endWithAlphaNumeric, ALPHANUMERICS_ONLY, "Case 5");
+    shouldMatchRecordByExternalIdField(record, containsAlphaNumeric, ALPHANUMERICS_ONLY, "Case 6");
   }
 
   private void shouldMatchRecordByExternalIdField(Record sourceRecord, MatchField.QualifierMatch qualifier,
-                                                  ComparisonPartType comparisonPartType) {
+                                                  ComparisonPartType comparisonPartType, String testName) {
     var externalId = RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType());
     Response response = RestAssured.given()
       .spec(spec)
@@ -298,11 +298,12 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .post(RECORDS_MATCHING_PATH);
 
     response.then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
-      .body("identifiers.size()", is(1))
-      .body("identifiers[0].recordId", is(sourceRecord.getId()))
-      .body("identifiers[0].externalId", is(externalId));
+      .statusCode(HttpStatus.SC_OK);
+
+    assertThat(testName, response.jsonPath().getInt("totalRecords"), is(1));
+    assertThat(testName, response.jsonPath().getInt("identifiers.size()"), is(1));
+    assertThat(testName, response.jsonPath().getString("identifiers[0].recordId"), is(sourceRecord.getId()));
+    assertThat(testName, response.jsonPath().getString("identifiers[0].externalId"), is(externalId));
   }
 
   private void shouldMatchRecordByInstanceHridFieldAndQualifier(MatchField.QualifierMatch qualifier) {
@@ -667,7 +668,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withIndicator2("")
         .withSubfield("a")
     );
-    MatcherAssert.assertThat(filters.size(), greaterThan(1));
+    assertThat(filters.size(), greaterThan(1));
 
     RestAssured.given()
       .spec(spec)

@@ -411,7 +411,7 @@ public class RecordDaoImpl implements RecordDao {
       return "\"{partition}\".\"value\"";
     } else {
       if (comparisonPartType == ALPHANUMERICS_ONLY) {
-        return "regexp_replace(\"{partition}\".\"value\", '[^a-zA-Z0-9]', '', 'g')";
+        return "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       } else {
         return "regexp_replace(\"{partition}\".\"value\", '[^0-9]', '', 'g')";
       }

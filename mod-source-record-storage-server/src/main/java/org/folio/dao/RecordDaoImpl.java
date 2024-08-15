@@ -94,6 +94,7 @@ import org.folio.processing.value.Value;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -168,9 +169,16 @@ public class RecordDaoImpl implements RecordDao {
   static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
   public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER = "\"{partition}\".\"value\" IN ({value}) AND \"{partition}\".\"value\" LIKE {qualifier}";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
+    "\"{partition}\".\"value\" LIKE {qualifier}" +
+      " AND {comparisonValue} IN ({value}) ";
   public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER = "\"{partition}\".\"value\" IN ({value}) AND \"{partition}\".\"value\" LIKE {qualifier} AND \"{partition}\".\"ind1\" LIKE '{ind1}' AND \"{partition}\".\"ind2\" LIKE '{ind2}' AND \"{partition}\".\"subfield_no\" = '{subfield}'";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
+    "\"{partition}\".\"value\" LIKE {qualifier} " +
+      "AND {comparisonValue} IN ({value}) " +
+      "AND \"{partition}\".\"ind1\" LIKE '{ind1}' " +
+      "AND \"{partition}\".\"ind2\" LIKE '{ind2}' " +
+      "AND \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -301,7 +309,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<List<Record>> getMatchedRecords(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
+  public Future<List<Record>> getMatchedRecords(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+                                                TypeConnection typeConnection, boolean externalIdRequired,
+                                                int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     if (matchedField.getValue() instanceof MissingValue)
@@ -329,23 +339,26 @@ public class RecordDaoImpl implements RecordDao {
             filterRecordByType(typeConnection.getRecordType().value())
               .and(filterRecordByState(Record.State.ACTUAL.value()))
               .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-              .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+              .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
           )
           .offset(offset)
           .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
       }
-    )).compose(queryResult -> handleMatchedRecordsSearchResult(queryResult, matchedField, typeConnection, externalIdRequired, offset, limit, tenantId));
+    )).compose(queryResult -> handleMatchedRecordsSearchResult(queryResult, matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId));
   }
 
-  private Future<List<Record>> handleMatchedRecordsSearchResult(QueryResult queryResult, MatchField matchedField, TypeConnection typeConnection,
+  private Future<List<Record>> handleMatchedRecordsSearchResult(QueryResult queryResult, MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+                                                                TypeConnection typeConnection,
                                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {
     if (enableFallbackQuery && !queryResult.hasResults()) {
-      return getMatchedRecordsWithoutIndexersVersionUsage(matchedField, typeConnection, externalIdRequired, offset, limit, tenantId);
+      return getMatchedRecordsWithoutIndexersVersionUsage(matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId);
     }
     return Future.succeededFuture(queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).toList());
   }
 
-  public Future<List<Record>> getMatchedRecordsWithoutIndexersVersionUsage(MatchField matchedField, TypeConnection typeConnection, boolean externalIdRequired, int offset, int limit, String tenantId) {
+  public Future<List<Record>> getMatchedRecordsWithoutIndexersVersionUsage(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+                                                                           TypeConnection typeConnection, boolean externalIdRequired,
+                                                                           int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
@@ -360,14 +373,14 @@ public class RecordDaoImpl implements RecordDao {
         filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
           .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
       )
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
   }
 
-  private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
+  private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {
     Map<String, String> params = new HashMap<>();
     var qualifierSearch = false;
     params.put("partition", partition);
@@ -376,6 +389,8 @@ public class RecordDaoImpl implements RecordDao {
       qualifierSearch = true;
       params.put("qualifier", getSqlQualifier(matchedField.getQualifierMatch()));
     }
+    params.put("comparisonValue", getComparisonValue(comparisonPartType));
+
     String sql;
     if (matchedField.isControlField()) {
       sql = qualifierSearch ? StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
@@ -388,6 +403,21 @@ public class RecordDaoImpl implements RecordDao {
         : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
     return condition(sql);
+  }
+
+  private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
+
+    String DEFAULT_VALUE = "\"{partition}\".\"value\"";
+    if (comparisonPartType == null) {
+      return DEFAULT_VALUE;
+    }
+
+    return switch (comparisonPartType) {
+      //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
+      case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      default -> DEFAULT_VALUE;
+    };
   }
 
   private String getSqlInd(String ind) {
@@ -629,9 +659,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, boolean returnTotalRecords,
-                                                                           TypeConnection typeConnection, boolean externalIdRequired,
-                                                                           int offset, int limit, String tenantId) {
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+                                                                           boolean returnTotalRecords, TypeConnection typeConnection,
+                                                                           boolean externalIdRequired, int offset, int limit, String tenantId) {
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     if (matchedField.getValue() instanceof MissingValue) {
       return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
@@ -650,7 +680,7 @@ public class RecordDaoImpl implements RecordDao {
           .where(filterRecordByType(typeConnection.getRecordType().value())
             .and(filterRecordByState(Record.State.ACTUAL.value()))
             .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-            .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
+            .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName())));
       } else {
         countQuery = select(inline(null, Integer.class).as(COUNT));
       }
@@ -667,7 +697,7 @@ public class RecordDaoImpl implements RecordDao {
         .where(filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
           .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName())));
+          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName())));
 
       return DSL.select()
         .from(searchQuery)

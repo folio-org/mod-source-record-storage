@@ -13,6 +13,7 @@ import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
+import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -78,6 +79,7 @@ public interface RecordDao {
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit
    *
    * @param matchField          Marc field that needs to be matched
+   * @param comparisonPartType  describes type of comparison part
    * @param recordType          record type
    * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
    * @param offset              starting index in a list of results
@@ -85,13 +87,16 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return  {@link Future} of {@link RecordCollection}
    */
-  Future<List<Record>> getMatchedRecords(MatchField matchField, TypeConnection recordType, boolean externalIdRequired, int offset, int limit, String tenantId);
+  Future<List<Record>> getMatchedRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType,
+                                         TypeConnection recordType, boolean externalIdRequired,
+                                         int offset, int limit, String tenantId);
 
   /**
    * Searches for {@link Record} by {@link MatchField} with offset and limit,
    * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordId and externalId
    *
    * @param matchedField        describes searching condition
+   * @param comparisonPartType  describes type of comparison part
    * @param returnTotalRecords  indicates that amount of total records should/shouldn't be calculated
    *                            and populated into {@link RecordsIdentifiersCollection#totalRecords}
    * @param typeConnection      record type
@@ -101,9 +106,9 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return {@link Future} of {@link RecordsIdentifiersCollection}
    */
-  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, boolean returnTotalRecords,
-                                                                    TypeConnection typeConnection, boolean externalIdRequired,
-                                                                    int offset, int limit, String tenantId);
+  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+                                                                    boolean returnTotalRecords, TypeConnection typeConnection,
+                                                                    boolean externalIdRequired, int offset, int limit, String tenantId);
 
   /**
    * Streams {@link Record} by {@link Condition} and ordered by collection of {@link OrderField}

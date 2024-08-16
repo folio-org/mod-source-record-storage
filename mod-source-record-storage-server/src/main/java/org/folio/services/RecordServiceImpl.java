@@ -339,10 +339,12 @@ public class RecordServiceImpl implements RecordService {
     MatchField matchField = prepareMatchField(recordMatchingDto);
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
+    Filter.ComparisonPartType comparisonPartType = recordMatchingDto.getFilters().get(0).getComparisonPartType();
+
     if (matchField.isDefaultField()) {
       return processDefaultMatchField(matchField, typeConnection, recordMatchingDto, tenantId);
     }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
+    return recordDao.getMatchedRecordsIdentifiers(matchField, comparisonPartType, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
       true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
@@ -493,6 +495,8 @@ public class RecordServiceImpl implements RecordService {
     Condition condition = filterRecordByState(Record.State.ACTUAL.value());
     List<String> values = ((ListValue) matchField.getValue()).getValue();
     var qualifier = matchField.getQualifierMatch();
+
+    //ComparationPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
 
     if (matchField.isMatchedId()) {
       condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier));

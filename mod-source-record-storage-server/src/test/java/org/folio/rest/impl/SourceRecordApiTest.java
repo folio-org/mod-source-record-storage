@@ -65,7 +65,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
   private static final RawRecord rawRecord;
   private static final ParsedRecord marcRecord;
-  private static final ParsedRecord marcRecordWithHrId;
+  private static final ParsedRecord marcRecordWith001;
   private static final RawRecord rawEdifactRecord;
   private static final ParsedRecord parsedEdifactRecord;
   private static final ParsedRecord invalidParsedRecord;
@@ -94,7 +94,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
           new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
-      marcRecordWithHrId = new ParsedRecord()
+      marcRecordWith001 = new ParsedRecord()
         .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", FIRST_HRID))).encode());
       rawEdifactRecord = new RawRecord()
         .withContent(
@@ -134,7 +134,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecordWithHrId)
+      .withParsedRecord(marcRecordWith001)
       .withMatchedId(FIRST_UUID)
       .withOrder(0)
       .withState(Record.State.ACTUAL)
@@ -159,7 +159,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withErrorRecord(errorRecord)
-      .withParsedRecord(marcRecordWithHrId)
+      .withParsedRecord(marcRecordWith001)
       .withMatchedId(THIRD_UUID)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()

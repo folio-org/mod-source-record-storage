@@ -7,10 +7,12 @@ import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -62,9 +64,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
+  private static final String FIRST_HRID = RandomStringUtils.randomAlphanumeric(9);
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
+  private static ParsedRecord marcRecordWith001;
 
   static {
     try {
@@ -72,6 +76,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
+      marcRecordWith001 = new ParsedRecord()
+        .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", FIRST_HRID))).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -98,9 +104,13 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecordWith001)
     .withMatchedId(FIRST_UUID)
     .withOrder(0)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+    .withInstanceId(FIFTH_UUID)
+    .withInstanceHrid(FIRST_HRID));
     private static final Record marc_bib_record_2 = new Record()
     .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -112,15 +122,20 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+      .withInstanceHrid(FIRST_HRID));
     private static final Record marc_bib_record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecordWith001)
     .withErrorRecord(errorRecord)
+    .withOrder(101)
     .withMatchedId(THIRD_UUID)
-    .withState(Record.State.ACTUAL);
+    .withState(Record.State.ACTUAL)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(FIFTH_UUID)
+      .withInstanceHrid(FIRST_HRID));
     private static final Record marc_bib_record_4 = new Record()
     .withId(FOURTH_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -132,17 +147,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+      .withInstanceHrid(FIRST_HRID));
     private static final Record marc_bib_record_5 = new Record()
-    .withId(FIFTH_UUID)
-    .withSnapshotId(snapshot_2.getJobExecutionId())
-    .withRecordType(Record.RecordType.MARC_BIB)
-    .withRawRecord(rawRecord)
-    .withMatchedId(FIFTH_UUID)
-    .withParsedRecord(invalidParsedRecord)
-    .withOrder(101)
-    .withState(Record.State.ACTUAL);
-    private static final Record marc_bib_record_6 = new Record()
     .withId(SIXTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -153,7 +159,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid("12345"));
+      .withInstanceHrid(FIRST_HRID));
     private static final Record marc_auth_record_1 = new Record()
     .withId(SEVENTH_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -222,7 +228,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
-      .withState(Record.State.OLD);
+      .withState(Record.State.OLD)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID));
 
     postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4);
 
@@ -266,6 +275,9 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID))
       .withState(Record.State.OLD);
 
     postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4, marc_auth_record_1);
@@ -301,7 +313,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
-      .withState(Record.State.OLD);
+      .withState(Record.State.OLD)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID));
 
     postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, recordWithOldStatus);
 
@@ -386,7 +401,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
-      .withState(Record.State.OLD);
+      .withState(Record.State.OLD)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID));
 
     postRecords(testContext, marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, recordWithOldStatus);
 
@@ -682,7 +700,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(firstMatchedId)
       .withOrder(1)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(SECOND_UUID)
+        .withInstanceHrid(FIRST_HRID));;
 
     String secondMathcedId = UUID.randomUUID().toString();
 
@@ -694,7 +715,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(secondMathcedId)
       .withOrder(11)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID));
 
     postRecords(testContext, marc_bib_record_2, record_2_tmp, marc_bib_record_4, record_4_tmp);
 
@@ -732,8 +756,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   public void shouldReturnSortedSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
     postSnapshots(testContext, snapshot_2);
 
-    // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
-    postRecords(testContext, marc_bib_record_2, marc_bib_record_3, marc_bib_record_5, marc_bib_record_6);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_3);
 
     final Async async = testContext.async();
     InputStream response = RestAssured.given()
@@ -771,8 +794,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     Date fromDate = new Date();
     String from = dateTimeFormatter.format(ZonedDateTime.ofInstant(fromDate.toInstant(), ZoneId.systemDefault()));
 
-    // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
-    postRecords(testContext, marc_bib_record_2, marc_bib_record_3, marc_bib_record_4, marc_bib_record_5);
+    postRecords(testContext, marc_bib_record_2, marc_bib_record_3, marc_bib_record_4);
 
     Date toDate = new Date();
     String to = dateTimeFormatter.format(ZonedDateTime.ofInstant(toDate.toInstant(), ZoneId.systemDefault()));
@@ -780,7 +802,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     RestAssured.given()
         .spec(spec)
-        .body(marc_bib_record_6)
+        .body(marc_bib_record_5)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()
@@ -788,7 +810,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     async.complete();
 
     final Async finalAsync = testContext.async();
-    // NOTE: we do not expect record_3 or record_5 as they do not have a parsed record
+    // NOTE: we do not marc_holdings_record_2 as they do not have a parsed record
     InputStream result = RestAssured.given()
       .spec(spec)
       .when()
@@ -813,8 +835,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
           .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedAfter=" + from)
           .then()
           .statusCode(HttpStatus.SC_OK)
-          .body("sourceRecords.size()", is(3))
-          .body("totalRecords", is(3))
+          .body("sourceRecords.size()", is(4))
+          .body("totalRecords", is(4))
           .body("sourceRecords*.deleted", everyItem(is(false)));
         innerAsync.complete();
 
@@ -830,7 +852,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
           .body("sourceRecords*.deleted", everyItem(is(false)));
         innerAsync.complete();
 
-        // NOTE: we do not expect record_1 id does not have a parsed record
         innerAsync = testContext.async();
         RestAssured.given()
           .spec(spec)
@@ -838,8 +859,8 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
           .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?updatedBefore=" + to)
           .then()
           .statusCode(HttpStatus.SC_OK)
-          .body("sourceRecords.size()", is(2))
-          .body("totalRecords", is(2))
+          .body("sourceRecords.size()", is(3))
+          .body("totalRecords", is(3))
           .body("sourceRecords*.deleted", everyItem(is(false)));
         innerAsync.complete();
 
@@ -1100,6 +1121,9 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marc_bib_record_2.getParsedRecord())
       .withMatchedId(marc_bib_record_2.getMatchedId())
       .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID))
       .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
     postSnapshots(testContext, snapshot_2);
     postRecords(testContext, suppressedRecord);
@@ -1358,40 +1382,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
-    // given
-    final Async async = testContext.async();
-    postSnapshots(testContext, snapshot_2);
-    Record marc_bib_record_withoutInstanceId = new Record()
-      .withId(SECOND_UUID)
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
-      .withMatchedId(SECOND_UUID)
-      .withOrder(11)
-      .withState(Record.State.ACTUAL);
-    postRecords(testContext, marc_bib_record_withoutInstanceId);
-
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setFieldsSearchExpression("001.value = '393893'");
-    // when
-    ExtractableResponse<Response> response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-record-identifiers")
-      .then()
-      .extract();
-    JsonObject responseBody = new JsonObject(response.body().asString());
-    // then
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(0, responseBody.getJsonArray("records").size());
-    assertEquals(0, responseBody.getInteger("totalCount").intValue());
-    async.complete();
-  }
-
-  @Test
   public void shouldReturnIdOnSearchMarcRecordIdsWhenInstanceIdIsMissing(TestContext testContext) {
     // given
     final Async async = testContext.async();
@@ -1404,7 +1394,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(FIFTH_UUID)
+        .withInstanceHrid(FIRST_HRID));
     postRecords(testContext, marc_bib_record_2, marc_bib_record_withoutInstanceId);
 
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();

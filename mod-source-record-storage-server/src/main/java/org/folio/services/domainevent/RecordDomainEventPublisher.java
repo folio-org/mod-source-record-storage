@@ -1,6 +1,7 @@
 package org.folio.services.domainevent;
 
 import static java.util.Objects.isNull;
+import static org.folio.dao.util.ParsedRecordDaoUtil.normalize;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
@@ -44,7 +45,8 @@ public class RecordDomainEventPublisher {
     try {
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), aRecord.getRawRecord().getContent(),
+      var jsonContent = normalize(aRecord.getParsedRecord().getContent());
+      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
       LOG.error("Exception during Record domain event sending", e);
@@ -56,12 +58,12 @@ public class RecordDomainEventPublisher {
       LOG.error("Record [with id {}] contains no type information and won't be sent as domain event", aRecord.getId());
       return true;
     }
-    if (isNull(aRecord.getRawRecord())) {
-      LOG.error("Record [with id {}] contains no raw record and won't be sent as domain event", aRecord.getId());
+    if (isNull(aRecord.getParsedRecord())) {
+      LOG.error("Record [with id {}] contains no parsed record and won't be sent as domain event", aRecord.getId());
       return true;
     }
-    if (isNull(aRecord.getRawRecord().getContent())) {
-      LOG.error("Record [with id {}] contains no raw record content and won't be sent as domain event",
+    if (isNull(aRecord.getParsedRecord().getContent())) {
+      LOG.error("Record [with id {}] contains no parsed record content and won't be sent as domain event",
         aRecord.getId());
       return true;
     }

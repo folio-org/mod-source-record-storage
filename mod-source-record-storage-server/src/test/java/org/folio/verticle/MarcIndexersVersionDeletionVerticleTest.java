@@ -14,10 +14,13 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
 import java.util.UUID;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
@@ -70,7 +73,8 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(recordId))
-      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId));
+      .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)

@@ -529,7 +529,7 @@ public class RecordServiceImpl implements RecordService {
   private boolean isRecordContainsRequiredField(Record record) {
     if (record.getRecordType() == Record.RecordType.MARC_BIB) {
       var idsHolder = record.getExternalIdsHolder();
-      if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(record, TAG_001))) {
+      if (Objects.isNull(idsHolder) || !is001FieldExist(record)) {
         return false;
       }
       if (StringUtils.isEmpty(idsHolder.getInstanceId()) || StringUtils.isEmpty(idsHolder.getInstanceHrid())) {
@@ -537,6 +537,40 @@ public class RecordServiceImpl implements RecordService {
       }
     }
     return true;
+  }
+
+  private boolean is001FieldExist(Record record) {
+    try {
+      if (record.getParsedRecord().getContent() instanceof Map) {
+        return getDecodedFields(record.getParsedRecord()).containsKey(TAG_001);
+      }
+      return StringUtils.isNotEmpty(getValueFromControlledField(record, TAG_001));
+    } catch (Exception exception) {
+      return false;
+    }
+  }
+
+  private Map<String, Object> getDecodedFields(ParsedRecord parsedRecord) {
+    return Optional.ofNullable((Map)parsedRecord.getContent())
+      .map(map -> map.get("map"))
+      .filter(m -> m instanceof Map)
+      .map(m -> (Map<String, Object>) m)
+      .map(map -> map.get("fields"))
+      .filter(m -> m instanceof Map)
+      .map(m -> (Map<String, Object>) m)
+      .map(map -> map.get("list"))
+      .filter(l -> l instanceof List)
+      .map(l -> (List<Map<String, Object>>) l)
+      .map(listMap -> listMap.stream()
+        .map(entry -> entry.get("map"))
+        .filter(l -> l instanceof Map)
+        .map(l -> (Map<String, Object>) l)
+        .flatMap(map -> map.entrySet().stream())
+        .collect(Collectors.toMap(
+          Map.Entry::getKey,
+          Map.Entry::getValue
+        ))
+      ).orElse(Map.of());
   }
 
 }

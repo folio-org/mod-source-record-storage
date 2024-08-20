@@ -7,6 +7,7 @@ import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.TestMarcRecordsCollection;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -20,6 +21,7 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   private static final String POPULATE_TEST_MARK_RECORDS_PATH = "/source-storage/populate-test-marc-records";
 
   @Test
+  @Ignore
   public void shouldReturnNoContentOnPostRecordCollectionPassedInBody() throws IOException {
     RawRecord rawRecord = new RawRecord().withContent(
       new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));

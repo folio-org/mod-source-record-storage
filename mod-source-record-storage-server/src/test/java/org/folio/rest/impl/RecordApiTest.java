@@ -892,7 +892,11 @@ public class RecordApiTest extends AbstractRestVerticleTest {
           .add(new JsonObject().put("005", currentDate))
           .add(new JsonObject().put("001", FIRST_HRID))
           .add(new JsonObject().put("999", new JsonObject()
-          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+            .put("ind1", "f")
+            .put("ind2", "f")
+            .put("subfields", new JsonArray()
+              .add(new JsonObject().put("s", srsId))
+              .add(new JsonObject().put("i", instanceId)))))).encode());
 
     Record newRecord = new Record()
       .withId(srsId)
@@ -941,7 +945,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
     //Complex verifying "005" field is NOT empty inside parsed record.
     LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content = (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) deletedRecord.getParsedRecord().getContent();
-    LinkedHashMap<String, String> map = content.get("fields").get(0);
+    LinkedHashMap<String, String> map = content.get("fields").get(1);
     String resulted005FieldValue = map.get("005");
     Assert.assertNotNull(resulted005FieldValue);
     Assert.assertNotEquals(currentDate, resulted005FieldValue);

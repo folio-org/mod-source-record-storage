@@ -473,7 +473,12 @@ public class RecordDaoImpl implements RecordDao {
             .toFlowable()
             .map(this::toRow)
             .map(this::toRecord))
-          .doAfterTerminate(tx::commit)));
+          .doAfterTerminate(tx::commit)
+          .doOnError(error -> {
+            tx.rollback();
+            conn.close();
+          })
+          .doFinally(conn::close)));
   }
 
   private static String buildCteDistinctCountCondition(Expression expression) {
@@ -591,7 +596,12 @@ public class RecordDaoImpl implements RecordDao {
           .flatMapPublisher(pq -> pq.createStream(10000)
             .toFlowable()
             .map(this::toRow))
-          .doAfterTerminate(tx::commit)));
+          .doAfterTerminate(tx::commit)
+          .doOnError(error -> {
+            tx.rollback();
+            conn.close();
+          })
+          .doFinally(conn::close)));
   }
 
   private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {
@@ -1044,7 +1054,12 @@ public class RecordDaoImpl implements RecordDao {
             .toFlowable()
             .map(this::toRow)
             .map(this::toSourceRecord))
-          .doAfterTerminate(tx::commit)));
+          .doAfterTerminate(tx::commit)
+          .doOnError(error -> {
+            tx.rollback();
+            conn.close();
+          })
+          .doFinally(conn::close)));
   }
 
   @Override

@@ -12,7 +12,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
 import org.junit.Test;
@@ -118,11 +118,11 @@ public class RecordDomainEventPublisherUnitTest {
   public void publishRecordCreated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
-    var rawContent = "rawContent";
+    var parsedContent = "{\"parsedContent\":\"parsedContentValue\"}";
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(new RawRecord().withContent(rawContent));
+      .withParsedRecord(new ParsedRecord().withContent(parsedContent));
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
@@ -134,18 +134,18 @@ public class RecordDomainEventPublisherUnitTest {
     publisher.publishRecordCreated(aRecord, givenHeaders);
 
     // then
-    verify(kafkaSender).sendEventToKafka(tenantId, rawContent, eventType, expectedHeaders, aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, parsedContent, eventType, expectedHeaders, aRecord.getId());
   }
 
   @Test
   public void publishRecordUpdated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
-    var rawContent = "rawContent";
+    var parsedContent = "{\"parsedContent\":\"parsedContentValue\"}";
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(new RawRecord().withContent(rawContent));
+      .withParsedRecord(new ParsedRecord().withContent(parsedContent));
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
@@ -157,7 +157,7 @@ public class RecordDomainEventPublisherUnitTest {
     publisher.publishRecordUpdated(aRecord, givenHeaders);
 
     // thenÏ
-    verify(kafkaSender).sendEventToKafka(tenantId, rawContent, eventType, expectedHeaders, aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, parsedContent, eventType, expectedHeaders, aRecord.getId());
   }
 
   private List<KafkaHeader> getKafkaHeaders(String okapiUrl, String tenantId, String token, Record aRecord) {

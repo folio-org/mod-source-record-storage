@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -13,14 +14,13 @@ import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -295,19 +295,24 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .body("status", is(snapshot_3.getStatus().name()));
     async.complete();
 
-    String instanceId = UUID.randomUUID().toString();
     String recordId = UUID.randomUUID().toString();
+    var marcRecordWith001 = new ParsedRecord()
+      .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", RandomStringUtils.randomAlphanumeric(9)))).encode());
     Record record = new Record()
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withParsedRecord(marcRecordWith001)
       .withSnapshotId(snapshot_3.getJobExecutionId());
 
     List<String> recordIds = Arrays.asList(recordId, UUID.randomUUID().toString());
     for (String id : recordIds) {
+      record.withId(id).withMatchedId(id)
+        .withExternalIdsHolder(new ExternalIdsHolder()
+          .withInstanceId(UUID.randomUUID().toString())
+          .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
       RestAssured.given()
         .spec(spec)
-        .body(record.withId(id).withMatchedId(id))
+        .body(record)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()

@@ -22,6 +22,7 @@ import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
@@ -541,9 +542,9 @@ public class RecordServiceImpl implements RecordService {
 
   private boolean is001FieldExist(Record record) {
     try {
-      if (record.getParsedRecord().getContent() instanceof Map) {
+     /* if (record.getParsedRecord().getContent() instanceof Map) {
         return getDecodedFields(record.getParsedRecord()).containsKey(TAG_001);
-      }
+      }*/
       return StringUtils.isNotEmpty(getValueFromControlledField(record, TAG_001));
     } catch (Exception exception) {
       return false;

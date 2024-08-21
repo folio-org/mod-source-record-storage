@@ -10,7 +10,7 @@
 * [MODSOURMAN-783](https://folio-org.atlassian.net/browse/MODSOURCE-783) Extend MARC-MARC search query to account for qualifiers
 * [MODSOURCE-752](https://folio-org.atlassian.net/browse/MODSOURCE-752) Emit Domain Events For Source Records
 * [MODSOURCE-795](https://folio-org.atlassian.net/browse/MODSOURCE-795) Upgrade Spring 5 to 6 by 2024-08-31
-* [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record creation
+* [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record save
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

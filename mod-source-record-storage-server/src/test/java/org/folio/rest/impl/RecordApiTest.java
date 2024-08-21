@@ -1124,6 +1124,58 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnBadRequestWithInvalidMarcBibRecords(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+
+    var missing001InParsedRecord = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawMarcRecord)
+      .withParsedRecord(new ParsedRecord().withContent(""))
+      .withState(Record.State.ACTUAL)
+      .withMatchedId(UUID.randomUUID().toString())
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(FIRST_HRID));
+
+    var async = testContext.async();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(missing001InParsedRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    var missingExternalInstanceIdRecord = missing001InParsedRecord
+      .withParsedRecord(marcRecordWith001)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid(FIRST_HRID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(missingExternalInstanceIdRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    var missingExternalInstanceHrIdRecord = missingExternalInstanceIdRecord
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(missingExternalInstanceHrIdRecord)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+    async.complete();
+  }
+
+  @Test
   public void shouldReturnErrorOnGet() {
     RestAssured.given()
       .spec(spec)

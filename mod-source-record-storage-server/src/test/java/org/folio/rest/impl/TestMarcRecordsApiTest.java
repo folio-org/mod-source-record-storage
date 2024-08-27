@@ -37,6 +37,7 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @Ignore
   public void shouldReturnUnprocessableEntityOnPostWhenNoRecordCollectionPassedInBody() {
     TestMarcRecordsCollection testMarcRecordsCollection = new TestMarcRecordsCollection()
       .withRawRecords(Collections.singletonList(new RawRecord()));

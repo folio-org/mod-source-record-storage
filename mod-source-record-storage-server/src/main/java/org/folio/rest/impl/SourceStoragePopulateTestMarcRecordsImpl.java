@@ -31,6 +31,10 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * @deprecated This class will no longer be used to create test data
+ */
+@Deprecated
 public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePopulateTestMarcRecords {
 
   private static final Logger LOG = LogManager.getLogger();

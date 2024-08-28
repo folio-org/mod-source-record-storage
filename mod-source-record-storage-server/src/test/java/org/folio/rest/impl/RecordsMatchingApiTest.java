@@ -549,6 +549,39 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) {
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    String recordId = UUID.randomUUID().toString();
+    Record record = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent));
+
+    postRecords(context, record);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of("(OCoLC)63611770", "1234567"))
+          .withField("035")
+          .withIndicator1("")
+          .withIndicator2("")
+          .withSubfield("a"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(0))
+      .body("identifiers.size()", is(0));
+  }
+
+  @Test
   public void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset(TestContext context) {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     List<String> recordsIds = List.of("00000000-0000-1000-8000-000000000004", "00000000-0000-1000-8000-000000000002",

@@ -19,6 +19,7 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
+import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlledField;
 
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
@@ -96,8 +97,10 @@ public class RecordServiceImpl implements RecordService {
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
+  public static final String EXTERNAL_IDS_MISSING_ERROR = "MARC_BIB records must contain external instance and hr id's and 001 field into parsed record";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
+  private static final String TAG_001 = "001";
 
   private final RecordDao recordDao;
 
@@ -128,6 +131,10 @@ public class RecordServiceImpl implements RecordService {
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
     ensureRecordHasId(record);
     ensureRecordHasSuppressDiscovery(record);
+    if (!isRecordContainsRequiredField(record)) {
+      LOG.error("saveRecord:: Record '{}' has invalid externalIdHolder or missing 001 field into parsed record", record.getId());
+      return Future.failedFuture(new BadRequestException(EXTERNAL_IDS_MISSING_ERROR));
+    }
     return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
         .map(optionalSnapshot -> optionalSnapshot
           .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
@@ -521,6 +528,19 @@ public class RecordServiceImpl implements RecordService {
       var content = reorderMarcRecordFields(sourceContent, targetContent);
       targetRecord.getParsedRecord().setContent(content);
     }
+  }
+
+  private boolean isRecordContainsRequiredField(Record marcRecord) {
+    if (marcRecord.getRecordType() == Record.RecordType.MARC_BIB) {
+      var idsHolder = marcRecord.getExternalIdsHolder();
+      if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(marcRecord, TAG_001))) {
+        return false;
+      }
+      if (StringUtils.isEmpty(idsHolder.getInstanceId()) || StringUtils.isEmpty(idsHolder.getInstanceHrid())) {
+        return false;
+      }
+    }
+    return true;
   }
 
 }

@@ -18,7 +18,8 @@ traits:
 
 /source-storage/populate-test-marc-records:
   post:
-    description: A non-production endpoint to populate MARC records for testing purposes. Available only in case deployment tenant parameter "loadSample" is set to true
+    description: |
+      **Deprecated** A non-production endpoint to populate MARC records for testing purposes. Available only in case deployment tenant parameter "loadSample" is set to true
     is: [validate]
     body:
       application/json:

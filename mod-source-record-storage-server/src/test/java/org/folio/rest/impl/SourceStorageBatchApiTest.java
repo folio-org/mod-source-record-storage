@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
@@ -71,9 +72,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String VALID_HRID = "12345";
+  private static final String MARC_RECORD_HRID = "393893";
+  private static final String HRID = RandomStringUtils.randomAlphanumeric(9);
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
+  private static ParsedRecord marcRecordWithHrId;
 
   static {
     try {
@@ -81,6 +85,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
       marcRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
+      marcRecordWithHrId = new ParsedRecord()
+        .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", HRID))).encode());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -105,11 +111,13 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecordWithHrId)
     .withMatchedId(FIRST_UUID)
     .withOrder(0)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid(HRID));
   private static Record record_2 = new Record()
     .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -120,17 +128,20 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withOrder(11)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid(MARC_RECORD_HRID));
   private static Record record_3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
     .withRawRecord(rawRecord)
+    .withParsedRecord(marcRecordWithHrId)
     .withErrorRecord(errorRecord)
     .withMatchedId(THIRD_UUID)
     .withState(Record.State.ACTUAL)
     .withExternalIdsHolder(new ExternalIdsHolder()
-      .withInstanceId(UUID.randomUUID().toString()));
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid(HRID));
   private static Record record_4 = new Record()
     .withId(FOURTH_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -139,6 +150,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withParsedRecord(marcRecord)
     .withMatchedId(FOURTH_UUID)
     .withOrder(1)
+    .withExternalIdsHolder(new ExternalIdsHolder()
+      .withInstanceId(UUID.randomUUID().toString())
+      .withInstanceHrid(MARC_RECORD_HRID))
     .withState(Record.State.ACTUAL);
   private static Record record_5 = new Record()
     .withId(FIFTH_UUID)
@@ -601,6 +615,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(VALID_HRID))
       .withState(Record.State.OLD);
 
     postRecords(testContext, record_1, record_2, record_3, recordWithOldStatus);
@@ -785,6 +802,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(parsedRecord)
       .withMatchedId(matchedId)
       .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(matchedId)
+        .withInstanceHrid(VALID_HRID))
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(false));
 
@@ -876,6 +896,9 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withMatchedId(UUID.randomUUID().toString())
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(VALID_HRID))
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(false));
 

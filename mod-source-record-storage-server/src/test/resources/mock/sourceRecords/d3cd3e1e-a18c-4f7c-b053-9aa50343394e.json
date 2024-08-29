@@ -302,7 +302,8 @@
   },
   "deleted" : false,
   "externalIdsHolder" : {
-    "instanceId" : "e50e9535-091c-451e-82b7-d078b7c4770f"
+    "instanceId" : "e50e9535-091c-451e-82b7-d078b7c4770f",
+    "instanceHrid" : "in00000000002"
   },
   "additionalInfo" : {
     "suppressDiscovery" : false

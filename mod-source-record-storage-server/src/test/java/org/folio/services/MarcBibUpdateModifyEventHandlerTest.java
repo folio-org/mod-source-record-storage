@@ -46,6 +46,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -272,7 +274,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
       .withMetadata(new Metadata());
 
     Record record_2 = new Record()
@@ -283,7 +285,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
       .withMetadata(new Metadata());
 
     ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
@@ -707,7 +709,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -885,7 +887,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -896,7 +898,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
           .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
-          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
         secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
         HashMap<String, String> payloadContext = new HashMap<>();
         payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));

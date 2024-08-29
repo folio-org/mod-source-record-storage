@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ReadKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -77,10 +78,12 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String LINKED_BIB_UPDATE_JOB_ID = UUID.randomUUID().toString();
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
+  private static final String HR_ID = RandomStringUtils.randomAlphanumeric(9);
   private static final String SECOND_RECORD_ID = UUID.randomUUID().toString();
   private static final String SECOND_INSTANCE_ID = UUID.randomUUID().toString();
   private static final String ERROR_RECORD_ID = UUID.randomUUID().toString();
   private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
+  private static final String ERROR_HR_ID = RandomStringUtils.randomAlphanumeric(9);
   private static final String ERROR_RECORD_DESCRIPTION = "test error";
   private static final Integer LINK_ID = RandomUtils.nextInt();
   private static final String USER_ID = UUID.randomUUID().toString();
@@ -121,7 +124,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID).withInstanceHrid(HR_ID));
 
     var secondParsedRecord = new ParsedRecord().withId(SECOND_RECORD_ID)
       .withContent(new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode());
@@ -132,7 +135,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_INSTANCE_ID));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_INSTANCE_ID).withInstanceHrid(HR_ID));
 
     var content2 = new JsonObject(TestUtil.readFileFromPath(PARSED_MARC_RECORD_LINKED_PATH)).encode();
     var errorRecordContent = new ErrorRecord().withId(ERROR_RECORD_ID).withContent(content2).withDescription(ERROR_RECORD_DESCRIPTION);
@@ -145,7 +148,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(errorParsedRecord)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withSnapshotId(snapshot.getJobExecutionId())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID).withInstanceHrid(ERROR_HR_ID));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)

@@ -63,7 +63,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
 
   private static RawRecord rawEdifactRecord;
   private static ParsedRecord parsedEdifactRecord;
-  private static ParsedRecord parsedMarcRecordWith001and999ff$s;
+  private static ParsedRecord parsedMarcRecordWith001and999;
 
   static {
     try {
@@ -77,7 +77,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class));
       parsedEdifactRecord = new ParsedRecord()
         .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
-      parsedMarcRecordWith001and999ff$s = new ParsedRecord().withId(FIRST_UUID)
+      parsedMarcRecordWith001and999 = new ParsedRecord().withId(FIRST_UUID)
         .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
           .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
             .put("subfields",
@@ -232,7 +232,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.OLD)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(FIRST_HRID));;
+        .withInstanceHrid(FIRST_HRID));
 
     postRecords(testContext, record_1, record_2, record_3, record_4, record_6);
 
@@ -675,7 +675,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999ff$s))
+      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999))
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -696,7 +696,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
-      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999ff$s))
+      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999))
       .when()
       .put(SOURCE_STORAGE_RECORDS_PATH + "/" + record_1.getMatchedId() + "/" + GENERATION)
       .then()
@@ -711,7 +711,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999ff$s))
+      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999))
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -737,7 +737,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999ff$s))
+      .body(record_1.withParsedRecord(parsedMarcRecordWith001and999))
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));

@@ -83,8 +83,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     }
   }
 
-    private static final ParsedRecord invalidParsedRecord = new ParsedRecord()
-    .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
     private static final ErrorRecord errorRecord = new ErrorRecord()
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
@@ -703,7 +701,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(SECOND_UUID)
-        .withInstanceHrid(FIRST_HRID));;
+        .withInstanceHrid(FIRST_HRID));
 
     String secondMathcedId = UUID.randomUUID().toString();
 

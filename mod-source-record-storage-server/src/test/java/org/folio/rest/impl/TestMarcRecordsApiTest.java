@@ -21,7 +21,7 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   private static final String POPULATE_TEST_MARK_RECORDS_PATH = "/source-storage/populate-test-marc-records";
 
   @Test
-  @Ignore
+  @Ignore("Deprecated endpoint")
   public void shouldReturnNoContentOnPostRecordCollectionPassedInBody() throws IOException {
     RawRecord rawRecord = new RawRecord().withContent(
       new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
@@ -37,7 +37,7 @@ public class TestMarcRecordsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  @Ignore
+  @Ignore("Deprecated endpoint")
   public void shouldReturnUnprocessableEntityOnPostWhenNoRecordCollectionPassedInBody() {
     TestMarcRecordsCollection testMarcRecordsCollection = new TestMarcRecordsCollection()
       .withRawRecords(Collections.singletonList(new RawRecord()));

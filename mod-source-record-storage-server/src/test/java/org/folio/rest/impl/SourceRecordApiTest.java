@@ -762,7 +762,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(firstMatchedId)
       .withOrder(1)
       .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_HRID));;
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_HRID));
 
     String secondMathcedId = UUID.randomUUID().toString();
 

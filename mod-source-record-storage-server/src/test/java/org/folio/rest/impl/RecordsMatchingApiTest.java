@@ -550,7 +550,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) {
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
       .withId(recordId)
@@ -567,9 +567,9 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .body(new RecordMatchingDto()
-        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withRecordType(RecordMatchingDto.RecordType.MARC_AUTHORITY)
         .withFilters(List.of(new Filter()
-          .withValues(List.of("(OCoLC)63611770", "1234567"))
+          .withValues(List.of("(OCoLC)63611770", "nin00009530412"))
           .withField("035")
           .withIndicator1("")
           .withIndicator2("")

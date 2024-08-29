@@ -530,10 +530,10 @@ public class RecordServiceImpl implements RecordService {
     }
   }
 
-  private boolean isRecordContainsRequiredField(Record record) {
-    if (record.getRecordType() == Record.RecordType.MARC_BIB) {
-      var idsHolder = record.getExternalIdsHolder();
-      if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(record, TAG_001))) {
+  private boolean isRecordContainsRequiredField(Record marcRecord) {
+    if (marcRecord.getRecordType() == Record.RecordType.MARC_BIB) {
+      var idsHolder = marcRecord.getExternalIdsHolder();
+      if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(marcRecord, TAG_001))) {
         return false;
       }
       if (StringUtils.isEmpty(idsHolder.getInstanceId()) || StringUtils.isEmpty(idsHolder.getInstanceHrid())) {

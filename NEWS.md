@@ -1,3 +1,6 @@
+## 2024-09-03 v5.8.7
+* [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) (ECS) Fix update of shared Instances from a member tenant
+
 ## 2024-06-27 5.8.6
 * [MODSOURCE-780](https://folio-org.atlassian.net/browse/MODSOURCE-780) Reorder only 00X fields while preserving system order for all other
 

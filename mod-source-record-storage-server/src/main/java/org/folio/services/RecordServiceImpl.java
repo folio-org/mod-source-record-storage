@@ -74,6 +74,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.exceptions.RecordUpdateException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
@@ -98,8 +99,10 @@ public class RecordServiceImpl implements RecordService {
   private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final String EXTERNAL_IDS_MISSING_ERROR = "MARC_BIB records must contain external instance and hr id's and 001 field into parsed record";
+  protected static final String UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION = "Record with source=LINKED_DATA cannot be updated using QuickMARC. Please use Linked Data Editor.";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
+  public static final char SUBFIELD_L = 'l';
   private static final String TAG_001 = "001";
 
   private final RecordDao recordDao;
@@ -304,24 +307,25 @@ public class RecordServiceImpl implements RecordService {
     String newRecordId = UUID.randomUUID().toString();
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(existingRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
-            .withJobExecutionId(snapshotId)
-            .withProcessingStartedDate(new Date())
-            .withStatus(Snapshot.Status.COMMITTED)) // no processing of the record is performed apart from the update itself
-          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-            .withId(newRecordId)
-            .withSnapshotId(snapshot.getJobExecutionId())
-            .withMatchedId(parsedRecordDto.getId())
-            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-            .withState(Record.State.ACTUAL)
-            .withOrder(existingRecord.getOrder())
-            .withGeneration(existingRecord.getGeneration() + 1)
-            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
-        .orElse(Future.failedFuture(new NotFoundException(
+        .map(existingRecord -> checkIfEditable(existingRecord)
+                .compose(record -> SnapshotDaoUtil.save(txQE, new Snapshot()
+                        .withJobExecutionId(snapshotId)
+                        .withProcessingStartedDate(new Date())
+                        .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
+                .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
+                        .withId(newRecordId)
+                        .withSnapshotId(snapshot.getJobExecutionId())
+                        .withMatchedId(parsedRecordDto.getId())
+                        .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+                        .withState(Record.State.ACTUAL)
+                        .withOrder(existingRecord.getOrder())
+                        .withGeneration(existingRecord.getGeneration() + 1)
+                        .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+                        .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+                        .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+                        .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+                        .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
+              .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
   }
 
@@ -541,6 +545,14 @@ public class RecordServiceImpl implements RecordService {
       }
     }
     return true;
+  }
+
+  private Future<Record> checkIfEditable(Record existingRecord) {
+    var linkedDataId = getFieldFromMarcRecord(existingRecord, TAG_999, INDICATOR, INDICATOR, SUBFIELD_L);
+    if (linkedDataId != null && !linkedDataId.isEmpty()) {
+      return Future.failedFuture(new RecordUpdateException(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION));
+    }
+    return Future.succeededFuture(existingRecord);
   }
 
 }

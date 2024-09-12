@@ -5,7 +5,9 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.services.RecordServiceImpl.INDICATOR;
 import static org.folio.services.RecordServiceImpl.SUBFIELD_S;
+import static org.folio.services.RecordServiceImpl.UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
+import static org.folio.services.util.AdditionalFieldsUtil.addDataFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 import static org.junit.Assert.assertThrows;
 
@@ -65,6 +67,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
+import org.folio.services.exceptions.RecordUpdateException;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -82,6 +85,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private static final String MARC_BIB_RECORD_SNAPSHOT_ID = "d787a937-cc4b-49b3-85ef-35bcd643c689";
   private static final String MARC_AUTHORITY_RECORD_SNAPSHOT_ID = "ee561342-3098-47a8-ab6e-0f3eba120b04";
+
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
   @Mock
@@ -1431,6 +1435,45 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertTrue(ar.failed());
       assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
       async.complete();
+    });
+  }
+
+  @Test
+  public void shouldThrowExceptionWhenUpdatingLinkedDataRecord(TestContext context) {
+    Async async = context.async();
+    Record marcRecord = TestMocks.getMarcBibRecord();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    ParsedRecord parsedRecord = new ParsedRecord().withId(marcRecord.getId())
+            .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+                    .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+                            .put("subfields",
+                                    new JsonArray().add(new JsonObject().put("s", marcRecord.getId()))
+                                            .add(new JsonObject().put("l", "503ac913-4e7e-4943-b728-a42843579132")))
+                            .put("ind1", "f")
+                            .put("ind2", "f")))).encode());
+
+    recordDao.saveRecord(marcRecord.withParsedRecord(parsedRecord), okapiHeaders).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      String snapshotId = UUID.randomUUID().toString();
+      ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+              .withId(marcRecord.getId())
+              .withRecordType(ParsedRecordDto.RecordType.fromValue(marcRecord.getRecordType().toString()))
+              .withParsedRecord(marcRecord.getParsedRecord())
+              .withAdditionalInfo(marcRecord.getAdditionalInfo())
+              .withExternalIdsHolder(marcRecord.getExternalIdsHolder())
+              .withMetadata(marcRecord.getMetadata());
+
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders).onComplete(ar -> {
+        context.assertTrue(ar.failed());
+        context.assertEquals(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION, ar.cause().getMessage());
+        assertThrows(RecordUpdateException.class, () -> {
+          throw ar.cause();
+        });
+        async.complete();
+      });
     });
   }
 

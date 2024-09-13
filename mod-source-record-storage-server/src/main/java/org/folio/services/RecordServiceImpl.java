@@ -29,6 +29,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -308,24 +310,24 @@ public class RecordServiceImpl implements RecordService {
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> checkIfEditable(existingRecord)
-                .compose(record -> SnapshotDaoUtil.save(txQE, new Snapshot()
-                        .withJobExecutionId(snapshotId)
-                        .withProcessingStartedDate(new Date())
-                        .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
-                .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-                        .withId(newRecordId)
-                        .withSnapshotId(snapshot.getJobExecutionId())
-                        .withMatchedId(parsedRecordDto.getId())
-                        .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-                        .withState(Record.State.ACTUAL)
-                        .withOrder(existingRecord.getOrder())
-                        .withGeneration(existingRecord.getGeneration() + 1)
-                        .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-                        .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-                        .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-                        .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-                        .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
-              .orElse(Future.failedFuture(new NotFoundException(
+          .compose(sourceRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
+            .withJobExecutionId(snapshotId)
+            .withProcessingStartedDate(new Date())
+            .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
+          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
+            .withId(newRecordId)
+            .withSnapshotId(snapshot.getJobExecutionId())
+            .withMatchedId(parsedRecordDto.getId())
+            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+            .withState(Record.State.ACTUAL)
+            .withOrder(existingRecord.getOrder())
+            .withGeneration(existingRecord.getGeneration() + 1)
+            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
+        .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
   }
 

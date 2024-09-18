@@ -8,10 +8,13 @@ import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
@@ -118,46 +121,65 @@ public class RecordDomainEventPublisherUnitTest {
   public void publishRecordCreated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
-    var parsedContent = "{\"parsedContent\":\"parsedContentValue\"}";
+    var parsedContent = "parsedContent";
+    var metadata = new Metadata()
+      .withCreatedByUserId("createdByUserId")
+      .withCreatedByUsername("createdByUsername")
+      .withCreatedDate(new Date(10000L))
+      .withUpdatedByUserId("updatedByUserId")
+      .withUpdatedByUsername("updatedByUsername")
+      .withUpdatedDate(new Date(20000L));
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withParsedRecord(new ParsedRecord().withContent(parsedContent));
+      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
+      .withMetadata(metadata);
+
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
     var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_CREATED.name();
+    var expectedPayload = JsonObject.mapFrom(aRecord).encode();
 
     // when
     publisher.publishRecordCreated(aRecord, givenHeaders);
 
     // then
-    verify(kafkaSender).sendEventToKafka(tenantId, parsedContent, eventType, expectedHeaders, aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders, aRecord.getId());
   }
 
   @Test
   public void publishRecordUpdated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
-    var parsedContent = "{\"parsedContent\":\"parsedContentValue\"}";
+    var parsedContent = "parsedContent";
+    var metadata = new Metadata()
+      .withCreatedByUserId("createdByUserId")
+      .withCreatedByUsername("createdByUsername")
+      .withCreatedDate(new Date(10000L))
+      .withUpdatedByUserId("updatedByUserId")
+      .withUpdatedByUsername("updatedByUsername")
+      .withUpdatedDate(new Date(20000L));
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
       .withRecordType(Record.RecordType.MARC_BIB)
-      .withParsedRecord(new ParsedRecord().withContent(parsedContent));
+      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
+      .withMetadata(metadata);
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
     var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_UPDATED.name();
+    var expectedPayload = JsonObject.mapFrom(aRecord).encode();
 
     // when
     publisher.publishRecordUpdated(aRecord, givenHeaders);
 
     // thenÏ
-    verify(kafkaSender).sendEventToKafka(tenantId, parsedContent, eventType, expectedHeaders, aRecord.getId());
+    verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders, aRecord.getId());
   }
 
   private List<KafkaHeader> getKafkaHeaders(String okapiUrl, String tenantId, String token, Record aRecord) {

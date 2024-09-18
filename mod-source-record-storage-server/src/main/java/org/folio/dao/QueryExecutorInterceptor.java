@@ -57,7 +57,7 @@ public class QueryExecutorInterceptor {
    * @return the generated subclass
    */
   public static Class<? extends ReactiveClassicGenericQueryExecutor> generateClass() {
-    return new ByteBuddy()
+    try (var loadedExecutorClass = new ByteBuddy()
       .subclass(ReactiveClassicGenericQueryExecutor.class)
       .constructor(ElementMatchers.any()) // Match all constructors
       .intercept(SuperMethodCall.INSTANCE) // Call the original constructor
@@ -66,8 +66,13 @@ public class QueryExecutorInterceptor {
       .method(ElementMatchers.named("query")) // For query method
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
       .make()
-      .load(QueryExecutorInterceptor.class.getClassLoader())
-      .getLoaded();
+    ) {
+      return loadedExecutorClass.load(QueryExecutorInterceptor.class.getClassLoader())
+        .getLoaded();
+    } catch (Exception e) {
+      LOGGER.error("generateClass");
+    }
+    return null;
   }
 
   /**
@@ -84,7 +89,7 @@ public class QueryExecutorInterceptor {
     return retryOf(() -> {
       try {
         return superCall.call();
-      } catch (Throwable e) {
+      } catch (Exception e) {
         LOGGER.error("Something happened while attempting to make proxied call for query method", e);
         return Future.failedFuture(e);
       }
@@ -105,7 +110,7 @@ public class QueryExecutorInterceptor {
     return retryOf(() -> {
       try {
         return superCall.call();
-      } catch (Throwable e) {
+      } catch (Exception e) {
         LOGGER.error("Something happened while attempting to make proxied call for transaction method", e);
         return Future.failedFuture(e);
       }
@@ -122,7 +127,8 @@ public class QueryExecutorInterceptor {
    */
   private static <U> Future<U> retryOf(Supplier<Future<U>> supplier, int times) {
     if (times <= 0) {
-      return supplier.get();
+      // If no more retries are left, return a failed Future
+      return Future.failedFuture(new RuntimeException("Max retries reached. Failing operation."));
     }
 
     return supplier.get().recover(err -> {
@@ -137,9 +143,9 @@ public class QueryExecutorInterceptor {
         } else {
           Vertx vertx = currentContext.owner();
           LOGGER.error("Execution error during proxied call. Retry in {}ms...", retryDelay, err);
-          vertx.setTimer(retryDelay, timerId -> { // Introduce a delay
-            retryOf(supplier, times - 1).onComplete(promise); // Recursively call retryOf and pass on the result
-          });
+          vertx.setTimer(retryDelay, timerId ->  // Introduce a delay
+            retryOf(supplier, times - 1).onComplete(promise) // Recursively call retryOf and pass on the result
+          );
           return promise.future();
         }
       }

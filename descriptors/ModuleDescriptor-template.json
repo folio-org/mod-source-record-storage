@@ -311,17 +311,20 @@
     {
       "permissionName": "source-storage.records.populate.collection.post",
       "displayName": "Source Storage - populate storage with test records",
-      "description": "Populate storage with test records"
+      "description": "Populate storage with test records",
+      "replaces": ["source-storage.records.collection.populate.post"]
     },
     {
       "permissionName": "source-storage.snapshots.item.get",
       "displayName": "Source Storage - get snapshot",
-      "description": "Get Snapshot"
+      "description": "Get Snapshot",
+      "replaces": ["source-storage.snapshots.get"]
     },
     {
       "permissionName": "source-storage.snapshots.collection.get",
       "displayName": "Source Storage - get snapshots",
-      "description": "Get Snapshots"
+      "description": "Get Snapshots",
+      "replaces": ["source-storage.snapshots.get"]
     },
     {
       "permissionName": "source-storage.snapshots.post",
@@ -351,7 +354,8 @@
     {
       "permissionName": "source-storage.records.generation.item.put",
       "displayName": "Source Storage - update record's generation",
-      "description": "Update record's generation"
+      "description": "Update record's generation",
+      "replaces": ["source-storage.records.item.generation.put"]
     },
     {
       "permissionName": "source-storage.parsed-records.collection.put",
@@ -361,7 +365,8 @@
     {
       "permissionName": "source-storage.parsed-records.fetch.collection.post",
       "displayName": "Source Storage - fetch records",
-      "description": "Fetch Records"
+      "description": "Fetch Records",
+      "replaces": ["source-storage.parsed-records.collection.fetch.post"]
     },
     {
       "permissionName": "source-storage.batch.records.collection.post",
@@ -371,12 +376,14 @@
     {
       "permissionName": "source-storage.stream.source-records.collection.get",
       "displayName": "Source Storage - get results",
-      "description": "Source Storage - get results"
+      "description": "Source Storage - get results",
+      "replaces": ["source-storage.stream.source-records.get"]
     },
     {
       "permissionName": "source-storage.stream.marc-record-identifiers.collection.post",
       "displayName": "Source Storage - post record's identifiers",
-      "description": "Post record's identifiers"
+      "description": "Post record's identifiers",
+      "replaces": ["source-storage.stream.marc-record-identifiers.post"]
     },
     {
       "permissionName": "source-storage.records.update",
@@ -391,37 +398,44 @@
     {
       "permissionName": "source-storage.source-records.item.get",
       "displayName": "Source Storage - get source record",
-      "description": "Get Source Record"
+      "description": "Get Source Record",
+      "replaces": ["source-storage.sourceRecords.get"]
     },
     {
       "permissionName": "source-storage.records.collection.get",
       "displayName": "Source Storage - get records",
-      "description": "Get Records"
+      "description": "Get Records",
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.records.item.get",
       "displayName": "Source Storage - get record",
-      "description": "Get Record"
+      "description": "Get Record",
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.source-records.collection.get",
       "displayName": "Source Storage - get source record collection",
-      "description": "Get Source Records"
+      "description": "Get Source Records",
+      "replaces": ["source-storage.sourceRecords.get"]
     },
     {
       "permissionName": "source-storage.records.formatted.item.get",
       "displayName": "Source Storage - get formatter record",
-      "description": "Get formatted Record"
+      "description": "Get formatted Record",
+      "replaces": ["source-storage.records.item.formatted.get"]
     },
     {
       "permissionName": "source-storage.stream.records.collection.get",
       "displayName": "Source Storage - stream record",
-      "description": "Stream record"
+      "description": "Stream record",
+      "replaces": ["source-storage.stream.records.get"]
     },
     {
       "permissionName": "source-storage.records.matching.collection.post",
       "displayName": "Source Storage - get pairs of marc record ID to external entity ID",
-      "description": "Get pairs of marc record ID to external entity ID"
+      "description": "Get pairs of marc record ID to external entity ID",
+      "replaces": ["source-storage.records.collection.matching.post"]
     },
     {
       "permissionName": "source-storage.verified-records.collection.post",
@@ -436,7 +450,8 @@
     {
       "permissionName": "source-storage.migrations.item.get",
       "displayName": "Source Storage - get migration job(s)",
-      "description": "Get migration job(s)"
+      "description": "Get migration job(s)",
+      "replaces": ["source-storage.migrations.get"]
     },
     {
       "permissionName": "source-storage.all",

@@ -1,13 +1,13 @@
 package org.folio.services.domainevent;
 
 import static java.util.Objects.isNull;
-import static org.folio.dao.util.ParsedRecordDaoUtil.normalize;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
 
+import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +45,7 @@ public class RecordDomainEventPublisher {
     try {
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      var jsonContent = normalize(aRecord.getParsedRecord().getContent());
+      var jsonContent = JsonObject.mapFrom(aRecord);
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {

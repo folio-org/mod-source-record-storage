@@ -57,7 +57,7 @@ public class QueryExecutorInterceptor {
    * @return the generated subclass
    */
   public static Class<? extends ReactiveClassicGenericQueryExecutor> generateClass() {
-    try (var loadedExecutorClass = new ByteBuddy()
+    return new ByteBuddy()
       .subclass(ReactiveClassicGenericQueryExecutor.class)
       .constructor(ElementMatchers.any()) // Match all constructors
       .intercept(SuperMethodCall.INSTANCE) // Call the original constructor
@@ -65,14 +65,8 @@ public class QueryExecutorInterceptor {
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
       .method(ElementMatchers.named("query")) // For query method
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
-      .make()
-    ) {
-      return loadedExecutorClass.load(QueryExecutorInterceptor.class.getClassLoader())
-        .getLoaded();
-    } catch (Exception e) {
-      LOGGER.error("generateClass");
-    }
-    return null;
+      .make().load(QueryExecutorInterceptor.class.getClassLoader())
+      .getLoaded();
   }
 
   /**
@@ -89,7 +83,7 @@ public class QueryExecutorInterceptor {
     return retryOf(() -> {
       try {
         return superCall.call();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         LOGGER.error("Something happened while attempting to make proxied call for query method", e);
         return Future.failedFuture(e);
       }
@@ -110,7 +104,7 @@ public class QueryExecutorInterceptor {
     return retryOf(() -> {
       try {
         return superCall.call();
-      } catch (Exception e) {
+      } catch (Throwable e) {
         LOGGER.error("Something happened while attempting to make proxied call for transaction method", e);
         return Future.failedFuture(e);
       }
@@ -127,8 +121,7 @@ public class QueryExecutorInterceptor {
    */
   private static <U> Future<U> retryOf(Supplier<Future<U>> supplier, int times) {
     if (times <= 0) {
-      // If no more retries are left, return a failed Future
-      return Future.failedFuture(new RuntimeException("Max retries reached. Failing operation."));
+      return supplier.get();
     }
 
     return supplier.get().recover(err -> {

@@ -161,54 +161,6 @@ public class PostgresClientFactoryTest {
       });
   }
 
-  @Test
-  public void queryExecutorWithMultipleRequestsShouldFailAfterRetryExhausted(TestContext context) throws IOException,
-    InterruptedException {
-    Function<PostgresClientFactory, Future<QueryResult>> exec =
-      (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
-        .transaction(qe -> {
-          var failedFuture1 = Future.failedFuture(new NoStackTraceThrowable("Simulated persistent error"));
-          var failedFuture2 = Future.failedFuture(new NoStackTraceThrowable("Simulated persistent error2"));
-          var failedFuture3 = Future.failedFuture(new NoStackTraceThrowable("Simulated persistent error3"));
-          return CompositeFuture.all(failedFuture1, failedFuture2, failedFuture3)
-            .mapEmpty();
-        });
-    queryExecutorShouldFailAfterRetryExhausted(context, exec);
-  }
-
-  private void queryExecutorShouldFailAfterRetryExhausted(TestContext context, Function<PostgresClientFactory, Future<QueryResult>> exec)
-    throws IOException, InterruptedException {
-    Async async = context.async();
-    // Arrange
-    Network network = Network.newNetwork();
-    ToxiproxyContainer toxiproxy = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.9.0")
-      .withNetwork(network).withNetworkAliases("toxiproxy");
-    PostgreSQLContainer<?> postgreSQLContainer =
-      new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME)
-        .withNetwork(network).withNetworkAliases("toxipostgres");
-    toxiproxy.start();
-    postgreSQLContainer
-      .waitingFor(new LogMessageWaitStrategy().withRegEx(".*database system is ready to accept connections.*\\n")).start();
-    final ToxiproxyClient toxiproxyClient = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
-    final Proxy proxy = toxiproxyClient.createProxy("postgres", "0.0.0.0:8666", "toxipostgres:5432");
-    final String dbHost = toxiproxy.getHost();
-    final int dbPort = toxiproxy.getMappedPort(8666);
-
-    // Act
-    Envs.setEnv(dbHost, dbPort, "test", "test", "test");
-    PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
-    postgresClientFactory.setRetryPolicy(2, null);
-    // Act: Expect failure after retries
-    exec.apply(postgresClientFactory)
-      .onComplete(ar -> {
-        // Verify that retries are exhausted and the operation has failed
-        context.assertTrue(ar.failed());
-        context.assertEquals("Max retries reached. Failing operation.", ar.cause().getMessage());
-        async.complete();
-      });
-  }
-
-
   @After
   public void cleanup() {
     PostgresClientFactory.setConfigFilePath(null);

@@ -7,12 +7,16 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 
+import java.util.Objects;
+import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
+import org.folio.kafka.KafkaConfig;
 import org.folio.processing.events.EventManager;
+import org.folio.processing.events.services.publisher.KafkaEventPublisher;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.services.caches.JobProfileSnapshotCache;
@@ -39,12 +43,23 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   private static final String USER_ID_HEADER = "userId";
 
   private Vertx vertx;
+  private KafkaConfig kafkaConfig;
   private JobProfileSnapshotCache profileSnapshotCache;
 
   @Autowired
-  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache) {
+  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.kafkaConfig = kafkaConfig;
+  }
+
+  private void sendPayloadWithDiError(DataImportEventPayload eventPayload) {
+    eventPayload.setEventType(DI_ERROR.value());
+    try (var eventPublisher = new KafkaEventPublisher(kafkaConfig, vertx, 100)) {
+      eventPublisher.publish(eventPayload);
+    } catch (Exception e) {
+      LOGGER.error("Error closing kafka publisher: {}", e.getMessage());
+    }
   }
 
   @Override
@@ -72,6 +87,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
           .orElse(CompletableFuture.failedFuture(new EventProcessingException(format("Job profile snapshot with id '%s' does not exist", jobProfileSnapshotId)))))
         .whenComplete((processedPayload, throwable) -> {
           if (throwable != null) {
+            if (Integer.parseInt(Objects.requireNonNull(extractStatusCode(throwable.getMessage()))) == HttpStatus.SC_UNAUTHORIZED) {
+              sendPayloadWithDiError(eventPayload);
+            }
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
             promise.fail(format("handle:: Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
@@ -85,5 +103,17 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       LOGGER.warn("handle:: Failed to process data import kafka record from topic '{}' with recordId: '{}' and chunkId: '{}' ", targetRecord.topic(), recordId, chunkId, e);
       return Future.failedFuture(e);
     }
+  }
+
+  private static String extractStatusCode(String message) {
+    String searchString = "status code: ";
+    int startIndex = message.indexOf(searchString);
+    if (startIndex != -1) {
+      int endIndex = message.indexOf(",", startIndex);
+      if (endIndex != -1) {
+        return message.substring(startIndex + searchString.length(), endIndex).trim();
+      }
+    }
+    return null;
   }
 }

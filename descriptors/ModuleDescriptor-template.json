@@ -312,7 +312,7 @@
       "permissionName": "source-storage.records.populate.collection.post",
       "displayName": "Source Storage - populate storage with test records",
       "description": "Populate storage with test records",
-      "replaces": ["source-storage.records.collection.populate.post"]
+      "replaces": ["source-storage.populate.records"]
     },
     {
       "permissionName": "source-storage.snapshots.item.get",

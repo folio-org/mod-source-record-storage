@@ -355,7 +355,7 @@
       "permissionName": "source-storage.records.generation.item.put",
       "displayName": "Source Storage - update record's generation",
       "description": "Update record's generation",
-      "replaces": ["source-storage.records.item.generation.put"]
+      "replaces": ["source-storage.records.put"]
     },
     {
       "permissionName": "source-storage.parsed-records.collection.put",

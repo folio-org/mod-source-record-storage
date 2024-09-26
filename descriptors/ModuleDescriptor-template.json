@@ -422,13 +422,13 @@
       "permissionName": "source-storage.records.formatted.item.get",
       "displayName": "Source Storage - get formatter record",
       "description": "Get formatted Record",
-      "replaces": ["source-storage.records.item.formatted.get"]
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.stream.records.collection.get",
       "displayName": "Source Storage - stream record",
       "description": "Stream record",
-      "replaces": ["source-storage.stream.records.get"]
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.records.matching.collection.post",

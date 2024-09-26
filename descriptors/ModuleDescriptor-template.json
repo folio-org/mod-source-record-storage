@@ -382,7 +382,7 @@
       "permissionName": "source-storage.stream.marc-record-identifiers.collection.post",
       "displayName": "Source Storage - post record's identifiers",
       "description": "Post record's identifiers",
-      "replaces": ["source-storage.stream.marc-record-identifiers.post"]
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.records.update",

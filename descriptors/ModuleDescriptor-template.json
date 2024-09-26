@@ -365,7 +365,7 @@
       "permissionName": "source-storage.parsed-records.fetch.collection.post",
       "displayName": "Source Storage - fetch records",
       "description": "Fetch Records",
-      "replaces": ["source-storage.parsed-records.collection.fetch.post"]
+      "replaces": ["source-storage.records.fetch"]
     },
     {
       "permissionName": "source-storage.batch.records.collection.post",

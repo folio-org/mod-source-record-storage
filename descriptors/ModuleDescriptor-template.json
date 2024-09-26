@@ -434,7 +434,7 @@
       "permissionName": "source-storage.records.matching.collection.post",
       "displayName": "Source Storage - get pairs of marc record ID to external entity ID",
       "description": "Get pairs of marc record ID to external entity ID",
-      "replaces": ["source-storage.records.collection.matching.post"]
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.verified-records.collection.post",

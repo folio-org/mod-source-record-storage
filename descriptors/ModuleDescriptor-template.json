@@ -376,7 +376,7 @@
       "permissionName": "source-storage.stream.source-records.collection.get",
       "displayName": "Source Storage - get results",
       "description": "Source Storage - get results",
-      "replaces": ["source-storage.stream.source-records.get"]
+      "replaces": ["source-storage.sourceRecords.get"]
     },
     {
       "permissionName": "source-storage.stream.marc-record-identifiers.collection.post",

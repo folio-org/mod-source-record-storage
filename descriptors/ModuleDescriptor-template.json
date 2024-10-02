@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "source-storage-snapshots",
-      "version": "2.0",
+      "version": "2.1",
       "handlers": [
         {
           "methods": [
@@ -54,7 +54,7 @@
     },
     {
       "id": "source-storage-records",
-      "version": "3.2",
+      "version": "3.3",
       "handlers": [
         {
           "methods": [
@@ -141,7 +141,7 @@
     },
     {
       "id": "source-storage-source-records",
-      "version": "3.1",
+      "version": "3.2",
       "handlers": [
         {
           "methods": [
@@ -165,7 +165,7 @@
     },
     {
       "id": "source-storage-test-records",
-      "version": "2.0",
+      "version": "2.1",
       "handlers": [
         {
           "methods": [
@@ -180,7 +180,7 @@
     },
     {
       "id": "source-storage-stream",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
@@ -213,7 +213,7 @@
     },
     {
       "id": "source-storage-batch",
-      "version": "1.2",
+      "version": "1.3",
       "handlers": [
         {
           "methods": [
@@ -255,7 +255,7 @@
     },
     {
       "id": "source-storage-async-migrations",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["POST"],

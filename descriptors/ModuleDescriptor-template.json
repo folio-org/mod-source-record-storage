@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "source-storage-snapshots",
-      "version": "2.0",
+      "version": "2.1",
       "handlers": [
         {
           "methods": [
@@ -12,7 +12,7 @@
           ],
           "pathPattern": "/source-storage/snapshots",
           "permissionsRequired": [
-            "source-storage.snapshots.get"
+            "source-storage.snapshots.collection.get"
           ]
         },
         {
@@ -30,7 +30,7 @@
           ],
           "pathPattern": "/source-storage/snapshots/{jobExecutionId}",
           "permissionsRequired": [
-            "source-storage.snapshots.get"
+            "source-storage.snapshots.item.get"
           ]
         },
         {
@@ -54,7 +54,7 @@
     },
     {
       "id": "source-storage-records",
-      "version": "3.2",
+      "version": "3.3",
       "handlers": [
         {
           "methods": [
@@ -62,7 +62,7 @@
           ],
           "pathPattern": "/source-storage/records",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.records.collection.get"
           ]
         },
         {
@@ -80,7 +80,7 @@
           ],
           "pathPattern": "/source-storage/records/{id}",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.records.item.get"
           ]
         },
         {
@@ -98,7 +98,7 @@
           ],
           "pathPattern": "/source-storage/records/{id}/generation",
           "permissionsRequired": [
-            "source-storage.records.put"
+            "source-storage.records.generation.item.put"
           ]
         },
         {
@@ -116,7 +116,7 @@
           ],
           "pathPattern": "/source-storage/records/{id}/formatted",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.records.formatted.item.get"
           ]
         },
         {
@@ -134,14 +134,14 @@
           ],
           "pathPattern": "/source-storage/records/matching",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.records.matching.collection.post"
           ]
         }
       ]
     },
     {
       "id": "source-storage-source-records",
-      "version": "3.1",
+      "version": "3.2",
       "handlers": [
         {
           "methods": [
@@ -149,7 +149,7 @@
           ],
           "pathPattern": "/source-storage/source-records",
           "permissionsRequired": [
-            "source-storage.sourceRecords.get"
+            "source-storage.source-records.collection.get"
           ]
         },
         {
@@ -158,14 +158,14 @@
           ],
           "pathPattern": "/source-storage/source-records/{id}",
           "permissionsRequired": [
-            "source-storage.sourceRecords.get"
+            "source-storage.source-records.item.get"
           ]
         }
       ]
     },
     {
       "id": "source-storage-test-records",
-      "version": "2.0",
+      "version": "2.1",
       "handlers": [
         {
           "methods": [
@@ -173,14 +173,14 @@
           ],
           "pathPattern": "/source-storage/populate-test-marc-records",
           "permissionsRequired": [
-            "source-storage.populate.records"
+            "source-storage.records.populate.collection.post"
           ]
         }
       ]
     },
     {
       "id": "source-storage-stream",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
@@ -188,7 +188,7 @@
           ],
           "pathPattern": "/source-storage/stream/records",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.stream.records.collection.get"
           ]
         },
         {
@@ -197,7 +197,7 @@
           ],
           "pathPattern": "/source-storage/stream/source-records",
           "permissionsRequired": [
-            "source-storage.sourceRecords.get"
+            "source-storage.stream.source-records.collection.get"
           ]
         },
         {
@@ -206,14 +206,14 @@
           ],
           "pathPattern": "/source-storage/stream/marc-record-identifiers",
           "permissionsRequired": [
-            "source-storage.records.get"
+            "source-storage.stream.marc-record-identifiers.collection.post"
           ]
         }
       ]
     },
     {
       "id": "source-storage-batch",
-      "version": "1.2",
+      "version": "1.3",
       "handlers": [
         {
           "methods": [
@@ -221,7 +221,7 @@
           ],
           "pathPattern": "/source-storage/batch/records",
           "permissionsRequired": [
-            "source-storage.records.post"
+            "source-storage.batch.records.collection.post"
           ]
         },
         {
@@ -230,7 +230,7 @@
           ],
           "pathPattern": "/source-storage/batch/parsed-records",
           "permissionsRequired": [
-            "source-storage.records.put"
+            "source-storage.parsed-records.collection.put"
           ]
         },
         {
@@ -239,7 +239,7 @@
           ],
           "pathPattern": "/source-storage/batch/parsed-records/fetch",
           "permissionsRequired": [
-            "source-storage.records.fetch"
+            "source-storage.parsed-records.fetch.collection.post"
           ]
         },
         {
@@ -248,14 +248,14 @@
           ],
           "pathPattern": "/source-storage/batch/verified-records",
           "permissionsRequired": [
-            "source-storage.verified.records"
+            "source-storage.verified-records.collection.post"
           ]
         }
       ]
     },
     {
       "id": "source-storage-async-migrations",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["POST"],
@@ -265,7 +265,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/source-storage/migrations/jobs/{id}",
-          "permissionsRequired": ["source-storage.migrations.get"]
+          "permissionsRequired": ["source-storage.migrations.item.get"]
         }
       ]
     },
@@ -309,14 +309,22 @@
   ],
   "permissionSets": [
     {
-      "permissionName": "source-storage.populate.records",
+      "permissionName": "source-storage.records.populate.collection.post",
       "displayName": "Source Storage - populate storage with test records",
-      "description": "Populate storage with test records"
+      "description": "Populate storage with test records",
+      "replaces": ["source-storage.populate.records"]
     },
     {
-      "permissionName": "source-storage.snapshots.get",
-      "displayName": "Source Storage - get snapshot(s)",
-      "description": "Get Snapshot(s)"
+      "permissionName": "source-storage.snapshots.item.get",
+      "displayName": "Source Storage - get snapshot",
+      "description": "Get Snapshot",
+      "replaces": ["source-storage.snapshots.get"]
+    },
+    {
+      "permissionName": "source-storage.snapshots.collection.get",
+      "displayName": "Source Storage - get snapshots",
+      "description": "Get Snapshots",
+      "replaces": ["source-storage.snapshots.get"]
     },
     {
       "permissionName": "source-storage.snapshots.post",
@@ -334,11 +342,6 @@
       "description": "Delete Snapshot and all related Records"
     },
     {
-      "permissionName": "source-storage.records.get",
-      "displayName": "Source Storage - get record(s)",
-      "description": "Get Record(s)"
-    },
-    {
       "permissionName": "source-storage.records.post",
       "displayName": "Source Storage - create new record",
       "description": "Post Record"
@@ -349,9 +352,37 @@
       "description": "Put Record"
     },
     {
-      "permissionName": "source-storage.records.fetch",
-      "displayName": "Source Storage - fetch record",
-      "description": "Fetch Record"
+      "permissionName": "source-storage.records.generation.item.put",
+      "displayName": "Source Storage - update record's generation",
+      "description": "Update record's generation"
+    },
+    {
+      "permissionName": "source-storage.parsed-records.collection.put",
+      "displayName": "Source Storage - update records",
+      "description": "Update records"
+    },
+    {
+      "permissionName": "source-storage.parsed-records.fetch.collection.post",
+      "displayName": "Source Storage - fetch records",
+      "description": "Fetch Records",
+      "replaces": ["source-storage.records.fetch"]
+    },
+    {
+      "permissionName": "source-storage.batch.records.collection.post",
+      "displayName": "Source Storage - stream collection of records",
+      "description": "Stream collection of records"
+    },
+    {
+      "permissionName": "source-storage.stream.source-records.collection.get",
+      "displayName": "Source Storage - get results",
+      "description": "Source Storage - get results",
+      "replaces": ["source-storage.sourceRecords.get"]
+    },
+    {
+      "permissionName": "source-storage.stream.marc-record-identifiers.collection.post",
+      "displayName": "Source Storage - post record's identifiers",
+      "description": "Post record's identifiers",
+      "replaces": ["source-storage.records.get"]
     },
     {
       "permissionName": "source-storage.records.update",
@@ -364,12 +395,49 @@
       "description": "Delete Record"
     },
     {
-      "permissionName": "source-storage.sourceRecords.get",
-      "displayName": "Source Storage - get results",
-      "description": "Get Results"
+      "permissionName": "source-storage.source-records.item.get",
+      "displayName": "Source Storage - get source record",
+      "description": "Get Source Record",
+      "replaces": ["source-storage.sourceRecords.get"]
     },
     {
-      "permissionName": "source-storage.verified.records",
+      "permissionName": "source-storage.records.collection.get",
+      "displayName": "Source Storage - get records",
+      "description": "Get Records",
+      "replaces": ["source-storage.records.get"]
+    },
+    {
+      "permissionName": "source-storage.records.item.get",
+      "displayName": "Source Storage - get record",
+      "description": "Get Record",
+      "replaces": ["source-storage.records.get"]
+    },
+    {
+      "permissionName": "source-storage.source-records.collection.get",
+      "displayName": "Source Storage - get source record collection",
+      "description": "Get Source Records",
+      "replaces": ["source-storage.sourceRecords.get"]
+    },
+    {
+      "permissionName": "source-storage.records.formatted.item.get",
+      "displayName": "Source Storage - get formatter record",
+      "description": "Get formatted Record",
+      "replaces": ["source-storage.records.get"]
+    },
+    {
+      "permissionName": "source-storage.stream.records.collection.get",
+      "displayName": "Source Storage - stream record",
+      "description": "Stream record",
+      "replaces": ["source-storage.records.get"]
+    },
+    {
+      "permissionName": "source-storage.records.matching.collection.post",
+      "displayName": "Source Storage - get pairs of marc record ID to external entity ID",
+      "description": "Get pairs of marc record ID to external entity ID",
+      "replaces": ["source-storage.records.get"]
+    },
+    {
+      "permissionName": "source-storage.verified-records.collection.post",
       "displayName": "Source Storage - validate marc bib ids in the system",
       "description": "Return marc bib ids, which doesn't exist in the system"
     },
@@ -379,30 +447,43 @@
       "description": "Initiate asynchronous migration job"
     },
     {
-      "permissionName": "source-storage.migrations.get",
+      "permissionName": "source-storage.migrations.item.get",
       "displayName": "Source Storage - get migration job(s)",
-      "description": "Get migration job(s)"
+      "description": "Get migration job(s)",
+      "replaces": ["source-storage.migrations.get"]
     },
     {
       "permissionName": "source-storage.all",
       "displayName": "Source Record Storage - all permissions",
       "description": "Entire set of permissions needed to manage snapshots and records",
       "subPermissions": [
-        "source-storage.populate.records",
-        "source-storage.snapshots.get",
+        "source-storage.records.populate.collection.post",
+        "source-storage.snapshots.item.get",
+        "source-storage.snapshots.collection.get",
         "source-storage.snapshots.post",
         "source-storage.snapshots.put",
         "source-storage.snapshots.delete",
-        "source-storage.records.get",
         "source-storage.records.post",
         "source-storage.records.put",
-        "source-storage.records.fetch",
+        "source-storage.parsed-records.fetch.collection.post",
         "source-storage.records.delete",
         "source-storage.records.update",
-        "source-storage.sourceRecords.get",
-        "source-storage.verified.records",
+        "source-storage.source-records.item.get",
+        "source-storage.source-records.collection.get",
+        "source-storage.verified-records.collection.post",
         "source-storage.migrations.post",
-        "source-storage.migrations.get"
+        "source-storage.migrations.item.get",
+        "source-storage.records.generation.item.put",
+        "source-storage.parsed-records.collection.put",
+        "source-storage.batch-records.collection.post",
+        "source-storage.batch.records.collection.post",
+        "source-storage.stream.source-records.collection.get",
+        "source-storage.records.formatted.item.get",
+        "source-storage.stream.marc-record-identifiers.collection.post",
+        "source-storage.records.item.get",
+        "source-storage.records.collection.get",
+        "source-storage.stream.records.collection.get",
+        "source-storage.records.matching.collection.post"
       ],
       "visible": false
     }

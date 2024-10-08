@@ -65,8 +65,7 @@ public class QueryExecutorInterceptor {
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
       .method(ElementMatchers.named("query")) // For query method
       .intercept(MethodDelegation.to(QueryExecutorInterceptor.class))
-      .make()
-      .load(QueryExecutorInterceptor.class.getClassLoader())
+      .make().load(QueryExecutorInterceptor.class.getClassLoader())
       .getLoaded();
   }
 
@@ -137,9 +136,9 @@ public class QueryExecutorInterceptor {
         } else {
           Vertx vertx = currentContext.owner();
           LOGGER.error("Execution error during proxied call. Retry in {}ms...", retryDelay, err);
-          vertx.setTimer(retryDelay, timerId -> { // Introduce a delay
-            retryOf(supplier, times - 1).onComplete(promise); // Recursively call retryOf and pass on the result
-          });
+          vertx.setTimer(retryDelay, timerId ->  // Introduce a delay
+            retryOf(supplier, times - 1).onComplete(promise) // Recursively call retryOf and pass on the result
+          );
           return promise.future();
         }
       }

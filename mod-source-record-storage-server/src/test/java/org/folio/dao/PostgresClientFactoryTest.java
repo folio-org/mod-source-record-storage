@@ -5,8 +5,10 @@ import eu.rekawek.toxiproxy.ToxiproxyClient;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import eu.rekawek.toxiproxy.model.toxic.ResetPeer;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -17,7 +19,6 @@ import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.containers.Network;
@@ -170,9 +171,7 @@ public class PostgresClientFactoryTest {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
-      async.complete();
-    }));
+    vertx.close(context.asyncAssertSuccess(res -> async.complete()));
   }
 
 }

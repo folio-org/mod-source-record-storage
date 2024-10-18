@@ -47,7 +47,7 @@ import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public abstract class AbstractRestVerticleTest {
 
-  public static final String POSTGRES_IMAGE = "postgres:12-alpine";
+  public static final String POSTGRES_IMAGE = "postgres:16-alpine";
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static String useExternalDatabase;

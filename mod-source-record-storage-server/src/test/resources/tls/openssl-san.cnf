@@ -14,6 +14,7 @@ subjectAltName = @alt_names
 
 [ alt_names ]
 DNS.1 = localhost
+IP.1 = 172.17.0.1
 
 [ v3_ca ]
 subjectAltName = @alt_names

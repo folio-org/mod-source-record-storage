@@ -99,7 +99,6 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
     // Trigger the first migration job
-    System.out.println("Triggering first migration job");
     String runningJobId = RestAssured.given()
       .spec(spec)
       .body(migrationInitDto)
@@ -112,22 +111,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
 
     System.out.println("First migration job initiated with ID: " + runningJobId);
 
-    // Introduce a retry mechanism to wait for the first job to be fully marked as IN_PROGRESS
-    await().atMost(10, SECONDS).until(() -> {
-      String status = RestAssured.given()
-        .spec(spec)
-        .when()
-        .get(MIGRATIONS_JOBS_PATH + runningJobId)
-        .then()
-        .statusCode(HttpStatus.SC_OK)
-        .extract().jsonPath().getString("status");
-      return status.equals(AsyncMigrationJob.Status.IN_PROGRESS.value());
-    });
-
-    System.out.println("First job is marked as IN_PROGRESS");
-
     // Now trigger the second migration job and expect a conflict
-    System.out.println("Triggering second migration job");
     RestAssured.given()
       .spec(spec)
       .body(migrationInitDto)
@@ -139,7 +123,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
 
     // Wait for the running job to complete before finishing the test
     System.out.println("Waiting for the first migration job to complete");
-    await().atMost(20, SECONDS).until(() -> {
+    await().atMost(10, SECONDS).until(() -> {
       String status = RestAssured.given()
         .spec(spec)
         .when()
@@ -149,8 +133,6 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
         .extract().jsonPath().getString("status");
       return status.equals(AsyncMigrationJob.Status.COMPLETED.value());
     });
-
-    System.out.println("First job has completed");
   }
 
   private void clearTable(TestContext context) {

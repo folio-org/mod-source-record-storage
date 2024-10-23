@@ -7,7 +7,6 @@ import org.folio.dao.AsyncMigrationJobDao;
 import org.folio.dataimport.util.exception.ConflictException;
 import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 import org.folio.rest.jaxrs.model.AsyncMigrationJobInitRq;
-import org.folio.rest.tools.utils.Envs;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -79,13 +78,6 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   }
 
   private Future<Void> runMigrations(AsyncMigrationJob asyncMigrationJob, String tenantId) {
-    if (isTestEnvironment()) {
-      try {
-        Thread.sleep(3000); // Introduce a 3-second delay
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
     List<AsyncMigrationTaskRunner> runners = asyncMigrationJob.getMigrations().stream()
       .flatMap(migrationName -> jobRunners.stream().filter(runner -> migrationName.equals(runner.getMigrationName())))
       .collect(Collectors.toList());
@@ -96,10 +88,6 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
     }
 
     return future;
-  }
-
-  private boolean isTestEnvironment() {
-    return "test".equals(Envs.getEnv(Envs.DB_DATABASE));
   }
 
   private void logProcessedMigration(AsyncMigrationJob asyncMigrationJob, String tenantId) {

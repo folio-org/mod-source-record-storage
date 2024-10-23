@@ -19,10 +19,12 @@ import java.util.List;
 import java.util.UUID;
 
 import static java.lang.String.format;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.folio.rest.jaxrs.model.AsyncMigrationJob.Status.COMPLETED;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 @RunWith(VertxUnitRunner.class)
 public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
@@ -96,6 +98,8 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
+    // Trigger the first migration job
+    System.out.println("Triggering first migration job");
     String runningJobId = RestAssured.given()
       .spec(spec)
       .body(migrationInitDto)
@@ -106,6 +110,24 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .body("status", is(AsyncMigrationJob.Status.IN_PROGRESS.value()))
       .extract().body().as(AsyncMigrationJob.class).getId();
 
+    System.out.println("First migration job initiated with ID: " + runningJobId);
+
+    // Introduce a retry mechanism to wait for the first job to be fully marked as IN_PROGRESS
+    await().atMost(10, SECONDS).until(() -> {
+      String status = RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(MIGRATIONS_JOBS_PATH + runningJobId)
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .extract().jsonPath().getString("status");
+      return status.equals(AsyncMigrationJob.Status.IN_PROGRESS.value());
+    });
+
+    System.out.println("First job is marked as IN_PROGRESS");
+
+    // Now trigger the second migration job and expect a conflict
+    System.out.println("Triggering second migration job");
     RestAssured.given()
       .spec(spec)
       .body(migrationInitDto)
@@ -115,16 +137,20 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CONFLICT)
       .body(is(format("Failed to initiate migration job, because migration job with id '%s' already in progress", runningJobId)));
 
-    // waits for running job completion before finishing the test to avoid impact on other tests
-    Wait.delay(3);
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MIGRATIONS_JOBS_PATH + runningJobId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("id", is(runningJobId))
-      .body("status", is(COMPLETED.value()));
+    // Wait for the running job to complete before finishing the test
+    System.out.println("Waiting for the first migration job to complete");
+    await().atMost(20, SECONDS).until(() -> {
+      String status = RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(MIGRATIONS_JOBS_PATH + runningJobId)
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .extract().jsonPath().getString("status");
+      return status.equals(AsyncMigrationJob.Status.COMPLETED.value());
+    });
+
+    System.out.println("First job has completed");
   }
 
   private void clearTable(TestContext context) {

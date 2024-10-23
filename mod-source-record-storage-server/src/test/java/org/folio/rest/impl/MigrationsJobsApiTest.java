@@ -94,7 +94,8 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() throws InterruptedException {
+  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress(TestContext testContext) throws InterruptedException {
+    Async async = testContext.async();
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -133,6 +134,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
         .extract().jsonPath().getString("status");
       return status.equals(AsyncMigrationJob.Status.COMPLETED.value());
     });
+    async.complete();
   }
 
   private void clearTable(TestContext context) {

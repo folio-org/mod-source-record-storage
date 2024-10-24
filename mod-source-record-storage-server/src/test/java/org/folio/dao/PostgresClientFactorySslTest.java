@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Testcontainers
 @ExtendWith(VertxExtension.class)
 class PostgresClientFactorySslTest {
-  private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server.crt");
+  private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server-san.crt");
   private static final String SERVER_WRONG_PEM = TestUtil.resourceToString("/tls/server_wrong.crt");
 
   private static final String USERNAME = "username";
@@ -43,7 +43,7 @@ class PostgresClientFactorySslTest {
   private static final PostgreSQLContainer<?> postgres =
     new PostgreSQLContainer<>(PostgresTesterContainer.getImageName())
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 0444), "/server.key")
-      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.crt", 0444), "/server.crt")
+      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server-san.crt", 0444), "/server.crt")
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/init.sh", 0555), "/docker-entrypoint-initdb.d/init.sh")
       .withExposedPorts(5432)
       .withUsername(USERNAME)

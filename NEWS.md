@@ -12,6 +12,7 @@
 * [MODSOURCE-795](https://folio-org.atlassian.net/browse/MODSOURCE-795) Upgrade Spring 5 to 6 by 2024-08-31
 * [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record save
 * [MODSOURCE-796](https://folio-org.atlassian.net/browse/MODSOURCE-796) Fix inconsistencies in permission namings
+* [MODSOURCE-809](https://folio-org.atlassian.net/browse/MODSOURCE-809) mod-source-record-storage Ramsons 2024 R2 - RMB v35.3.x update
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

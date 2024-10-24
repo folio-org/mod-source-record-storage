@@ -1,0 +1,20 @@
+[ req ]
+default_bits        = 2048
+prompt              = no
+default_md          = sha256
+distinguished_name  = dn
+req_extensions      = req_ext
+x509_extensions     = v3_ca  # This section is crucial when generating self-signed certificates
+
+[ dn ]
+CN = postgres
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = localhost
+IP.1 = 172.17.0.1
+
+[ v3_ca ]
+subjectAltName = @alt_names

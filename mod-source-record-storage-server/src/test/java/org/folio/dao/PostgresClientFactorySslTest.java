@@ -7,6 +7,7 @@ import io.vertx.reactivex.core.Vertx;
 import org.folio.TestUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Testcontainers
 @ExtendWith(VertxExtension.class)
 class PostgresClientFactorySslTest {
-  private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server.crt");
+  private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server-san.crt");
   private static final String SERVER_WRONG_PEM = TestUtil.resourceToString("/tls/server_wrong.crt");
 
   private static final String USERNAME = "username";
@@ -42,7 +43,7 @@ class PostgresClientFactorySslTest {
   private static final PostgreSQLContainer<?> postgres =
     new PostgreSQLContainer<>(PostgresTesterContainer.getImageName())
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 0444), "/server.key")
-      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.crt", 0444), "/server.crt")
+      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server-san.crt", 0444), "/server.crt")
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/init.sh", 0555), "/docker-entrypoint-initdb.d/init.sh")
       .withExposedPorts(5432)
       .withUsername(USERNAME)
@@ -78,7 +79,7 @@ class PostgresClientFactorySslTest {
   @Test
   void reactiveSsl(Vertx vertx, VertxTestContext vtc) {
     config(SERVER_PEM);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(dsl -> dsl.selectOne())
+    PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(DSLContext::selectOne)
       .onComplete(vtc.succeeding(count -> {
         assertThat(count, is(1));
         vtc.completeNow();
@@ -89,9 +90,9 @@ class PostgresClientFactorySslTest {
   void reactiveNoSsl(Vertx vertx, VertxTestContext vtc) {
     // client without SERVER_PEM must not connect to server
     config(null);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivenossl").execute(dsl -> dsl.selectOne())
+    PostgresClientFactory.getQueryExecutor(vertx, "reactivenossl").execute(DSLContext::selectOne)
       .onComplete(vtc.failing(e -> {
-        assertThat(e.getMessage(), containsString("SSL off"));
+        assertThat(e.getMessage(), containsString("no encryption"));
         vtc.completeNow();
       }));
   }
@@ -100,7 +101,7 @@ class PostgresClientFactorySslTest {
   void reactiveWrongCert(Vertx vertx, VertxTestContext vtc) {
     // client must reject if SERVER_PEM doesn't match the server key
     config(SERVER_WRONG_PEM);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivewrongcert").execute(dsl -> dsl.selectOne())
+    PostgresClientFactory.getQueryExecutor(vertx, "reactivewrongcert").execute(DSLContext::selectOne)
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("SSL handshake failed"));
         vtc.completeNow();
@@ -126,7 +127,7 @@ class PostgresClientFactorySslTest {
     // client without SERVER_PEM must not connect to server
     config(null);
     var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcnossl"));
-    assertThat(e.getCause().getMessage(), containsString("SSL off"));
+    assertThat(e.getCause().getMessage(), containsString("no encryption"));
   }
 
   @Test

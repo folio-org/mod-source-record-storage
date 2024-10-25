@@ -12,7 +12,9 @@ import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
+import org.folio.kafka.KafkaConfig;
 import org.folio.processing.events.EventManager;
+import org.folio.processing.events.services.publisher.KafkaEventPublisher;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.services.caches.JobProfileSnapshotCache;
@@ -39,12 +41,29 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   private static final String USER_ID_HEADER = "userId";
 
   private Vertx vertx;
+  private KafkaConfig kafkaConfig;
   private JobProfileSnapshotCache profileSnapshotCache;
 
   @Autowired
-  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache) {
+  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.kafkaConfig = kafkaConfig;
+  }
+
+  // TODO: possible wrong placement of entity logs when cache error
+  private void sendPayloadWithDiError(DataImportEventPayload eventPayload) {
+    eventPayload.setEventType(DI_ERROR.value());
+    try (var eventPublisher = new KafkaEventPublisher(kafkaConfig, vertx, 100)) {
+      eventPublisher.publish(eventPayload);
+      var eventType = eventPayload.getEventType();
+      LOGGER.warn("publish:: {} send error for event: '{}' by jobExecutionId: '{}' ",
+        eventType + "_Producer",
+        eventType,
+        eventPayload.getJobExecutionId());
+    } catch (Exception e) {
+      LOGGER.error("Error closing kafka publisher: {}", e.getMessage());
+    }
   }
 
   @Override
@@ -66,6 +85,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
       profileSnapshotCache.get(jobProfileSnapshotId, params)
+        .onFailure(e -> sendPayloadWithDiError(eventPayload))
         .toCompletionStage()
         .thenCompose(snapshotOptional -> snapshotOptional
           .map(profileSnapshot -> EventManager.handleEvent(eventPayload, profileSnapshot))

@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 public class PgConnectOptionsHelper {
 
   public static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {
-    return PostgresClient.createPgConnectOptions(sqlConfig, false);
+    return PostgresClientInitializer.createPgConnectOptions(sqlConfig,
+      PostgresClient.HOST,
+      PostgresClient.PORT);
   }
 }

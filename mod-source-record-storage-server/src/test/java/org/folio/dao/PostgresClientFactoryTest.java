@@ -17,7 +17,6 @@ import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.testcontainers.containers.Network;
@@ -170,9 +169,7 @@ public class PostgresClientFactoryTest {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
-      async.complete();
-    }));
+    vertx.close(context.asyncAssertSuccess(res -> async.complete()));
   }
 
 }

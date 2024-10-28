@@ -1,4 +1,4 @@
-## 2024-XX-XX 5.9.0-SNAPSHOT
+## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
 * [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search
@@ -13,6 +13,8 @@
 * [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record save
 * [MODSOURCE-796](https://folio-org.atlassian.net/browse/MODSOURCE-796) Fix inconsistencies in permission namings
 * [MODSOURCE-809](https://folio-org.atlassian.net/browse/MODSOURCE-809) mod-source-record-storage Ramsons 2024 R2 - RMB v35.3.x update
+* [MODSOURCE-787](https://folio-org.atlassian.net/browse/MODSOURCE-787) Extend MARC-MARC search query to account for comparison part
+* [MODSOURCE-791](https://folio-org.atlassian.net/browse/MODSOURCE-791) Fix Timeout exception during postSourceStorageStreamMarcRecordIdentifiers
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

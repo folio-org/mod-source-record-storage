@@ -89,7 +89,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", consumerRecord);
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
-    return mapToEvent(consumerRecord)
+    var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
       .compose(event -> retrieveRecords(event, event.getTenant())
         .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
@@ -102,7 +102,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
           return Future.failedFuture(th);
         }
-      );
+      ).result();
+    return Future.succeededFuture(result);
   }
 
   private Future<BibAuthorityLinksUpdate> mapToEvent(KafkaConsumerRecord<String, String> consumerRecord) {

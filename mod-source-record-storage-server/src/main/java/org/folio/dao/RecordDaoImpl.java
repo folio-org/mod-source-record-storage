@@ -46,7 +46,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
-import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -63,7 +62,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -377,7 +375,11 @@ public class RecordDaoImpl implements RecordDao {
       )
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
-    )).map(queryResult -> queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).collect(Collectors.toList()));
+    )).map(queryResult -> queryResult.stream()
+      .map(res -> asRow(res.unwrap()))
+      .map(this::toRecord)
+      .toList()
+    );
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {
@@ -445,7 +447,8 @@ public class RecordDaoImpl implements RecordDao {
     }
     if (Value.ValueType.LIST.equals(value.getType())) {
       List<String> listOfValues = ((ListValue) value).getValue().stream()
-        .map(v -> format(VALUE_IN_SINGLE_QUOTES, v)).collect(Collectors.toList());
+        .map(v -> format(VALUE_IN_SINGLE_QUOTES, v))
+        .toList();
       return StringUtils.join(listOfValues, ", ");
     }
     return StringUtils.EMPTY;
@@ -628,13 +631,6 @@ public class RecordDaoImpl implements RecordDao {
       .and(suppressedFromDiscoveryCondition)
       .and(recordTypeCondition)
       .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
-  }
-
-  private Flowable<io.vertx.reactivex.sqlclient.Row> streamMarcRecordIdsWithoutIndexersVersionUsage(SqlConnection conn, ParseLeaderResult parseLeaderResult,
-                                                                                                    ParseFieldsResult parseFieldsResult,
-                                                                                                    RecordSearchParameters searchParameters) {
-    return conn.rxPrepare(getAlternativeQuery(parseLeaderResult, parseFieldsResult, searchParameters))
-      .flatMapPublisher(pq -> pq.createStream(10000).toFlowable());
   }
 
   private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
@@ -906,6 +902,10 @@ public class RecordDaoImpl implements RecordDao {
               matchedGenerations.put(matchedId, generation);
             });
 
+          LOG.info("saveRecords:: matched ids: {}", matchedIds);
+          LOG.info("saveRecords:: records ids: {}", ids);
+          LOG.info("saveRecords:: generations: {}", matchedGenerations);
+
           // update matching records state
           if(!ids.isEmpty())
           {
@@ -921,15 +921,17 @@ public class RecordDaoImpl implements RecordDao {
             .bulkAfter(500)
             .commitAfter(1000)
             .onErrorAbort()
-            .loadRecords(dbRecords.stream().map(record -> {
-              Integer generation = matchedGenerations.get(record.getMatchedId());
-              if (Objects.nonNull(generation)) {
-                record.setGeneration(generation + 1);
-              } else if (Objects.isNull(record.getGeneration())) {
-                record.setGeneration(0);
-              }
-              return record;
-            }).collect(Collectors.toList()))
+            .loadRecords(dbRecords.stream()
+              .map(record -> {
+                Integer generation = matchedGenerations.get(record.getMatchedId());
+                if (Objects.nonNull(generation)) {
+                  record.setGeneration(generation + 1);
+                } else if (Objects.isNull(record.getGeneration())) {
+                  record.setGeneration(0);
+                }
+                return record;
+              })
+              .toList())
             .fieldsCorresponding()
             .execute()
             .errors();
@@ -987,7 +989,7 @@ public class RecordDaoImpl implements RecordDao {
         promise.fail(e.getCause());
       }
     },
-    false,
+    true,
     r -> {
       if (r.failed()) {
         LOG.warn("saveRecords:: Error during batch record save", r.cause());
@@ -1273,7 +1275,7 @@ public class RecordDaoImpl implements RecordDao {
 
             blockingPromise.complete(new ParsedRecordsBatchResponse()
               .withErrorMessages(errorMessages)
-              .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).collect(Collectors.toList()))
+              .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).toList())
               .withTotalRecords(recordsUpdated.size()));
           });
         } catch (SQLException e) {
@@ -1474,7 +1476,7 @@ public class RecordDaoImpl implements RecordDao {
       .compose(recordCollection -> {
         List<Future<Record>> futures = recordCollection.getRecords().stream()
           .map(recordToUpdate -> updateMarcAuthorityRecordWithDeletedState(txQE, ensureRecordForeignKeys(recordToUpdate)))
-          .collect(Collectors.toList());
+          .toList();
 
         Promise<Void> result = Promise.promise();
         GenericCompositeFuture.all(futures).onComplete(ar -> {
@@ -1668,7 +1670,8 @@ public class RecordDaoImpl implements RecordDao {
     List<Record> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
       return toRecord(row);
-    }).collect(Collectors.toList());
+    })
+      .toList();
     if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
     }
@@ -1680,7 +1683,8 @@ public class RecordDaoImpl implements RecordDao {
     List<StrippedParsedRecord> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
       return toStrippedParsedRecord(row);
-    }).collect(Collectors.toList());
+    })
+      .toList();
     if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
       recordCollection.withRecords(records);
     }
@@ -1705,7 +1709,8 @@ public class RecordDaoImpl implements RecordDao {
       sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
       return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
         .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
-    }).collect(Collectors.toList());
+    })
+      .toList();
     if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.get(0).getRecordId())) {
       sourceRecordCollection.withSourceRecords(sourceRecords);
     }

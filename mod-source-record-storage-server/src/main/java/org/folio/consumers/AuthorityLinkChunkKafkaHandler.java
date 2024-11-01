@@ -87,7 +87,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    LOGGER.trace("handle:: Handling kafka record: {}", consumerRecord);
+    LOGGER.info("handle:: START Handling kafka record: {}", consumerRecord);
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
@@ -103,6 +103,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           return Future.failedFuture(th);
         }
       ).result();
+    LOGGER.info("handle:: END Handling kafka record");
     return Future.succeededFuture(result);
   }
 
@@ -119,13 +120,13 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
-    LOGGER.trace("Retrieving bibs for jobId {}, authorityId {}",
+    LOGGER.info("Retrieving bibs for jobId {}, authorityId {}",
       bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
     var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream()
         .map(Link::getInstanceId))
       .distinct()
-      .collect(Collectors.toList());
+      .toList();
 
     var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
       .and(RecordDaoUtil.filterRecordByDeleted(false));
@@ -134,7 +135,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
                                                           RecordCollection recordCollection, String userId) {
-    LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
+    LOGGER.info("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
     return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
@@ -195,17 +196,17 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   private Future<LinkProcessor> getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
     var eventType = bibAuthorityLinksUpdate.getType();
     switch (eventType) {
-      case DELETE: {
+      case DELETE -> {
         LOGGER.debug("Precessing DELETE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
         return Future.succeededFuture(new DeleteLinkProcessor());
       }
-      case UPDATE: {
+      case UPDATE -> {
         LOGGER.debug("Precessing UPDATE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
         return Future.succeededFuture(new UpdateLinkProcessor());
       }
-      default: {
+      default -> {
         return Future.failedFuture(new IllegalArgumentException(
           String.format("Unsupported event type: %s for jobId %s, authorityId %s",
             eventType, bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId())));
@@ -219,7 +220,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .filter(updateTarget -> updateTarget.getLinks().stream()
         .anyMatch(link -> link.getInstanceId().equals(instanceId)))
       .map(UpdateTarget::getField)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private Optional<Subfield> getAuthorityIdSubfield(List<Subfield> subfields) {
@@ -230,7 +231,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
                                                           BibAuthorityLinksUpdate event) {
-    LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
+    LOGGER.info("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
     var errors = batchResponse.getErrorMessages();
@@ -261,7 +262,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           .withTs(bibAuthorityLinksUpdate.getTs())
           .withRecord(bibRecord);
       })
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private List<LinkUpdateReport> toFailedLinkUpdateReports(List<Record> errorRecords,
@@ -282,7 +283,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           .withFailCause(bibRecord.getErrorRecord().getDescription())
           .withStatus(FAIL);
       })
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private Future<BibAuthorityLinksUpdate> createSnapshot(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
@@ -377,7 +378,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   private List<Record> getErrorRecords(RecordsBatchResponse batchResponse) {
     return batchResponse.getRecords().stream()
       .filter(marcRecord -> nonNull(marcRecord.getErrorRecord()))
-      .collect(Collectors.toList());
+      .toList();
   }
 
 }

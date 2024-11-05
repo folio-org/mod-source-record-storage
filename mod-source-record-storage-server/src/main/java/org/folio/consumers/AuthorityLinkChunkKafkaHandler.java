@@ -1,6 +1,5 @@
 package org.folio.consumers;
 
-import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -108,29 +107,15 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
           sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
         };
-        Function<RecordCollection, Future<RecordCollection>> recordsModifier = recordsCollection ->
-          this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
+        Function<RecordCollection, Future<RecordCollection>> recordsModifier =
+          recordsCollection -> this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
 
         return recordService.getAndUpdateRecordsBlocking(condition, RecordType.MARC_BIB, 0, instanceIds.size(),
           recordsModifier, okapiHeaders, postUpdateHandler);
       })
       .map(batchResponse -> consumerRecord.key());
 
-//    var result = mapToEvent(consumerRecord)
-//      .compose(this::createSnapshot)
-//      .compose(event -> retrieveRecords(event, event.getTenant())
-//        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
-//        .compose(recordCollection -> recordService.saveRecords(recordCollection,
-//          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
-//        .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
-//        .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
-//        .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
-//      ).recover(th -> {
-//          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
-//          return Future.failedFuture(th);
-//        }
-//      ).result();
-    LOGGER.info("handle:: END Handling kafka record");
+    LOGGER.info("handle:: Finish Handling kafka record");
     return result;
   }
 
@@ -146,23 +131,9 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
-    LOGGER.info("Retrieving bibs for jobId {}, authorityId {}",
-      bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-    var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
-      .flatMap(updateTarget -> updateTarget.getLinks().stream()
-        .map(Link::getInstanceId))
-      .distinct()
-      .toList();
-
-    var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
-      .and(RecordDaoUtil.filterRecordByDeleted(false));
-    return recordService.getRecords(condition, RecordType.MARC_BIB, emptyList(), 0, instanceIds.size(), tenantId);
-  }
-
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
                                                           RecordCollection recordCollection, String userId) {
-    LOGGER.info("Retrieved {} bib records for jobId {}, authorityId {}",
+    LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
     return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
@@ -258,7 +229,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
                                                           BibAuthorityLinksUpdate event) {
-    LOGGER.info("Updated {} bibs for jobId {}, authorityId {}",
+    LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
     var errors = batchResponse.getErrorMessages();

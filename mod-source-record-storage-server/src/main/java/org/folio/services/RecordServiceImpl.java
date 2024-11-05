@@ -23,8 +23,11 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -118,6 +122,36 @@ public class RecordServiceImpl implements RecordService {
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset,
                                              int limit, String tenantId) {
     return recordDao.getRecords(condition, recordType, orderFields, offset, limit, tenantId);
+  }
+
+  @Override
+  public Future<RecordsBatchResponse> getAndUpdateRecordsBlocking(Condition condition, RecordType recordType,
+                                                                  int offset, int limit,
+                                                                  Function<RecordCollection, Future<RecordCollection>> recordsModifier,
+                                                                  Map<String, String> okapiHeaders,
+                                                                  Handler<RecordsBatchResponse> postUpdateHandler) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    Promise<RecordsBatchResponse> promise = Promise.promise();
+    Context context = Vertx.currentContext();
+    if(context == null) {
+      return Future.failedFuture("getAndUpdateRecordsBlocking must be executed by a Vertx thread");
+    }
+
+    context.owner().executeBlocking(() ->
+      getRecords(condition, recordType, Collections.emptyList(), offset, limit, tenantId)
+        .compose(recordsModifier::apply)
+        .compose(recordsCollection -> saveRecords(recordsCollection, okapiHeaders))
+        .onComplete(asyncResult -> {
+          if (asyncResult.failed()) {
+            promise.fail(asyncResult.cause());
+          } else {
+            postUpdateHandler.handle(asyncResult.result());
+            promise.complete(asyncResult.result());
+          }
+        })
+    );
+
+    return promise.future();
   }
 
   @Override

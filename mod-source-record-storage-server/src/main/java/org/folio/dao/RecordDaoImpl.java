@@ -633,24 +633,6 @@ public class RecordDaoImpl implements RecordDao {
       .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
   }
 
-  private String getAlternativeQuery(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
-    SelectJoinStep<Record1<UUID>> searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoinAlternative(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-    if (searchParameters.getOffset() != null) {
-      searchQuery.offset(searchParameters.getOffset());
-    }
-    if (searchParameters.getLimit() != null) {
-      searchQuery.limit(searchParameters.getLimit());
-    }
-
-    SelectJoinStep<Record1<Integer>> countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoinAlternative(countQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-
-    return DSL.select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-  }
-
   private void appendJoinAlternative(SelectJoinStep<?> selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled()) {
       Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
@@ -989,7 +971,7 @@ public class RecordDaoImpl implements RecordDao {
         promise.fail(e.getCause());
       }
     },
-    true,
+    false,
     r -> {
       if (r.failed()) {
         LOG.warn("saveRecords:: Error during batch record save", r.cause());

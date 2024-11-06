@@ -891,10 +891,6 @@ public class RecordDaoImpl implements RecordDao {
                 matchedGenerations.put(matchedId, generation);
               });
 
-            LOG.info("saveRecords:: matched ids: {}", matchedIds);
-            LOG.info("saveRecords:: records ids: {}", ids);
-            LOG.info("saveRecords:: generations: {}", matchedGenerations);
-
             // update matching records state
             if(!ids.isEmpty())
             {

@@ -122,7 +122,6 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * "_srs.cleanup.cron.expression_": 0 0 0 * * ?
 * Relevant from the **Orchid** release, module versions from 5.6.0:
   * "_srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum_": 100
-  * "_srs.kafka.AuthorityLinkChunkConsumer.loadLimit_": 2
 * Relevant from the **Poppy** release, module versions from 5.7.0:
   * "_srs.linking-rules-cache.expiration.time.hours_": 12
 * Variables for setting number of partitions of topics:

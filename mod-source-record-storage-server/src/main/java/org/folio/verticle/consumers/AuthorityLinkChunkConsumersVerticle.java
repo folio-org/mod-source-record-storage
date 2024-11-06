@@ -9,7 +9,6 @@ import org.folio.consumers.AuthorityLinkChunkKafkaHandler;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -19,8 +18,7 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticl
 
   private final AuthorityLinkChunkKafkaHandler kafkaHandler;
 
-  @Value("${srs.kafka.AuthorityLinkChunkConsumer.loadLimit:1}")
-  private int loadLimit;
+  private static final int AUTHORITY_LINK_CHUNK_CONSUMER_LOAD_LIMIT = 1;
 
   @Autowired
   public AuthorityLinkChunkConsumersVerticle(KafkaConfig kafkaConfig, AuthorityLinkChunkKafkaHandler kafkaHandler) {
@@ -30,7 +28,7 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticl
 
   @Override
   protected int loadLimit() {
-    return loadLimit;
+    return AUTHORITY_LINK_CHUNK_CONSUMER_LOAD_LIMIT;
   }
 
   @Override

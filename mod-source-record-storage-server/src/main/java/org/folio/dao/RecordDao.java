@@ -208,13 +208,28 @@ public interface RecordDao {
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
   /**
-   * Saves {@link RecordCollection} to the db
+   * Saves {@link RecordCollection} to the db.
+   * This is same as calling {@link RecordDao#saveRecordsBlocking(RecordCollection, boolean, Map)} specifying
+   * orderedBLocking = false.
    *
    * @param recordCollection Record collection to save
    * @param okapiHeaders okapi headers
    * @return future with saved {@link RecordsBatchResponse}
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
+
+  /**
+   * Saves {@link RecordCollection} to the db
+   *
+   * @param recordCollection Record collection to save
+   * @param okapiHeaders okapi headers
+   * @param orderedBlocking boolean indicator to control if blocking logic needs to be run sequentially (true) or
+   *                        concurrently (false) by the Verticle.
+   * @return future with saved {@link RecordsBatchResponse}
+   */
+  Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordCollection,
+                                                   boolean orderedBlocking,
+                                                   Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db

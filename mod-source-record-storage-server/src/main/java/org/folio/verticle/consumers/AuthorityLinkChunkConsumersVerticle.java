@@ -19,7 +19,7 @@ public class AuthorityLinkChunkConsumersVerticle extends AbstractConsumerVerticl
 
   private final AuthorityLinkChunkKafkaHandler kafkaHandler;
 
-  @Value("${srs.kafka.AuthorityLinkChunkConsumer.loadLimit:2}")
+  @Value("${srs.kafka.AuthorityLinkChunkConsumer.loadLimit:1}")
   private int loadLimit;
 
   @Autowired

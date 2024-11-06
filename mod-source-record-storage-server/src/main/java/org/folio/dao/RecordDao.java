@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -26,6 +27,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -209,8 +211,6 @@ public interface RecordDao {
 
   /**
    * Saves {@link RecordCollection} to the db.
-   * This is same as calling {@link RecordDao#saveRecordsBlocking(RecordCollection, boolean, Map)} specifying
-   * orderedBLocking = false.
    *
    * @param recordCollection Record collection to save
    * @param okapiHeaders okapi headers
@@ -219,17 +219,18 @@ public interface RecordDao {
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
-   * Saves {@link RecordCollection} to the db
+   * Saves {@link RecordCollection} to the db.
    *
-   * @param recordCollection Record collection to save
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
    * @param okapiHeaders okapi headers
-   * @param orderedBlocking boolean indicator to control if blocking logic needs to be run sequentially (true) or
-   *                        concurrently (false) by the Verticle.
    * @return future with saved {@link RecordsBatchResponse}
    */
-  Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordCollection,
-                                                   boolean orderedBlocking,
-                                                   Map<String, String> okapiHeaders);
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                        RecordType recordType,
+                                                        RecordsModifierOperator recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db

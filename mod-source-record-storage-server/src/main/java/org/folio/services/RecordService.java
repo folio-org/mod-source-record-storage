@@ -1,10 +1,12 @@
 package org.folio.services;
 
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -21,11 +23,9 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
 
 public interface RecordService {
 
@@ -83,17 +83,17 @@ public interface RecordService {
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, Map<String, String> okapiHeaders);
 
   /**
-   * Saves collection of records
+   * Saves collection of records.
    *
-   * @param recordsCollection records to save
-   * @param orderedBlocking boolean indicator to control if blocking logic needs to be run sequentially (true) or
-   *                        concurrently (false) by the Verticle.
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
    * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordsCollection,
-                                                   boolean orderedBlocking,
-                                                   Map<String, String> okapiHeaders);
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds, RecordType recordType,
+                                                        RecordsModifierOperator recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id

@@ -28,7 +28,6 @@ import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.services.domainevent.SourceRecordDomainEventType;
 
 public final class EventHandlingUtil {
@@ -102,8 +101,8 @@ public final class EventHandlingUtil {
   }
 
   public static String constructModuleName() {
-    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
-      ModuleName.getModuleVersion());
+    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(PomReaderUtil.INSTANCE.getModuleName(),
+      PomReaderUtil.INSTANCE.getVersion());
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {

@@ -291,31 +291,46 @@ public final class RecordDaoUtil {
    */
   public static Record toRecord(Row row) {
     RecordsLb pojo = RowMappers.getRecordsLbMapper().apply(row);
-    Record record = new Record();
+    return asRecord(pojo);
+  }
+
+  /**
+   * Convert database query result {@link org.jooq.Record} to {@link Record}
+   *
+   * @param dbRecord query result record
+   * @return Record
+   */
+  public static Record toRecord(org.jooq.Record dbRecord) {
+    RecordsLb pojo = RecordMappers.getDbRecordToRecordsLbMapper().apply(dbRecord);
+    return asRecord(pojo);
+  }
+
+  private static Record asRecord(RecordsLb pojo) {
+    Record recordDto = new Record();
     if (Objects.nonNull(pojo.getId())) {
-      record.withId(pojo.getId().toString());
+      recordDto.withId(pojo.getId().toString());
     }
     if (Objects.nonNull(pojo.getSnapshotId())) {
-      record.withSnapshotId(pojo.getSnapshotId().toString());
+      recordDto.withSnapshotId(pojo.getSnapshotId().toString());
     }
     if (Objects.nonNull(pojo.getMatchedId())) {
-      record.withMatchedId(pojo.getMatchedId().toString());
+      recordDto.withMatchedId(pojo.getMatchedId().toString());
     }
     if (Objects.nonNull(pojo.getRecordType())) {
-      record.withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()));
+      recordDto.withRecordType(Record.RecordType.valueOf(pojo.getRecordType().toString()));
     }
     if (Objects.nonNull(pojo.getState())) {
-      record.withState(State.valueOf(pojo.getState().toString()));
+      recordDto.withState(State.valueOf(pojo.getState().toString()));
     }
 
-    record
+    recordDto
       .withOrder(pojo.getOrder())
       .withGeneration(pojo.getGeneration())
       .withLeaderRecordStatus(pojo.getLeaderRecordStatus())
-      .withDeleted(record.getState().equals(State.DELETED)
-        || DELETED_LEADER_RECORD_STATUS.contains(record.getLeaderRecordStatus()));
+      .withDeleted(recordDto.getState().equals(State.DELETED)
+        || DELETED_LEADER_RECORD_STATUS.contains(recordDto.getLeaderRecordStatus()));
 
-    return record
+    return recordDto
       .withAdditionalInfo(toAdditionalInfo(pojo))
       .withExternalIdsHolder(toExternalIdsHolder(pojo))
       .withMetadata(toMetadata(pojo));
@@ -691,7 +706,7 @@ public final class RecordDaoUtil {
   }
 
   private static List<UUID> toUUIDs(List<String> uuids) {
-    return uuids.stream().map(RecordDaoUtil::toUUID).collect(Collectors.toList());
+    return uuids.stream().map(RecordDaoUtil::toUUID).toList();
   }
 
   private static RecordType toRecordType(String type) {

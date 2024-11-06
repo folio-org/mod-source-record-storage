@@ -105,7 +105,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         }
       );
 
-    LOGGER.info("handle:: END Handling kafka record");
+    LOGGER.info("handle:: Finish Handling kafka record");
     return result;
   }
 
@@ -122,7 +122,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
-    LOGGER.info("Retrieving bibs for jobId {}, authorityId {}",
+    LOGGER.trace("Retrieving bibs for jobId {}, authorityId {}",
       bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
     var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream()
@@ -137,7 +137,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
                                                           RecordCollection recordCollection, String userId) {
-    LOGGER.info("Retrieved {} bib records for jobId {}, authorityId {}",
+    LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
     return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
@@ -233,7 +233,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
                                                           BibAuthorityLinksUpdate event) {
-    LOGGER.info("Updated {} bibs for jobId {}, authorityId {}",
+    LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
     var errors = batchResponse.getErrorMessages();

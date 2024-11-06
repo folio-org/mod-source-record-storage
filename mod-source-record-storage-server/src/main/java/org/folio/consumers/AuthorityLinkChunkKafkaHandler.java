@@ -1,5 +1,6 @@
 package org.folio.consumers;
 
+import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -13,7 +14,6 @@ import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -88,34 +87,50 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    LOGGER.info("handle:: Start Handling kafka record: {}", consumerRecord);
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
+    LOGGER.info("handle:: Start Handling kafka record: {}", consumerRecord);
 
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
-      .compose(linksUpdate -> {
-        var instanceIds = linksUpdate.getUpdateTargets().stream()
-          .flatMap(updateTarget -> updateTarget.getLinks().stream()
-            .map(Link::getInstanceId))
-          .distinct()
-          .toList();
-        var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
-          .and(RecordDaoUtil.filterRecordByDeleted(false));
-        var okapiHeaders = toOkapiHeaders(consumerRecord.headers(), linksUpdate.getTenant());
-        Handler<RecordsBatchResponse> postUpdateHandler = recordsBatchResponse -> {
-          sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
-          var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
-          sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
-        };
-        Function<RecordCollection, Future<RecordCollection>> recordsModifier =
-          recordsCollection -> this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
+      .compose(event -> retrieveRecords(event, event.getTenant())
+        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
+        .compose(recordCollection -> recordService.saveRecordsBlocking(recordCollection, true,
+          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
+        .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
+        .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
+        .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
+      ).recover(th -> {
+          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
+          return Future.failedFuture(th);
+        }
+      );
+//    var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
+//
+//    var result = mapToEvent(consumerRecord)
+//      .compose(this::createSnapshot)
+//      .compose(linksUpdate -> {
+//        var instanceIds = linksUpdate.getUpdateTargets().stream()
+//          .flatMap(updateTarget -> updateTarget.getLinks().stream()
+//            .map(Link::getInstanceId))
+//          .distinct()
+//          .toList();
+//        var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
+//          .and(RecordDaoUtil.filterRecordByDeleted(false));
+//        var okapiHeaders = toOkapiHeaders(consumerRecord.headers(), linksUpdate.getTenant());
+//        Handler<RecordsBatchResponse> postUpdateHandler = recordsBatchResponse -> {
+//          sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
+//          var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
+//          sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
+//        };
+//        Function<RecordCollection, Future<RecordCollection>> recordsModifier = recordsCollection ->
+//          this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
+//
+//        return recordService.getAndUpdateRecordsBlocking(condition, RecordType.MARC_BIB, 0, instanceIds.size(),
+//          recordsModifier, okapiHeaders, postUpdateHandler);
+//      })
+//      .map(batchResponse -> consumerRecord.key());
 
-        return recordService.getAndUpdateRecordsBlocking(condition, RecordType.MARC_BIB, 0, instanceIds.size(),
-          recordsModifier, okapiHeaders, postUpdateHandler);
-      })
-      .map(batchResponse -> consumerRecord.key());
-
-    LOGGER.info("handle:: Finish Handling kafka record");
+    LOGGER.info("handle:: END Handling kafka record");
     return result;
   }
 
@@ -131,9 +146,23 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
+  private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
+    LOGGER.info("Retrieving bibs for jobId {}, authorityId {}",
+      bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
+    var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
+      .flatMap(updateTarget -> updateTarget.getLinks().stream()
+        .map(Link::getInstanceId))
+      .distinct()
+      .toList();
+
+    var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
+      .and(RecordDaoUtil.filterRecordByDeleted(false));
+    return recordService.getRecords(condition, RecordType.MARC_BIB, emptyList(), 0, instanceIds.size(), tenantId);
+  }
+
   private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
                                                           RecordCollection recordCollection, String userId) {
-    LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
+    LOGGER.info("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
     return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
@@ -229,7 +258,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
                                                           BibAuthorityLinksUpdate event) {
-    LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
+    LOGGER.info("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
     var errors = batchResponse.getErrorMessages();

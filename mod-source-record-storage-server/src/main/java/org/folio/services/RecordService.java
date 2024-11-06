@@ -4,9 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-
-import io.vertx.core.Handler;
 import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
@@ -84,6 +81,19 @@ public interface RecordService {
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, Map<String, String> okapiHeaders);
+
+  /**
+   * Saves collection of records
+   *
+   * @param recordsCollection records to save
+   * @param orderedBlocking boolean indicator to control if blocking logic needs to be run sequentially (true) or
+   *                        concurrently (false) by the Verticle.
+   * @param okapiHeaders okapi headers
+   * @return future with response containing list of successfully saved records and error messages for records that were not saved
+   */
+  Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordsCollection,
+                                                   boolean orderedBlocking,
+                                                   Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id
@@ -269,27 +279,6 @@ public interface RecordService {
    * @return void future
    */
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
-
-  /**
-   * Searches for {@link Record} by {@link Condition} of {@link RecordType} with given offset and limit, applies the
-   * function to modify the found records and persist the updates. Once records persisting is complete it applies the
-   * provided post-update handler on operation's result.
-   *
-   * @param condition         query where condition
-   * @param recordType        record type
-   * @param offset            starting index in a list of results
-   * @param limit             limit of records for pagination
-   * @param recordsModifier   function to apply modifications on fetched records
-   * @param okapiHeaders      okapi headers
-   * @param postUpdateHandler handler on the updated records
-   * @return future with response containing list of successfully updated records and error messages for records that
-   * were not updated
-   */
-  Future<RecordsBatchResponse> getAndUpdateRecordsBlocking(Condition condition, RecordType recordType,
-                                                           int offset, int limit,
-                                                           Function<RecordCollection, Future<RecordCollection>> recordsModifier,
-                                                           Map<String, String> okapiHeaders,
-                                                           Handler<RecordsBatchResponse> postUpdateHandler);
 
   Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders);
 }

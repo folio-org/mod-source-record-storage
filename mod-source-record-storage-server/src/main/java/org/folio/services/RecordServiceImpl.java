@@ -23,16 +23,12 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 
 import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,11 +38,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
-
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -125,36 +119,6 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordsBatchResponse> getAndUpdateRecordsBlocking(Condition condition, RecordType recordType,
-                                                                  int offset, int limit,
-                                                                  Function<RecordCollection, Future<RecordCollection>> recordsModifier,
-                                                                  Map<String, String> okapiHeaders,
-                                                                  Handler<RecordsBatchResponse> postUpdateHandler) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    Promise<RecordsBatchResponse> promise = Promise.promise();
-    Context context = Vertx.currentContext();
-    if(context == null) {
-      return Future.failedFuture("getAndUpdateRecordsBlocking must be executed by a Vertx thread");
-    }
-
-    context.owner().executeBlocking(() ->
-      getRecords(condition, recordType, Collections.emptyList(), offset, limit, tenantId)
-        .compose(recordsModifier::apply)
-        .compose(recordsCollection -> saveRecords(recordsCollection, okapiHeaders))
-        .onComplete(asyncResult -> {
-          if (asyncResult.failed()) {
-            promise.fail(asyncResult.cause());
-          } else {
-            postUpdateHandler.handle(asyncResult.result());
-            promise.complete(asyncResult.result());
-          }
-        })
-    );
-
-    return promise.future();
-  }
-
-  @Override
   public Flowable<Record> streamRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     return recordDao.streamRecords(condition, recordType, orderFields, offset, limit, tenantId);
   }
@@ -206,6 +170,13 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
+    return saveRecordsBlocking(recordCollection, false, okapiHeaders);
+  }
+
+  @Override
+  public Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordCollection,
+                                                          boolean orderedBlocking,
+                                                          Map<String, String> okapiHeaders) {
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
@@ -216,7 +187,7 @@ public class RecordServiceImpl implements RecordService {
       okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded() ?
-        recordDao.saveRecords(recordCollection, okapiHeaders)
+        recordDao.saveRecordsBlocking(recordCollection, orderedBlocking, okapiHeaders)
         : Future.failedFuture(ar.cause()))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }

@@ -61,6 +61,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -838,33 +841,43 @@ public class RecordDaoImpl implements RecordDao {
 
     context.owner().<RecordsBatchResponse>executeBlocking(promise -> {
         final RecordCollection recordCollection;
-        try (Connection connection = getConnection(tenantId)) {
-          recordCollection = DSL.using(connection).transactionResult(ctx -> {
-              DSLContext dsl = DSL.using(ctx);
-              var queryResult = readRecords(dsl, condition, recordType, offset, limit, false, emptyList());
-              var records = queryResult.fetchInto(Record.class);
-              return new RecordCollection().withRecords(records).withTotalRecords(records.size());
-            });
-        } catch (SQLException | DataAccessException e) {
-          LOG.warn("saveRecords:: Failed to read records", e);
-          promise.fail(e.getCause());
+        try {
+          recordCollection = getRecords(condition, recordType, emptyList(), offset, limit, tenantId)
+            .toCompletionStage().toCompletableFuture()
+            .thenApply(records -> records != null ? recordsModifier.apply(records) : null)
+            .get(2, TimeUnit.SECONDS)
+            .orElse(null);
+        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+          LOG.warn("saveRecords:: Failed to read records", ex);
+          promise.fail(ex);
           return;
         }
+//        try (Connection connection = getConnection(tenantId)) {
+//          recordCollection = DSL.using(connection).transactionResult(ctx -> {
+//              DSLContext dsl = DSL.using(ctx);
+//              var queryResult = readRecords(dsl, condition, recordType, offset, limit, false, emptyList());
+//              var records = queryResult.fetchInto(Record.class);
+//              return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+//            });
+//        } catch (SQLException | DataAccessException e) {
+//          LOG.warn("saveRecords:: Failed to read records", e);
+//          promise.fail(e.getCause());
+//          return;
+//        }
 
         if (recordCollection == null || CollectionUtils.isEmpty(recordCollection.getRecords())) {
           LOG.warn("saveRecords:: No records returned from the query");
           promise.complete(new RecordsBatchResponse().withTotalRecords(0));
           return;
         }
-        var modifiedRecords = recordsModifier.apply(recordCollection);
-        if (modifiedRecords.isEmpty()) {
-          LOG.warn("Failed to apply changes to the records");
-          promise.fail(new RuntimeException("Failed to apply changes to existing records"));
-          return;
-        }
-        var snapshotId = modifiedRecords.get().getRecords().iterator().next().getSnapshotId();
-
-        saveRecords(modifiedRecords.get(), snapshotId, recordType, tenantId, promise);
+//        var modifiedRecords = recordsModifier.apply(recordCollection);
+//        if (modifiedRecords.isEmpty()) {
+//          LOG.warn("Failed to apply changes to the records");
+//          promise.fail(new RuntimeException("Failed to apply changes to existing records"));
+//          return;
+//        }
+        var snapshotId = recordCollection.getRecords().iterator().next().getSnapshotId();
+        saveRecords(recordCollection, snapshotId, recordType, tenantId, promise);
       },
       r -> {
         if (r.failed()) {

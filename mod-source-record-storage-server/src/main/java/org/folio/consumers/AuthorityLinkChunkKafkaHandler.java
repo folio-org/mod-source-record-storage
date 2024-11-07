@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -92,18 +93,39 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
-      .compose(event -> retrieveRecords(event, event.getTenant())
-        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
-        .compose(recordCollection -> recordService.saveRecordsBlocking(recordCollection, true,
-          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
-        .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
-        .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
-        .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
-      ).recover(th -> {
-          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
-          return Future.failedFuture(th);
-        }
-      );
+      .compose(linksUpdate -> {
+        var instanceIds = linksUpdate.getUpdateTargets().stream()
+          .flatMap(updateTarget -> updateTarget.getLinks().stream()
+            .map(Link::getInstanceId))
+          .distinct()
+          .toList();
+        var okapiHeaders = toOkapiHeaders(consumerRecord.headers(), linksUpdate.getTenant());
+        UnaryOperator<RecordCollection> recordsModifier = recordsCollection ->
+          this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
+
+        return recordService.saveRecordsBlocking(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders)
+          .compose(recordsBatchResponse -> {
+            sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
+            var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
+            return sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
+          });
+      });
+      //.map(batchResponse -> consumerRecord.key());
+
+//    var result = mapToEvent(consumerRecord)
+//      .compose(this::createSnapshot)
+//      .compose(event -> retrieveRecords(event, event.getTenant())
+//        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
+//        .compose(recordCollection -> recordService.saveRecordsBlocking(recordCollection, true,
+//          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
+//        .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
+//        .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
+//        .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
+//      ).recover(th -> {
+//          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
+//          return Future.failedFuture(th);
+//        }
+//      );
 
     LOGGER.info("handle:: Finish Handling kafka record");
     return result;
@@ -135,84 +157,81 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     return recordService.getRecords(condition, RecordType.MARC_BIB, emptyList(), 0, instanceIds.size(), tenantId);
   }
 
-  private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
-                                                          RecordCollection recordCollection, String userId) {
+  private RecordCollection mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
+                                                  RecordCollection recordCollection, String userId) {
     LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
-    return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
-      recordCollection.getRecords().forEach(bibRecord -> {
-        var newRecordId = UUID.randomUUID().toString();
-        var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
-        var parsedRecord = bibRecord.getParsedRecord();
-        var parsedRecordContent = readParsedContentToObjectRepresentation(bibRecord);
-        var fields = new LinkedList<>(parsedRecordContent.getDataFields());
+    var linkProcessor = getLinkProcessorForEvent(bibAuthorityLinksUpdate);
+    recordCollection.getRecords().forEach(bibRecord -> {
+      var newRecordId = UUID.randomUUID().toString();
+      var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
+      var parsedRecord = bibRecord.getParsedRecord();
+      var parsedRecordContent = readParsedContentToObjectRepresentation(bibRecord);
+      var fields = new LinkedList<>(parsedRecordContent.getDataFields());
 
-        var updateTargetFieldCodes = extractUpdateTargetFieldCodesForInstance(bibAuthorityLinksUpdate, instanceId);
-        var subfieldChanges = bibAuthorityLinksUpdate.getSubfieldsChanges().stream()
-          .filter(subfieldsChange -> updateTargetFieldCodes.contains(subfieldsChange.getField()))
-          .collect(Collectors.toMap(SubfieldsChange::getField, SubfieldsChange::getSubfields));
+      var updateTargetFieldCodes = extractUpdateTargetFieldCodesForInstance(bibAuthorityLinksUpdate, instanceId);
+      var subfieldChanges = bibAuthorityLinksUpdate.getSubfieldsChanges().stream()
+        .filter(subfieldsChange -> updateTargetFieldCodes.contains(subfieldsChange.getField()))
+        .collect(Collectors.toMap(SubfieldsChange::getField, SubfieldsChange::getSubfields));
 
-        fields.forEach(field -> {
-          if (!updateTargetFieldCodes.contains(field.getTag())) {
-            return;
-          }
+      fields.forEach(field -> {
+        if (!updateTargetFieldCodes.contains(field.getTag())) {
+          return;
+        }
 
-          var subfields = field.getSubfields();
-          if (isEmpty(subfields)) {
-            return;
-          }
+        var subfields = field.getSubfields();
+        if (isEmpty(subfields)) {
+          return;
+        }
 
-          var authorityId = getAuthorityIdSubfield(subfields);
-          if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get().getData())) {
-            return;
-          }
+        var authorityId = getAuthorityIdSubfield(subfields);
+        if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get().getData())) {
+          return;
+        }
 
-          var newSubfields = linkProcessor.process(field.getTag(), subfieldChanges.get(field.getTag()), subfields);
-          LOGGER.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
-            bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
-            instanceId, field.getTag(), subfields, newSubfields);
+        var newSubfields = linkProcessor.process(field.getTag(), subfieldChanges.get(field.getTag()), subfields);
+        LOGGER.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
+          bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
+          instanceId, field.getTag(), subfields, newSubfields);
 
-          var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
-          newSubfields.forEach(newField::addSubfield);
+        var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
+        newSubfields.forEach(newField::addSubfield);
 
-          var dataFields = parsedRecordContent.getDataFields();
-          var fieldPosition = dataFields.indexOf(field);
-          dataFields.remove(fieldPosition);
-          dataFields.add(fieldPosition, newField);
-        });
-
-        parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
-        parsedRecord.setFormattedContent(EMPTY);
-        parsedRecord.setId(newRecordId);
-        bibRecord.setId(newRecordId);
-        bibRecord.getRawRecord().setId(newRecordId);
-        bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
-        setUpdatedBy(bibRecord, userId);
+        var dataFields = parsedRecordContent.getDataFields();
+        var fieldPosition = dataFields.indexOf(field);
+        dataFields.remove(fieldPosition);
+        dataFields.add(fieldPosition, newField);
       });
 
-      return recordCollection;
+      parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
+      parsedRecord.setFormattedContent(EMPTY);
+      parsedRecord.setId(newRecordId);
+      bibRecord.setId(newRecordId);
+      bibRecord.getRawRecord().setId(newRecordId);
+      bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
+      setUpdatedBy(bibRecord, userId);
     });
+    return recordCollection;
   }
 
-  private Future<LinkProcessor> getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+  private LinkProcessor getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
     var eventType = bibAuthorityLinksUpdate.getType();
     switch (eventType) {
       case DELETE -> {
         LOGGER.debug("Precessing DELETE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return Future.succeededFuture(new DeleteLinkProcessor());
+        return new DeleteLinkProcessor();
       }
       case UPDATE -> {
         LOGGER.debug("Precessing UPDATE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return Future.succeededFuture(new UpdateLinkProcessor());
+        return new UpdateLinkProcessor();
       }
-      default -> {
-        return Future.failedFuture(new IllegalArgumentException(
+      default ->
+        throw new IllegalArgumentException(
           String.format("Unsupported event type: %s for jobId %s, authorityId %s",
-            eventType, bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId())));
-      }
+            eventType, bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId()));
     }
   }
 

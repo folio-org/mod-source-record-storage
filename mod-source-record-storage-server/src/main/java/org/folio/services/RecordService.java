@@ -1,10 +1,13 @@
 package org.folio.services;
 
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import io.vertx.sqlclient.Row;
+import java.util.function.UnaryOperator;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -23,9 +26,6 @@ import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
 
 public interface RecordService {
 
@@ -85,14 +85,12 @@ public interface RecordService {
   /**
    * Saves collection of records
    *
-   * @param recordsCollection records to save
-   * @param orderedBlocking boolean indicator to control if blocking logic needs to be run sequentially (true) or
-   *                        concurrently (false) by the Verticle.
    * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecordsBlocking(RecordCollection recordsCollection,
-                                                   boolean orderedBlocking,
+  Future<RecordsBatchResponse> saveRecordsBlocking(List<String> instanceIds,
+                                                   RecordType recordType,
+                                                   UnaryOperator<RecordCollection> recordsModifier,
                                                    Map<String, String> okapiHeaders);
 
   /**

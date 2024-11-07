@@ -62,8 +62,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -845,9 +843,9 @@ public class RecordDaoImpl implements RecordDao {
           recordCollection = getRecords(condition, recordType, emptyList(), offset, limit, tenantId)
             .toCompletionStage().toCompletableFuture()
             .thenApply(records -> records != null ? recordsModifier.apply(records) : null)
-            .get(2, TimeUnit.SECONDS)
+            .get()
             .orElse(null);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
+        } catch (InterruptedException | ExecutionException ex) {
           LOG.warn("saveRecords:: Failed to read records", ex);
           promise.fail(ex);
           return;

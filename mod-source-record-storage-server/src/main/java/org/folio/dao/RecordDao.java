@@ -88,7 +88,7 @@ public interface RecordDao {
    * @return  {@link Future} of {@link RecordCollection}
    */
   Future<List<Record>> getMatchedRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType,
-                                         TypeConnection recordType, boolean externalIdRequired,
+                                         List<String> matchedRecordIds, TypeConnection recordType, boolean externalIdRequired,
                                          int offset, int limit, String tenantId);
 
   /**

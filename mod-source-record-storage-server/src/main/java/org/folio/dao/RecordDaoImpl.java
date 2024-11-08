@@ -1820,6 +1820,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Record toRecord(org.jooq.Record dbRecord) {
+    LOG.info("JOOQ Record: {}", dbRecord);
     Record recordDto = RecordDaoUtil.toRecord(dbRecord);
     RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(dbRecord);
     if (Objects.nonNull(rawRecord.getContent())) {

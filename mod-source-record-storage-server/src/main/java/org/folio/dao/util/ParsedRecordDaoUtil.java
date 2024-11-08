@@ -15,7 +15,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jooq.tables.MarcRecordsLb;
 import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
 import org.jooq.Field;
@@ -152,8 +151,8 @@ public final class ParsedRecordDaoUtil {
    * @return ParsedRecord
    */
   public static ParsedRecord toJoinedParsedRecord(org.jooq.Record dbRecord) {
-    UUID id = dbRecord.get(MarcRecordsLb.MARC_RECORDS_LB.ID);
-    Object content = dbRecord.get(PARSED_RECORD_CONTENT);
+    UUID id = dbRecord.get(ID_FIELD);
+    Object content = dbRecord.get(CONTENT_FIELD);
 
     return asParsedRecord(id, content);
   }

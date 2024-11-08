@@ -176,8 +176,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   /* Searches for {@link MatchField} in a separate record properties considering it is matched_id, external_id, or external_hrid */
-  private Future<RecordCollection> processDefaultMatchField(MatchField matchField, List<String> multipleRecordIds, String tenantId) {
-    Condition condition = filterRecordByMultipleIds(multipleRecordIds);
+  private Future<RecordCollection> processDefaultMatchField(MatchField matchField, List<String> matchedRecordIds, String tenantId) {
+    Condition condition = filterRecordByMultipleIds(matchedRecordIds);
 
     condition.and(filterRecordByState(Record.State.ACTUAL.value()));
     String valueAsString = getStringValue(matchField.getValue());

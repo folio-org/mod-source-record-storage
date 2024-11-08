@@ -151,8 +151,10 @@ public final class ParsedRecordDaoUtil {
    * @return ParsedRecord
    */
   public static ParsedRecord toJoinedParsedRecord(org.jooq.Record dbRecord) {
+    var contentField = field(name(CONTENT), SQLDataType.JSONB.asConvertedDataType(new JSONBToJsonObjectConverter()))
+      .as(PARSED_RECORD_CONTENT);
     UUID id = dbRecord.get(ID_FIELD);
-    Object content = dbRecord.get(CONTENT_FIELD);
+    Object content = dbRecord.get(contentField);
 
     return asParsedRecord(id, content);
   }

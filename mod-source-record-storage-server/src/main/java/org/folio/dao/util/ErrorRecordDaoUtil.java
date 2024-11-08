@@ -17,6 +17,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import org.jooq.Record;
 
 /**
  * Utility class for managing {@link ErrorRecord}
@@ -32,7 +33,7 @@ public final class ErrorRecordDaoUtil {
 
   /**
    * Searches for {@link ErrorRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional ErrorRecord
@@ -45,7 +46,7 @@ public final class ErrorRecordDaoUtil {
 
   /**
    * Saves {@link ErrorRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param errorRecord   error record
    * @return future with updated ErrorRecord
@@ -62,7 +63,7 @@ public final class ErrorRecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link ErrorRecord}
-   * 
+   *
    * @param row query result row
    * @return ErrorRecord
    */
@@ -76,7 +77,7 @@ public final class ErrorRecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link ErrorRecord}
-   * 
+   *
    * @param row query result row
    * @return ErrorRecord
    */
@@ -92,8 +93,25 @@ public final class ErrorRecordDaoUtil {
   }
 
   /**
+   * Convert database query result {@link Row} to {@link ErrorRecord}
+   *
+   * @param dbRecord query result record
+   * @return ErrorRecord
+   */
+  public static ErrorRecord toJoinedErrorRecord(Record dbRecord) {
+    ErrorRecord errorRecord = new ErrorRecord();
+    UUID id = dbRecord.get(org.folio.rest.jooq.tables.ErrorRecordsLb.ERROR_RECORDS_LB.ID);
+    if (Objects.nonNull(id)) {
+      errorRecord.withId(id.toString());
+    }
+    return errorRecord
+      .withContent(dbRecord.get(ERROR_RECORD_CONTENT, String.class))
+      .withDescription(dbRecord.get(org.folio.rest.jooq.tables.ErrorRecordsLb.ERROR_RECORDS_LB.DESCRIPTION));
+  }
+
+  /**
    * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
-   * 
+   *
    * @param row query result row
    * @return optional ErrorRecord
    */
@@ -103,7 +121,7 @@ public final class ErrorRecordDaoUtil {
 
   /**
    * Convert {@link ErrorRecord} to database record {@link ErrorRecordsLbRecord}
-   * 
+   *
    * @param errorRecord error record
    * @return ErrorRecordsLbRecord
    */

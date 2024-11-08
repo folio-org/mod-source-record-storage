@@ -61,7 +61,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -839,41 +838,41 @@ public class RecordDaoImpl implements RecordDao {
 
     context.owner().<RecordsBatchResponse>executeBlocking(promise -> {
         final RecordCollection recordCollection;
-        try {
-          recordCollection = getRecords(condition, recordType, emptyList(), offset, limit, tenantId)
-            .toCompletionStage().toCompletableFuture()
-            .thenApply(records -> records != null ? recordsModifier.apply(records) : null)
-            .get()
-            .orElse(null);
-        } catch (InterruptedException | ExecutionException ex) {
-          LOG.warn("saveRecords:: Failed to read records", ex);
-          promise.fail(ex);
-          return;
-        }
-//        try (Connection connection = getConnection(tenantId)) {
-//          recordCollection = DSL.using(connection).transactionResult(ctx -> {
-//              DSLContext dsl = DSL.using(ctx);
-//              var queryResult = readRecords(dsl, condition, recordType, offset, limit, false, emptyList());
-//              var records = queryResult.fetchInto(Record.class);
-//              return new RecordCollection().withRecords(records).withTotalRecords(records.size());
-//            });
-//        } catch (SQLException | DataAccessException e) {
-//          LOG.warn("saveRecords:: Failed to read records", e);
-//          promise.fail(e.getCause());
+//        try {
+//          recordCollection = getRecords(condition, recordType, emptyList(), offset, limit, tenantId)
+//            .toCompletionStage().toCompletableFuture()
+//            .thenApply(records -> records != null ? recordsModifier.apply(records) : null)
+//            .get()
+//            .orElse(null);
+//        } catch (InterruptedException | ExecutionException ex) {
+//          LOG.warn("saveRecords:: Failed to read records", ex);
+//          promise.fail(ex);
 //          return;
 //        }
+        try (Connection connection = getConnection(tenantId)) {
+          recordCollection = DSL.using(connection).transactionResult(ctx -> {
+              DSLContext dsl = DSL.using(ctx);
+              var queryResult = readRecords(dsl, condition, recordType, offset, limit, false, emptyList());
+              var records = queryResult.fetch(this::toRecord);
+              return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+            });
+        } catch (SQLException | DataAccessException e) {
+          LOG.warn("saveRecords:: Failed to read records", e);
+          promise.fail(e.getCause());
+          return;
+        }
 
         if (recordCollection == null || CollectionUtils.isEmpty(recordCollection.getRecords())) {
           LOG.warn("saveRecords:: No records returned from the query");
           promise.complete(new RecordsBatchResponse().withTotalRecords(0));
           return;
         }
-//        var modifiedRecords = recordsModifier.apply(recordCollection);
-//        if (modifiedRecords.isEmpty()) {
-//          LOG.warn("Failed to apply changes to the records");
-//          promise.fail(new RuntimeException("Failed to apply changes to existing records"));
-//          return;
-//        }
+        var modifiedRecords = recordsModifier.apply(recordCollection);
+        if (modifiedRecords.isEmpty()) {
+          LOG.warn("Failed to apply changes to the records");
+          promise.fail(new RuntimeException("Failed to apply changes to existing records"));
+          return;
+        }
         var snapshotId = recordCollection.getRecords().iterator().next().getSnapshotId();
         saveRecords(recordCollection, snapshotId, recordType, tenantId, promise);
       },
@@ -1804,20 +1803,37 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Record toRecord(Row row) {
-    Record record = RecordDaoUtil.toRecord(row);
+    Record recordDto = RecordDaoUtil.toRecord(row);
     RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(row);
     if (Objects.nonNull(rawRecord.getContent())) {
-      record.setRawRecord(rawRecord);
+      recordDto.setRawRecord(rawRecord);
     }
     ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(row);
     if (Objects.nonNull(parsedRecord.getContent())) {
-      record.setParsedRecord(parsedRecord);
+      recordDto.setParsedRecord(parsedRecord);
     }
     ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(row);
     if (Objects.nonNull(errorRecord.getContent())) {
-      record.setErrorRecord(errorRecord);
+      recordDto.setErrorRecord(errorRecord);
     }
-    return record;
+    return recordDto;
+  }
+
+  private Record toRecord(org.jooq.Record dbRecord) {
+    Record recordDto = RecordDaoUtil.toRecord(dbRecord);
+    RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(dbRecord);
+    if (Objects.nonNull(rawRecord.getContent())) {
+      recordDto.setRawRecord(rawRecord);
+    }
+    ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(dbRecord);
+    if (Objects.nonNull(parsedRecord.getContent())) {
+      recordDto.setParsedRecord(parsedRecord);
+    }
+    ErrorRecord errorRecord = ErrorRecordDaoUtil.toJoinedErrorRecord(dbRecord);
+    if (Objects.nonNull(errorRecord.getContent())) {
+      recordDto.setErrorRecord(errorRecord);
+    }
+    return recordDto;
   }
 
   private StrippedParsedRecord toStrippedParsedRecord(Row row) {

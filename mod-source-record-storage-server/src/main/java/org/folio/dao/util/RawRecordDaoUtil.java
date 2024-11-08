@@ -16,6 +16,7 @@ import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGeneri
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import org.jooq.Record;
 
 /**
  * Utility class for managing {@link RawRecord}
@@ -30,7 +31,7 @@ public final class RawRecordDaoUtil {
 
   /**
    * Searches for {@link RawRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional RawRecord
@@ -43,7 +44,7 @@ public final class RawRecordDaoUtil {
 
   /**
    * Saves {@link RawRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   * 
+   *
    * @param queryExecutor query executor
    * @param rawRecord     raw record
    * @return future with updated RawRecord
@@ -60,7 +61,7 @@ public final class RawRecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link RawRecord}
-   * 
+   *
    * @param row query result row
    * @return RawRecord
    */
@@ -73,7 +74,7 @@ public final class RawRecordDaoUtil {
 
   /**
    * Convert database query result {@link Row} to {@link RawRecord}
-   * 
+   *
    * @param row query result row
    * @return RawRecord
    */
@@ -88,8 +89,24 @@ public final class RawRecordDaoUtil {
   }
 
   /**
+   * Convert database query result {@link Record} to {@link RawRecord}
+   *
+   * @param dbRecord query result record
+   * @return RawRecord
+   */
+  public static RawRecord toJoinedRawRecord(Record dbRecord) {
+    RawRecord rawRecord = new RawRecord();
+    UUID id = dbRecord.get(org.folio.rest.jooq.tables.RawRecordsLb.RAW_RECORDS_LB.ID);
+    if (Objects.nonNull(id)) {
+      rawRecord.withId(id.toString());
+    }
+    return rawRecord
+      .withContent(dbRecord.get(RAW_RECORD_CONTENT, String.class));
+  }
+
+  /**
    * Convert database query result {@link Row} to {@link Optional} {@link RawRecord}
-   * 
+   *
    * @param row query result row
    * @return optional RawRecord
    */
@@ -99,7 +116,7 @@ public final class RawRecordDaoUtil {
 
   /**
    * Convert {@link RawRecord} to database record {@link RawRecordsLbRecord}
-   * 
+   *
    * @param rawRecord raw record
    * @return RawRecordsLbRecord
    */

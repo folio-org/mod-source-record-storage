@@ -7,9 +7,11 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHOR
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.MULTI_MATCH_IDS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.MatchDetail;
@@ -36,6 +39,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
+import org.folio.processing.exceptions.MatchingException;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Field;
@@ -468,6 +472,147 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
               context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord2);
               async.complete();
             }))));
+  }
+
+  @Test
+  public void shouldMatchRecordDuringSubmatchIfMatchedSingleRecordPreviously(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
+    payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(existingRecord2));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+          ))));
+
+    String existingRecord3Id = UUID.randomUUID().toString();
+    Record existingRecord3 = new Record()
+      .withId(existingRecord3Id)
+      .withMatchedId(existingRecord3Id)
+      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(existingRecord3Id).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(existingRecord3Id).withContent(PARSED_CONTENT2))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityHrid("1000650")
+      )
+      .withState(Record.State.ACTUAL);
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(existingRecord, okapiHeaders)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord2, okapiHeaders)
+        .onComplete(context.asyncAssertSuccess())
+        .onSuccess(existingSavedRecord2 -> recordDao.saveRecord(existingRecord3, okapiHeaders)
+          .onComplete(context.asyncAssertSuccess())
+          .onSuccess(existingSavedRecord3 -> handler.handle(dataImportEventPayload)
+            .whenComplete((updatedEventPayload, throwable) -> {
+              context.assertNull(throwable);
+              context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+              context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+              context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord2);
+              async.complete();
+            }))));
+  }
+
+  @Test
+  public void shouldNotMatchMultipleRecordsIfMatchProfileIsNotNextInProfileSnapshot(TestContext context) {
+    Async async = context.async();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(MATCH_PROFILE)
+        .withReactTo(ReactToType.MATCH)
+        .withContent(new MatchProfile()
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withMatchDetails(singletonList(new MatchDetail()
+            .withMatchCriterion(EXACTLY_MATCHES)
+            .withExistingRecordType(EntityType.MARC_AUTHORITY)
+            .withExistingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+            .withIncomingMatchExpression(new MatchExpression()
+              .withDataValueType(VALUE_FROM_RECORD)
+              .withFields(Lists.newArrayList(
+                new Field().withLabel("field").withValue("010"),
+                new Field().withLabel("indicator1").withValue(""),
+                new Field().withLabel("indicator2").withValue(""),
+                new Field().withLabel("recordSubfield").withValue("a")
+              )))
+          ))).withChildSnapshotWrappers(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())
+          .withContentType(ACTION_PROFILE)
+          .withContent(new ActionProfile()
+            .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC)
+            .withAction(ActionProfile.Action.UPDATE)))));
+
+    String existingRecord3Id = UUID.randomUUID().toString();
+    Record existingRecord3 = new Record()
+      .withId(existingRecord3Id)
+      .withMatchedId(existingRecord3Id)
+      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(existingRecord3Id).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(existingRecord3Id).withContent(PARSED_CONTENT2))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityHrid("1000650")
+      )
+      .withState(Record.State.ACTUAL);
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord3, okapiHeaders)
+        .onComplete(context.asyncAssertSuccess())
+        .onSuccess(existingSavedRecord2 -> handler.handle(dataImportEventPayload)
+          .whenComplete((updatedEventPayload, throwable) -> {
+            context.assertNotNull(throwable);
+            context.assertTrue(throwable instanceof MatchingException);
+            context.assertEquals(throwable.getMessage(), FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
+            async.complete();
+          })));
   }
 
   @Test

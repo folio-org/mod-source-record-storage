@@ -59,12 +59,13 @@ import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final Logger LOG = LogManager.getLogger();
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain MARC_BIBLIOGRAPHIC data";
-  private static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
+  public static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
   private static final String USER_ID_HEADER = "userId";
   public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   public static final String MULTI_MATCH_IDS = "MULTI_MATCH_IDS";
+  public static final String ID = "id";
 
   private final TypeConnection typeConnection;
   private final RecordDao recordDao;
@@ -287,7 +288,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private String mapEntityListToIdsJsonString(List<Record> records) {
     List<String> idList = records.stream()
       .map(Record::getId)
-      .collect(Collectors.toList());
+      .toList();
 
     return Json.encode(idList);
   }
@@ -296,6 +297,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     if (StringUtils.isNotEmpty(payload.getContext().get(MULTI_MATCH_IDS))) {
       return new JsonArray(payload.getContext().remove(MULTI_MATCH_IDS)).stream().map(o -> (String) o).toList();
     }
+    if (StringUtils.isNotEmpty(payload.getContext().get(getMatchedMarcKey()))) {
+      return List.of(new JsonObject(payload.getContext().get(getMatchedMarcKey())).getString(ID));
+    }
+
     return Collections.emptyList();
   }
 }

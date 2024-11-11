@@ -1826,6 +1826,10 @@ public class RecordDaoImpl implements RecordDao {
     if (Objects.nonNull(rawRecord.getContent())) {
       recordDto.setRawRecord(rawRecord);
     }
+
+    LOG.info("PARSED_RECORD_CONTENT: {}", dbRecord.get(PARSED_RECORD_CONTENT));
+    LOG.info("PARSED_RECORD_CONTENT as JSONB: {}", dbRecord.get(PARSED_RECORD_CONTENT, JSONB.class));
+
     ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(dbRecord);
     if (Objects.nonNull(parsedRecord.getContent())) {
       recordDto.setParsedRecord(parsedRecord);

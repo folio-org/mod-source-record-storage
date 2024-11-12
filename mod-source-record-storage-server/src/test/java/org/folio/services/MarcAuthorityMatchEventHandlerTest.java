@@ -68,7 +68,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   private static final String PARSED_CONTENT2 = "{ \"leader\": \"01012cz  a2200241n  4500\", \"fields\": [ { \"001\": \"1000649\" }, { \"005\": \"20171119085041.0\" }, { \"008\": \"201001 n acanaaabn           n aaa     d\" }, { \"010\": { \"subfields\": [ { \"a\": \"n   7777777 \" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"024\": { \"subfields\": [ { \"a\": \"0022-0469\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"035\": { \"subfields\": [ { \"a\": \"90c37ff4-2f1e-451f-8822-87241b081617\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"100\": { \"subfields\": [ { \"a\": \"Eimermacher, Karl\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"NIC\" }, { \"d\": \"CStRLIN\" }, { \"d\": \"NIC\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"110\": { \"subfields\": [ { \"a\": \"BR140\" }, { \"b\": \".J6\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"111\": { \"subfields\": [ { \"a\": \"270.05\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"130\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"150\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history.\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"151\": { \"subfields\": [ { \"a\": \"London,\" }, { \"b\": \"Cambridge University Press [etc.]\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"155\": { \"subfields\": [ { \"a\": \"32 East 57th St., New York, 10022\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"375\": { \"subfields\": [ { \"a\": \"male\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"377\": { \"subfields\": [ { \"a\": \"ger\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"400\": { \"subfields\": [ { \"a\": \"v.\" }, { \"b\": \"25 cm.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"410\": { \"subfields\": [ { \"a\": \"Quarterly,\" }, { \"b\": \"1970-\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"411\": { \"subfields\": [ { \"a\": \"Semiannual,\" }, { \"b\": \"1950-69\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"430\": { \"subfields\": [ { \"a\": \"v. 1-   Apr. 1950-\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"450\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"u\": \"note$u\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"451\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"455\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"f\": \"note$f\" }, { \"h\": \"note$h\" }, { \"i\": \"note$i\" }, { \"j\": \"note$j\" }, { \"k\": \"note$k\" }, { \"l\": \"note$l\" }, { \"n\": \"note$n\" }, { \"o\": \"note$o\" }, { \"u\": \"note$u\" }, { \"x\": \"note$x\" }, { \"z\": \"note$z\" }, { \"2\": \"note$2\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"500\": { \"subfields\": [ { \"a\": \"Editor:   C. W. Dugmore.\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"510\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"x\": \"Periodicals.\" } ], \"ind1\": \" \", \"ind2\": \"0\" } }, { \"511\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst00860740\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"530\": { \"subfields\": [ { \"a\": \"Periodicals\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst01411641\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"550\": { \"subfields\": [ { \"a\": \"Dugmore, C. W.\" }, { \"q\": \"(Clifford William),\" }, { \"e\": \"ed.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"551\": { \"subfields\": [ { \"k\": \"callNumberPrefix\" }, { \"h\": \"callNumber1\" }, { \"i\": \"callNumber2\" }, { \"m\": \"callNumberSuffix\" }, { \"t\": \"copyNumber\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"555\": { \"subfields\": [ { \"u\": \"uri\" }, { \"y\": \"linkText\" }, { \"3\": \"materialsSpecification\" }, { \"z\": \"publicNote\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"999\": { \"ind1\": \"f\", \"ind2\": \"f\", \"subfields\": [ { \"s\": \"b90cb1bc-601f-45d7-b99e-b11efd281dcd\" } ] } } ] }";
   private static final String MATCHED_MARC_KEY = "MATCHED_MARC_AUTHORITY";
   private static final String existingRecordId = "b90cb1bc-601f-45d7-b99e-b11efd281dcd";
-  private static final String existingRecord2Id = UUID.randomUUID().toString();
+  private static final String existingRecordId2 = UUID.randomUUID().toString();
   private static String rawRecordContent;
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
@@ -120,13 +120,13 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       .withState(Record.State.ACTUAL);
 
     this.existingRecord2 = new Record()
-      .withId(existingRecord2Id)
-      .withMatchedId(existingRecord2Id)
+      .withId(existingRecordId2)
+      .withMatchedId(existingRecordId2)
       .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
       .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
-      .withRawRecord(new RawRecord().withId(existingRecord2Id).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(existingRecord2Id).withContent(PARSED_CONTENT2))
+      .withRawRecord(new RawRecord().withId(existingRecordId2).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(existingRecordId2).withContent(PARSED_CONTENT2))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withAuthorityHrid("1000650")
       )
@@ -410,7 +410,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
-    payloadContext.put(MULTI_MATCH_IDS, JsonArray.of(existingRecordId, existingRecord2Id).encode());
+    payloadContext.put(MULTI_MATCH_IDS, JsonArray.of(existingRecordId, existingRecordId2).encode());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)

@@ -40,11 +40,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -188,43 +188,36 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<RecordsBatchResponse> saveRecordsBlocking(List<String> instanceIds,
-                                                          RecordType recordType,
-                                                          UnaryOperator<RecordCollection> recordsModifier,
-                                                          Map<String, String> okapiHeaders) {
-    var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds,
-        getExternalIdType(Record.RecordType.fromValue(recordType.name())))
-      .and(RecordDaoUtil.filterRecordByDeleted(false));
+  public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                               RecordType recordType,
+                                                               UnaryOperator<RecordCollection> recordsModifier,
+                                                               Map<String, String> okapiHeaders) {
+    if (CollectionUtils.isEmpty(externalIds)) {
+      LOG.warn("saveRecordsBlocking:: Skipping the records save, no external IDs are provided");
+      return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
+    }
 
-    Function<RecordCollection, Optional<RecordCollection>> recordsModifierWithMatchedIdsSetter =
-      recordsModifier.andThen(recordCollection -> {
-        try {
-          for (var sourceRecord : recordCollection.getRecords()) {
-            setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))
-              .toCompletionStage().toCompletableFuture().get();
-          }
-          return Optional.of(recordCollection);
-        } catch (InterruptedException | ExecutionException ex) {
-          LOG.warn("saveRecordsBlocking:: Failed to set record matched id: {}", ex.getMessage());
-          return Optional.empty();
+    if (recordsModifier == null) {
+      LOG.warn("saveRecordsBlocking:: Skipping the records save, no operator is provided to modify the existing records");
+      return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
+    }
+
+    UnaryOperator<RecordCollection> recordsMatchedIdsSetter = recordCollection -> {
+      try {
+        for (var sourceRecord : recordCollection.getRecords()) {
+          setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))
+            .toCompletionStage().toCompletableFuture().get();
         }
-      });
+        return recordCollection;
+      } catch (InterruptedException | ExecutionException ex) {
+        LOG.warn("saveRecordsBlocking:: Failed to set record matched id: {}", ex.getMessage());
+        throw new RuntimeException(ex);
+      }
+    };
+    UnaryOperator<RecordCollection> recordsModifierWithMatchedIdsSetter =
+      (UnaryOperator<RecordCollection>) recordsModifier.andThen(recordsMatchedIdsSetter);
 
-    return recordDao.saveRecordsBlocking(condition, recordType, 0, instanceIds.size(), recordsModifierWithMatchedIdsSetter, okapiHeaders);
-
-//    if (recordCollection.getRecords().isEmpty()) {
-//      Promise<RecordsBatchResponse> promise = Promise.promise();
-//      promise.complete(new RecordsBatchResponse().withTotalRecords(0));
-//      return promise.future();
-//    }
-//    List<Future> setMatchedIdsFutures = new ArrayList<>();
-//    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
-//      okapiHeaders.get(OKAPI_TENANT_HEADER))));
-//    return GenericCompositeFuture.all(setMatchedIdsFutures)
-//      .compose(ar -> ar.succeeded() ?
-//        recordDao.saveRecordsBlocking(recordCollection, orderedBlocking, okapiHeaders)
-//        : Future.failedFuture(ar.cause()))
-//      .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
+    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders);
   }
 
   @Override

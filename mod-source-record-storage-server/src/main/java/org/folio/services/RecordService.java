@@ -83,15 +83,17 @@ public interface RecordService {
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, Map<String, String> okapiHeaders);
 
   /**
-   * Saves collection of records
+   * Saves collection of records.
    *
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
    * @param okapiHeaders okapi headers
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
-  Future<RecordsBatchResponse> saveRecordsBlocking(List<String> instanceIds,
-                                                   RecordType recordType,
-                                                   UnaryOperator<RecordCollection> recordsModifier,
-                                                   Map<String, String> okapiHeaders);
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds, RecordType recordType,
+                                                        UnaryOperator<RecordCollection> recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id

@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -217,17 +219,18 @@ public interface RecordDao {
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
 
   /**
-   * Saves {@link RecordCollection} to the db
+   * Saves {@link RecordCollection} to the db.
    *
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
    * @param okapiHeaders okapi headers
    * @return future with saved {@link RecordsBatchResponse}
    */
-  Future<RecordsBatchResponse> saveRecordsBlocking(Condition condition,
-                                                   RecordType recordType,
-                                                   int offset,
-                                                   int limit,
-                                                   Function<RecordCollection, Optional<RecordCollection>> recordsModifier,
-                                                   Map<String, String> okapiHeaders);
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                        RecordType recordType,
+                                                        UnaryOperator<RecordCollection> recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db

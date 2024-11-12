@@ -13,6 +13,7 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
@@ -62,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -260,32 +262,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, boolean returnTotalCount, String tenantId) {
-    Name cte = name(CTE);
-    Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
-        ResultQuery<Record1<Integer>> countQuery;
-        if (returnTotalCount) {
-          countQuery = dsl.selectCount()
-            .from(RECORDS_LB)
-            .where(condition.and(recordType.getRecordImplicitCondition()));
-        } else {
-          countQuery = select(inline(null, Integer.class).as(COUNT));
-        }
-
-        return dsl
-          .with(cte.as(countQuery))
-          .select(getAllRecordFieldsWithCount(prt))
-          .from(RECORDS_LB)
-          .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-          .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-          .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-          .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-          .where(condition.and(recordType.getRecordImplicitCondition()))
-          .orderBy(orderFields)
-          .offset(offset)
-          .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
-      }
+  public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields,
+                                             int offset, int limit, boolean returnTotalCount, String tenantId) {
+    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
+      readRecords(dsl, condition, recordType, offset, limit, returnTotalCount, orderFields)
     )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
   }
 
@@ -774,11 +754,13 @@ public class RecordDaoImpl implements RecordDao {
     var recordType = RecordType.valueOf(firstRecord.getRecordType().name());
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
-    if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
 
-    context.owner().<RecordsBatchResponse>executeBlocking(promise ->
-        saveRecords(recordCollection, snapshotId, recordType, tenantId, promise)
-      ,
+    if(context == null) {
+      return Future.failedFuture("saveRecords must be executed by a Vertx thread");
+    }
+
+    context.owner().executeBlocking(
+      () -> saveRecords(recordCollection, snapshotId, recordType, tenantId),
       false,
       r -> {
         if (r.failed()) {
@@ -796,16 +778,74 @@ public class RecordDaoImpl implements RecordDao {
       );
   }
 
+  @Override
+  public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                               RecordType recordType,
+                                                               UnaryOperator<RecordCollection> recordsModifier,
+                                                               Map<String, String> okapiHeaders) {
+    var condition = RecordDaoUtil.getExternalIdsCondition(externalIds,
+        getExternalIdType(Record.RecordType.fromValue(recordType.name())))
+      .and(RecordDaoUtil.filterRecordByDeleted(false));
+
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    Promise<RecordsBatchResponse> finalPromise = Promise.promise();
+    Context context = Vertx.currentContext();
+    if(context == null) {
+      return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
+    }
+
+    context.owner().executeBlocking(
+      () -> {
+        final RecordCollection recordCollection;
+        try (Connection connection = getConnection(tenantId)) {
+          recordCollection = DSL.using(connection).transactionResult(ctx -> {
+            DSLContext dsl = DSL.using(ctx);
+            var queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
+            var records = queryResult.fetch(this::toRecord);
+            return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+          });
+        } catch (SQLException | DataAccessException e) {
+          LOG.warn("saveRecordsByExternalIds:: Failed to read records", e);
+          throw e;
+        }
+
+        if (recordCollection == null || CollectionUtils.isEmpty(recordCollection.getRecords())) {
+          LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
+          return new RecordsBatchResponse().withTotalRecords(0);
+        }
+
+        var modifiedRecords = recordsModifier.apply(recordCollection);
+        var snapshotId = modifiedRecords.getRecords().iterator().next().getSnapshotId();
+        return saveRecords(modifiedRecords, snapshotId, recordType, tenantId);
+      },
+      r -> {
+        if (r.failed()) {
+          LOG.warn("saveRecordsByExternalIds:: Error during batch record save", r.cause());
+          finalPromise.fail(r.cause());
+        } else {
+          LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
+          finalPromise.complete(r.result());
+        }
+      }
+    );
+
+    return finalPromise.future()
+      .onSuccess(response -> response.getRecords()
+        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
+      );
+  }
+
   private ResultQuery<org.jooq.Record> readRecords(DSLContext dsl, Condition condition, RecordType recordType, int offset, int limit,
                                                    boolean returnTotalCount, Collection<OrderField<?>> orderFields) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
+    var finalCondition = condition.and(recordType.getRecordImplicitCondition());
 
     ResultQuery<Record1<Integer>> countQuery;
     if (returnTotalCount) {
       countQuery = dsl.selectCount()
         .from(RECORDS_LB)
-        .where(condition.and(recordType.getRecordImplicitCondition()));
+        .where(finalCondition);
     } else {
       countQuery = select(inline(null, Integer.class).as(COUNT));
     }
@@ -818,82 +858,14 @@ public class RecordDaoImpl implements RecordDao {
       .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
       .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
       .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(recordType.getRecordImplicitCondition()))
+      .where(finalCondition)
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
   }
 
-  @Override
-  public Future<RecordsBatchResponse> saveRecordsBlocking(Condition condition,
-                                                          RecordType recordType,
-                                                          int offset,
-                                                          int limit,
-                                                          Function<RecordCollection, Optional<RecordCollection>> recordsModifier,
-                                                          Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    Promise<RecordsBatchResponse> finalPromise = Promise.promise();
-    Context context = Vertx.currentContext();
-    if(context == null) return Future.failedFuture("saveRecords must be executed by a Vertx thread");
-
-    context.owner().<RecordsBatchResponse>executeBlocking(promise -> {
-        final RecordCollection recordCollection;
-//        try {
-//          recordCollection = getRecords(condition, recordType, emptyList(), offset, limit, tenantId)
-//            .toCompletionStage().toCompletableFuture()
-//            .thenApply(records -> records != null ? recordsModifier.apply(records) : null)
-//            .get()
-//            .orElse(null);
-//        } catch (InterruptedException | ExecutionException ex) {
-//          LOG.warn("saveRecords:: Failed to read records", ex);
-//          promise.fail(ex);
-//          return;
-//        }
-        try (Connection connection = getConnection(tenantId)) {
-          recordCollection = DSL.using(connection).transactionResult(ctx -> {
-              DSLContext dsl = DSL.using(ctx);
-              var queryResult = readRecords(dsl, condition, recordType, offset, limit, false, emptyList());
-              var records = queryResult.fetch(this::toRecord);
-              return new RecordCollection().withRecords(records).withTotalRecords(records.size());
-            });
-        } catch (SQLException | DataAccessException e) {
-          LOG.warn("saveRecords:: Failed to read records", e);
-          promise.fail(e.getCause());
-          return;
-        }
-
-        if (recordCollection == null || CollectionUtils.isEmpty(recordCollection.getRecords())) {
-          LOG.warn("saveRecords:: No records returned from the query");
-          promise.complete(new RecordsBatchResponse().withTotalRecords(0));
-          return;
-        }
-        var modifiedRecords = recordsModifier.apply(recordCollection);
-        if (modifiedRecords.isEmpty()) {
-          LOG.warn("Failed to apply changes to the records");
-          promise.fail(new RuntimeException("Failed to apply changes to existing records"));
-          return;
-        }
-        var snapshotId = recordCollection.getRecords().iterator().next().getSnapshotId();
-        saveRecords(recordCollection, snapshotId, recordType, tenantId, promise);
-      },
-      r -> {
-        if (r.failed()) {
-          LOG.warn("saveRecords:: Error during batch record save", r.cause());
-          finalPromise.fail(r.cause());
-        } else {
-          LOG.debug("saveRecords:: batch record save was successful");
-          finalPromise.complete(r.result());
-        }
-      });
-
-    return finalPromise.future()
-      .onSuccess(response -> response.getRecords()
-        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
-      );
-  }
-
-  private void saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType, String tenantId,
-                           Promise<RecordsBatchResponse> promise) {
+  private RecordsBatchResponse saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType,
+                                           String tenantId) throws SQLException {
     Set<UUID> matchedIds = new HashSet<>();
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
@@ -946,7 +918,7 @@ public class RecordDaoImpl implements RecordDao {
       });
 
     try (Connection connection = getConnection(tenantId)) {
-      DSL.using(connection).transaction(ctx -> {
+      return DSL.using(connection).transactionResult(ctx -> {
         DSLContext dsl = DSL.using(ctx);
 
         // validate snapshot
@@ -1045,17 +1017,17 @@ public class RecordDaoImpl implements RecordDao {
             .execute();
         }
 
-        promise.complete(new RecordsBatchResponse()
+        return new RecordsBatchResponse()
           .withRecords(recordCollection.getRecords())
           .withTotalRecords(recordCollection.getRecords().size())
-          .withErrorMessages(errorMessages));
+          .withErrorMessages(errorMessages);
       });
     } catch (DuplicateEventException e) {
       LOG.info("saveRecords:: Skipped saving records due to duplicate event: {}", e.getMessage());
-      promise.fail(e);
+      throw e;
     } catch (SQLException | DataAccessException e) {
       LOG.warn("saveRecords:: Failed to save records", e);
-      promise.fail(e.getCause());
+      throw e;
     }
   }
 
@@ -1699,11 +1671,11 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
-  private Record validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) || StringUtils.isEmpty(record.getParsedRecord().getId())) {
+  private Record validateParsedRecordId(Record recordDto) {
+    if (Objects.isNull(recordDto.getParsedRecord()) || StringUtils.isEmpty(recordDto.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
-    return record;
+    return recordDto;
   }
 
   private Field<?>[] getRecordFields(Name prt) {
@@ -1820,14 +1792,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private Record toRecord(org.jooq.Record dbRecord) {
-    LOG.info("JOOQ Record: {}", dbRecord);
     Record recordDto = RecordDaoUtil.toRecord(dbRecord);
     RawRecord rawRecord = RawRecordDaoUtil.toJoinedRawRecord(dbRecord);
     if (Objects.nonNull(rawRecord.getContent())) {
       recordDto.setRawRecord(rawRecord);
     }
-
-    LOG.info("PARSED_RECORD_CONTENT: {}", dbRecord.get(PARSED_RECORD_CONTENT, String.class));
 
     ParsedRecord parsedRecord = ParsedRecordDaoUtil.toJoinedParsedRecord(dbRecord);
     if (Objects.nonNull(parsedRecord.getContent())) {

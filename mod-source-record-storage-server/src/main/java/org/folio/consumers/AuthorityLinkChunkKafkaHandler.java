@@ -86,7 +86,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
-    LOGGER.info("handle:: Start Handling kafka record: {}", consumerRecord);
+    LOGGER.info("handle:: Start Handling kafka record");
 
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
@@ -302,8 +302,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,
-                                           List<KafkaHeader> headers) {
+  private void sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,
+                           List<KafkaHeader> headers) {
     var errorRecords = getErrorRecords(batchResponse);
     if (!errorRecords.isEmpty()) {
       LOGGER.info("Errors detected. Sending {} linking reports for jobId {}, authorityId {}",
@@ -312,7 +312,6 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       toFailedLinkUpdateReports(errorRecords, event).forEach(report ->
         sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), report, headers));
     }
-    return batchResponse;
   }
 
   private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents, BibAuthorityLinksUpdate event,

@@ -488,6 +488,14 @@
       "visible": false
     }
   ],
+  "metadata": {
+    "user": {
+      "type": "system",
+      "permissions": [
+        "source-storage.all"
+      ]
+    }
+  },
   "launchDescriptor": {
     "dockerImage": "${artifactId}:${version}",
     "dockerPull": false,

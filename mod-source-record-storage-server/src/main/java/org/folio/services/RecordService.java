@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -24,6 +23,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 
@@ -92,7 +92,7 @@ public interface RecordService {
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
   Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds, RecordType recordType,
-                                                        UnaryOperator<RecordCollection> recordsModifier,
+                                                        RecordsModifierOperator recordsModifier,
                                                         Map<String, String> okapiHeaders);
 
   /**

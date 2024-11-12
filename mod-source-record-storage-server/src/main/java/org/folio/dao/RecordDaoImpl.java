@@ -63,7 +63,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -118,6 +117,7 @@ import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -781,7 +781,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
                                                                RecordType recordType,
-                                                               UnaryOperator<RecordCollection> recordsModifier,
+                                                               RecordsModifierOperator recordsModifier,
                                                                Map<String, String> okapiHeaders) {
     var condition = RecordDaoUtil.getExternalIdsCondition(externalIds,
         getExternalIdType(Record.RecordType.fromValue(recordType.name())))

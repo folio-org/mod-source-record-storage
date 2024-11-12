@@ -29,7 +29,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -52,6 +51,7 @@ import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.handlers.links.DeleteLinkProcessor;
 import org.folio.services.handlers.links.LinkProcessor;
 import org.folio.services.handlers.links.UpdateLinkProcessor;
@@ -93,7 +93,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .compose(linksUpdate -> {
         var instanceIds = getBibRecordExternalIds(linksUpdate);
         var okapiHeaders = toOkapiHeaders(consumerRecord.headers(), linksUpdate.getTenant());
-        UnaryOperator<RecordCollection> recordsModifier = recordsCollection ->
+        RecordsModifierOperator recordsModifier = recordsCollection ->
           this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
 
         return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders)

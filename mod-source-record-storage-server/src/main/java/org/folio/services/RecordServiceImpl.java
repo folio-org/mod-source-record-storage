@@ -40,7 +40,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.function.UnaryOperator;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -76,6 +75,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.exceptions.RecordUpdateException;
 import org.folio.services.util.AdditionalFieldsUtil;
@@ -190,7 +190,7 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
                                                                RecordType recordType,
-                                                               UnaryOperator<RecordCollection> recordsModifier,
+                                                               RecordsModifierOperator recordsModifier,
                                                                Map<String, String> okapiHeaders) {
     if (CollectionUtils.isEmpty(externalIds)) {
       LOG.warn("saveRecordsBlocking:: Skipping the records save, no external IDs are provided");
@@ -202,7 +202,7 @@ public class RecordServiceImpl implements RecordService {
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
     }
 
-    UnaryOperator<RecordCollection> recordsMatchedIdsSetter = recordCollection -> {
+    RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
       try {
         for (var sourceRecord : recordCollection.getRecords()) {
           setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))
@@ -211,11 +211,10 @@ public class RecordServiceImpl implements RecordService {
         return recordCollection;
       } catch (InterruptedException | ExecutionException ex) {
         LOG.warn("saveRecordsBlocking:: Failed to set record matched id: {}", ex.getMessage());
-        throw new RuntimeException(ex);
+        throw new RecordUpdateException(ex.getMessage());
       }
     };
-    UnaryOperator<RecordCollection> recordsModifierWithMatchedIdsSetter =
-      (UnaryOperator<RecordCollection>) recordsModifier.andThen(recordsMatchedIdsSetter);
+    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
 
     return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders);
   }

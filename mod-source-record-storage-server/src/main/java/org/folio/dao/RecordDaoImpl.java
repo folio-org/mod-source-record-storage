@@ -614,19 +614,6 @@ public class RecordDaoImpl implements RecordDao {
       .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
   }
 
-  private void appendJoinAlternative(SelectJoinStep<?> selectJoinStep, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
-    if (parseLeaderResult.isEnabled()) {
-      Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
-      selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
-    }
-    if (parseFieldsResult.isEnabled()) {
-      parseFieldsResult.getFieldsToJoin().forEach(fieldToJoin -> {
-        Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_PARTITION_PREFIX + fieldToJoin)).as("i" + fieldToJoin);
-        selectJoinStep.innerJoin(marcIndexers).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexers, name(MARC_ID))));
-      });
-    }
-  }
-
   @Override
   public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
                                                                            boolean returnTotalRecords, TypeConnection typeConnection,

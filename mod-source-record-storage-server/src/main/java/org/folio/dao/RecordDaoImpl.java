@@ -725,10 +725,10 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record sourceRecord,
+  public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record recordDto,
                                    Map<String, String> okapiHeaders) {
-    LOG.trace("saveRecord:: Saving {} record {}", sourceRecord.getRecordType(), sourceRecord.getId());
-    return insertOrUpdateRecord(txQE, sourceRecord)
+    LOG.trace("saveRecord:: Saving {} record {}", recordDto.getRecordType(), recordDto.getId());
+    return insertOrUpdateRecord(txQE, recordDto)
       .onSuccess(created -> recordDomainEventPublisher.publishRecordCreated(created, okapiHeaders));
   }
 

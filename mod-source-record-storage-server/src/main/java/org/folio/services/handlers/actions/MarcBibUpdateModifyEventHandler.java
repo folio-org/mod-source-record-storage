@@ -42,6 +42,7 @@ import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
+import org.folio.util.AuthorityLinksUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -50,7 +51,6 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
 
   private static final Logger LOG = LogManager.getLogger();
   private static final String UNEXPECTED_PAYLOAD_MSG = "Matched record doesn't contains external record id. jobExecutionId '%s'";
-  private static final char SUB_FIELD_9 = '9';
 
   private final InstanceLinkClient instanceLinkClient;
   private final LinkingRulesCache linkingRulesCache;
@@ -132,7 +132,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,
                                                                        OkapiConnectionParams okapiParams) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
-    if (isSubfieldExist(oldRecord, SUB_FIELD_9)) {
+    if (isSubfieldExist(oldRecord, AuthorityLinksUtils.AUTHORITY_ID_SUBFIELD)) {
       if (isNull(instanceId) || isBlank(instanceId)) {
         instanceId = oldRecord.getExternalIdsHolder().getInstanceId();
       }

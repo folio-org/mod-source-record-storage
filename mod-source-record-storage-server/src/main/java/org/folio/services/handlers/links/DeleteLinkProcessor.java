@@ -1,6 +1,6 @@
 package org.folio.services.handlers.links;
 
-import static org.folio.consumers.AuthorityLinkChunkKafkaHandler.AUTHORITY_ID_SUBFIELD;
+import static org.folio.util.AuthorityLinksUtils.AUTHORITY_ID_SUBFIELD;
 
 import java.util.Collection;
 import java.util.LinkedList;

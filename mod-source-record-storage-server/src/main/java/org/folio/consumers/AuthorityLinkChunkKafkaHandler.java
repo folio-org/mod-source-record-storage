@@ -12,6 +12,7 @@ import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
 import static org.folio.services.util.EventHandlingUtil.createProducer;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
+import static org.folio.util.AuthorityLinksUtils.getAuthorityIdSubfield;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -25,7 +26,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -57,14 +57,12 @@ import org.folio.services.SnapshotService;
 import org.folio.services.handlers.links.DeleteLinkProcessor;
 import org.folio.services.handlers.links.LinkProcessor;
 import org.folio.services.handlers.links.UpdateLinkProcessor;
-import org.marc4j.marc.Subfield;
 import org.marc4j.marc.impl.DataFieldImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String, String> {
-  public static final char AUTHORITY_ID_SUBFIELD = '9';
   private static final AtomicLong INDEXER = new AtomicLong();
   private static final Logger LOGGER = LogManager.getLogger();
   private final Map<KafkaTopic, KafkaProducer<String, String>> producers = new HashMap<>();
@@ -221,12 +219,6 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .collect(Collectors.toList());
   }
 
-  private Optional<Subfield> getAuthorityIdSubfield(List<Subfield> subfields) {
-    return subfields.stream()
-      .filter(subfield -> subfield.getCode() == AUTHORITY_ID_SUBFIELD)
-      .findFirst();
-  }
-
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
                                                           BibAuthorityLinksUpdate event) {
     LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
@@ -235,7 +227,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     var errors = batchResponse.getErrorMessages();
     if (!errors.isEmpty()) {
       LOGGER.error("Unable to batch update some of linked bib records for jobId {}, authorityId {}."
-          + " Total number of records: {}, successful: {}, failures: {}",
+                   + " Total number of records: {}, successful: {}, failures: {}",
         event.getJobId(), event.getAuthorityId(),
         batchResponse.getTotalRecords(), batchResponse.getRecords().size(), errors);
     }

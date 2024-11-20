@@ -8,6 +8,7 @@ import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByMultipleIds;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
@@ -310,8 +311,8 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<List<Record>> getMatchedRecords(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                TypeConnection typeConnection, boolean externalIdRequired,
-                                                int offset, int limit, String tenantId) {
+                                                List<String> matchedRecordIds, TypeConnection typeConnection,
+                                                boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
     Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
     if (matchedField.getValue() instanceof MissingValue)
@@ -337,6 +338,7 @@ public class RecordDaoImpl implements RecordDao {
         }
         return query.where(
             filterRecordByType(typeConnection.getRecordType().value())
+              .and(filterRecordByMultipleIds(matchedRecordIds))
               .and(filterRecordByState(Record.State.ACTUAL.value()))
               .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
               .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
@@ -399,7 +401,7 @@ public class RecordDaoImpl implements RecordDao {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      sql = qualifierSearch ? sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
+      sql = qualifierSearch ? StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
         : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
     return condition(sql);

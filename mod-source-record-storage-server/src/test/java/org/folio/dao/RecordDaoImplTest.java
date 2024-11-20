@@ -50,15 +50,18 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   private Record record;
   private Record deletedRecord;
   private String deletedRecordId;
+  private Map<String, String> okapiHeaders;
+  private RawRecord rawRecord;
+  private ParsedRecord marcRecord;
 
   @Before
   public void setUp(TestContext context) throws IOException {
     MockitoAnnotations.openMocks(this);
     Async async = context.async();
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    RawRecord rawRecord = new RawRecord()
+    rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    ParsedRecord marcRecord = new ParsedRecord()
+    marcRecord = new ParsedRecord()
       .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Snapshot snapshot = TestMocks.getSnapshot(0);
@@ -90,7 +93,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))
@@ -120,13 +123,83 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
     Future<List<Record>> future = deleteTrackingRecordById(record.getId())
-      .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
       context.assertEquals(1, ar.result().size());
       context.assertEquals(record.getId(), ar.result().get(0).getId());
       async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnMultipleRecordsOnGetMatchedRecordsIfMatchedRecordIdsNotSpecified(TestContext context) {
+    Async async = context.async();
+    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
+
+    MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+
+    Snapshot copyRecordSnapshot = TestMocks.getSnapshot(1);
+    String copyRecordId = UUID.randomUUID().toString();
+    Record copyRecord = new Record()
+      .withId(copyRecordId)
+      .withState(ACTUAL)
+      .withMatchedId(copyRecordId)
+      .withSnapshotId(copyRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord.withId(copyRecordId))
+      .withParsedRecord(marcRecord.withId(copyRecordId))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString()));
+
+    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
+      .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
+      .compose(v -> recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertEquals(2, ar.result().size());
+      List<String> ids = ar.result().stream().map(Record::getId).toList();
+      context.assertTrue(ids.contains(copyRecord.getId()));
+      context.assertTrue(ids.contains(record.getId()));
+      recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
+        .onComplete(v -> async.complete());
+    });
+  }
+
+  @Test
+  public void shouldReturnSingleRecordsOnGetMatchedRecordsIfMatchedRecordIdsSpecified(TestContext context) {
+    Async async = context.async();
+    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
+
+    MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+
+    Snapshot copyRecordSnapshot = TestMocks.getSnapshot(1);
+    String copyRecordId = UUID.randomUUID().toString();
+    Record copyRecord = new Record()
+      .withId(copyRecordId)
+      .withState(ACTUAL)
+      .withMatchedId(copyRecordId)
+      .withSnapshotId(copyRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord.withId(copyRecordId))
+      .withParsedRecord(marcRecord.withId(copyRecordId))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString()));
+
+    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
+      .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
+      .compose(v -> recordDao.getMatchedRecords(matchField, null, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+
+    future.onComplete(ar -> {
+      context.assertTrue(ar.succeeded());
+      context.assertEquals(1, ar.result().size());
+      context.assertEquals(record.getId(), ar.result().get(0).getId());
+      recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
+        .onComplete(v -> async.complete());
     });
   }
 
@@ -149,7 +222,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     var async = context.async();
     var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
-    var future = recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+    var future = recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

@@ -49,7 +49,7 @@ public class MappingParametersSnapshotCache {
 
   private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {
     LOGGER.debug("loadMappingParametersSnapshot:: Trying to load MappingParametersSnapshot by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, params.getOkapiUrl(), params.getTenantId());
-    return RestUtil.doRequestWithSystemUser(params, "/mapping-metadata/"+ jobExecutionId, HttpMethod.GET, null)
+    return RestUtil.doRequest(params, "/mapping-metadata/"+ jobExecutionId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {

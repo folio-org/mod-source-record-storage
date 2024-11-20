@@ -24,7 +24,7 @@ public class InstanceLinkClient {
                                                                                      OkapiConnectionParams params) {
     LOGGER.trace("Trying to get InstanceLinkDtoCollection for okapi url: {}, tenantId: {}, instanceId: {}",
       params.getOkapiUrl(), params.getTenantId(), instanceId);
-    return RestUtil.doRequestWithSystemUser(params, "/links/instances/" + instanceId, HttpMethod.GET, null)
+    return RestUtil.doRequest(params, "/links/instances/" + instanceId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
@@ -49,7 +49,7 @@ public class InstanceLinkClient {
     LOGGER.trace("Trying to get list of LinkingRule for okapi url: {}, tenantId: {}",
       params.getOkapiUrl(), params.getTenantId());
 
-    return RestUtil.doRequestWithSystemUser(params, "/linking-rules/instance-authority", HttpMethod.GET, null)
+    return RestUtil.doRequest(params, "/linking-rules/instance-authority", HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
@@ -75,7 +75,7 @@ public class InstanceLinkClient {
                                                      OkapiConnectionParams params) {
     LOGGER.trace("Trying to put InstanceLinkDtoCollection for okapi url: {}, tenantId: {}, instanceId: {}",
       params.getOkapiUrl(), params.getTenantId(), instanceId);
-    return RestUtil.doRequestWithSystemUser(params, "/links/instances/" + instanceId, HttpMethod.PUT, instanceLinkCollection)
+    return RestUtil.doRequest(params, "/links/instances/" + instanceId, HttpMethod.PUT, instanceLinkCollection)
       .toCompletionStage()
       .toCompletableFuture()
       .thenAccept(httpResponse -> {

@@ -50,7 +50,7 @@ public class JobProfileSnapshotCache {
   private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, OkapiConnectionParams params) {
     LOGGER.debug("loadJobProfileSnapshot:: Trying to load jobProfileSnapshot by id '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getOkapiUrl(), params.getTenantId());
 
-    return RestUtil.doRequestWithSystemUser(params, "/data-import-profiles/jobProfileSnapshots/" + profileSnapshotId, HttpMethod.GET, null)
+    return RestUtil.doRequest(params, "/data-import-profiles/jobProfileSnapshots/" + profileSnapshotId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {

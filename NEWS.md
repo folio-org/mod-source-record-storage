@@ -1,4 +1,7 @@
-## 2024-XX-XX 5.9.0-SNAPSHOT
+## 2024-11-21 5.9.1
+* [MODSOURCE-826](https://folio-org.atlassian.net/browse/MODSOURCE-826) Fix links update handling to keep order and repeatable subfields
+
+## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
 * [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search

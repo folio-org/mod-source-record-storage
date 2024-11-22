@@ -5,6 +5,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
@@ -30,13 +31,13 @@ import org.folio.services.AbstractLBServiceTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.UUID;
 import java.util.Date;
 import java.util.List;
@@ -62,6 +63,9 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   public static final int EXPECTED_ERROR_EVENTS_NUMBER = 2;
 
   private static String recordId = UUID.randomUUID().toString();
+
+  @Rule
+  public RunTestOnContext rule = new RunTestOnContext();
 
   private static RawRecord rawMarcRecord;
   private static ParsedRecord parsedMarcRecord;
@@ -167,7 +171,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() throws InterruptedException {
+  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved(TestContext context) throws InterruptedException {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record additionalRecord = getAdditionalRecord(validRecord, snapshotId, validRecord.getRecordType());
     List<Record> records = List.of(validRecord, additionalRecord);
@@ -176,8 +180,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     sendRecordsToKafka(jobExecutionId, records);
 
     check_DI_ERROR_eventsSent(jobExecutionId, records,
-      "ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"",
-      "ERROR: insert or update on table \"marc_records_lb\" violates foreign key constraint \"fk_marc_records_records\"");
+      "ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"");
   }
 
   @Test
@@ -303,7 +306,9 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       assertEquals(DI_ERROR.value(), eventPayload.getEventType());
       assertEquals(TENANT_ID, eventPayload.getTenant());
       assertTrue(StringUtils.isNotBlank(recordId));
-      assertTrue(Arrays.asList(errorMessages).contains(error));
+      for (String errorMessage: errorMessages) {
+        assertTrue(error.contains(errorMessage));
+      }
       assertFalse(eventPayload.getEventsChain().isEmpty());
       assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().get(0));
     }

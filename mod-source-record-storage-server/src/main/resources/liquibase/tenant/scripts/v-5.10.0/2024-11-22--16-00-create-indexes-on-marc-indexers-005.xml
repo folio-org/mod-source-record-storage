@@ -6,7 +6,7 @@
 
   <changeSet id="2024-11-22--16-00-create-immutable-to-date-function" author="javokhir_abdullaev">
     <createProcedure>
-      CREATE OR REPLACE FUNCTION diku_mod_source_record_storage.immutable_to_date(input_text TEXT) RETURNS date AS $$
+      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.immutable_to_date(input_text TEXT) RETURNS date AS $$
         DECLARE
       output_date DATE;
       BEGIN

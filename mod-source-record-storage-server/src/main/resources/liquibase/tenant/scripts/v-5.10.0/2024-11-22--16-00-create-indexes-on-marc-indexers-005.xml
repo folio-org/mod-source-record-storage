@@ -30,7 +30,7 @@
       CREATE INDEX idx_records_lb_suppress_discovery ON ${database.defaultSchemaName}.records_lb (suppress_discovery);
       CREATE INDEX idx_marc_records_tracking_marc_id_version ON ${database.defaultSchemaName}.marc_records_tracking (marc_id, version);
       CREATE INDEX idx_marc_indexers_005_marc_id ON ${database.defaultSchemaName}.marc_indexers_005 (marc_id);
-      CREATE INDEX idx_marc_indexers_005_value_date ON ${database.defaultSchemaName}.marc_indexers_005 (diku_mod_source_record_storage.immutable_to_date(value));
+      CREATE INDEX idx_marc_indexers_005_value_date ON ${database.defaultSchemaName}.marc_indexers_005 (${database.defaultSchemaName}.immutable_to_date(value));
     </sql>
   </changeSet>
 

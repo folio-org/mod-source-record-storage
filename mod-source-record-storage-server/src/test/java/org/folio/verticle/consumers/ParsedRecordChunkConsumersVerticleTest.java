@@ -36,6 +36,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.Date;
 import java.util.List;
@@ -174,7 +175,9 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
     sendRecordsToKafka(jobExecutionId, records);
 
-    check_DI_ERROR_eventsSent(jobExecutionId, records, "ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"" );
+    check_DI_ERROR_eventsSent(jobExecutionId, records,
+      "ERROR: insert or update on table \"raw_records_lb\" violates foreign key constraint \"fk_raw_records_records\"",
+      "ERROR: insert or update on table \"marc_records_lb\" violates foreign key constraint \"fk_marc_records_records\"");
   }
 
   @Test
@@ -300,9 +303,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       assertEquals(DI_ERROR.value(), eventPayload.getEventType());
       assertEquals(TENANT_ID, eventPayload.getTenant());
       assertTrue(StringUtils.isNotBlank(recordId));
-      for (String errorMessage: errorMessages) {
-        assertTrue(error.contains(errorMessage));
-      }
+      assertTrue(Arrays.asList(errorMessages).contains(error));
       assertFalse(eventPayload.getEventsChain().isEmpty());
       assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().get(0));
     }

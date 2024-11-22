@@ -632,12 +632,10 @@ public final class RecordDaoUtil {
   public static Condition filterRecordByDeleted(Boolean deleted) {
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
     if (deleted == null) {
-      condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
-        .or(filterRecordByState(RecordState.ACTUAL.name()));
-    }
-    if (Boolean.TRUE.equals(deleted)) {
-      condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
-        .or(filterRecordByState(RecordState.ACTUAL.name()).and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS)));
+      condition = RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED);
+    } else if (Boolean.TRUE.equals(deleted)) {
+      condition = RECORDS_LB.STATE.in(RecordState.DELETED, RecordState.ACTUAL)
+        .and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS));
     }
     return condition;
   }

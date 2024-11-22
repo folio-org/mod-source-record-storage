@@ -569,6 +569,19 @@ public final class RecordDaoUtil {
   }
 
   /**
+   * Get {@link Condition} to filter by multiple entity ids values
+   *
+   * @param multipleRecordIds entity ids values to equal
+   * @return condition
+   */
+  public static Condition filterRecordByMultipleIds(List<String> multipleRecordIds) {
+    if (ObjectUtils.isNotEmpty(multipleRecordIds)) {
+      return RECORDS_LB.ID.in(multipleRecordIds);
+    }
+    return DSL.noCondition();
+  }
+
+  /**
    * Get {@link Condition} to filter by suppressFromDiscovery
    *
    * @param suppressFromDiscovery suppressFromDiscovery to equal

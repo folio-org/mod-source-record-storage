@@ -492,7 +492,12 @@
     "user": {
       "type": "system",
       "permissions": [
-        "source-storage.all"
+        "instance-authority-links.instances.collection.get",
+        "instance-authority.linking-rules.collection.get",
+        "instance-authority-links.instances.collection.put",
+        "converter-storage.jobprofilesnapshots.get",
+        "user-tenants.collection.get",
+        "mapping-metadata.item.get"
       ]
     }
   },

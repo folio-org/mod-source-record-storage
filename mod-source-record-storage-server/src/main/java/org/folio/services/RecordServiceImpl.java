@@ -179,11 +179,12 @@ public class RecordServiceImpl implements RecordService {
       return promise.future();
     }
     List<Future> setMatchedIdsFutures = new ArrayList<>();
-    recordCollection.getRecords().forEach(sourceRecord ->
-      setMatchedIdsFutures.add(setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))));
+    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
+      okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded() ?
-        recordDao.saveRecords(recordCollection, okapiHeaders) : Future.failedFuture(ar.cause()))
+        recordDao.saveRecords(recordCollection, okapiHeaders)
+        : Future.failedFuture(ar.cause()))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 

@@ -25,7 +25,7 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2024-11-22--16-01-create-indexes-on-marc-indexers-005" author="javokhir_abdullaev">
+  <changeSet id="2024-11-22--16-01-create-indexes-on-005-partition" author="javokhir_abdullaev">
     <sql>
       CREATE INDEX idx_records_lb_suppress_discovery ON ${database.defaultSchemaName}.records_lb (suppress_discovery);
       CREATE INDEX idx_marc_records_tracking_marc_id_version ON ${database.defaultSchemaName}.marc_records_tracking (marc_id, version);

@@ -119,6 +119,7 @@ import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.folio.services.RecordSearchParameters;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.entities.RecordsModifierOperator;
+import org.folio.services.exceptions.RecordUpdateException;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -1017,9 +1018,10 @@ public class RecordDaoImpl implements RecordDao {
     } catch (DuplicateEventException e) {
       LOG.info("saveRecords:: Skipped saving records due to duplicate event: {}", e.getMessage());
       throw e;
-    } catch (SQLException | DataAccessException e) {
-      LOG.warn("saveRecords:: Failed to save records", e);
-      throw e;
+    } catch (SQLException | DataAccessException ex) {
+      LOG.warn("saveRecords:: Failed to save records", ex);
+      Throwable throwable = ex.getCause() != null ? ex.getCause() : ex;
+      throw new RecordUpdateException(ex.getMessage(), throwable);
     }
   }
 

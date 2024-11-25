@@ -1,3 +1,6 @@
+## 2024-11-26 5.9.2-SNAPSHOT
+* [MODSOURCE-816](https://folio-org.atlassian.net/browse/MODSOURCE-816) [RRT] Optimize execution plan for streaming SQL
+
 ## 2024-11-21 5.9.1
 * [MODSOURCE-826](https://folio-org.atlassian.net/browse/MODSOURCE-826) Fix links update handling to keep order and repeatable subfields
 

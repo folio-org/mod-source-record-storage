@@ -81,6 +81,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
   }
 
   private void sendErrorRecordsSavingEvents(RecordCollection recordCollection, String message, List<KafkaHeader> kafkaHeaders, String jobExecutionId, String tenantId) {
+    LOGGER.warn("ERROR: {}", message);
     List<Future<Boolean>> sendingFutures = new ArrayList<>();
     for (Record record : recordCollection.getRecords()) {
       DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()

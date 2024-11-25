@@ -887,10 +887,13 @@ public class RecordDaoImpl implements RecordDao {
             dbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record
+            Object content = Optional.ofNullable(record.getParsedRecord())
+              .map(ParsedRecord::getContent)
+              .orElse(null);
             var errorRecord = new ErrorRecord()
               .withId(record.getId())
               .withDescription(e.getMessage())
-              .withContent(record.getParsedRecord().getContent());
+              .withContent(content);
             errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)

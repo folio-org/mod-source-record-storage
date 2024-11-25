@@ -9,7 +9,7 @@ public class RecordUpdateException extends RuntimeException {
     super(message);
   }
 
-  public RecordUpdateException(String message, Throwable cause) {
-    super(message, cause);
+  public RecordUpdateException(Throwable cause) {
+    super(cause);
   }
 }

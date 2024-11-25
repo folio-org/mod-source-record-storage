@@ -1021,7 +1021,7 @@ public class RecordDaoImpl implements RecordDao {
     } catch (SQLException | DataAccessException ex) {
       LOG.warn("saveRecords:: Failed to save records", ex);
       Throwable throwable = ex.getCause() != null ? ex.getCause() : ex;
-      throw new RecordUpdateException(ex.getMessage(), throwable);
+      throw new RecordUpdateException(throwable);
     }
   }
 

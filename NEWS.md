@@ -1,3 +1,6 @@
+## 2024-11-27 5.9.3
+* [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records
+
 ## 2024-11-26 5.9.2
 * [MODSOURCE-820](https://folio-org.atlassian.net/browse/MODSOURCE-820) A job with multiple authority match profiles does not work as expected
 * [MODSOURCE-816](https://folio-org.atlassian.net/browse/MODSOURCE-816) [RRT] Optimize execution plan for streaming SQL
@@ -20,6 +23,8 @@
 * [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record save
 * [MODSOURCE-796](https://folio-org.atlassian.net/browse/MODSOURCE-796) Fix inconsistencies in permission namings
 * [MODSOURCE-809](https://folio-org.atlassian.net/browse/MODSOURCE-809) mod-source-record-storage Ramsons 2024 R2 - RMB v35.3.x update
+* [MODSOURCE-787](https://folio-org.atlassian.net/browse/MODSOURCE-787) Extend MARC-MARC search query to account for comparison part
+* [MODSOURCE-791](https://folio-org.atlassian.net/browse/MODSOURCE-791) Fix Timeout exception during postSourceStorageStreamMarcRecordIdentifiers
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

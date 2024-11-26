@@ -70,10 +70,11 @@ public interface RecordDao {
    * @param externalIds list of ids
    * @param idType      external id type on which source record will be searched
    * @param recordType  record type
+   * @param includeDeleted  searching by deleted records
    * @param tenantId    tenant id
    * @return {@link Future} of {@link StrippedParsedRecordCollection}
    */
-  Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId);
+  Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, Boolean includeDeleted, String tenantId);
 
   /**
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit

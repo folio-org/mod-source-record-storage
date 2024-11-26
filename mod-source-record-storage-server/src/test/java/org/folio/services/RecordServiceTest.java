@@ -29,6 +29,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
@@ -233,6 +234,142 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchActualAndDeletedBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedExists(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data)
+        .withIncludeDeleted(true);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchActualBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedNotExists(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .filter(r -> r.getState().equals(State.ACTUAL))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchActualAndDeletedBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedFalse(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data)
+        .withIncludeDeleted(false);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .filter(r -> r.getState().equals(State.ACTUAL))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
         async.complete();
       });
     });

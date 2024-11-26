@@ -311,7 +311,8 @@ public class RecordServiceImpl implements RecordService {
     }
 
     var recordType = toRecordType(fetchRequest.getRecordType().name());
-    return recordDao.getStrippedParsedRecords(ids, idType, recordType, tenantId)
+    var includeDeleted = fetchRequest.getIncludeDeleted();
+    return recordDao.getStrippedParsedRecords(ids, idType, recordType, includeDeleted, tenantId)
       .onComplete(records -> filterFieldsByDataRange(records, fetchRequest))
       .onFailure(ex -> {
         LOG.warn("fetchParsedRecords:: Failed to fetch parsed records. {}", ex.getMessage());

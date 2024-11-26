@@ -1,5 +1,6 @@
-## 2024-xx-xx 5.10.0
+## 2025-xx-xx 5.10.0-SNAPSHOT
 * [MODSOURCE-816](https://folio-org.atlassian.net/browse/MODSOURCE-816) [RRT] Optimize execution plan for streaming SQL
+* [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records
 
 ## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035

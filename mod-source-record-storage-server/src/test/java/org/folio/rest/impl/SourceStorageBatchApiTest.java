@@ -227,8 +227,187 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldPostFetchParsedRecordsBatch(TestContext testContext) {
+  public void shouldPostFetchParsedRecordsBatchWithDeletedWhenIncludeDeleteTrue(TestContext testContext) {
     Async async = testContext.async();
+
+    Record record_1 = new Record()
+      .withId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+    Record record_2 = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.DELETED)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(MARC_RECORD_HRID));
+    Record record_3 = new Record()
+      .withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withErrorRecord(errorRecord)
+      .withMatchedId(THIRD_UUID)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+
+    var externalIds = List.of(
+      record_1.getExternalIdsHolder().getInstanceId(),
+      record_2.getExternalIdsHolder().getInstanceId(),
+      record_3.getExternalIdsHolder().getInstanceId()
+    );
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+    postRecords(testContext, record_1, record_2, record_3);
+
+    Conditions conditions = new Conditions()
+      .withIdType(IdType.INSTANCE.name())
+      .withIds(externalIds);
+    FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+      .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+      .withConditions(conditions)
+      .withData(emptyList())
+      .withIncludeDeleted(true);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(batchRequest)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("records.size()", is(externalIds.size()))
+      .body("totalRecords", is(externalIds.size()));
+    async.complete();
+  }
+
+
+  @Test
+  public void shouldPostFetchParsedRecordsBatchWithActualWhenIncludeDeleteFalse(TestContext testContext) {
+    Async async = testContext.async();
+
+    Record record_1 = new Record()
+      .withId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+    Record record_2 = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.DELETED)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(MARC_RECORD_HRID));
+    Record record_3 = new Record()
+      .withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withErrorRecord(errorRecord)
+      .withMatchedId(THIRD_UUID)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+
+    var externalIds = List.of(
+      record_1.getExternalIdsHolder().getInstanceId(),
+      record_2.getExternalIdsHolder().getInstanceId(),
+      record_3.getExternalIdsHolder().getInstanceId()
+    );
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+    postRecords(testContext, record_1, record_2, record_3);
+
+    Conditions conditions = new Conditions()
+      .withIdType(IdType.INSTANCE.name())
+      .withIds(externalIds);
+    FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+      .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+      .withConditions(conditions)
+      .withData(emptyList())
+      .withIncludeDeleted(false);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(batchRequest)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("records.size()", is(externalIds.size()-1))
+      .body("totalRecords", is(externalIds.size()-1));
+    async.complete();
+  }
+
+  @Test
+  public void shouldPostFetchParsedRecordsBatchWithActualWhenIncludeDeleteNotExists(TestContext testContext) {
+    Async async = testContext.async();
+
+    Record record_1 = new Record()
+      .withId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+    Record record_2 = new Record()
+      .withId(SECOND_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(SECOND_UUID)
+      .withOrder(11)
+      .withState(Record.State.DELETED)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(MARC_RECORD_HRID));
+    Record record_3 = new Record()
+      .withId(THIRD_UUID)
+      .withSnapshotId(snapshot_2.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecordWithHrId)
+      .withErrorRecord(errorRecord)
+      .withMatchedId(THIRD_UUID)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HRID));
+
     var externalIds = List.of(
       record_1.getExternalIdsHolder().getInstanceId(),
       record_2.getExternalIdsHolder().getInstanceId(),
@@ -252,10 +431,11 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("records.size()", is(externalIds.size()))
-      .body("totalRecords", is(externalIds.size()));
+      .body("records.size()", is(externalIds.size()-1))
+      .body("totalRecords", is(externalIds.size()-1));
     async.complete();
   }
+
 
   @Test
   public void shouldPostFetchEmptyParsedRecordsBatch(TestContext testContext) {
@@ -279,6 +459,38 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("records.size()", is(0))
       .body("totalRecords", is(0));
+    async.complete();
+  }
+
+  @Test
+  public void shouldPostFetchParsedRecordsBatch(TestContext testContext) {
+    Async async = testContext.async();
+    var externalIds = List.of(
+      record_1.getExternalIdsHolder().getInstanceId(),
+      record_2.getExternalIdsHolder().getInstanceId(),
+      record_3.getExternalIdsHolder().getInstanceId()
+    );
+    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+    postRecords(testContext, record_1, record_2, record_3);
+
+    Conditions conditions = new Conditions()
+      .withIdType(IdType.INSTANCE.name())
+      .withIds(externalIds);
+    FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+      .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+      .withConditions(conditions)
+      .withData(emptyList())
+      .withIncludeDeleted(true);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(batchRequest)
+      .when()
+      .post(SOURCE_STORAGE_BATCH_FETCH_PARSED_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("records.size()", is(externalIds.size()))
+      .body("totalRecords", is(externalIds.size()));
     async.complete();
   }
 

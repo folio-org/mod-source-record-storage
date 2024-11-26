@@ -1,4 +1,5 @@
-## 2024-11-26 5.9.2-SNAPSHOT
+## 2024-11-26 5.9.2
+* [MODSOURCE-820](https://folio-org.atlassian.net/browse/MODSOURCE-820) A job with multiple authority match profiles does not work as expected
 * [MODSOURCE-816](https://folio-org.atlassian.net/browse/MODSOURCE-816) [RRT] Optimize execution plan for streaming SQL
 
 ## 2024-11-21 5.9.1

@@ -194,12 +194,12 @@ public class RecordServiceImpl implements RecordService {
                                                                RecordsModifierOperator recordsModifier,
                                                                Map<String, String> okapiHeaders) {
     if (CollectionUtils.isEmpty(externalIds)) {
-      LOG.warn("saveRecordsBlocking:: Skipping the records save, no external IDs are provided");
+      LOG.warn("saveRecordsByExternalIds:: Skipping the records save, no external IDs are provided");
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
     }
 
     if (recordsModifier == null) {
-      LOG.warn("saveRecordsBlocking:: Skipping the records save, no operator is provided to modify the existing records");
+      LOG.warn("saveRecordsByExternalIds:: Skipping the records save, no operator is provided to modify the existing records");
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
     }
 
@@ -210,8 +210,12 @@ public class RecordServiceImpl implements RecordService {
             .toCompletionStage().toCompletableFuture().get();
         }
         return recordCollection;
-      } catch (InterruptedException | ExecutionException ex) {
-        LOG.warn("saveRecordsBlocking:: Failed to set record matched id: {}", ex.getMessage());
+      } catch (InterruptedException ex) {
+        LOG.warn("saveRecordsByExternalIds:: Setting record matched id is interrupted: {}", ex.getMessage());
+        Thread.currentThread().interrupt();
+        throw new RecordUpdateException(ex.getMessage());
+      } catch (ExecutionException ex) {
+        LOG.warn("saveRecordsByExternalIds:: Failed to set record matched id: {}", ex.getMessage());
         throw new RecordUpdateException(ex.getMessage());
       }
     };

@@ -956,14 +956,14 @@ public class RecordDaoImpl implements RecordDao {
           .commitAfter(1000)
           .onErrorAbort()
           .loadRecords(dbRecords.stream()
-            .map(record -> {
-              Integer generation = matchedGenerations.get(record.getMatchedId());
+            .map(recordDto -> {
+              Integer generation = matchedGenerations.get(recordDto.getMatchedId());
               if (Objects.nonNull(generation)) {
-                record.setGeneration(generation + 1);
-              } else if (Objects.isNull(record.getGeneration())) {
-                record.setGeneration(0);
+                recordDto.setGeneration(generation + 1);
+              } else if (Objects.isNull(recordDto.getGeneration())) {
+                recordDto.setGeneration(0);
               }
-              return record;
+              return recordDto;
             })
             .toList())
           .fieldsCorresponding()
@@ -1025,14 +1025,14 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private void validateRecordType(Record record, RecordType recordType) {
-    if (record.getRecordType() == null) {
-      var error = record.getErrorRecord() != null ? record.getErrorRecord().getDescription() : "";
+  private void validateRecordType(Record recordDto, RecordType recordType) {
+    if (recordDto.getRecordType() == null) {
+      var error = recordDto.getErrorRecord() != null ? recordDto.getErrorRecord().getDescription() : "";
       throw new BadRequestException(
-        StringUtils.defaultIfEmpty(error, String.format("Record with id %s has not record type", record.getId())));
+        StringUtils.defaultIfEmpty(error, String.format("Record with id %s has not record type", recordDto.getId())));
     }
 
-    if (RecordType.valueOf(record.getRecordType().name()) != recordType) {
+    if (RecordType.valueOf(recordDto.getRecordType().name()) != recordType) {
       throw new BadRequestException("Batch record collection only supports single record type");
     }
   }

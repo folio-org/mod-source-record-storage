@@ -1,5 +1,6 @@
 ## 2024-11-27 5.9.3
 * [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records
+* Update data-import-processing-core to v4.3.1 to fix vulnerabilities
 
 ## 2024-11-26 5.9.2
 * [MODSOURCE-820](https://folio-org.atlassian.net/browse/MODSOURCE-820) A job with multiple authority match profiles does not work as expected

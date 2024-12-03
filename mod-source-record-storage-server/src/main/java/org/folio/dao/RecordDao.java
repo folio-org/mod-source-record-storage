@@ -2,6 +2,7 @@ package org.folio.dao;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -21,6 +22,7 @@ import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
 import org.folio.dao.util.MatchField;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -203,13 +205,27 @@ public interface RecordDao {
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
   /**
-   * Saves {@link RecordCollection} to the db
+   * Saves {@link RecordCollection} to the db.
    *
    * @param recordCollection Record collection to save
    * @param tenantId         tenant id
    * @return future with saved {@link RecordsBatchResponse}
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, String tenantId);
+
+  /**
+   * Saves {@link RecordCollection} to the db.
+   *
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
+   * @param okapiHeaders okapi headers
+   * @return future with saved {@link RecordsBatchResponse}
+   */
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                        RecordType recordType,
+                                                        RecordsModifierOperator recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db

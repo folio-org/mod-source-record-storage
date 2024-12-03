@@ -211,31 +211,39 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
   private static final String DELETE_OLD_MARC_INDEXERS_SQL =
-    "WITH deleted_rows AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from " + MARC_RECORDS_TRACKING.getName() + " mrt " +
-      "        where mrt.is_dirty = true " +
-      "          and mrt.marc_id = mi.marc_id " +
-      "          and mrt.version > mi.version " +
-      "    ) " +
-      "    returning mi.marc_id), " +
-      "deleted_rows2 AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from records_lb " +
-      "        where records_lb.id = mi.marc_id " +
-      "          and records_lb.state = 'OLD' " +
-      "    ) " +
-      "    returning mi.marc_id) " +
-      "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " " +
-      "SELECT DISTINCT marc_id " +
-      "FROM deleted_rows " +
-      "UNION " +
-      "SELECT marc_id " +
-      "FROM deleted_rows2";
+    "DO $$ " +
+      "DECLARE " +
+      "rec RECORD; " +
+      "deleted_id UUID; " +
+      "BEGIN " +
+      "CREATE TEMP TABLE temp_deleted_ids (marc_id UUID); " +
+      "FOR rec IN ( " +
+      "SELECT DISTINCT mi.field_no " +
+      "FROM " + MARC_RECORDS_TRACKING.getName() + " mrt " +
+      "JOIN marc_indexers mi ON mi.marc_id = mrt.marc_id " +
+      "WHERE mrt.version != mi.version AND mrt.is_dirty = true " +
+      ") LOOP " +
+      "WITH deleted AS ( " +
+      "DELETE FROM marc_indexers mi " +
+      "USING " + MARC_RECORDS_TRACKING.getName() + " mrt " +
+      "WHERE mi.field_no = rec.field_no " +
+      "AND mi.marc_id = mrt.marc_id " +
+      "AND mrt.version != mi.version " +
+      "AND mrt.is_dirty = true " +
+      "RETURNING mi.marc_id " +
+      ") " +
+      "INSERT INTO temp_deleted_ids " +
+      "SELECT DISTINCT marc_id FROM deleted; " +
+      "FOR deleted_id IN (SELECT marc_id FROM temp_deleted_ids) LOOP " +
+      "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " (marc_id) " +
+      "VALUES (deleted_id) ON CONFLICT (marc_id) DO NOTHING; " +
+      "END LOOP; " +
+      "TRUNCATE temp_deleted_ids; " +
+      "END LOOP; " +
+      "DROP TABLE temp_deleted_ids; " +
+      "END " +
+      "$$ LANGUAGE plpgsql;";
+
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));

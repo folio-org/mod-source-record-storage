@@ -55,6 +55,7 @@ import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,6 +66,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -979,7 +981,14 @@ public class RecordDaoImpl implements RecordDao {
           .errors();
 
         recordsLoadingErrors.forEach(error -> {
+
           if (error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+            if (error.row() != null) {
+              var rows = Arrays.stream(error.row())
+                .collect(Collectors.joining("\n"));
+              LOG.error("Error rows: {}", rows);
+            }
+            LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
             throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
           }
           LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());

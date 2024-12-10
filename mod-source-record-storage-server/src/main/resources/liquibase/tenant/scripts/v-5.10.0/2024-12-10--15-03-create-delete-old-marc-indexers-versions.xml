@@ -4,7 +4,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
-  <changeSet id="2024-12-10--15-00-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--15-03-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
     <createProcedure>
       CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions() LANGUAGE plpgsql AS $$
       DECLARE
@@ -32,13 +32,14 @@
       END LOOP;
       FOR rec IN SELECT field_no FROM temp_field_nos LOOP
         EXECUTE format('WITH deleted AS (
-                                DELETE FROM %s mi
-                                USING marc_records_tracking mrt
-                                WHERE mi.field_no = $1 AND mrt.is_dirty = true
-                                RETURNING mi.marc_id
-                            )
-                            INSERT INTO temp_deleted_ids (marc_id)
-                            SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no);
+                        DELETE FROM %I mi
+                        USING marc_records_tracking mrt
+                        WHERE mi.field_no = $1 AND mrt.is_dirty = true
+                        RETURNING mi.marc_id
+                    )
+                    INSERT INTO temp_deleted_ids (marc_id)
+                    SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no)
+    USING rec.field_no;
       END LOOP;
       INSERT INTO ${database.defaultSchemaName}.marc_indexers_deleted_ids (marc_id)
       SELECT DISTINCT marc_id FROM temp_deleted_ids ON CONFLICT (marc_id) DO NOTHING;
@@ -46,11 +47,4 @@
       END $$;
     </createProcedure>
   </changeSet>
-
-  <changeSet id="2024-12-10--15-01-idx_marc_records_tracking_dirty_true" author="Volodymyr_Rohach">
-    <sql>
-      CREATE INDEX idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty) WHERE is_dirty = true;
-    </sql>
-  </changeSet>
-
 </databaseChangeLog>

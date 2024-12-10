@@ -37,6 +37,8 @@ import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
+//import static org.folio.rest.jooq.routines.DeleteOldMarcIndexersVersions;
+
 
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -112,6 +114,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
+import org.folio.rest.jooq.Routines;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
@@ -211,45 +214,49 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
   private static final String DELETE_OLD_MARC_INDEXERS_SQL = """
-DO $$
+    DO $$
 DECLARE
     rec RECORD;
     formatted_value varchar(3);
     exists_flag BOOLEAN;
     partition_name TEXT;
-    table_exists BOOLEAN;
 BEGIN
     CREATE TEMP TABLE IF NOT EXISTS temp_field_nos (field_no varchar(3));
     CREATE TEMP TABLE IF NOT EXISTS temp_deleted_ids (marc_id UUID);
-    FOR i IN 0..999 LOOP
+    FOR i IN 1..999 LOOP
         formatted_value := LPAD(i::TEXT, 3, '0');
-        partition_name := 'marc_indexers_' || formatted_value;
-        EXECUTE format('SELECT EXISTS (
-            SELECT 1 FROM pg_catalog.pg_class c
-            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-            WHERE n.nspname = current_schema() AND c.relname = %L)', partition_name)
-        INTO table_exists;
-        IF table_exists THEN
-            EXECUTE format('SELECT EXISTS (
-                                SELECT 1
-                                FROM %I mi
-                                JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
-                                WHERE mrt.is_dirty = true
-                            )', partition_name)
-            INTO exists_flag;
-            IF exists_flag THEN
-                INSERT INTO temp_field_nos VALUES (formatted_value);
-            END IF;
+        partition_name := 'diku_mod_source_record_storage.marc_indexers_' || formatted_value;    \s
+        EXECUTE format('SELECT EXISTS
+
+                            SELECT
+
+                            FROM %s m
+
+                            JOIN diku_mod_source_record_storage.marc_records_tracking mrt ON mi.marc_id = mrt.marc_i
+
+                            WHERE mrt.is_dirty = tru
+
+                        )', partition_name)
+        INTO exists_flag;     \s
+        IF exists_flag THEN
+            INSERT INTO temp_field_nos VALUES (formatted_value);
         END IF;
     END LOOP;
     FOR rec IN SELECT field_no FROM temp_field_nos LOOP
-        EXECUTE format('WITH deleted AS (
-                            DELETE FROM %I mi
-                            USING marc_records_tracking mrt
-                            WHERE mi.field_no = $1 AND mrt.is_dirty = true
-                            RETURNING mi.marc_id
-                        )
-                        INSERT INTO temp_deleted_ids (marc_id)
+        EXECUTE format('WITH deleted AS
+
+                            DELETE FROM %I m
+
+                            USING marc_records_tracking mr
+
+                            WHERE mi.field_no = $1 AND mrt.is_dirty = tru
+
+                            RETURNING mi.marc_i
+
+
+
+                        INSERT INTO temp_deleted_ids (marc_id
+
                         SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no);
     END LOOP;
     INSERT INTO diku_mod_source_record_storage.marc_indexers_deleted_ids (marc_id)
@@ -1466,7 +1473,9 @@ END $$ LANGUAGE plpgsql;
         .onCommitDrop()
       )
       // delete old marc indexers versions
-      .compose(ar -> txQE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+      .compose(ar -> txQE.execute(
+        /*dsl -> (Routines.deleteOldMarcIndexersVersions(dsl.configuration(), tenantId)*/
+        dsl -> dsl.query("CALL delete_old_marc_indexers_versions()"))
         .onFailure(th ->
           LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
       // Update tracking table to show that a marc records has had its marcIndexers cleaned

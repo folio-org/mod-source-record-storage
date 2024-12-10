@@ -1,0 +1,56 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2024-12-10--15-00-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
+    <createProcedure>
+      CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions() LANGUAGE plpgsql AS $$
+      DECLARE
+      rec RECORD;
+        formatted_value varchar(3);
+        exists_flag BOOLEAN;
+        partition_name TEXT;
+      BEGIN
+        CREATE TEMP TABLE IF NOT EXISTS temp_field_nos (field_no varchar(3));
+        CREATE TEMP TABLE IF NOT EXISTS temp_deleted_ids (marc_id UUID);
+      FOR i IN 1..999 LOOP
+            formatted_value := LPAD(i::TEXT, 3, '0');
+            partition_name := 'marc_indexers_' || formatted_value;
+
+      EXECUTE format('SELECT EXISTS (
+                                SELECT 1
+                                FROM %s mi
+                                JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
+                                WHERE mrt.is_dirty = true
+                            )', partition_name) INTO exists_flag;
+
+      IF exists_flag THEN
+                INSERT INTO temp_field_nos VALUES (formatted_value);
+      END IF;
+      END LOOP;
+      FOR rec IN SELECT field_no FROM temp_field_nos LOOP
+        EXECUTE format('WITH deleted AS (
+                                DELETE FROM %s mi
+                                USING marc_records_tracking mrt
+                                WHERE mi.field_no = $1 AND mrt.is_dirty = true
+                                RETURNING mi.marc_id
+                            )
+                            INSERT INTO temp_deleted_ids (marc_id)
+                            SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no);
+      END LOOP;
+      INSERT INTO ${database.defaultSchemaName}.marc_indexers_deleted_ids (marc_id)
+      SELECT DISTINCT marc_id FROM temp_deleted_ids ON CONFLICT (marc_id) DO NOTHING;
+      DROP TABLE temp_deleted_ids, temp_field_nos;
+      END $$;
+    </createProcedure>
+  </changeSet>
+
+  <changeSet id="2024-12-10--15-01-idx_marc_records_tracking_dirty_true" author="Volodymyr_Rohach">
+    <sql>
+      CREATE INDEX idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty) WHERE is_dirty = true;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

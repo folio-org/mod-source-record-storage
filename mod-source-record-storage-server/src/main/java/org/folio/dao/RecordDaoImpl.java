@@ -38,7 +38,6 @@ import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
-//import static org.folio.rest.jooq.routines.DeleteOldMarcIndexersVersions;
 
 
 import com.google.common.collect.Lists;
@@ -114,7 +113,6 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
-import org.folio.rest.jooq.Routines;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;

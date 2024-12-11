@@ -39,6 +39,7 @@ import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 
+
 import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -212,35 +213,11 @@ public class RecordDaoImpl implements RecordDao {
   };
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
-  private static final String DELETE_OLD_MARC_INDEXERS_SQL =
-    "WITH deleted_rows AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from " + MARC_RECORDS_TRACKING.getName() + " mrt " +
-      "        where mrt.is_dirty = true " +
-      "          and mrt.marc_id = mi.marc_id " +
-      "          and mrt.version > mi.version " +
-      "    ) " +
-      "    returning mi.marc_id), " +
-      "deleted_rows2 AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from records_lb " +
-      "        where records_lb.id = mi.marc_id " +
-      "          and records_lb.state = 'OLD' " +
-      "    ) " +
-      "    returning mi.marc_id) " +
-      "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " " +
-      "SELECT DISTINCT marc_id " +
-      "FROM deleted_rows " +
-      "UNION " +
-      "SELECT marc_id " +
-      "FROM deleted_rows2";
+
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
+  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "CALL delete_old_marc_indexers_versions()";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
@@ -1486,7 +1463,8 @@ public class RecordDaoImpl implements RecordDao {
         .onCommitDrop()
       )
       // delete old marc indexers versions
-      .compose(ar -> txQE.execute(dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+      .compose(ar -> txQE.execute(
+        dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE))
         .onFailure(th ->
           LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
       // Update tracking table to show that a marc records has had its marcIndexers cleaned

@@ -213,7 +213,35 @@ public class RecordDaoImpl implements RecordDao {
   };
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
-  private static final String DELETE_OLD_MARC_INDEXERS_SQL = """
+  private static final String DELETE_OLD_MARC_INDEXERS_SQL =
+    "WITH deleted_rows AS ( " +
+      "    delete from marc_indexers mi " +
+      "    where exists( " +
+      "        select 1 " +
+      "        from " + MARC_RECORDS_TRACKING.getName() + " mrt " +
+      "        where mrt.is_dirty = true " +
+      "          and mrt.marc_id = mi.marc_id " +
+      "          and mrt.version > mi.version " +
+      "    ) " +
+      "    returning mi.marc_id), " +
+      "deleted_rows2 AS ( " +
+      "    delete from marc_indexers mi " +
+      "    where exists( " +
+      "        select 1 " +
+      "        from records_lb " +
+      "        where records_lb.id = mi.marc_id " +
+      "          and records_lb.state = 'OLD' " +
+      "    ) " +
+      "    returning mi.marc_id) " +
+      "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " " +
+      "SELECT DISTINCT marc_id " +
+      "FROM deleted_rows " +
+      "UNION " +
+      "SELECT marc_id " +
+      "FROM deleted_rows2";
+
+
+  /*private static final String DELETE_OLD_MARC_INDEXERS_SQL = """
     DO $$
 DECLARE
     rec RECORD;
@@ -264,7 +292,7 @@ BEGIN
     TRUNCATE temp_deleted_ids, temp_field_nos;
     DROP TABLE temp_deleted_ids, temp_field_nos;
 END $$ LANGUAGE plpgsql;
-""";
+""";*/
 
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
@@ -1474,7 +1502,8 @@ END $$ LANGUAGE plpgsql;
       )
       // delete old marc indexers versions
       .compose(ar -> txQE.execute(
-        /*dsl -> (Routines.deleteOldMarcIndexersVersions(dsl.configuration(), tenantId)*/
+          //dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
+
         dsl -> dsl.query("CALL delete_old_marc_indexers_versions()"))
         .onFailure(th ->
           LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))

@@ -1,0 +1,18 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2024-12-10--15-05-migrate-is-dirty-false" author="VolodymyrRohach">
+    <validCheckSum>ANY</validCheckSum>
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="marc_records_tracking" schemaName="${database.defaultSchemaName}"/>
+    </preConditions>
+    <sql>
+      UPDATE ${database.defaultSchemaName}.marc_records_tracking
+      SET is_dirty = false
+      WHERE version = 0;
+    </sql>
+  </changeSet>
+</databaseChangeLog>

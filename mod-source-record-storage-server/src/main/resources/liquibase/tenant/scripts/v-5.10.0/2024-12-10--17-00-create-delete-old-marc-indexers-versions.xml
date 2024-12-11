@@ -5,7 +5,7 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
 
 
-  <changeSet id="2024-12-10--15-05-update-function-insert_marc_indexers" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--17-00-update-function-insert_marc_indexers" author="Volodymyr_Rohach">
     <sql splitStatements="false">
       create or replace function ${database.defaultSchemaName}.insert_marc_indexers()
       returns trigger
@@ -31,42 +31,42 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2024-12-10--15-05-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--17-00-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
     <createProcedure>
       CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions() LANGUAGE plpgsql AS $$
       DECLARE
       rec RECORD;
-        formatted_value varchar(3);
-        exists_flag BOOLEAN;
-        partition_name TEXT;
+      formatted_value varchar(3);
+      exists_flag BOOLEAN;
+      partition_name TEXT;
       BEGIN
-        CREATE TEMP TABLE IF NOT EXISTS temp_field_nos (field_no varchar(3));
-        CREATE TEMP TABLE IF NOT EXISTS temp_deleted_ids (marc_id UUID);
+  CREATE TEMP TABLE IF NOT EXISTS temp_field_nos (field_no varchar(3));
+  CREATE TEMP TABLE IF NOT EXISTS temp_deleted_ids (marc_id UUID);
+
       FOR i IN 1..999 LOOP
-            formatted_value := LPAD(i::TEXT, 3, '0');
-            partition_name := 'marc_indexers_' || formatted_value;
-
+    formatted_value := LPAD(i::TEXT, 3, '0');
+    partition_name := 'marc_indexers_' || formatted_value;
       EXECUTE format('SELECT EXISTS (
-                                SELECT 1
-                                FROM %s mi
-                                JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
-                                WHERE mrt.is_dirty = true
-                            )', partition_name) INTO exists_flag;
-
+                      SELECT 1
+                      FROM %s mi
+                      JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
+                      JOIN records_lb rl ON rl.id = mi.marc_id
+                      WHERE mrt.is_dirty = true OR rl.state = ''OLD''
+                    )', partition_name) INTO exists_flag;
       IF exists_flag THEN
-                INSERT INTO temp_field_nos VALUES (formatted_value);
+      INSERT INTO temp_field_nos VALUES (formatted_value);
       END IF;
       END LOOP;
+
       FOR rec IN SELECT field_no FROM temp_field_nos LOOP
         EXECUTE format('WITH deleted AS (
-                        DELETE FROM %I mi
-                        USING marc_records_tracking mrt, records_lb rl
-                          WHERE mi.marc_id = mrt.marc_id
-                          AND mi.field_no = $1
-                          AND mrt.is_dirty = true
-                          AND mrt.version > mi.version
-                          AND rl.id = mi.marc_id
-                        RETURNING mi.marc_id
+                      DELETE FROM %I mi
+                      USING marc_records_tracking mrt, records_lb rl
+                      WHERE mi.marc_id = mrt.marc_id
+                        AND mi.field_no = $1
+                        AND (mrt.is_dirty = true AND mrt.version > mi.version OR rl.state = ''OLD'')
+                        AND rl.id = mi.marc_id
+                      RETURNING mi.marc_id
                     )
                     INSERT INTO temp_deleted_ids (marc_id)
                     SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no)
@@ -80,7 +80,7 @@
   </changeSet>
 
 
-  <changeSet id="2024-12-10--15-05-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--17-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
     <sql>
       CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty) WHERE is_dirty = true;
     </sql>

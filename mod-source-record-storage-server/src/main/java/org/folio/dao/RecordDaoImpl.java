@@ -213,90 +213,11 @@ public class RecordDaoImpl implements RecordDao {
   };
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
-  private static final String DELETE_OLD_MARC_INDEXERS_SQL =
-    "WITH deleted_rows AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from " + MARC_RECORDS_TRACKING.getName() + " mrt " +
-      "        where mrt.is_dirty = true " +
-      "          and mrt.marc_id = mi.marc_id " +
-      "          and mrt.version > mi.version " +
-      "    ) " +
-      "    returning mi.marc_id), " +
-      "deleted_rows2 AS ( " +
-      "    delete from marc_indexers mi " +
-      "    where exists( " +
-      "        select 1 " +
-      "        from records_lb " +
-      "        where records_lb.id = mi.marc_id " +
-      "          and records_lb.state = 'OLD' " +
-      "    ) " +
-      "    returning mi.marc_id) " +
-      "INSERT INTO " + DELETE_MARC_INDEXERS_TEMP_TABLE + " " +
-      "SELECT DISTINCT marc_id " +
-      "FROM deleted_rows " +
-      "UNION " +
-      "SELECT marc_id " +
-      "FROM deleted_rows2";
-
-
-  /*private static final String DELETE_OLD_MARC_INDEXERS_SQL = """
-    DO $$
-DECLARE
-    rec RECORD;
-    formatted_value varchar(3);
-    exists_flag BOOLEAN;
-    partition_name TEXT;
-BEGIN
-    CREATE TEMP TABLE IF NOT EXISTS temp_field_nos (field_no varchar(3));
-    CREATE TEMP TABLE IF NOT EXISTS temp_deleted_ids (marc_id UUID);
-    FOR i IN 1..999 LOOP
-        formatted_value := LPAD(i::TEXT, 3, '0');
-        partition_name := 'diku_mod_source_record_storage.marc_indexers_' || formatted_value;    \s
-        EXECUTE format('SELECT EXISTS
-
-                            SELECT
-
-                            FROM %s m
-
-                            JOIN diku_mod_source_record_storage.marc_records_tracking mrt ON mi.marc_id = mrt.marc_i
-
-                            WHERE mrt.is_dirty = tru
-
-                        )', partition_name)
-        INTO exists_flag;     \s
-        IF exists_flag THEN
-            INSERT INTO temp_field_nos VALUES (formatted_value);
-        END IF;
-    END LOOP;
-    FOR rec IN SELECT field_no FROM temp_field_nos LOOP
-        EXECUTE format('WITH deleted AS
-
-                            DELETE FROM %I m
-
-                            USING marc_records_tracking mr
-
-                            WHERE mi.field_no = $1 AND mrt.is_dirty = tru
-
-                            RETURNING mi.marc_i
-
-
-
-                        INSERT INTO temp_deleted_ids (marc_id
-
-                        SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no);
-    END LOOP;
-    INSERT INTO diku_mod_source_record_storage.marc_indexers_deleted_ids (marc_id)
-    SELECT DISTINCT marc_id FROM temp_deleted_ids ON CONFLICT (marc_id) DO NOTHING;
-    TRUNCATE temp_deleted_ids, temp_field_nos;
-    DROP TABLE temp_deleted_ids, temp_field_nos;
-END $$ LANGUAGE plpgsql;
-""";*/
 
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
+  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "CALL delete_old_marc_indexers_versions()";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
@@ -1502,9 +1423,7 @@ END $$ LANGUAGE plpgsql;
       )
       // delete old marc indexers versions
       .compose(ar -> txQE.execute(
-          //dsl -> dsl.query(DELETE_OLD_MARC_INDEXERS_SQL))
-
-        dsl -> dsl.query("CALL delete_old_marc_indexers_versions()"))
+        dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE))
         .onFailure(th ->
           LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
       // Update tracking table to show that a marc records has had its marcIndexers cleaned

@@ -72,7 +72,7 @@
                               SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no)
               USING rec.field_no;
       END LOOP;
-      INSERT INTO ${database.defaultSchemaName}.marc_indexers_deleted_ids (marc_id)
+      INSERT INTO marc_indexers_deleted_ids (marc_id)
       SELECT DISTINCT marc_id FROM temp_deleted_ids ON CONFLICT (marc_id) DO NOTHING;
       DROP TABLE temp_deleted_ids, temp_field_nos;
       END $$;

@@ -1,5 +1,6 @@
 ## 2024-XX-XX 5.9.4
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long
+* [MODSOURCE-821](https://folio-org.atlassian.net/browse/MODSOURCE-821) Add System User Support for Eureka env
 
 ## 2024-11-27 5.9.3
 * [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records

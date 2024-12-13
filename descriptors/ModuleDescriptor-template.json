@@ -488,6 +488,19 @@
       "visible": false
     }
   ],
+  "metadata": {
+    "user": {
+      "type": "system",
+      "permissions": [
+        "instance-authority-links.instances.collection.get",
+        "instance-authority.linking-rules.collection.get",
+        "instance-authority-links.instances.collection.put",
+        "converter-storage.jobprofilesnapshots.get",
+        "user-tenants.collection.get",
+        "mapping-metadata.item.get"
+      ]
+    }
+  },
   "launchDescriptor": {
     "dockerImage": "${artifactId}:${version}",
     "dockerPull": false,

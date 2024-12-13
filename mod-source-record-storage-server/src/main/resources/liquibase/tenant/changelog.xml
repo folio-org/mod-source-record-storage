@@ -72,8 +72,8 @@
   <include file="scripts/v-5.7.0/2023-10-11--16-00-recreate-indexes-on-marc-indexers.xml" relativeToChangelogFile="true"/>
 
   <include file="scripts/v-5.10.0/2024-11-22--16-00-create-indexes-on-marc-indexers-005.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-5.10.0/2024-12-10--13-00-create-and-fill-old-records-tracking-table.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.10.0/2024-12-10--14-00-create-and-fill-old-records-tracking-table.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2024-12-10--16-00-migrate-is-dirty-false.xml" relativeToChangelogFile="true"/>
-  <include file="scripts/v-5.10.0/2024-12-10--17-00-create-delete-old-marc-indexers-versions.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.10.0/2024-12-10--18-00-create-delete-old-marc-indexers-versions.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

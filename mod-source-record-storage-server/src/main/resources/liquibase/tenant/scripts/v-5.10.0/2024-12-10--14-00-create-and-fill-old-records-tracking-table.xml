@@ -26,34 +26,34 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2024-12-10--13-00-create-process-old-record-state-change" author="Volodymyr_Rohach">
-    <sql>
-      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.track_old_records()
-      RETURNS TRIGGER AS $$
-      BEGIN
-              IF NEW.state = 'OLD' AND (TG_OP = 'INSERT' OR OLD.state IS DISTINCT FROM 'OLD') THEN
-              INSERT INTO ${database.defaultSchemaName}.old_records_tracking (id, flag)
+  <changeSet id="2024-12-10--13-00-create-track-old-records-trigger" author="Volodymyr_Rohach">
+    <sql splitStatements="false">
+      create or replace function ${database.defaultSchemaName}.track_old_records()
+      returns trigger
+      as
+      $track_old_records$
+      declare
+      result integer;
+      begin
+      IF NEW.state = 'OLD' AND (TG_OP = 'INSERT' OR OLD.state IS DISTINCT FROM 'OLD') THEN
+              INSERT INTO ${database.defaultSchemaName}.old_records_tracking (marc_id, has_been_processed)
       VALUES (NEW.id, FALSE)
-      ON CONFLICT (id) DO NOTHING;
+      ON CONFLICT (marc_id) DO NOTHING;
       END IF;
-      RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-      DROP TRIGGER IF EXISTS track_state_changes_trigger ON ${database.defaultSchemaName}.records_lb;
-      CREATE TRIGGER track_state_changes_trigger
-        AFTER INSERT OR UPDATE ON ${database.defaultSchemaName}.records_lb
-                          FOR EACH ROW EXECUTE FUNCTION ${database.defaultSchemaName}.track_old_records();
+      return NEW;
+      end;
+      $track_old_records$ language plpgsql;
     </sql>
   </changeSet>
 
-  <changeSet id="2023-04-14--13-00-drop-and-create-trigger-for-old-records" author="Volodymyr_Rohach" runOnChange="true">
+  <changeSet id="2024-12-10--13-00-drop-and-create-trigger-for-old-records" author="Volodymyr_Rohach" runOnChange="true">
     <sql splitStatements="false">
       DROP TRIGGER IF EXISTS track_state_changes_trigger ON ${database.defaultSchemaName}.records_lb;
       CREATE TRIGGER track_state_changes_trigger AFTER INSERT OR UPDATE ON ${database.defaultSchemaName}.records_lb FOR EACH ROW EXECUTE FUNCTION ${database.defaultSchemaName}.track_old_records();
     </sql>
   </changeSet>
 
-  <changeSet id="2023-04-14--13-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--13-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
     <sql>
       CREATE INDEX IF NOT EXISTS idx_old_records_tracking_processed_true ON ${database.defaultSchemaName}.old_records_tracking (has_been_processed) WHERE has_been_processed = false;
     </sql>

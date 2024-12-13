@@ -1456,28 +1456,36 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
-    // create temporary table
-    return txQE.execute(dsl -> dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
-        .column(MARC_ID, SQLDataType.UUID)
-        .constraint(primaryKey(MARC_ID))
-        .onCommitDrop()
+
+    return txQE.execute(dsl ->
+        dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
+          .column(MARC_ID, SQLDataType.UUID)
+          .constraint(primaryKey(MARC_ID))
+          .onCommitDrop()
       )
-      // delete old marc indexers versions
       .compose(ar -> txQE.execute(
-        dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE))
-        .onFailure(th ->
-          LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th)))
-      // Update tracking table to show that a marc records has had its marcIndexers cleaned
-      .compose(res -> txQE.execute(dsl -> {
-          Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
-            .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
-          return dsl.update(MARC_RECORDS_TRACKING)
-            .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
-            .where(MARC_RECORDS_TRACKING.MARC_ID
-              .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)));
-        })
-        .onFailure(th ->
-          LOG.error("Something happened while updating marc_records_tracking tenantId={}", tenantId, th)))
+          dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE))
+        .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
+      )
+      .compose(res -> {
+        Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
+          .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
+
+        return txQE.execute(dsl ->
+            dsl.update(table("old_records_tracking"))
+              .set(field("has_been_processed"), true)
+              .where(field("marc_id").in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
+          )
+          .compose(updateResult ->
+            txQE.execute(dsl ->
+              dsl.update(MARC_RECORDS_TRACKING)
+                .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
+                .where(MARC_RECORDS_TRACKING.MARC_ID
+                  .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
+            )
+          )
+          .onFailure(th -> LOG.error("Something happened while updating tracking tables tenantId={}", tenantId, th));
+      })
       .map(res -> true)
       .recover(th -> Future.succeededFuture(false));
   }

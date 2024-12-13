@@ -50,8 +50,8 @@
                       SELECT 1
                       FROM %s mi
                       JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
-                      JOIN records_lb rl ON rl.id = mi.marc_id
-                      WHERE mrt.is_dirty = true OR rl.state = ''OLD''
+                      JOIN old_records_tracking ot ON ot.marc_id = mi.marc_id
+                      WHERE mrt.is_dirty = true OR ol.has_been_processed = false
                     )', partition_name) INTO exists_flag;
       IF exists_flag THEN
       INSERT INTO temp_field_nos VALUES (formatted_value);
@@ -61,11 +61,11 @@
       FOR rec IN SELECT field_no FROM temp_field_nos LOOP
         EXECUTE format('WITH deleted AS (
                       DELETE FROM %I mi
-                      USING marc_records_tracking mrt, records_lb rl
+                      USING marc_records_tracking mrt, old_records_tracking ot
                       WHERE mi.marc_id = mrt.marc_id
                         AND mi.field_no = $1
-                        AND (mrt.is_dirty = true AND mrt.version > mi.version OR rl.state = ''OLD'')
-                        AND rl.id = mi.marc_id
+                        AND (mrt.is_dirty = true AND mrt.version > mi.version OR ot.has_been_processed = false)
+                        AND ot.marc_id = mi.marc_id
                       RETURNING mi.marc_id
                     )
                     INSERT INTO temp_deleted_ids (marc_id)
@@ -84,4 +84,5 @@
     <sql>
       CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty) WHERE is_dirty = true;
     </sql>
-  </changeSet></databaseChangeLog>
+  </changeSet>
+</databaseChangeLog>

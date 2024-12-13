@@ -1,0 +1,62 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2024-12-10--13-00-create-old-records-tracking-table" author="Volodymyr_Rohach">
+    <createTable tableName="old_records_tracking">
+      <column name="marc_id" type="uuid">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="has_been_processed" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+
+  <changeSet id="2024-12-10--14-00-migrate-old-records" author="Volodymyr_Rohach">
+    <sql>
+      INSERT INTO ${database.defaultSchemaName}.old_records_tracking (marc_id, has_been_processed)
+      SELECT id, FALSE
+      FROM ${database.defaultSchemaName}.records_lb
+      WHERE state = 'OLD'
+        ON CONFLICT (marc_id) DO NOTHING;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2024-12-10--13-00-create-process-old-record-state-change" author="Volodymyr_Rohach">
+    <sql>
+      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.track_old_records()
+      RETURNS TRIGGER AS $$
+      BEGIN
+              IF NEW.state = 'OLD' AND (TG_OP = 'INSERT' OR OLD.state IS DISTINCT FROM 'OLD') THEN
+              INSERT INTO ${database.defaultSchemaName}.old_records_tracking (id, flag)
+      VALUES (NEW.id, FALSE)
+      ON CONFLICT (id) DO NOTHING;
+      END IF;
+      RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      DROP TRIGGER IF EXISTS track_state_changes_trigger ON ${database.defaultSchemaName}.records_lb;
+      CREATE TRIGGER track_state_changes_trigger
+        AFTER INSERT OR UPDATE ON ${database.defaultSchemaName}.records_lb
+                          FOR EACH ROW EXECUTE FUNCTION ${database.defaultSchemaName}.track_old_records();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2023-04-14--13-00-drop-and-create-trigger-for-old-records" author="Volodymyr_Rohach" runOnChange="true">
+    <sql splitStatements="false">
+      DROP TRIGGER IF EXISTS track_state_changes_trigger ON ${database.defaultSchemaName}.records_lb;
+      CREATE TRIGGER track_state_changes_trigger AFTER INSERT OR UPDATE ON ${database.defaultSchemaName}.records_lb FOR EACH ROW EXECUTE FUNCTION ${database.defaultSchemaName}.track_old_records();
+    </sql>
+  </changeSet>
+
+  <changeSet id="2023-04-14--13-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
+    <sql>
+      CREATE INDEX IF NOT EXISTS idx_old_records_tracking_processed_true ON ${database.defaultSchemaName}.old_records_tracking (has_been_processed) WHERE has_been_processed = false;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

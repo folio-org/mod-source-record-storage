@@ -12,7 +12,6 @@ import static org.junit.Assert.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Flowable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -30,6 +29,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
@@ -62,7 +62,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
@@ -148,7 +147,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(1), get.result().getRecords().get(0));
         compareRecords(context, expected.get(2), get.result().getRecords().get(1));
@@ -241,6 +240,142 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldFetchActualAndDeletedBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedExists(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data)
+        .withIncludeDeleted(true);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchActualBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedNotExists(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .filter(r -> r.getState().equals(State.ACTUAL))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldFetchActualAndDeletedBibRecordsWithOneFieldByExternalIdWhenIncludeDeletedFalse(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    records.get(3).setDeleted(true);
+    records.get(3).setState(State.DELETED);
+    records.get(5).setDeleted(true);
+    records.get(5).setState(State.DELETED);
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+      }
+
+      Set<String> externalIds = Set.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc","6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99");
+      List<FieldRange> data = List.of(
+        new FieldRange().withFrom("001").withTo("001"),
+        new FieldRange().withFrom("007").withTo("007")
+      );
+
+      Conditions conditions = new Conditions()
+        .withIdType(IdType.INSTANCE.name())
+        .withIds(List.of("3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc", "6b4ae089-e1ee-431f-af83-e1133f8e3da0", "1b74ab75-9f41-4837-8662-a1d99118008d", "c1d3be12-ecec-4fab-9237-baf728575185", "8be05cf5-fb4f-4752-8094-8e179d08fb99"));
+      FetchParsedRecordsBatchRequest batchRequest = new FetchParsedRecordsBatchRequest()
+        .withRecordType(FetchParsedRecordsBatchRequest.RecordType.MARC_BIB)
+        .withConditions(conditions)
+        .withData(data)
+        .withIncludeDeleted(false);
+
+      recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
+        if (get.failed()) {
+          context.fail(get.cause());
+        }
+        List<Record> expected = records.stream()
+          .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+          .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
+          .filter(r -> r.getState().equals(State.ACTUAL))
+          .collect(Collectors.toList());
+        context.assertEquals(expected.size(), get.result().getTotalRecords());
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldGetMarcAuthorityRecordsBySnapshotId(TestContext context) {
     getRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_AUTHORITY,
       Record.RecordType.MARC_AUTHORITY);
@@ -278,7 +413,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .sorted(comparing(Record::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
@@ -1495,7 +1630,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         context.assertEquals(limit, get.result().getRecords().size());
         async.complete();
@@ -1525,7 +1660,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(recordType))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
         async.complete();
@@ -1553,8 +1688,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
-          .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected, get.result().getRecords());
         async.complete();
@@ -1582,7 +1716,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(recordType))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .sorted(comparing(Record::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
@@ -1686,8 +1820,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      expected.sort(comparing(Record::getId));
-      batch.result().getRecords().sort(comparing(Record::getId));
       compareRecords(context, expected, batch.result().getRecords());
       RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
         .onComplete(count -> {
@@ -1717,8 +1849,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      expected.sort(comparing(Record::getId));
-      batch.result().getRecords().sort(comparing(Record::getId));
       compareRecords(context, expected, batch.result().getRecords());
       checkRecordErrorRecords(context, batch.result().getRecords(), TestMocks.getErrorRecord(0).getContent().toString(),
         TestMocks.getErrorRecord(0).getDescription());
@@ -1761,9 +1891,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1790,14 +1918,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<SourceRecord> expected = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
         .map(RecordDaoUtil::toSourceRecord)
-        .sorted(comparing(SourceRecord::getRecordId))
-        .sorted(comparing(SourceRecord::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<SourceRecord> actual = new ArrayList<>();
       flowable.doFinally(() -> {
-
-          actual.sort(comparing(SourceRecord::getRecordId));
           context.assertEquals(expected.size(), actual.size());
           compareSourceRecords(context, expected, actual);
 
@@ -1831,18 +1955,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        sortByRecordId(get);
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
       });
     });
-  }
-
-  private void sortByRecordId(AsyncResult<SourceRecordCollection> get) {
-    get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
   }
 
   private void getMarcSourceRecordsBetweenDates(TestContext context, Record.RecordType recordType,
@@ -1867,9 +1985,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1922,9 +2038,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1996,8 +2110,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         context.assertEquals(0, update.result().getErrorMessages().size());
         context.assertEquals(expected.size(), update.result().getTotalRecords());
-        expected.sort(comparing(ParsedRecord::getId));
-        update.result().getParsedRecords().sort(comparing(ParsedRecord::getId));
         compareParsedRecords(context, expected, update.result().getParsedRecords());
         GenericCompositeFuture.all(updated.stream().map(record -> recordDao
           .getRecordByMatchedId(record.getMatchedId(), TENANT_ID)
@@ -2146,7 +2258,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (Record record : expected) {
-      compareRecords(context, record, record);
+      var actualRecord = actual.stream()
+        .filter(r -> Objects.equals(r.getId(), record.getId()))
+        .findFirst();
+      if (actualRecord.isPresent()) {
+        compareRecords(context, record, actualRecord.get());
+      }
     }
   }
 
@@ -2211,7 +2328,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareSourceRecords(TestContext context, List<SourceRecord> expected, List<SourceRecord> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (SourceRecord sourceRecord : expected) {
-      compareSourceRecords(context, sourceRecord, sourceRecord);
+      var sourceRecordActual = actual.stream()
+        .filter(sr -> Objects.equals(sr.getRecordId(), sourceRecord.getRecordId()))
+        .findFirst();
+      if (sourceRecordActual.isPresent()) {
+        compareSourceRecords(context, sourceRecord, sourceRecordActual.get());
+      }
     }
   }
 
@@ -2244,7 +2366,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareParsedRecords(TestContext context, List<ParsedRecord> expected, List<ParsedRecord> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (ParsedRecord parsedRecord : expected) {
-      compareParsedRecords(context, parsedRecord, parsedRecord);
+      var actualParsedRecord = actual.stream().filter(a -> Objects.equals(a.getId(), parsedRecord.getId())).findFirst();
+      if (actualParsedRecord.isPresent()) {
+        compareParsedRecords(context, parsedRecord, actualParsedRecord.get());
+      }
     }
   }
 

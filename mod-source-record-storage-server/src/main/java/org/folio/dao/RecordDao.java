@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -26,6 +27,7 @@ import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordSearchParameters;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.util.TypeConnection;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
@@ -70,10 +72,11 @@ public interface RecordDao {
    * @param externalIds list of ids
    * @param idType      external id type on which source record will be searched
    * @param recordType  record type
+   * @param includeDeleted  searching by deleted records
    * @param tenantId    tenant id
    * @return {@link Future} of {@link StrippedParsedRecordCollection}
    */
-  Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, String tenantId);
+  Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, Boolean includeDeleted, String tenantId);
 
   /**
    *  Searches for {@link Record} by {@link MatchField}  with offset and limit
@@ -208,13 +211,27 @@ public interface RecordDao {
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
   /**
-   * Saves {@link RecordCollection} to the db
+   * Saves {@link RecordCollection} to the db.
    *
    * @param recordCollection Record collection to save
    * @param okapiHeaders okapi headers
    * @return future with saved {@link RecordsBatchResponse}
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders);
+
+  /**
+   * Saves {@link RecordCollection} to the db.
+   *
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
+   * @param okapiHeaders okapi headers
+   * @return future with saved {@link RecordsBatchResponse}
+   */
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                        RecordType recordType,
+                                                        RecordsModifierOperator recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates {{@link Record} in the db

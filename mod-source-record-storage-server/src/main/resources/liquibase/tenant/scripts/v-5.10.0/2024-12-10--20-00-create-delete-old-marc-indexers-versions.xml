@@ -47,12 +47,12 @@
               formatted_value := LPAD(i::TEXT, 3, '0');
               partition_name := 'marc_indexers_' || formatted_value;
       EXECUTE format('SELECT EXISTS (
-                                SELECT 1
-                                FROM %s mi
-                                JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
-                                JOIN old_records_tracking ot ON ot.marc_id = mi.marc_id
-                                WHERE mrt.is_dirty = true OR ot.has_been_processed = false
-                              )', partition_name) INTO exists_flag;
+                  SELECT 1
+                  FROM %s mi
+                  JOIN marc_records_tracking mrt ON mi.marc_id = mrt.marc_id
+                  LEFT JOIN old_records_tracking ot ON ot.marc_id = mi.marc_id
+                  WHERE mrt.is_dirty = true OR (ot.marc_id IS NOT NULL AND ot.has_been_processed = false)
+                )', partition_name) INTO exists_flag;
       IF exists_flag THEN
                   INSERT INTO temp_field_nos VALUES (formatted_value);
       END IF;
@@ -60,17 +60,20 @@
 
       FOR rec IN SELECT field_no FROM temp_field_nos LOOP
         EXECUTE format('WITH deleted AS (
-                                DELETE FROM %I mi
-                                USING marc_records_tracking mrt, old_records_tracking ot
-                                WHERE mi.marc_id = mrt.marc_id
-                                  AND mi.field_no = $1
-                                  AND (mrt.is_dirty = true AND mrt.version > mi.version OR ot.has_been_processed = false)
-                                  AND ot.marc_id = mi.marc_id
-                                RETURNING mi.marc_id
-                              )
-                              INSERT INTO temp_deleted_ids (marc_id)
-                              SELECT marc_id FROM deleted', 'marc_indexers_' || rec.field_no)
-              USING rec.field_no;
+            DELETE FROM %I
+            USING marc_records_tracking mrt
+            LEFT JOIN old_records_tracking ot ON ot.marc_id = mrt.marc_id
+            WHERE %I.marc_id = mrt.marc_id
+              AND %I.field_no = $1
+              AND ((mrt.is_dirty = true AND mrt.version > %I.version) OR (ot.has_been_processed = false AND ot.marc_id = %I.marc_id))
+            RETURNING %I.marc_id
+        )
+        INSERT INTO temp_deleted_ids (marc_id)
+        SELECT marc_id FROM deleted',
+                             'marc_indexers_' || rec.field_no, 'marc_indexers_' || rec.field_no,
+                             'marc_indexers_' || rec.field_no, 'marc_indexers_' || rec.field_no,
+                             'marc_indexers_' || rec.field_no, 'marc_indexers_' || rec.field_no)
+                  USING rec.field_no;
       END LOOP;
       INSERT INTO marc_indexers_deleted_ids (marc_id)
       SELECT DISTINCT marc_id FROM temp_deleted_ids ON CONFLICT (marc_id) DO NOTHING;

@@ -16,7 +16,7 @@ public final class RestUtil {
   }
 
   public static OkapiConnectionParams retrieveOkapiConnectionParams(DataImportEventPayload eventPayload, Vertx vertx) {
-    return new OkapiConnectionParams(Map.of(
+    return OkapiConnectionParams.createSystemUserConnectionParams(Map.of(
       OKAPI_URL_HEADER, eventPayload.getOkapiUrl(),
       OKAPI_TENANT_HEADER, eventPayload.getTenant(),
       OKAPI_TOKEN_HEADER, eventPayload.getToken()

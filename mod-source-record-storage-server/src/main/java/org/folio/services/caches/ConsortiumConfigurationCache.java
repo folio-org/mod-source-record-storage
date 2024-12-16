@@ -59,7 +59,7 @@ public class ConsortiumConfigurationCache {
   private CompletableFuture<? extends Optional<ConsortiumConfiguration>> loadConsortiumConfiguration(OkapiConnectionParams params) {
     LOGGER.debug("loadConsortiumConfiguration:: Trying to load consortiumConfiguration by tenantId '{}' for cache, okapi url: {}, tenantId: {}", params.getTenantId(), params.getOkapiUrl(), params.getTenantId());
 
-    return RestUtil.doRequest(params, USER_TENANTS_ENDPOINT, HttpMethod.GET, null)
+    return RestUtil.doRequestWithSystemUser(params, USER_TENANTS_ENDPOINT, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {

@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -182,36 +183,34 @@ public class RecordServiceImpl implements RecordService {
       return promise.future();
     }
 
-    AtomicInteger retryCount = new AtomicInteger();
     final int maxRetryCount = 3;
-
-    Promise<RecordsBatchResponse> retryPromise = Promise.promise();
+    AtomicInteger retryCount = new AtomicInteger();
 
     List<Future> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(record ->
-      setMatchedIdsFutures.add(setMatchedIdForRecord(record,
-        okapiHeaders.get(OKAPI_TENANT_HEADER))));
+      setMatchedIdsFutures.add(setMatchedIdForRecord(record, okapiHeaders.get(OKAPI_TENANT_HEADER))));
 
-    GenericCompositeFuture.all(setMatchedIdsFutures)
-      .compose(ar -> ar.succeeded() ?
-        recordDao.saveRecords(recordCollection, okapiHeaders)
+    return GenericCompositeFuture.all(setMatchedIdsFutures)
+      .compose(ar -> ar.succeeded()
+        ? recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
-      .onComplete(res -> {
-        if (res.succeeded()) {
-          retryPromise.complete(res.result());
-        } else {
-          Throwable cause = res.cause();
-          if (cause instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
-            LOG.error("saveRecords:: Retry attempt {} for matchedId: {}",
-              retryCount.get(), recordCollection.getRecords().get(0).getMatchedId());
-          } else {
-            retryPromise.fail(cause);
-          }
-        }
-      });
-
-    return retryPromise.future()
+      .recover(error -> retrySave(error, recordCollection, retryCount, maxRetryCount, setMatchedIdsFutures, okapiHeaders))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
+  }
+
+  private Future<RecordsBatchResponse> retrySave(Throwable error, RecordCollection recordCollection, AtomicInteger retryCount, int maxRetryCount,
+                                                 List<Future> setMatchedIdsFutures, Map<String, String> okapiHeaders) {
+    if (error instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
+      LOG.warn("saveRecords:: Retry attempt {} for matchedId: {}",
+        retryCount.get(), recordCollection.getRecords().get(0).getMatchedId());
+      return GenericCompositeFuture.all(setMatchedIdsFutures)
+        .compose(ar -> ar.succeeded()
+          ? recordDao.saveRecords(recordCollection, okapiHeaders)
+          : Future.failedFuture(ar.cause()))
+        .recover(err -> retrySave(err, recordCollection, retryCount, maxRetryCount, setMatchedIdsFutures, okapiHeaders));
+    } else {
+      return Future.failedFuture(error);
+    }
   }
 
   @Override

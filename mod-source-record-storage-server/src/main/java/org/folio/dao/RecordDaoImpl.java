@@ -863,7 +863,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private RecordsBatchResponse saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType,
-                                           String tenantId) throws SQLException {
+                                           String tenantId) {
     Set<UUID> matchedIds = new HashSet<>();
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
@@ -938,10 +938,6 @@ public class RecordDaoImpl implements RecordDao {
           .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
           .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
             .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
-//            .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
-//              .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
-//              .from(SNAPSHOTS_LB)
-//              .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshotId)))))
           )
           .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
           .fetchStream().forEach(r -> {
@@ -951,6 +947,9 @@ public class RecordDaoImpl implements RecordDao {
             ids.add(id);
             matchedGenerations.put(matchedId, generation);
           });
+
+        LOG.warn("saveRecords :: recordCollection: {}, dbRecords: {}, matchedGenerations: {}",
+          recordCollection.getTotalRecords(), dbRecords.size(), matchedGenerations.size());
 
         // update matching records state
         if(!ids.isEmpty()) {
@@ -969,11 +968,9 @@ public class RecordDaoImpl implements RecordDao {
           .loadRecords(dbRecords.stream()
             .map(recordDto -> {
               Integer generation = matchedGenerations.get(recordDto.getMatchedId());
-              if (Objects.nonNull(generation)) {
-                recordDto.setGeneration(generation + 1);
-              } else if (Objects.isNull(recordDto.getGeneration())) {
-                recordDto.setGeneration(0);
-              }
+              recordDto.setGeneration(Objects.nonNull(generation) ? generation++ : 0);
+              LOG.info("saveRecords: matchedId: {}, set new generation: {}",
+                recordDto.getMatchedId(), generation);
               return recordDto;
             })
             .toList())

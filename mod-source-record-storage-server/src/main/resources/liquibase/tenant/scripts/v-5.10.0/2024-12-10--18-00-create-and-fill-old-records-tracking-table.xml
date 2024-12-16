@@ -29,19 +29,19 @@
   <changeSet id="2024-12-10--13-00-create-track-old-records-trigger" author="Volodymyr_Rohach">
     <sql splitStatements="false">
       create or replace function ${database.defaultSchemaName}.track_old_records()
-      returns trigger
-      as
+      RETURNS TRIGGER
+      AS
       $track_old_records$
-      declare
-      result integer;
-      begin
-      IF NEW.state = 'OLD' AND (TG_OP = 'INSERT' OR OLD.state IS DISTINCT FROM 'OLD') THEN
-              INSERT INTO ${database.defaultSchemaName}.old_records_tracking (marc_id, has_been_processed)
+      DECLARE
+      RESULT INTEGER;
+      BEGIN
+      IF NEW.state = 'OLD' THEN
+        INSERT INTO ${database.defaultSchemaName}.old_records_tracking (marc_id, has_been_processed)
       VALUES (NEW.id, FALSE)
       ON CONFLICT (marc_id) DO NOTHING;
       END IF;
-      return NEW;
-      end;
+      RETURN NEW;
+      END;
       $track_old_records$ language plpgsql;
     </sql>
   </changeSet>

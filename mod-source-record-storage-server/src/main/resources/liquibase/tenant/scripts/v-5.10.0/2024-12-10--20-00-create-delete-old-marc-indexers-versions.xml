@@ -72,7 +72,7 @@
 
   <changeSet id="2024-12-10--17-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
     <sql>
-      CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty) WHERE is_dirty = true;
+      CREATE INDEX IF NOT EXISTS idx_marc_records_tracking_dirty_true ON ${database.defaultSchemaName}.marc_records_tracking (is_dirty, marc_id, version) WHERE is_dirty = true;
     </sql>
   </changeSet>
 </databaseChangeLog>

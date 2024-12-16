@@ -909,12 +909,15 @@ public class RecordDaoImpl implements RecordDao {
               .withLeaderRecordStatus(null);
           }
         }
+
         if (Objects.nonNull(record.getRawRecord())) {
           dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
         }
+
         if (Objects.nonNull(record.getErrorRecord())) {
           dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
         }
+
         dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
       });
 
@@ -935,10 +938,11 @@ public class RecordDaoImpl implements RecordDao {
           .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
           .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
             .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
-            .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
-              .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
-              .from(SNAPSHOTS_LB)
-              .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshotId))))))
+//            .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dsl
+//              .select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
+//              .from(SNAPSHOTS_LB)
+//              .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshotId)))))
+          )
           .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
           .fetchStream().forEach(r -> {
             UUID id = r.get(RECORDS_LB.ID);
@@ -949,8 +953,7 @@ public class RecordDaoImpl implements RecordDao {
           });
 
         // update matching records state
-        if(!ids.isEmpty())
-        {
+        if(!ids.isEmpty()) {
           dsl.update(RECORDS_LB)
             .set(RECORDS_LB.STATE, RecordState.OLD)
             .where(RECORDS_LB.ID.in(ids))

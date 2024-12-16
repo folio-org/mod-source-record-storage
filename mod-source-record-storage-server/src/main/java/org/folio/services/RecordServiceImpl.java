@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import net.sf.jsqlparser.JSQLParserException;
@@ -54,6 +55,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -173,18 +175,42 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
+
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
+
+    AtomicInteger retryCount = new AtomicInteger();
+    final int maxRetryCount = 3;
+
+    Promise<RecordsBatchResponse> retryPromise = Promise.promise();
+
     List<Future> setMatchedIdsFutures = new ArrayList<>();
-    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
-      okapiHeaders.get(OKAPI_TENANT_HEADER))));
-    return GenericCompositeFuture.all(setMatchedIdsFutures)
+    recordCollection.getRecords().forEach(record ->
+      setMatchedIdsFutures.add(setMatchedIdForRecord(record,
+        okapiHeaders.get(OKAPI_TENANT_HEADER))));
+
+    GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded() ?
         recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
+      .onComplete(res -> {
+        if (res.succeeded()) {
+          retryPromise.complete(res.result());
+        } else {
+          Throwable cause = res.cause();
+          if (cause instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
+            LOG.error("saveRecords:: Retry attempt {} for matchedId: {}",
+              retryCount.get(), recordCollection.getRecords().get(0).getMatchedId());
+          } else {
+            retryPromise.fail(cause);
+          }
+        }
+      });
+
+    return retryPromise.future()
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
 

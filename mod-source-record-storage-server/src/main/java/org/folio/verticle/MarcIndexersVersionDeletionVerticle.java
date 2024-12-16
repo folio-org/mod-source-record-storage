@@ -41,7 +41,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
-    vertx.setPeriodic(90 * 1000L, id -> {
+    vertx.setPeriodic(interval * 1000L, id -> {
       if (currentDeletion.isComplete()) {
         currentDeletion = deleteOldMarcIndexerVersions();
       } else {

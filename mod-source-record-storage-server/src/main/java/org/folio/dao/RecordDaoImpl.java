@@ -218,6 +218,9 @@ public class RecordDaoImpl implements RecordDao {
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
   public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "CALL delete_old_marc_indexers_versions()";
+  public static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
+  public static final String HAS_BEEN_PROCESSED_FLAG = "has_been_processed";
+  public static final String MARC_ID_COLUMN = "marc_id";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
@@ -1472,9 +1475,9 @@ public class RecordDaoImpl implements RecordDao {
           .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
 
         return txQE.execute(dsl ->
-            dsl.update(table("old_records_tracking"))
-              .set(field("has_been_processed"), true)
-              .where(field("marc_id").in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
+            dsl.update(table(OLD_RECORDS_TRACKING_TABLE))
+              .set(field(HAS_BEEN_PROCESSED_FLAG), true)
+              .where(field(MARC_ID_COLUMN).in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
           )
           .compose(updateResult ->
             txQE.execute(dsl ->

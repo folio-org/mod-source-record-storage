@@ -968,8 +968,8 @@ public class RecordDaoImpl implements RecordDao {
           .loadRecords(dbRecords.stream()
             .map(recordDto -> {
               Integer generation = matchedGenerations.get(recordDto.getMatchedId());
-              recordDto.setGeneration(Objects.nonNull(generation) ? generation++ : 0);
-              LOG.info("saveRecords: matchedId: {}, set new generation: {}",
+              recordDto.setGeneration(Objects.nonNull(generation) ? ++generation : 0);
+              LOG.info("saveRecords:: matchedId: {}, set new generation: {}",
                 recordDto.getMatchedId(), generation);
               return recordDto;
             })

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-source-record-storage</artifactId>
-  <version>5.9.3-SNAPSHOT</version>
+  <version>5.9.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -23,7 +23,7 @@
     <log4j.version>2.23.1</log4j.version>
     <raml-module-builder.version>35.3.0</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>4.5.7</vertx.version>
+    <vertx.version>4.5.11</vertx.version>
     <junit.version>5.10.2</junit.version>
     <rest-assured.version>4.5.1</rest-assured.version>
     <kafkaclients.version>3.6.0</kafkaclients.version>

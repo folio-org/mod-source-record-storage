@@ -948,7 +948,7 @@ public class RecordDaoImpl implements RecordDao {
             matchedGenerations.put(matchedId, generation);
           });
 
-        LOG.warn("saveRecords :: recordCollection: {}, dbRecords: {}, matchedGenerations: {}",
+        LOG.info("saveRecords :: recordCollection: {}, dbRecords: {}, matchedGenerations: {}",
           recordCollection.getTotalRecords(), dbRecords.size(), matchedGenerations.size());
 
         // update matching records state
@@ -969,7 +969,7 @@ public class RecordDaoImpl implements RecordDao {
             .map(recordDto -> {
               Integer generation = matchedGenerations.get(recordDto.getMatchedId());
               recordDto.setGeneration(Objects.nonNull(generation) ? ++generation : 0);
-              LOG.info("saveRecords:: matchedId: {}, set new generation: {}",
+              LOG.debug("saveRecords:: matchedId: {}, set new generation: {}",
                 recordDto.getMatchedId(), generation);
               return recordDto;
             })

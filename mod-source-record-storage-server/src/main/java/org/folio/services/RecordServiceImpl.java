@@ -11,7 +11,6 @@ import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
-import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
@@ -30,6 +29,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -41,8 +41,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -175,41 +177,19 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
-
     if (recordCollection.getRecords().isEmpty()) {
       Promise<RecordsBatchResponse> promise = Promise.promise();
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-
-    final int maxRetryCount = 3;
-    AtomicInteger retryCount = new AtomicInteger();
-
     List<Future> setMatchedIdsFutures = new ArrayList<>();
-    recordCollection.getRecords().forEach(record ->
-      setMatchedIdsFutures.add(setMatchedIdForRecord(record, okapiHeaders.get(OKAPI_TENANT_HEADER))));
-
+    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
+      okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
-      .compose(ar -> ar.succeeded()
-        ? recordDao.saveRecords(recordCollection, okapiHeaders)
+      .compose(ar -> ar.succeeded() ?
+        recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
-      .recover(error -> retrySave(error, recordCollection, retryCount, maxRetryCount, setMatchedIdsFutures, okapiHeaders))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
-  }
-
-  private Future<RecordsBatchResponse> retrySave(Throwable error, RecordCollection recordCollection, AtomicInteger retryCount, int maxRetryCount,
-                                                 List<Future> setMatchedIdsFutures, Map<String, String> okapiHeaders) {
-    if (error instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
-      LOG.warn("saveRecords:: Retry attempt {} for matchedId: {}",
-        retryCount.get(), recordCollection.getRecords().get(0).getMatchedId());
-      return GenericCompositeFuture.all(setMatchedIdsFutures)
-        .compose(ar -> ar.succeeded()
-          ? recordDao.saveRecords(recordCollection, okapiHeaders)
-          : Future.failedFuture(ar.cause()))
-        .recover(err -> retrySave(err, recordCollection, retryCount, maxRetryCount, setMatchedIdsFutures, okapiHeaders));
-    } else {
-      return Future.failedFuture(error);
-    }
   }
 
   @Override
@@ -227,6 +207,9 @@ public class RecordServiceImpl implements RecordService {
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
     }
 
+    AtomicInteger retryCount = new AtomicInteger(0);
+    final int maxRetryCount = 3;
+
     RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
       try {
         for (var sourceRecord : recordCollection.getRecords()) {
@@ -243,9 +226,24 @@ public class RecordServiceImpl implements RecordService {
         throw new RecordUpdateException(ex.getMessage());
       }
     };
-    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
 
-    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders);
+    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
+    return retrySave(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders, retryCount, maxRetryCount);
+  }
+
+  private Future<RecordsBatchResponse> retrySave(List<String> externalIds, RecordType recordType,
+                                                 RecordsModifierOperator recordsModifier,
+                                                 Map<String, String> okapiHeaders,
+                                                 AtomicInteger retryCount, int maxRetryCount) {
+    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifier, okapiHeaders)
+      .recover(error -> {
+        if (error instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
+          LOG.error("saveRecordsByExternalIds:: Retry attempt {} for externalIds: {}", retryCount.get(), externalIds);
+          return retrySave(externalIds, recordType, recordsModifier, okapiHeaders, retryCount, maxRetryCount);
+        } else {
+          return Future.failedFuture(error);
+        }
+      });
   }
 
   @Override
@@ -444,7 +442,7 @@ public class RecordServiceImpl implements RecordService {
     }
     Promise<Record> promise = Promise.promise();
     String externalId = RecordDaoUtil.getExternalId(record.getExternalIdsHolder(), record.getRecordType());
-    IdType idType = getExternalIdType(record.getRecordType());
+    IdType idType = RecordDaoUtil.getExternalIdType(record.getRecordType());
 
     if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
       setMatchedIdFromExistingSourceRecord(record, tenantId, promise, externalId, idType);
@@ -516,7 +514,7 @@ public class RecordServiceImpl implements RecordService {
             .map(JsonObject.class::cast)
             .filter(field -> checkFieldRange(field, data))
             .map(JsonObject::getMap)
-            .toList();
+            .collect(Collectors.toList());
 
           parsedContent.put("fields", filteredFields);
           recordToFilter.getParsedRecord().setContent(parsedContent.getMap());

@@ -149,11 +149,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
                                                    DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
     if (matchField.isDefaultField()) {
-      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField, tenant);
+      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
       return processDefaultMatchField(matchField, matchedRecordIds, tenant).map(RecordCollection::getRecords);
     }
 
-    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField, tenant);
+    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
     return recordDao.getMatchedRecords(matchField, comparisonPartType, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 

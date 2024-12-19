@@ -11,6 +11,7 @@ import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
@@ -442,7 +443,7 @@ public class RecordServiceImpl implements RecordService {
     }
     Promise<Record> promise = Promise.promise();
     String externalId = RecordDaoUtil.getExternalId(record.getExternalIdsHolder(), record.getRecordType());
-    IdType idType = RecordDaoUtil.getExternalIdType(record.getRecordType());
+    IdType idType = getExternalIdType(record.getRecordType());
 
     if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
       setMatchedIdFromExistingSourceRecord(record, tenantId, promise, externalId, idType);
@@ -514,7 +515,7 @@ public class RecordServiceImpl implements RecordService {
             .map(JsonObject.class::cast)
             .filter(field -> checkFieldRange(field, data))
             .map(JsonObject::getMap)
-            .collect(Collectors.toList());
+            .toList();
 
           parsedContent.put("fields", filteredFields);
           recordToFilter.getParsedRecord().setContent(parsedContent.getMap());

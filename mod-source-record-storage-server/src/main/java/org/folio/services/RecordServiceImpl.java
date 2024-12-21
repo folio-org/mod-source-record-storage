@@ -11,6 +11,7 @@ import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
@@ -39,11 +40,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import net.sf.jsqlparser.JSQLParserException;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -54,6 +58,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -75,6 +80,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.exceptions.RecordUpdateException;
 import org.folio.services.util.AdditionalFieldsUtil;
@@ -185,6 +191,60 @@ public class RecordServiceImpl implements RecordService {
         recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
+  }
+
+  @Override
+  public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
+                                                               RecordType recordType,
+                                                               RecordsModifierOperator recordsModifier,
+                                                               Map<String, String> okapiHeaders) {
+    if (CollectionUtils.isEmpty(externalIds)) {
+      LOG.warn("saveRecordsByExternalIds:: Skipping the records save, no external IDs are provided");
+      return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
+    }
+
+    if (recordsModifier == null) {
+      LOG.warn("saveRecordsByExternalIds:: Skipping the records save, no operator is provided to modify the existing records");
+      return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
+    }
+
+    AtomicInteger retryCount = new AtomicInteger(0);
+    final int maxRetryCount = 3;
+
+    RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
+      try {
+        for (var sourceRecord : recordCollection.getRecords()) {
+          setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))
+            .toCompletionStage().toCompletableFuture().get();
+        }
+        return recordCollection;
+      } catch (InterruptedException ex) {
+        LOG.warn("saveRecordsByExternalIds:: Setting record matched id is interrupted: {}", ex.getMessage());
+        Thread.currentThread().interrupt();
+        throw new RecordUpdateException(ex.getMessage());
+      } catch (ExecutionException ex) {
+        LOG.warn("saveRecordsByExternalIds:: Failed to set record matched id: {}", ex.getMessage());
+        throw new RecordUpdateException(ex.getMessage());
+      }
+    };
+
+    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
+    return retrySave(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders, retryCount, maxRetryCount);
+  }
+
+  private Future<RecordsBatchResponse> retrySave(List<String> externalIds, RecordType recordType,
+                                                 RecordsModifierOperator recordsModifier,
+                                                 Map<String, String> okapiHeaders,
+                                                 AtomicInteger retryCount, int maxRetryCount) {
+    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifier, okapiHeaders)
+      .recover(error -> {
+        if (error instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
+          LOG.error("saveRecordsByExternalIds:: Retry attempt {} for externalIds: {}", retryCount.get(), externalIds);
+          return retrySave(externalIds, recordType, recordsModifier, okapiHeaders, retryCount, maxRetryCount);
+        } else {
+          return Future.failedFuture(error);
+        }
+      });
   }
 
   @Override
@@ -383,7 +443,7 @@ public class RecordServiceImpl implements RecordService {
     }
     Promise<Record> promise = Promise.promise();
     String externalId = RecordDaoUtil.getExternalId(record.getExternalIdsHolder(), record.getRecordType());
-    IdType idType = RecordDaoUtil.getExternalIdType(record.getRecordType());
+    IdType idType = getExternalIdType(record.getRecordType());
 
     if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
       setMatchedIdFromExistingSourceRecord(record, tenantId, promise, externalId, idType);
@@ -455,7 +515,7 @@ public class RecordServiceImpl implements RecordService {
             .map(JsonObject.class::cast)
             .filter(field -> checkFieldRange(field, data))
             .map(JsonObject::getMap)
-            .collect(Collectors.toList());
+            .toList();
 
           parsedContent.put("fields", filteredFields);
           recordToFilter.getParsedRecord().setContent(parsedContent.getMap());

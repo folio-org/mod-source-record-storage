@@ -30,6 +30,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
 import io.vertx.sqlclient.Row;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,8 +41,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
+
 import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -54,6 +58,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -203,6 +208,9 @@ public class RecordServiceImpl implements RecordService {
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
     }
 
+    AtomicInteger retryCount = new AtomicInteger(0);
+    final int maxRetryCount = 3;
+
     RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
       try {
         for (var sourceRecord : recordCollection.getRecords()) {
@@ -219,9 +227,24 @@ public class RecordServiceImpl implements RecordService {
         throw new RecordUpdateException(ex.getMessage());
       }
     };
-    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
 
-    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders);
+    RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
+    return retrySave(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders, retryCount, maxRetryCount);
+  }
+
+  private Future<RecordsBatchResponse> retrySave(List<String> externalIds, RecordType recordType,
+                                                 RecordsModifierOperator recordsModifier,
+                                                 Map<String, String> okapiHeaders,
+                                                 AtomicInteger retryCount, int maxRetryCount) {
+    return recordDao.saveRecordsByExternalIds(externalIds, recordType, recordsModifier, okapiHeaders)
+      .recover(error -> {
+        if (error instanceof DuplicateEventException && retryCount.getAndIncrement() < maxRetryCount) {
+          LOG.error("saveRecordsByExternalIds:: Retry attempt {} for externalIds: {}", retryCount.get(), externalIds);
+          return retrySave(externalIds, recordType, recordsModifier, okapiHeaders, retryCount, maxRetryCount);
+        } else {
+          return Future.failedFuture(error);
+        }
+      });
   }
 
   @Override

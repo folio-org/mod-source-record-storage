@@ -1,5 +1,6 @@
 ## 2025-XX-XX 5.8.8-SNAPSHOT
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Fix data consistency in handling and updating Marc Bib records for links.instance-authority event
+* [MODSOURCE-803](https://folio-org.atlassian.net/browse/MODSOURCE-803) DuplicateException is thrown when saving batch of Bib records for linked Authority
 
 ## 2024-09-03 v5.8.7
 * [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) (ECS) Fix update of shared Instances from a member tenant

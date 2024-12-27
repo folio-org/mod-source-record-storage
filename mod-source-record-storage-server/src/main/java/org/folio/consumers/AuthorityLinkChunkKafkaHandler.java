@@ -1,5 +1,6 @@
 package org.folio.consumers;
 
+import static java.util.Collections.emptyList;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.IdType;
+import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
@@ -51,7 +54,6 @@ import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
-import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.handlers.links.DeleteLinkProcessor;
 import org.folio.services.handlers.links.LinkProcessor;
 import org.folio.services.handlers.links.UpdateLinkProcessor;
@@ -83,28 +85,22 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    LOGGER.trace("handle:: Start handling kafka record value: {}", consumerRecord.value());
-    LOGGER.info("handle:: Start Handling kafka record");
+    LOGGER.trace("handle:: Handling kafka record: {}", consumerRecord);
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
-
-    var result = mapToEvent(consumerRecord)
+    return mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
-      .compose(linksUpdate -> {
-        var instanceIds = getBibRecordExternalIds(linksUpdate);
-        var okapiHeaders = toOkapiHeaders(consumerRecord.headers(), linksUpdate.getTenant());
-        RecordsModifierOperator recordsModifier = recordsCollection ->
-          this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
-
-        return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders)
-          .compose(recordsBatchResponse -> {
-            sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
-            var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
-            return sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
-          });
-      });
-
-    LOGGER.info("handle:: Finish Handling kafka record");
-    return result;
+      .compose(event -> retrieveRecords(event, event.getTenant())
+        .compose(recordCollection -> mapRecordFieldsChanges(event, recordCollection, userId))
+        .compose(recordCollection -> recordService.saveRecords(recordCollection,
+          toOkapiHeaders(consumerRecord.headers(), event.getTenant())))
+        .map(recordsBatchResponse -> sendReports(recordsBatchResponse, event, consumerRecord.headers()))
+        .map(recordsBatchResponse -> mapRecordsToBibUpdateEvents(recordsBatchResponse, event))
+        .compose(marcBibUpdates -> sendEvents(marcBibUpdates, event, consumerRecord))
+      ).recover(th -> {
+          LOGGER.error("Failed to handle {} event", MARC_BIB.moduleTopicName(), th);
+          return Future.failedFuture(th);
+        }
+      );
   }
 
   private Future<BibAuthorityLinksUpdate> mapToEvent(KafkaConsumerRecord<String, String> consumerRecord) {
@@ -119,103 +115,98 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<BibAuthorityLinksUpdate> createSnapshot(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
-    var now = new Date();
-    var snapshot = new Snapshot()
-      .withJobExecutionId(bibAuthorityLinksUpdate.getJobId())
-      .withStatus(Snapshot.Status.COMMITTED)
-      .withProcessingStartedDate(now)
-      .withMetadata(new Metadata()
-        .withCreatedDate(now)
-        .withUpdatedDate(now));
-
-    return snapshotService.saveSnapshot(snapshot, bibAuthorityLinksUpdate.getTenant())
-      .map(result -> bibAuthorityLinksUpdate);
-  }
-
-  private List<String> getBibRecordExternalIds(BibAuthorityLinksUpdate linksUpdate) {
-    return linksUpdate.getUpdateTargets().stream()
+  private Future<RecordCollection> retrieveRecords(BibAuthorityLinksUpdate bibAuthorityLinksUpdate, String tenantId) {
+    LOGGER.trace("Retrieving bibs for jobId {}, authorityId {}",
+      bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
+    var instanceIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream()
         .map(Link::getInstanceId))
       .distinct()
-      .toList();
+      .collect(Collectors.toList());
+
+    var condition = RecordDaoUtil.getExternalIdsCondition(instanceIds, IdType.INSTANCE)
+      .and(RecordDaoUtil.filterRecordByDeleted(false));
+    return recordService.getRecords(condition, RecordType.MARC_BIB, emptyList(), 0, instanceIds.size(), tenantId);
   }
 
-  private RecordCollection mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
-                                                  RecordCollection recordCollection, String userId) {
+  private Future<RecordCollection> mapRecordFieldsChanges(BibAuthorityLinksUpdate bibAuthorityLinksUpdate,
+                                                          RecordCollection recordCollection, String userId) {
     LOGGER.debug("Retrieved {} bib records for jobId {}, authorityId {}",
       recordCollection.getTotalRecords(), bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
 
-    var linkProcessor = getLinkProcessorForEvent(bibAuthorityLinksUpdate);
-    recordCollection.getRecords().forEach(bibRecord -> {
-      var newRecordId = UUID.randomUUID().toString();
-      var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
-      var parsedRecord = bibRecord.getParsedRecord();
-      var parsedRecordContent = readParsedContentToObjectRepresentation(bibRecord);
-      var fields = new LinkedList<>(parsedRecordContent.getDataFields());
+    return getLinkProcessorForEvent(bibAuthorityLinksUpdate).map(linkProcessor -> {
+      recordCollection.getRecords().forEach(bibRecord -> {
+        var newRecordId = UUID.randomUUID().toString();
+        var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
+        var parsedRecord = bibRecord.getParsedRecord();
+        var parsedRecordContent = readParsedContentToObjectRepresentation(bibRecord);
+        var fields = new LinkedList<>(parsedRecordContent.getDataFields());
 
-      var updateTargetFieldCodes = extractUpdateTargetFieldCodesForInstance(bibAuthorityLinksUpdate, instanceId);
-      var subfieldChanges = bibAuthorityLinksUpdate.getSubfieldsChanges().stream()
-        .filter(subfieldsChange -> updateTargetFieldCodes.contains(subfieldsChange.getField()))
-        .collect(Collectors.toMap(SubfieldsChange::getField, SubfieldsChange::getSubfields));
+        var updateTargetFieldCodes = extractUpdateTargetFieldCodesForInstance(bibAuthorityLinksUpdate, instanceId);
+        var subfieldChanges = bibAuthorityLinksUpdate.getSubfieldsChanges().stream()
+          .filter(subfieldsChange -> updateTargetFieldCodes.contains(subfieldsChange.getField()))
+          .collect(Collectors.toMap(SubfieldsChange::getField, SubfieldsChange::getSubfields));
 
-      fields.forEach(field -> {
-        if (!updateTargetFieldCodes.contains(field.getTag())) {
-          return;
-        }
+        fields.forEach(field -> {
+          if (!updateTargetFieldCodes.contains(field.getTag())) {
+            return;
+          }
 
-        var subfields = field.getSubfields();
-        if (isEmpty(subfields)) {
-          return;
-        }
+          var subfields = field.getSubfields();
+          if (isEmpty(subfields)) {
+            return;
+          }
 
-        var authorityId = getAuthorityIdSubfield(subfields);
-        if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get().getData())) {
-          return;
-        }
+          var authorityId = getAuthorityIdSubfield(subfields);
+          if (authorityId.isEmpty() || !bibAuthorityLinksUpdate.getAuthorityId().equals(authorityId.get().getData())) {
+            return;
+          }
 
-        var newSubfields = linkProcessor.process(field.getTag(), subfieldChanges.get(field.getTag()), subfields);
-        LOGGER.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
-          bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
-          instanceId, field.getTag(), subfields, newSubfields);
+          var newSubfields = linkProcessor.process(field.getTag(), subfieldChanges.get(field.getTag()), subfields);
+          LOGGER.trace("JobId {}, AuthorityId {}, instanceId {}, field {}, old subfields: {}, new subfields: {}",
+            bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId(),
+            instanceId, field.getTag(), subfields, newSubfields);
 
-        var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
-        newSubfields.forEach(newField::addSubfield);
+          var newField = new DataFieldImpl(field.getTag(), field.getIndicator1(), field.getIndicator2());
+          newSubfields.forEach(newField::addSubfield);
 
-        var dataFields = parsedRecordContent.getDataFields();
-        var fieldPosition = dataFields.indexOf(field);
-        dataFields.remove(fieldPosition);
-        dataFields.add(fieldPosition, newField);
+          var dataFields = parsedRecordContent.getDataFields();
+          var fieldPosition = dataFields.indexOf(field);
+          dataFields.remove(fieldPosition);
+          dataFields.add(fieldPosition, newField);
+        });
+
+        parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
+        parsedRecord.setFormattedContent(EMPTY);
+        parsedRecord.setId(newRecordId);
+        bibRecord.setId(newRecordId);
+        bibRecord.getRawRecord().setId(newRecordId);
+        bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
+        setUpdatedBy(bibRecord, userId);
       });
 
-      parsedRecord.setContent(mapObjectRepresentationToParsedContentJsonString(parsedRecordContent));
-      parsedRecord.setFormattedContent(EMPTY);
-      parsedRecord.setId(newRecordId);
-      bibRecord.setId(newRecordId);
-      bibRecord.getRawRecord().setId(newRecordId);
-      bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
-      setUpdatedBy(bibRecord, userId);
+      return recordCollection;
     });
-    return recordCollection;
   }
 
-  private LinkProcessor getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+  private Future<LinkProcessor> getLinkProcessorForEvent(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
     var eventType = bibAuthorityLinksUpdate.getType();
     switch (eventType) {
-      case DELETE -> {
+      case DELETE: {
         LOGGER.debug("Precessing DELETE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return new DeleteLinkProcessor();
+        return Future.succeededFuture(new DeleteLinkProcessor());
       }
-      case UPDATE -> {
+      case UPDATE: {
         LOGGER.debug("Precessing UPDATE event for jobId {}, authorityId {}",
           bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId());
-        return new UpdateLinkProcessor();
+        return Future.succeededFuture(new UpdateLinkProcessor());
       }
-      default ->
-        throw new IllegalArgumentException(
+      default: {
+        return Future.failedFuture(new IllegalArgumentException(
           String.format("Unsupported event type: %s for jobId %s, authorityId %s",
-            eventType, bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId()));
+            eventType, bibAuthorityLinksUpdate.getJobId(), bibAuthorityLinksUpdate.getAuthorityId())));
+      }
     }
   }
 
@@ -225,7 +216,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .filter(updateTarget -> updateTarget.getLinks().stream()
         .anyMatch(link -> link.getInstanceId().equals(instanceId)))
       .map(UpdateTarget::getField)
-      .toList();
+      .collect(Collectors.toList());
   }
 
   private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
@@ -261,7 +252,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           .withTs(bibAuthorityLinksUpdate.getTs())
           .withRecord(bibRecord);
       })
-      .toList();
+      .collect(Collectors.toList());
   }
 
   private List<LinkUpdateReport> toFailedLinkUpdateReports(List<Record> errorRecords,
@@ -282,7 +273,21 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
           .withFailCause(bibRecord.getErrorRecord().getDescription())
           .withStatus(FAIL);
       })
-      .toList();
+      .collect(Collectors.toList());
+  }
+
+  private Future<BibAuthorityLinksUpdate> createSnapshot(BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+    var now = new Date();
+    var snapshot = new Snapshot()
+      .withJobExecutionId(bibAuthorityLinksUpdate.getJobId())
+      .withStatus(Snapshot.Status.COMMITTED)
+      .withProcessingStartedDate(now)
+      .withMetadata(new Metadata()
+        .withCreatedDate(now)
+        .withUpdatedDate(now));
+
+    return snapshotService.saveSnapshot(snapshot, bibAuthorityLinksUpdate.getTenant())
+      .map(result -> bibAuthorityLinksUpdate);
   }
 
   private void setUpdatedBy(Record changedRecord, String userId) {
@@ -295,8 +300,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private void sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,
-                           List<KafkaHeader> headers) {
+  private RecordsBatchResponse sendReports(RecordsBatchResponse batchResponse, BibAuthorityLinksUpdate event,
+                                           List<KafkaHeader> headers) {
     var errorRecords = getErrorRecords(batchResponse);
     if (!errorRecords.isEmpty()) {
       LOGGER.info("Errors detected. Sending {} linking reports for jobId {}, authorityId {}",
@@ -305,6 +310,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       toFailedLinkUpdateReports(errorRecords, event).forEach(report ->
         sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), report, headers));
     }
+    return batchResponse;
   }
 
   private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents, BibAuthorityLinksUpdate event,
@@ -362,7 +368,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   private List<Record> getErrorRecords(RecordsBatchResponse batchResponse) {
     return batchResponse.getRecords().stream()
       .filter(marcRecord -> nonNull(marcRecord.getErrorRecord()))
-      .toList();
+      .collect(Collectors.toList());
   }
 
 }

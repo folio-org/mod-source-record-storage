@@ -1,8 +1,8 @@
-## 2024-XX-XX 5.9.4
+## 2024-12-29 5.9.4
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Fix data consistency in handling and updating Marc Bib records for links.instance-authority event
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long
 * [MODSOURCE-821](https://folio-org.atlassian.net/browse/MODSOURCE-821) Add System User Support for Eureka env
-* [MODSOURCE-803](https://folio-org.atlassian.net/browse/MODSOURCE-803) DuplicateException is thrown when saving batch of Bib records for linked Authority
+* [MODSOURCE-843](https://folio-org.atlassian.net/browse/MODSOURCE-843) DuplicateException is thrown when saving batch of Bib records for linked Authority
 
 ## 2024-11-27 5.9.3
 * [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records

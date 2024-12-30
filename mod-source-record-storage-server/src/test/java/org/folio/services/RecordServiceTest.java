@@ -2,7 +2,6 @@ package org.folio.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Flowable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -37,7 +36,6 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.jooq.Condition;
@@ -137,7 +135,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(1), get.result().getRecords().get(0));
         compareRecords(context, expected.get(2), get.result().getRecords().get(1));
@@ -267,7 +265,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .sorted(comparing(Record::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
@@ -1413,7 +1411,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         context.assertEquals(limit, get.result().getRecords().size());
         async.complete();
@@ -1443,7 +1441,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(recordType))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
           .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.get(0), get.result().getRecords().get(0));
         async.complete();
@@ -1471,8 +1469,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
-          .sorted(comparing(Record::getOrder))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected, get.result().getRecords());
         async.complete();
@@ -1500,7 +1497,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(recordType))
         .filter(r -> r.getSnapshotId().equals(snapshotId))
         .sorted(comparing(Record::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<Record> actual = new ArrayList<>();
       flowable.doFinally(() -> {
@@ -1597,8 +1594,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      expected.sort(comparing(Record::getId));
-      batch.result().getRecords().sort(comparing(Record::getId));
       compareRecords(context, expected, batch.result().getRecords());
       RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
         .onComplete(count -> {
@@ -1627,8 +1622,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
-      expected.sort(comparing(Record::getId));
-      batch.result().getRecords().sort(comparing(Record::getId));
       compareRecords(context, expected, batch.result().getRecords());
       checkRecordErrorRecords(context, batch.result().getRecords(), TestMocks.getErrorRecord(0).getContent().toString(),
         TestMocks.getErrorRecord(0).getDescription());
@@ -1671,9 +1664,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1700,14 +1691,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<SourceRecord> expected = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
         .map(RecordDaoUtil::toSourceRecord)
-        .sorted(comparing(SourceRecord::getRecordId))
-        .sorted(comparing(SourceRecord::getOrder))
-        .collect(Collectors.toList());
+        .toList();
 
       List<SourceRecord> actual = new ArrayList<>();
       flowable.doFinally(() -> {
-
-          actual.sort(comparing(SourceRecord::getRecordId));
           context.assertEquals(expected.size(), actual.size());
           compareSourceRecords(context, expected, actual);
 
@@ -1741,18 +1728,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        sortByRecordId(get);
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
       });
     });
-  }
-
-  private void sortByRecordId(AsyncResult<SourceRecordCollection> get) {
-    get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
   }
 
   private void getMarcSourceRecordsBetweenDates(TestContext context, Record.RecordType recordType,
@@ -1777,9 +1758,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1832,9 +1811,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<SourceRecord> expected = records.stream()
           .filter(r -> r.getRecordType().equals(recordType))
           .map(RecordDaoUtil::toSourceRecord)
-          .sorted(comparing(SourceRecord::getRecordId))
-          .collect(Collectors.toList());
-        get.result().getSourceRecords().sort(comparing(SourceRecord::getRecordId));
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareSourceRecords(context, expected, get.result().getSourceRecords());
         async.complete();
@@ -1903,8 +1880,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         context.assertEquals(0, update.result().getErrorMessages().size());
         context.assertEquals(expected.size(), update.result().getTotalRecords());
-        expected.sort(comparing(ParsedRecord::getId));
-        update.result().getParsedRecords().sort(comparing(ParsedRecord::getId));
         compareParsedRecords(context, expected, update.result().getParsedRecords());
         GenericCompositeFuture.all(updated.stream().map(record -> recordDao
           .getRecordByMatchedId(record.getMatchedId(), TENANT_ID)
@@ -2046,7 +2021,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareRecords(TestContext context, List<Record> expected, List<Record> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (Record record : expected) {
-      compareRecords(context, record, record);
+      var actualRecord = actual.stream()
+        .filter(r -> Objects.equals(r.getId(), record.getId()))
+        .findFirst();
+      if (actualRecord.isPresent()) {
+        compareRecords(context, record, actualRecord.get());
+      }
     }
   }
 
@@ -2111,7 +2091,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareSourceRecords(TestContext context, List<SourceRecord> expected, List<SourceRecord> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (SourceRecord sourceRecord : expected) {
-      compareSourceRecords(context, sourceRecord, sourceRecord);
+      var sourceRecordActual = actual.stream()
+        .filter(sr -> Objects.equals(sr.getRecordId(), sourceRecord.getRecordId()))
+        .findFirst();
+      if (sourceRecordActual.isPresent()) {
+        compareSourceRecords(context, sourceRecord, sourceRecordActual.get());
+      }
     }
   }
 
@@ -2144,7 +2129,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void compareParsedRecords(TestContext context, List<ParsedRecord> expected, List<ParsedRecord> actual) {
     context.assertEquals(expected.size(), actual.size());
     for (ParsedRecord parsedRecord : expected) {
-      compareParsedRecords(context, parsedRecord, parsedRecord);
+      var actualParsedRecord = actual.stream().filter(a -> Objects.equals(a.getId(), parsedRecord.getId())).findFirst();
+      if (actualParsedRecord.isPresent()) {
+        compareParsedRecords(context, parsedRecord, actualParsedRecord.get());
+      }
     }
   }
 

@@ -138,16 +138,23 @@ public final class ParsedRecordDaoUtil {
    * @return ParsedRecord
    */
   public static ParsedRecord toJoinedParsedRecord(Row row) {
-    ParsedRecord parsedRecord = new ParsedRecord();
     UUID id = row.getUUID(ID);
-    if (Objects.nonNull(id)) {
-      parsedRecord.withId(id.toString());
-    }
     Object content = row.getValue(PARSED_RECORD_CONTENT);
-    if (Objects.nonNull(content)) {
-      parsedRecord.withContent(normalize(content).getMap());
-    }
-    return parsedRecord;
+
+    return asParsedRecord(id, content);
+  }
+
+  /**
+   * Convert database query result {@link org.jooq.Record} to {@link ParsedRecord}
+   *
+   * @param dbRecord query result record
+   * @return ParsedRecord
+   */
+  public static ParsedRecord toJoinedParsedRecord(org.jooq.Record dbRecord) {
+    UUID id = dbRecord.get(ID_FIELD);
+    Object content = dbRecord.get(PARSED_RECORD_CONTENT, String.class);
+
+    return asParsedRecord(id, content);
   }
 
   /**
@@ -259,4 +266,14 @@ public final class ParsedRecordDaoUtil {
       : JsonObject.mapFrom(content);
   }
 
+  private static ParsedRecord asParsedRecord(UUID id, Object content) {
+    ParsedRecord parsedRecord = new ParsedRecord();
+    if (Objects.nonNull(id)) {
+      parsedRecord.withId(id.toString());
+    }
+    if (Objects.nonNull(content)) {
+      parsedRecord.withContent(normalize(content).getMap());
+    }
+    return parsedRecord;
+  }
 }

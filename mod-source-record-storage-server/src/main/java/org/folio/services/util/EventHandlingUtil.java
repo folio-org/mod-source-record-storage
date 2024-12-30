@@ -15,10 +15,17 @@ import org.folio.kafka.services.KafkaProducerRecordBuilder;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
-import org.folio.rest.tools.utils.ModuleName;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import static java.util.Objects.nonNull;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 public final class EventHandlingUtil {
 
@@ -91,8 +98,8 @@ public final class EventHandlingUtil {
   }
 
   public static String constructModuleName() {
-    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(ModuleName.getModuleName(),
-      ModuleName.getModuleVersion());
+    return PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(PomReaderUtil.INSTANCE.getModuleName(),
+      PomReaderUtil.INSTANCE.getVersion());
   }
 
   public static String createTopicName(String eventType, String tenantId, KafkaConfig kafkaConfig) {
@@ -106,6 +113,14 @@ public final class EventHandlingUtil {
 
   public static KafkaProducer<String, String> createProducer(String eventType, KafkaConfig kafkaConfig) {
     return new SimpleKafkaProducerManager(Vertx.currentContext().owner(), kafkaConfig).createShared(eventType);
+  }
+
+  public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders, String eventTenantId) {
+    var okapiHeaders = new HashMap<String, String>();
+    okapiHeaders.put(OKAPI_URL_HEADER, extractHeaderValue(OKAPI_URL_HEADER, kafkaHeaders));
+    okapiHeaders.put(OKAPI_TENANT_HEADER, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(OKAPI_TENANT_HEADER, kafkaHeaders));
+    okapiHeaders.put(OKAPI_TOKEN_HEADER, extractHeaderValue(OKAPI_TOKEN_HEADER, kafkaHeaders));
+    return okapiHeaders;
   }
 
   private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {

@@ -1,10 +1,12 @@
 package org.folio.services;
 
+import io.reactivex.Flowable;
+import io.vertx.core.Future;
+import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-
-import io.vertx.sqlclient.Row;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -21,11 +23,9 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.entities.RecordsModifierOperator;
 import org.jooq.Condition;
 import org.jooq.OrderField;
-
-import io.reactivex.Flowable;
-import io.vertx.core.Future;
 
 public interface RecordService {
 
@@ -81,6 +81,19 @@ public interface RecordService {
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
   Future<RecordsBatchResponse> saveRecords(RecordCollection recordsCollection, String tenantId);
+
+  /**
+   * Saves collection of records.
+   *
+   * @param externalIds external relation ids
+   * @param recordType  record type
+   * @param recordsModifier records collection modifier operator
+   * @param okapiHeaders okapi headers
+   * @return future with response containing list of successfully saved records and error messages for records that were not saved
+   */
+  Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds, RecordType recordType,
+                                                        RecordsModifierOperator recordsModifier,
+                                                        Map<String, String> okapiHeaders);
 
   /**
    * Updates record with given id

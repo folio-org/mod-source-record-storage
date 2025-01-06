@@ -5,6 +5,7 @@
 * [MODSOURCE-824](https://folio-org.atlassian.net/browse/MODSOURCE-824) Endpoint /batch/parsed-records/fetch does not return deleted records
 * [MODSOURCE-821](https://folio-org.atlassian.net/browse/MODSOURCE-821) Add System User Support for Eureka env
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long
+* [MODDATAIMP-1133](https://folio-org.atlassian.net/browse/MODDATAIMP-1133) Second update of the same MARC authority / MARC holdings record completes with errors
 
 ## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035

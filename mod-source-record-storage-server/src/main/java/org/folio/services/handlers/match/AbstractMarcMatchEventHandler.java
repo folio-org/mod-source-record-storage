@@ -101,7 +101,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       if (isValidMatchDetail(matchDetail)) {
         MatchField matchField = prepareMatchField(record, matchDetail);
         Filter.ComparisonPartType comparisonPartType = prepareComparisonPartType(matchDetail);
-        // 1
         return retrieveMarcRecords(matchField, comparisonPartType, payload, payload.getTenant())
           .compose(localMatchedRecords -> {
             if (isConsortiumAvailable()) {
@@ -146,7 +145,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
   }
 
-  // 2 default field
   private Future<List<Record>> retrieveMarcRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType,
                                                    DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
@@ -177,7 +175,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return (qualifier != null) ? Filter.ComparisonPartType.valueOf(qualifier.getComparisonPart().toString()) : null;
   }
 
-  // 3
   /* Searches for {@link MatchField} in a separate record properties considering it is matched_id, external_id, or external_hrid */
   private Future<RecordCollection> processDefaultMatchField(MatchField matchField, List<String> matchedRecordIds, String tenantId) {
     Condition condition = filterRecordByMultipleIds(matchedRecordIds);
@@ -266,7 +263,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         payload.getContext().put(MULTI_MATCH_IDS, multipleRecordIdsList);
         return Future.succeededFuture(payload);
       } else {
-        //
         constructError(payload, FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE);
         LOG.warn("processSucceededResult:: Matched multiple record for tenant with id {}", payload.getTenant());
         return Future.failedFuture(new MatchingException(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE));

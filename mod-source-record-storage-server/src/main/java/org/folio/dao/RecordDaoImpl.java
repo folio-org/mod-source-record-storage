@@ -827,8 +827,7 @@ public class RecordDaoImpl implements RecordDao {
     } else {
       countQuery = select(inline(null, Integer.class).as(COUNT));
     }
-
-    return dsl
+    var query = dsl
       .with(cte.as(countQuery))
       .select(getAllRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
@@ -840,6 +839,8 @@ public class RecordDaoImpl implements RecordDao {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+    LOG.info("query: {}", query);
+    return query;
   }
 
   private RecordsBatchResponse saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType,

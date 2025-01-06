@@ -839,7 +839,7 @@ public class RecordDaoImpl implements RecordDao {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
-    LOG.info("query: {}", query);
+    LOG.info("query: {}", query.getSQL(ParamType.INLINED));
     return query;
   }
 

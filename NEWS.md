@@ -1,3 +1,6 @@
+## 2024-12-29 5.9.5-SNAPSHOT
+* [MODDATAIMP-1133](https://folio-org.atlassian.net/browse/MODDATAIMP-1133) Second update of the same MARC authority / MARC holdings record completes with errors
+
 ## 2024-12-29 5.9.4
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Fix data consistency in handling and updating Marc Bib records for links.instance-authority event
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long

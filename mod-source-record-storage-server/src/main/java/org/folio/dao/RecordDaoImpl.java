@@ -827,7 +827,6 @@ public class RecordDaoImpl implements RecordDao {
     } else {
       countQuery = select(inline(null, Integer.class).as(COUNT));
     }
-
     return dsl
       .with(cte.as(countQuery))
       .select(getAllRecordFieldsWithCount(prt))

@@ -38,7 +38,7 @@ public class TenantUtil {
   }
 
   public static double calculateDurationSeconds(long startTime) {
-    long endTime = System.currentTimeMillis();
-    return (endTime - startTime) / 1000.0;
+    long endTime =  System.nanoTime();;
+    return (endTime - startTime) / 1_000_000.0 / 1_000;
   }
 }

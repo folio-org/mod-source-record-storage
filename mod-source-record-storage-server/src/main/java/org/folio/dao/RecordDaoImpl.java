@@ -1491,7 +1491,7 @@ public class RecordDaoImpl implements RecordDao {
           )
           .onFailure(th -> {
             double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
-            LOG.error("Something happened while updating tracking tables tenantId={}.duration= {}s", tenantId, durationSeconds, th);
+            LOG.error("Something happened while updating tracking tables tenantId={}. Duration= {}s", tenantId, durationSeconds, th);
           });
       })
       .map(res -> {

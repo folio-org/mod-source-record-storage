@@ -80,6 +80,7 @@ import org.folio.dao.util.RawRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dao.util.TenantUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
@@ -192,9 +193,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
 
-  public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
-  public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
   public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "CALL delete_old_marc_indexers_versions()";
   public static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
   public static final String HAS_BEEN_PROCESSED_FLAG = "has_been_processed";
@@ -1308,6 +1307,8 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
+    long startTime = System.nanoTime();
+
 
     return txQE.execute(dsl ->
         dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
@@ -1336,10 +1337,21 @@ public class RecordDaoImpl implements RecordDao {
                   .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
             )
           )
-          .onFailure(th -> LOG.error("Something happened while updating tracking tables tenantId={}", tenantId, th));
+          .onFailure(th -> {
+            double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
+            LOG.error("Something happened while updating tracking tables tenantId={}. Duration= {}s", tenantId, durationSeconds, th);
+          });
       })
-      .map(res -> true)
-      .recover(th -> Future.succeededFuture(false));
+      .map(res -> {
+        double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
+        LOG.info("deleteMarcIndexersOldVersions:: Completed successfully for tenantId={}. Duration= {}s", tenantId, durationSeconds);
+        return true;
+      })
+      .recover(th -> {
+        double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
+        LOG.error("deleteMarcIndexersOldVersions:: Failed for tenantId={}. Duration= {}s", tenantId, durationSeconds, th);
+        return Future.succeededFuture(false);
+      });
   }
 
   @Override

@@ -36,4 +36,9 @@ public class TenantUtil {
     int tenantNameLength = nsTenant.length() - suffix.length();
     return nsTenant.substring(0, tenantNameLength);
   }
+
+  public static double calculateDurationSeconds(long startTime) {
+    long endTime =  System.nanoTime();;
+    return (endTime - startTime) / 1_000_000.0 / 1_000;
+  }
 }

@@ -856,9 +856,11 @@ public class RecordDaoImpl implements RecordDao {
 
             // return result
             List<String> errorMessages = getErrorMessages(dbErrorRecords);
+            queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
+            records = queryResult.fetch(this::toRecord);
             return new RecordsBatchResponse()
-              .withRecords(modifiedRecords.getRecords())
-              .withTotalRecords(modifiedRecords.getRecords().size())
+              .withRecords(records)
+              .withTotalRecords(records.size())
               .withErrorMessages(errorMessages);
           });
         } catch (DuplicateEventException e) {

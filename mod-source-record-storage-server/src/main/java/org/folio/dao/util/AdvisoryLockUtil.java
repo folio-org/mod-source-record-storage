@@ -29,9 +29,6 @@ public class AdvisoryLockUtil {
    * if the lock by specified keys is already obtained by another transaction.
    */
   public static Future<Boolean> acquireLock(ReactiveClassicGenericQueryExecutor queryExecutor, int key1, int key2) {
-
-    LOG.info("acquireLock:: : first key: '{}',  second key: '{}', original1: '{}', original2:'{}'", val(key1), val(key2), key1, key2);
-
     return queryExecutor.findOneRow(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
       DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(key1), val(key2))))
     ).map(row -> row.getBoolean(0));

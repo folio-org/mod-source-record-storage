@@ -1,3 +1,6 @@
+## 2025-01-16 v5.8.9
+* [MODSOURCE-849](https://folio-org.atlassian.net/browse/MODSOURCE-849) Optimize process of clean up marc indexers table
+
 ## 2025-12-30 v5.8.8
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Fix data consistency in handling and updating Marc Bib records for links.instance-authority event
 * [MODSOURCE-803](https://folio-org.atlassian.net/browse/MODSOURCE-803) DuplicateException is thrown when saving batch of Bib records for linked Authority

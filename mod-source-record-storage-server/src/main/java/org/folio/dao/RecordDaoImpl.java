@@ -974,30 +974,37 @@ public class RecordDaoImpl implements RecordDao {
                                       List<RawRecordsLbRecord> dbRawRecords,
                                       List<Record2<UUID, JSONB>> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
-    List<UUID> ids = new ArrayList<>();
-    Map<UUID, Integer> matchedGenerations = new HashMap<>();
+//    List<UUID> ids = new ArrayList<>();
+//    Map<UUID, Integer> matchedGenerations = new HashMap<>();
+//
+//    // lookup the latest generation by matched id and committed snapshot updated before current snapshot
+//    dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
+//      .distinctOn(RECORDS_LB.MATCHED_ID)
+//      .from(RECORDS_LB)
+//      .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
+//      .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
+//        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
+//      )
+//      .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
+//      .fetchStream().forEach(r -> {
+//        UUID id = r.get(RECORDS_LB.ID);
+//        UUID matchedId = r.get(RECORDS_LB.MATCHED_ID);
+//        int generation = r.get(RECORDS_LB.GENERATION);
+//        ids.add(id);
+//        matchedGenerations.put(matchedId, generation);
+//      });
 
-    // lookup the latest generation by matched id and committed snapshot updated before current snapshot
-    dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
-      .distinctOn(RECORDS_LB.MATCHED_ID)
-      .from(RECORDS_LB)
-      .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
-      .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
-        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
-      )
-      .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
-      .fetchStream().forEach(r -> {
-        UUID id = r.get(RECORDS_LB.ID);
-        UUID matchedId = r.get(RECORDS_LB.MATCHED_ID);
-        int generation = r.get(RECORDS_LB.GENERATION);
-        ids.add(id);
-        matchedGenerations.put(matchedId, generation);
-      });
-
-    LOG.info("persistDatabaseRecords :: dbRecords: {}, matchedGenerations: {}", dbRecords.size(), matchedGenerations.size());
+    var ids = dbRecords.stream().map(RecordsLbRecord::getId).toList();
+    dbRecords.forEach(dbRecord -> {
+      var generation = Optional.ofNullable(dbRecord.getGeneration())
+        .map(g -> ++g)
+        .orElse(0);
+      dbRecord.setGeneration(generation);
+    });
+    //LOG.info("persistDatabaseRecords :: dbRecords: {}, matchedGenerations: {}", dbRecords.size(), matchedGenerations.size());
 
     // update matching records state
-    if(!ids.isEmpty()) {
+    if(CollectionUtils.isNotEmpty(ids)) {
       dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, RecordState.OLD)
         .where(RECORDS_LB.ID.in(ids))
@@ -1010,15 +1017,16 @@ public class RecordDaoImpl implements RecordDao {
       .bulkAfter(500)
       .commitAfter(1000)
       .onErrorAbort()
-      .loadRecords(dbRecords.stream()
-        .map(recordDto -> {
-          Integer generation = matchedGenerations.get(recordDto.getMatchedId());
-          recordDto.setGeneration(Objects.nonNull(generation) ? ++generation : 0);
-          LOG.debug("persistDatabaseRecords :: matchedId: {}, set new generation: {}",
-            recordDto.getMatchedId(), generation);
-          return recordDto;
-        })
-        .toList())
+      .loadRecords(dbRecords)
+//      .loadRecords(dbRecords.stream()
+//        .map(recordDto -> {
+//          Integer generation = matchedGenerations.get(recordDto.getMatchedId());
+//          recordDto.setGeneration(Objects.nonNull(generation) ? ++generation : 0);
+//          LOG.debug("persistDatabaseRecords :: matchedId: {}, set new generation: {}",
+//            recordDto.getMatchedId(), generation);
+//          return recordDto;
+//        })
+//        .toList())
       .fieldsCorresponding()
       .execute()
       .errors();

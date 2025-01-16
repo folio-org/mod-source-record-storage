@@ -852,6 +852,9 @@ public class RecordDaoImpl implements RecordDao {
 
             // save records
             LOG.info("saveRecordsByExternalIds :: recordCollection: {}", modifiedRecords.getTotalRecords());
+            for (var dbRecord : dbRecords) {
+              LOG.info("dbRecord id: {}, state: {}, generation: {}", dbRecord.getId(), dbRecord.getState(), dbRecord.getGeneration());
+            }
             persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // return result
@@ -974,32 +977,34 @@ public class RecordDaoImpl implements RecordDao {
                                       List<RawRecordsLbRecord> dbRawRecords,
                                       List<Record2<UUID, JSONB>> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
-//    List<UUID> ids = new ArrayList<>();
-//    Map<UUID, Integer> matchedGenerations = new HashMap<>();
-//
-//    // lookup the latest generation by matched id and committed snapshot updated before current snapshot
-//    dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
-//      .distinctOn(RECORDS_LB.MATCHED_ID)
-//      .from(RECORDS_LB)
-//      .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
-//      .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
-//        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
-//      )
-//      .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
-//      .fetchStream().forEach(r -> {
-//        UUID id = r.get(RECORDS_LB.ID);
-//        UUID matchedId = r.get(RECORDS_LB.MATCHED_ID);
-//        int generation = r.get(RECORDS_LB.GENERATION);
-//        ids.add(id);
-//        matchedGenerations.put(matchedId, generation);
-//      });
+    List<UUID> ids = new ArrayList<>();
+    //Map<UUID, Integer> matchedGenerations = new HashMap<>();
 
-    var ids = dbRecords.stream().map(RecordsLbRecord::getId).toList();
+    // lookup the latest generation by matched id and committed snapshot updated before current snapshot
+    dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
+      .distinctOn(RECORDS_LB.MATCHED_ID)
+      .from(RECORDS_LB)
+      .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
+      .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
+        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
+      )
+      .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
+      .fetchStream().forEach(r -> {
+        UUID id = r.get(RECORDS_LB.ID);
+        //UUID matchedId = r.get(RECORDS_LB.MATCHED_ID);
+        //int generation = r.get(RECORDS_LB.GENERATION);
+        ids.add(id);
+        //matchedGenerations.put(matchedId, generation);
+      });
+
+    ids.forEach(id -> LOG.info("Set record with ID to OLD state: {}", id));
+
     dbRecords.forEach(dbRecord -> {
       var generation = Optional.ofNullable(dbRecord.getGeneration())
         .map(g -> ++g)
         .orElse(0);
       dbRecord.setGeneration(generation);
+      LOG.info("dbRecord id: {}, state: {}, new generation: {}", dbRecord.getId(), dbRecord.getState(), dbRecord.getGeneration());
     });
     //LOG.info("persistDatabaseRecords :: dbRecords: {}, matchedGenerations: {}", dbRecords.size(), matchedGenerations.size());
 

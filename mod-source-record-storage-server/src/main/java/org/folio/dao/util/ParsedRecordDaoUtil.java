@@ -12,6 +12,8 @@ import java.util.UUID;
 import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -31,6 +33,8 @@ import io.vertx.sqlclient.Row;
  * Utility class for managing {@link ParsedRecord}
  */
 public final class ParsedRecordDaoUtil {
+
+  private static final Logger LOG = LogManager.getLogger();
 
   private static final String ID = "id";
   private static final String CONTENT = "content";
@@ -153,6 +157,7 @@ public final class ParsedRecordDaoUtil {
   public static ParsedRecord toJoinedParsedRecord(org.jooq.Record dbRecord) {
     UUID id = dbRecord.get(ID_FIELD);
     Object content = dbRecord.get(PARSED_RECORD_CONTENT, String.class);
+    LOG.info("parsed record id: {}, content: {}", id, content);
 
     return asParsedRecord(id, content);
   }

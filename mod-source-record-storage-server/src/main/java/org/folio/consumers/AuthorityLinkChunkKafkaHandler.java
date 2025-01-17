@@ -73,6 +73,9 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   @Value("${srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
+  @Value("${AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT:3}")
+  private int maxBibSaveRetryCount;
+
   public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                         SnapshotService snapshotService) {
     this.kafkaConfig = kafkaConfig;
@@ -97,7 +100,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         RecordsModifierOperator recordsModifier = recordsCollection ->
           this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
 
-        return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders)
+        return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders, maxBibSaveRetryCount)
           .compose(recordsBatchResponse -> {
             sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
             var marcBibUpdateStats = mapRecordsToBibUpdateEventsByInstanceId(recordsBatchResponse, linksUpdate);

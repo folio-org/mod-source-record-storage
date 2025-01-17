@@ -21,9 +21,14 @@ public class UpdateLinkProcessor implements LinkProcessor {
   @Override
   public Collection<Subfield> process(String fieldCode, List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges,
                                       List<Subfield> oldSubfields) {
+    if (isOnlyNaturalIdChanged(subfieldsChanges)) {
+      return processOnlyNaturalIdChange(oldSubfields, subfieldsChanges.get(0).getValue());
+    }
+
     var authorityIdSubfield = getAuthorityIdSubfield(oldSubfields);
     var authorityNaturalIdSubfield = getAuthorityNaturalIdSubfield(oldSubfields);
-    var controllableSubfields = new ArrayList<Subfield>();
+    var controllableAlphaSubfields = new ArrayList<Subfield>();
+    var controllableDigitSubfields = new ArrayList<Subfield>();
     var controllableSubfieldCodes = initializeSubfieldCodes();
 
     for (var subfieldsChange : subfieldsChanges) {
@@ -34,28 +39,56 @@ public class UpdateLinkProcessor implements LinkProcessor {
         case AUTHORITY_NATURAL_ID_SUBFIELD -> authorityNaturalIdSubfield = Optional.of(new SubfieldImpl(code, value));
         default -> {
           if (isNotBlank(value)) {
-            controllableSubfields.add(new SubfieldImpl(code, value));
+            if (Character.isAlphabetic(code)) {
+              controllableAlphaSubfields.add(new SubfieldImpl(code, value));
+            } else {
+              controllableDigitSubfields.add(new SubfieldImpl(code, value));
+            }
           }
         }
       }
       controllableSubfieldCodes.add(code);
     }
 
-    // add controllable subfields
-    var result = new ArrayList<>(controllableSubfields);
+    // add controllable alphabetic subfields
+    var result = new ArrayList<>(controllableAlphaSubfields);
 
-    // add special subfields
+    // add uncontrollable alphabetic subfields
+    var uncontrolledSubfields = oldSubfields.stream()
+      .filter(subfield -> isNotControllableSubfield(subfield, controllableSubfieldCodes))
+      .toList();
+    uncontrolledSubfields.forEach(subfield -> {
+      if (Character.isAlphabetic(subfield.getCode())) {
+        result.add(subfield);
+      }
+    });
+
+    //add special/digit controlled subfields
     authorityNaturalIdSubfield.ifPresent(result::add);
     authorityIdSubfield.ifPresent(result::add);
+    result.addAll(controllableDigitSubfields);
 
-    // add uncontrollable subfields
-    for (var oldSubfield : oldSubfields) {
-      if (isNotControllableSubfield(oldSubfield, controllableSubfieldCodes)) {
-        result.add(oldSubfield);
+    // add uncontrollable digit subfields
+    uncontrolledSubfields.forEach(subfield -> {
+      if (!Character.isAlphabetic(subfield.getCode())) {
+        result.add(subfield);
       }
-    }
+    });
 
     return result;
+  }
+
+  private Collection<Subfield> processOnlyNaturalIdChange(List<Subfield> oldSubfields, String newNaturalIdSubfield) {
+    oldSubfields.stream()
+      .filter(subfield -> subfield.getCode() == AUTHORITY_NATURAL_ID_SUBFIELD)
+      .findFirst()
+      .ifPresent(subfield -> subfield.setData(newNaturalIdSubfield));
+    return oldSubfields;
+  }
+
+  private boolean isOnlyNaturalIdChanged(List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges) {
+    return subfieldsChanges.size() == 1
+      && subfieldsChanges.get(0).getCode().charAt(0) == AUTHORITY_NATURAL_ID_SUBFIELD;
   }
 
   private boolean isNotControllableSubfield(Subfield subfield, Set<Character> controllableSubfieldCodes) {

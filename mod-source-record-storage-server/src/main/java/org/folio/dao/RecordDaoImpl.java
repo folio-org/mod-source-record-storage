@@ -58,7 +58,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -806,8 +805,8 @@ public class RecordDaoImpl implements RecordDao {
             List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
             List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
-            extractValidatedDatabasePersistRecords(modifiedRecords.getRecords(), recordType, matchedIds, dbRecords,
-              dbRawRecords, dbParsedRecords, dbErrorRecords);
+            List<String> errorMessages = validateAndExtractDatabasePersistRecords(modifiedRecords.getRecords(), recordType,
+              matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // save records
             LOG.info("saveRecordsByExternalIds :: recordCollection: {}", modifiedRecords.getTotalRecords());
@@ -817,7 +816,6 @@ public class RecordDaoImpl implements RecordDao {
             persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // return result
-            List<String> errorMessages = getErrorMessages(dbErrorRecords);
             queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
             records = queryResult.fetch(this::toRecord);
             return new RecordsBatchResponse()
@@ -878,13 +876,14 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
   }
 
-  private void extractValidatedDatabasePersistRecords(List<Record> records,
-                                                      RecordType recordType,
-                                                      Set<UUID> matchedIds,
-                                                      List<RecordsLbRecord> dbRecords,
-                                                      List<RawRecordsLbRecord> dbRawRecords,
-                                                      List<Record2<UUID, JSONB>> dbParsedRecords,
-                                                      List<ErrorRecordsLbRecord> dbErrorRecords) {
+  private List<String> validateAndExtractDatabasePersistRecords(List<Record> records,
+                                                                RecordType recordType,
+                                                                Set<UUID> matchedIds,
+                                                                List<RecordsLbRecord> dbRecords,
+                                                                List<RawRecordsLbRecord> dbRawRecords,
+                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
+                                                                List<ErrorRecordsLbRecord> dbErrorRecords) {
+    List<String> errorMessages = new ArrayList<>();
     records.stream()
       .map(RecordDaoUtil::ensureRecordHasId)
       .map(RecordDaoUtil::ensureRecordHasMatchedId)
@@ -911,6 +910,7 @@ public class RecordDaoImpl implements RecordDao {
               .withId(record.getId())
               .withDescription(e.getMessage())
               .withContent(content);
+            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
             record.withErrorRecord(errorRecord)
               .withParsedRecord(null)
               .withLeaderRecordStatus(null);
@@ -927,6 +927,8 @@ public class RecordDaoImpl implements RecordDao {
 
         dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
       });
+
+    return errorMessages;
   }
 
   private void persistDatabaseRecords(DSLContext dsl,
@@ -1011,16 +1013,6 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private List<String> getErrorMessages(List<ErrorRecordsLbRecord> dbErrorRecords) {
-    if (CollectionUtils.isEmpty(dbErrorRecords)) {
-      return Collections.emptyList();
-    }
-
-    return dbErrorRecords.stream()
-      .map(errRecord -> format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, errRecord.getId(), errRecord.getDescription()))
-      .toList();
-  }
-
   private RecordsBatchResponse saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType,
                                            String tenantId) {
     Set<UUID> matchedIds = new HashSet<>();
@@ -1036,9 +1028,8 @@ public class RecordDaoImpl implements RecordDao {
       throw new BadRequestException("Batch record collection only supports single snapshot");
     }
 
-    extractValidatedDatabasePersistRecords(recordCollection.getRecords(), recordType, matchedIds, dbRecords,
-      dbRawRecords, dbParsedRecords, dbErrorRecords);
-    List<String> errorMessages = getErrorMessages(dbErrorRecords);
+    List<String> errorMessages = validateAndExtractDatabasePersistRecords(recordCollection.getRecords(), recordType,
+      matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
     try (Connection connection = getConnection(tenantId)) {
       return DSL.using(connection).transactionResult(ctx -> {

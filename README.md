@@ -104,7 +104,7 @@ After setup, it is good to check logs in all related modules for errors. Data im
 
 **Environment variables** that can be adjusted for this module and default values:
 * Relevant from the **Ramsons** release, module versions from 5.9.0:
-  * "AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT": 3 
+  * "AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT": 5 
 * Relevant from the **Iris** release, module versions from 5.0.0:
   * "_srs.kafka.ParsedMarcChunkConsumer.instancesNumber_": 1
   * "_srs.kafka.DataImportConsumer.instancesNumber_": 1

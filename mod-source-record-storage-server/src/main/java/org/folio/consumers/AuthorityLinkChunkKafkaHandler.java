@@ -73,7 +73,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   @Value("${srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
-  @Value("${AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT:3}")
+  @Value("${AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT:5}")
   private int maxBibSaveRetryCount;
 
   public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig,

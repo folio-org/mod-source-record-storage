@@ -810,9 +810,6 @@ public class RecordDaoImpl implements RecordDao {
 
             // save records
             LOG.info("saveRecordsByExternalIds :: recordCollection: {}", modifiedRecords.getTotalRecords());
-            for (var dbRecord : dbRecords) {
-              LOG.info("dbRecord id: {}, state: {}, generation: {}", dbRecord.getId(), dbRecord.getState(), dbRecord.getGeneration());
-            }
             persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // return result
@@ -876,61 +873,6 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
   }
 
-  private List<String> validateAndExtractDatabasePersistRecords(List<Record> records,
-                                                                RecordType recordType,
-                                                                Set<UUID> matchedIds,
-                                                                List<RecordsLbRecord> dbRecords,
-                                                                List<RawRecordsLbRecord> dbRawRecords,
-                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
-                                                                List<ErrorRecordsLbRecord> dbErrorRecords) {
-    List<String> errorMessages = new ArrayList<>();
-    records.stream()
-      .map(RecordDaoUtil::ensureRecordHasId)
-      .map(RecordDaoUtil::ensureRecordHasMatchedId)
-      .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
-      .map(RecordDaoUtil::ensureRecordForeignKeys)
-      .forEach(record -> {
-        // collect unique matched ids to query to determine generation
-        matchedIds.add(UUID.fromString(record.getMatchedId()));
-
-        validateRecordType(record, recordType);
-
-        // if record has parsed record, validate by attempting format
-        if (Objects.nonNull(record.getParsedRecord())) {
-          try {
-            recordType.formatRecord(record);
-            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
-            dbParsedRecords.add(dbParsedRecord);
-          } catch (Exception e) {
-            // create error record and remove from record
-            Object content = Optional.ofNullable(record.getParsedRecord())
-              .map(ParsedRecord::getContent)
-              .orElse(null);
-            var errorRecord = new ErrorRecord()
-              .withId(record.getId())
-              .withDescription(e.getMessage())
-              .withContent(content);
-            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
-            record.withErrorRecord(errorRecord)
-              .withParsedRecord(null)
-              .withLeaderRecordStatus(null);
-          }
-        }
-
-        if (Objects.nonNull(record.getRawRecord())) {
-          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
-        }
-
-        if (Objects.nonNull(record.getErrorRecord())) {
-          dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
-        }
-
-        dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
-      });
-
-    return errorMessages;
-  }
-
   private void persistDatabaseRecords(DSLContext dsl,
                                       RecordType recordType,
                                       Set<UUID> matchedIds,
@@ -938,6 +880,7 @@ public class RecordDaoImpl implements RecordDao {
                                       List<RawRecordsLbRecord> dbRawRecords,
                                       List<Record2<UUID, JSONB>> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
+    LOG.info("persistDatabaseRecords :: dbRecords: {}", dbRecords.size());
     List<UUID> ids = new ArrayList<>();
 
     // lookup the latest generation by matched id and committed snapshot updated before current snapshot
@@ -955,12 +898,13 @@ public class RecordDaoImpl implements RecordDao {
       var generation = Optional.ofNullable(dbRecord.getGeneration())
         .map(g -> ++g)
         .orElse(0);
+      LOG.debug("persistDatabaseRecords :: matchedId: {}, set new generation: {}", dbRecord.getMatchedId(), generation);
       dbRecord.setGeneration(generation);
-      LOG.info("dbRecord id: {}, state: {}, new generation: {}", dbRecord.getId(), dbRecord.getState(), dbRecord.getGeneration());
     });
 
     // update matching records state
     if(CollectionUtils.isNotEmpty(ids)) {
+      LOG.debug("persistDatabaseRecords :: set ids: {} state to OLD", ids.size());
       dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, RecordState.OLD)
         .where(RECORDS_LB.ID.in(ids))
@@ -969,9 +913,6 @@ public class RecordDaoImpl implements RecordDao {
 
     // batch insert records updating generation if required
     var recordsLoadingErrors = dsl.loadInto(RECORDS_LB)
-      //.batchAfter(1000)
-      //.bulkAfter(500)
-      //.commitAfter(1000)
       .onErrorAbort()
       .loadRecords(dbRecords)
       .fieldsCorresponding()
@@ -982,8 +923,6 @@ public class RecordDaoImpl implements RecordDao {
 
     // batch insert raw records
     dsl.loadInto(RAW_RECORDS_LB)
-      //.batchAfter(250)
-      //.commitAfter(1000)
       .onDuplicateKeyUpdate()
       .onErrorAbort()
       .loadRecords(dbRawRecords)
@@ -992,8 +931,6 @@ public class RecordDaoImpl implements RecordDao {
 
     // batch insert parsed records
     recordType.toLoaderOptionsStep(dsl)
-      //.batchAfter(250)
-      //.commitAfter(1000)
       .onDuplicateKeyUpdate()
       .onErrorAbort()
       .loadRecords(dbParsedRecords)
@@ -1003,8 +940,6 @@ public class RecordDaoImpl implements RecordDao {
     if (!dbErrorRecords.isEmpty()) {
       // batch insert error records
       dsl.loadInto(ERROR_RECORDS_LB)
-        //.batchAfter(250)
-        //.commitAfter(1000)
         .onDuplicateKeyUpdate()
         .onErrorAbort()
         .loadRecords(dbErrorRecords)
@@ -1135,6 +1070,61 @@ public class RecordDaoImpl implements RecordDao {
       Throwable throwable = ex.getCause() != null ? ex.getCause() : ex;
       throw new RecordUpdateException(throwable);
     }
+  }
+
+  private List<String> validateAndExtractDatabasePersistRecords(List<Record> records,
+                                                                RecordType recordType,
+                                                                Set<UUID> matchedIds,
+                                                                List<RecordsLbRecord> dbRecords,
+                                                                List<RawRecordsLbRecord> dbRawRecords,
+                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
+                                                                List<ErrorRecordsLbRecord> dbErrorRecords) {
+    List<String> errorMessages = new ArrayList<>();
+    records.stream()
+      .map(RecordDaoUtil::ensureRecordHasId)
+      .map(RecordDaoUtil::ensureRecordHasMatchedId)
+      .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
+      .map(RecordDaoUtil::ensureRecordForeignKeys)
+      .forEach(record -> {
+        // collect unique matched ids to query to determine generation
+        matchedIds.add(UUID.fromString(record.getMatchedId()));
+
+        validateRecordType(record, recordType);
+
+        // if record has parsed record, validate by attempting format
+        if (Objects.nonNull(record.getParsedRecord())) {
+          try {
+            recordType.formatRecord(record);
+            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+            dbParsedRecords.add(dbParsedRecord);
+          } catch (Exception e) {
+            // create error record and remove from record
+            Object content = Optional.ofNullable(record.getParsedRecord())
+              .map(ParsedRecord::getContent)
+              .orElse(null);
+            var errorRecord = new ErrorRecord()
+              .withId(record.getId())
+              .withDescription(e.getMessage())
+              .withContent(content);
+            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
+            record.withErrorRecord(errorRecord)
+              .withParsedRecord(null)
+              .withLeaderRecordStatus(null);
+          }
+        }
+
+        if (Objects.nonNull(record.getRawRecord())) {
+          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+        }
+
+        if (Objects.nonNull(record.getErrorRecord())) {
+          dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
+        }
+
+        dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
+      });
+
+    return errorMessages;
   }
 
   private void validateRecordsPersist(List<LoaderError> recordsLoadingErrors) {

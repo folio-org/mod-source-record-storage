@@ -35,6 +35,35 @@ public class UpdateLinkProcessorTest {
       oldSubfields.get(0),
       new SubfieldImpl('z', "z-data-new1"),
       new SubfieldImpl('z', "z-data-new2"),
+      oldSubfields.get(5),
+      new SubfieldImpl('0', "0-data-new"),
+      oldSubfields.get(4)
+    );
+
+    assertEquals(expected.toString(), actual.toString());
+  }
+
+  @Test
+  public void process_positive_onlyNaturalIdChanged() {
+    List<Subfield> oldSubfields = List.of(
+      new SubfieldImpl('a', "a-data"),
+      new SubfieldImpl('b', "b-data"),
+      new SubfieldImpl('z', "z-data"),
+      new SubfieldImpl('0', "0-data"),
+      new SubfieldImpl('9', "9-data"),
+      new SubfieldImpl('k', "k-data")
+    );
+    var subfieldsChanges = List.of(
+      new org.folio.rest.jaxrs.model.Subfield().withCode("0").withValue("0-data-new")
+    );
+
+    var actual = processor.process("100", subfieldsChanges, oldSubfields);
+
+
+    var expected = List.of(
+      oldSubfields.get(0),
+      oldSubfields.get(1),
+      oldSubfields.get(2),
       new SubfieldImpl('0', "0-data-new"),
       oldSubfields.get(4),
       oldSubfields.get(5)

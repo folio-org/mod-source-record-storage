@@ -7,6 +7,8 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.List;
@@ -31,39 +33,55 @@ public class RecordDomainEventPublisher {
   private KafkaSender kafkaSender;
 
   public void publishRecordCreated(Record created, Map<String, String> okapiHeaders) {
-    publishRecord(created, okapiHeaders, SOURCE_RECORD_CREATED);
+    publishRecord(new DomainEventPayload(null, created), okapiHeaders, SOURCE_RECORD_CREATED);
   }
 
-  public void publishRecordUpdated(Record updated, Map<String, String> okapiHeaders) {
-    publishRecord(updated, okapiHeaders, SOURCE_RECORD_UPDATED);
+  public void publishRecordUpdated(Record old, Record updated, Map<String, String> okapiHeaders) {
+    publishRecord(new DomainEventPayload(old, updated), okapiHeaders, SOURCE_RECORD_UPDATED);
   }
 
-  private void publishRecord(Record aRecord, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
-    if (!domainEventsEnabled || notValidForPublishing(aRecord)) {
+  public void publishRecordDeleted(Record deleted, Map<String, String> okapiHeaders) {
+    publishRecord(new DomainEventPayload(deleted, null), okapiHeaders, SOURCE_RECORD_UPDATED);
+  }
+
+  private void publishRecord(DomainEventPayload domainEventPayload, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
+    if (!domainEventsEnabled || notValidForPublishing(domainEventPayload)) {
       return;
     }
     try {
-      var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
-      var key = aRecord.getId();
-      var jsonContent = JsonObject.mapFrom(aRecord);
+      Record newRecord = domainEventPayload.newRecord();
+      var kafkaHeaders = getKafkaHeaders(okapiHeaders, newRecord.getRecordType());
+      var key = newRecord.getId();
+      var jsonContent = JsonObject.mapFrom(domainEventPayload);
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
-      LOG.error("Exception during Record domain event sending", e);
+      LOG.warn("Exception during Record domain event sending", e);
     }
   }
 
-  private boolean notValidForPublishing(Record aRecord) {
+  private boolean notValidForPublishing(DomainEventPayload domainEventPayload) {
+    if (domainEventPayload.newRecord() != null && notValidRecord(domainEventPayload.newRecord())) {
+      return true;
+    }
+    return domainEventPayload.newRecord() != null && notValidRecord(domainEventPayload.oldRecord());
+  }
+
+  private static boolean notValidRecord(Record aRecord) {
+    if (isNull(aRecord)) {
+      LOG.warn("Record is null and won't be sent as domain event");
+      return true;
+    }
     if (isNull(aRecord.getRecordType())) {
-      LOG.error("Record [with id {}] contains no type information and won't be sent as domain event", aRecord.getId());
+      LOG.warn("Record [with id {}] contains no type information and won't be sent as domain event", aRecord.getId());
       return true;
     }
     if (isNull(aRecord.getParsedRecord())) {
-      LOG.error("Record [with id {}] contains no parsed record and won't be sent as domain event", aRecord.getId());
+      LOG.warn("Record [with id {}] contains no parsed record and won't be sent as domain event", aRecord.getId());
       return true;
     }
     if (isNull(aRecord.getParsedRecord().getContent())) {
-      LOG.error("Record [with id {}] contains no parsed record content and won't be sent as domain event",
+      LOG.warn("Record [with id {}] contains no parsed record content and won't be sent as domain event",
         aRecord.getId());
       return true;
     }
@@ -79,4 +97,6 @@ public class RecordDomainEventPublisher {
     );
   }
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private record DomainEventPayload(@JsonProperty("old") Record oldRecord, @JsonProperty("new") Record newRecord) {}
 }

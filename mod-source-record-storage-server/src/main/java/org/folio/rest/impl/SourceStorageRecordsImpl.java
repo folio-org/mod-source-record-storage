@@ -165,7 +165,7 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.updateSuppressFromDiscoveryForRecord(id, toExternalIdType(idType), suppress, tenantId)
+        recordService.updateSuppressFromDiscoveryForRecord(id, toExternalIdType(idType), suppress, okapiHeaders)
           .map(PutSourceStorageRecordsSuppressFromDiscoveryByIdResponse::respond200WithTextPlain)
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);

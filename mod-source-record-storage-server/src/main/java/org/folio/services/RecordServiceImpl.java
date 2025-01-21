@@ -351,8 +351,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, Map<String, String> okapiHeaders) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, okapiHeaders);
   }
 
   @Override
@@ -361,8 +361,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Void> deleteRecordsByExternalId(String externalId, String tenantId) {
-    return recordDao.deleteRecordsByExternalId(externalId, tenantId).map(b -> null);
+  public Future<Void> deleteRecordsByExternalId(String externalId, IdType idType, Map<String, String> okapiHeaders) {
+    return recordDao.deleteRecordsByExternalId(externalId, idType, okapiHeaders).map(b -> null);
   }
 
   @Override

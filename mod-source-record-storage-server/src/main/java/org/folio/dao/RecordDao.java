@@ -361,10 +361,11 @@ public interface RecordDao {
    * Deletes in transaction all records associated with externalId
    *
    * @param externalId  external id
-   * @param tenantId   tenant id
+   * @param idType external id type on which source record will be searched
+   * @param okapiHeaders okapi headers
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteRecordsByExternalId(String externalId, String tenantId);
+  Future<Boolean> deleteRecordsByExternalId(String externalId, IdType idType, Map<String, String> okapiHeaders);
 
   /**
    *  Performs purge the 'DELETED' records.
@@ -403,10 +404,10 @@ public interface RecordDao {
    * @param id             id
    * @param idType external id type
    * @param suppress       suppress from discovery
-   * @param tenantId       tenant id
+   * @param okapiHeaders okapi headers
    * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, Map<String, String> okapiHeaders);
 
   /**
    * Execute action within transaction.

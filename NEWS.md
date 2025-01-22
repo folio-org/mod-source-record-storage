@@ -6,6 +6,7 @@
 * [MODSOURCE-821](https://folio-org.atlassian.net/browse/MODSOURCE-821) Add System User Support for Eureka env
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long
 * [MODDATAIMP-1133](https://folio-org.atlassian.net/browse/MODDATAIMP-1133) Second update of the same MARC authority / MARC holdings record completes with errors
+* [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers 
 
 ## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035

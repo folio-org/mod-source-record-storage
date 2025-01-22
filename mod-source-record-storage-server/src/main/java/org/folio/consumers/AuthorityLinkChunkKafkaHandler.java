@@ -20,11 +20,13 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import io.vertx.kafka.client.producer.KafkaProducerRecord;
+
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -71,6 +73,9 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   @Value("${srs.kafka.AuthorityLinkChunkKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
+  @Value("${AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT:5}")
+  private int maxBibSaveRetryCount;
+
   public AuthorityLinkChunkKafkaHandler(RecordService recordService, KafkaConfig kafkaConfig,
                                         SnapshotService snapshotService) {
     this.kafkaConfig = kafkaConfig;
@@ -95,11 +100,15 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         RecordsModifierOperator recordsModifier = recordsCollection ->
           this.mapRecordFieldsChanges(linksUpdate, recordsCollection, userId);
 
-        return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders)
+        return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders, maxBibSaveRetryCount)
           .compose(recordsBatchResponse -> {
             sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
-            var marcBibUpdateStats = mapRecordsToBibUpdateEvents(recordsBatchResponse, linksUpdate);
-            return sendEvents(marcBibUpdateStats, linksUpdate, consumerRecord);
+            var marcBibUpdateStats = mapRecordsToBibUpdateEventsByInstanceId(recordsBatchResponse, linksUpdate);
+            return Future.all(marcBibUpdateStats.entrySet().stream()
+                .map(entry -> sendEvents(entry.getValue(), linksUpdate, entry.getKey(), consumerRecord))
+                .toList()
+              )
+              .map(unused -> consumerRecord.key());
           });
       });
 
@@ -228,8 +237,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       .toList();
   }
 
-  private List<MarcBibUpdate> mapRecordsToBibUpdateEvents(RecordsBatchResponse batchResponse,
-                                                          BibAuthorityLinksUpdate event) {
+  private Map<String, List<MarcBibUpdate>> mapRecordsToBibUpdateEventsByInstanceId(RecordsBatchResponse batchResponse,
+                                                                                   BibAuthorityLinksUpdate event) {
     LOGGER.debug("Updated {} bibs for jobId {}, authorityId {}",
       batchResponse.getTotalRecords(), event.getJobId(), event.getAuthorityId());
 
@@ -241,11 +250,11 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         batchResponse.getTotalRecords(), batchResponse.getRecords().size(), errors);
     }
 
-    return toMarcBibUpdateEvents(batchResponse, event);
+    return toMarcBibUpdateEventsByInstanceId(batchResponse, event);
   }
 
-  private List<MarcBibUpdate> toMarcBibUpdateEvents(RecordsBatchResponse batchResponse,
-                                                    BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
+  private Map<String, List<MarcBibUpdate>> toMarcBibUpdateEventsByInstanceId(RecordsBatchResponse batchResponse,
+                                                                             BibAuthorityLinksUpdate bibAuthorityLinksUpdate) {
     var instanceIdToLinkIds = bibAuthorityLinksUpdate.getUpdateTargets().stream()
       .flatMap(updateTarget -> updateTarget.getLinks().stream())
       .collect(Collectors.groupingBy(Link::getInstanceId, Collectors.mapping(Link::getLinkId, Collectors.toList())));
@@ -253,15 +262,24 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     return batchResponse.getRecords().stream()
       .map(bibRecord -> {
         var instanceId = bibRecord.getExternalIdsHolder().getInstanceId();
-        return new MarcBibUpdate()
+        var marcBibUpdate = new MarcBibUpdate()
           .withJobId(bibAuthorityLinksUpdate.getJobId())
           .withLinkIds(instanceIdToLinkIds.get(instanceId))
           .withTenant(bibAuthorityLinksUpdate.getTenant())
           .withType(MarcBibUpdate.Type.UPDATE)
           .withTs(bibAuthorityLinksUpdate.getTs())
           .withRecord(bibRecord);
+        return Map.entry(instanceId, marcBibUpdate);
       })
-      .toList();
+      .collect(Collectors.groupingBy(this::entryKey, Collectors.mapping(this::entryValue, Collectors.toList())));
+  }
+
+  private String entryKey(Map.Entry<String, MarcBibUpdate> entry) {
+    return entry.getKey();
+  }
+
+  private MarcBibUpdate entryValue(Map.Entry<String, MarcBibUpdate> entry) {
+    return entry.getValue();
   }
 
   private List<LinkUpdateReport> toFailedLinkUpdateReports(List<Record> errorRecords,
@@ -303,11 +321,13 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
         errorRecords.size(), event.getJobId(), event.getAuthorityId());
 
       toFailedLinkUpdateReports(errorRecords, event).forEach(report ->
-        sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), report, headers));
+        sendEventToKafka(LINKS_STATS, report.getTenant(), report.getJobId(), null, report, headers));
     }
   }
 
-  private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents, BibAuthorityLinksUpdate event,
+  private Future<String> sendEvents(List<MarcBibUpdate> marcBibUpdateEvents,
+                                    BibAuthorityLinksUpdate event,
+                                    String instanceId,
                                     KafkaConsumerRecord<String, String> consumerRecord) {
     LOGGER.info("Sending {} bib update events for jobId {}, authorityId {}",
       marcBibUpdateEvents.size(), event.getJobId(), event.getAuthorityId());
@@ -315,8 +335,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     return Future.fromCompletionStage(
       CompletableFuture.allOf(
         marcBibUpdateEvents.stream()
-          .map(marcBibUpdate -> sendEventToKafka(MARC_BIB, marcBibUpdate.getTenant(), marcBibUpdate.getJobId(),
-            marcBibUpdate, consumerRecord.headers()))
+          .map(bibUpdateEvent -> sendEventToKafka(MARC_BIB, bibUpdateEvent.getTenant(), bibUpdateEvent.getJobId(),
+            instanceId, bibUpdateEvent, consumerRecord.headers()))
           .map(Future::toCompletionStage)
           .map(CompletionStage::toCompletableFuture)
           .toArray(CompletableFuture[]::new)
@@ -324,11 +344,11 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     ).map(unused -> consumerRecord.key());
   }
 
-  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, Object marcRecord,
-                                           List<KafkaHeader> kafkaHeaders) {
+  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, String recordKey,
+                                           Object marcRecord, List<KafkaHeader> kafkaHeaders) {
     var promise = Promise.<Boolean>promise();
     try {
-      var kafkaRecord = createKafkaProducerRecord(topic, tenant, marcRecord, kafkaHeaders);
+      var kafkaRecord = createKafkaProducerRecord(topic, tenant, recordKey, marcRecord, kafkaHeaders);
       producers.get(topic).write(kafkaRecord, ar -> {
         if (ar.succeeded()) {
           LOGGER.debug("Event with type {}, jobId {} was sent to kafka", topic.topicName(), jobId);
@@ -348,10 +368,10 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(KafkaTopic topic, String tenant,
-                                                                        Object marcRecord,
+                                                                        String recordKey, Object marcRecord,
                                                                         List<KafkaHeader> kafkaHeaders) {
     var topicName = topic.fullTopicName(kafkaConfig, tenant);
-    var key = String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum);
+    var key = Optional.ofNullable(recordKey).orElse(String.valueOf(INDEXER.incrementAndGet() % maxDistributionNum));
     var kafkaRecord = KafkaProducerRecord.create(topicName, key, Json.encode(marcRecord));
     kafkaHeaders.removeIf(kafkaHeader -> !StringUtils.startsWithIgnoreCase(kafkaHeader.key(), "x-okapi-"));
     kafkaRecord.addHeaders(kafkaHeaders);

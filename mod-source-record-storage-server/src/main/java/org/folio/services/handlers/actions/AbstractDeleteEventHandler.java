@@ -1,27 +1,29 @@
 package org.folio.services.handlers.actions;
 
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
-import org.folio.dao.util.RecordType;
+import org.folio.dao.util.IdType;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordService;
 import org.folio.services.util.TypeConnection;
 
+import javax.ws.rs.NotFoundException;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.DELETE;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 /**
  * The abstraction handles the DELETE action
@@ -66,8 +68,10 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Handles DELETE action  */
   private void handlePayload(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future) {
     var payloadRecord = Json.decodeValue(payload.getContext().get(getRecordKey()), Record.class);
+    var okapiHeaders = toOkapiHeaders(payload);
     LOG.info("handlePayload:: Handling 'delete' event for the record id = {}", payloadRecord.getId());
-    recordService.updateRecordsState(payloadRecord.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, payload.getTenant())
+    recordService.deleteRecordById(payloadRecord.getMatchedId(), IdType.RECORD, okapiHeaders)
+      .recover(throwable -> throwable instanceof NotFoundException ? Future.succeededFuture() : Future.failedFuture(throwable))
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());

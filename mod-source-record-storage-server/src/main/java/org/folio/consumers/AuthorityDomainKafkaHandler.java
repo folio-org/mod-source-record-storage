@@ -1,16 +1,19 @@
 package org.folio.consumers;
 
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import java.util.Collections;
+import java.util.Map;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.AsyncRecordHandler;
-import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordService;
 import org.folio.services.util.KafkaUtil;
 import org.springframework.stereotype.Component;
@@ -34,6 +37,10 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
     log.trace("handle:: Handling kafka record: '{}'", consumerRecord);
+
+    var kafkaHeaders = consumerRecord.headers();
+    var okapiHeaders = toOkapiHeaders(kafkaHeaders);
+
     String authorityId = consumerRecord.key();
     if (isUnexpectedDomainEvent(consumerRecord)) {
       log.trace("handle:: Expected only {} domain type. Skipping authority domain kafka record [ID: '{}']",
@@ -47,12 +54,12 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
 
     logInput(authorityId, eventSubType, tenantId);
     return (switch (eventSubType) {
-      case SOFT_DELETE -> performSoftDelete(authorityId, tenantId);
+      case SOFT_DELETE -> performSoftDelete(authorityId, tenantId, okapiHeaders);
       case HARD_DELETE -> performHardDelete(authorityId, tenantId);
     }).onFailure(throwable -> logError(authorityId, eventSubType, tenantId));
   }
 
-  private Future<String> performSoftDelete(String authorityId, String tenantId) {
+  private Future<String> performSoftDelete(String authorityId, String tenantId, Map<String, String> okapiHeaders) {
     var condition = filterRecordByExternalId(authorityId);
     return recordService.getRecords(condition, RecordType.MARC_AUTHORITY, Collections.emptyList(), 0, 1, tenantId)
       .compose(recordCollection -> {
@@ -62,7 +69,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
         }
         var matchedId = recordCollection.getRecords().get(0).getMatchedId();
 
-        return recordService.updateRecordsState(matchedId, RecordState.DELETED, RecordType.MARC_AUTHORITY, tenantId);
+        return recordService.deleteRecordById(matchedId, IdType.RECORD, okapiHeaders);
       }).map(authorityId);
   }
 

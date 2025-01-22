@@ -1,3 +1,6 @@
+## 2025-01-23 5.9.6
+* [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
+
 ## 2025-01-09 5.9.5
 * [MODSOURCE-847](https://folio-org.atlassian.net/browse/MODSOURCE-847) Second update of the same MARC authority / MARC holdings record completes with errors
 

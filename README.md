@@ -11,6 +11,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 * [Docker](#docker)
 * [Installing the module](#installing-the-module)
 * [Deploying the module](#deploying-the-module)
+* [Interaction with Kafka](#interaction-with-kafka)
 * [Database schemas](#database-schemas)
 * [How to fill module with data for testing purposes](https://wiki.folio.org/x/G6bc)
 
@@ -98,11 +99,12 @@ curl -w '\n' -X POST -D -   \
 
 ## Interaction with Kafka
 
-
 There are several properties that should be set for modules that interact with Kafka: **KAFKA_HOST, KAFKA_PORT, OKAPI_URL, ENV**(unique env ID).
 After setup, it is good to check logs in all related modules for errors. Data import consumers and producers work in separate verticles that are set up in RMB's InitAPI for each module. That would be the first place to check deploy/install logs.
 
 **Environment variables** that can be adjusted for this module and default values:
+* Relevant from the **Ramsons** release, module versions from 5.9.6:
+  * "AUTHORITY_TO_BIB_LINK_CHANGE_HANDLER_RETRY_COUNT": 5 
 * Relevant from the **Iris** release, module versions from 5.0.0:
   * "_srs.kafka.ParsedMarcChunkConsumer.instancesNumber_": 1
   * "_srs.kafka.DataImportConsumer.instancesNumber_": 1

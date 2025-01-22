@@ -5,6 +5,7 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
+import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_DELETED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -41,7 +42,7 @@ public class RecordDomainEventPublisher {
   }
 
   public void publishRecordDeleted(Record deleted, Map<String, String> okapiHeaders) {
-    publishRecord(new DomainEventPayload(deleted, null), okapiHeaders, SOURCE_RECORD_UPDATED);
+    publishRecord(new DomainEventPayload(deleted, null), okapiHeaders, SOURCE_RECORD_DELETED);
   }
 
   private void publishRecord(DomainEventPayload domainEventPayload, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
@@ -49,9 +50,9 @@ public class RecordDomainEventPublisher {
       return;
     }
     try {
-      Record newRecord = domainEventPayload.newRecord();
-      var kafkaHeaders = getKafkaHeaders(okapiHeaders, newRecord.getRecordType());
-      var key = newRecord.getId();
+      Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
+      var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
+      var key = aRecord.getId();
       var jsonContent = JsonObject.mapFrom(domainEventPayload);
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
         eventType.name(), kafkaHeaders, key);
@@ -61,10 +62,14 @@ public class RecordDomainEventPublisher {
   }
 
   private boolean notValidForPublishing(DomainEventPayload domainEventPayload) {
+    if (domainEventPayload.newRecord() == null && domainEventPayload.oldRecord() == null) {
+      LOG.warn("Old and new records are null and won't be sent as domain event");
+      return true;
+    }
     if (domainEventPayload.newRecord() != null && notValidRecord(domainEventPayload.newRecord())) {
       return true;
     }
-    return domainEventPayload.newRecord() != null && notValidRecord(domainEventPayload.oldRecord());
+    return domainEventPayload.oldRecord() != null && notValidRecord(domainEventPayload.oldRecord());
   }
 
   private static boolean notValidRecord(Record aRecord) {

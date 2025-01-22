@@ -1896,5 +1896,4 @@ public class RecordDaoImpl implements RecordDao {
       throw new IllegalArgumentException(ex);
     }
   }
-
 }

@@ -53,6 +53,7 @@ import io.vertx.core.Vertx;
 import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.sqlclient.Row;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -137,6 +138,7 @@ import org.jooq.Configuration;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
@@ -747,10 +749,10 @@ public class RecordDaoImpl implements RecordDao {
       false,
       r -> {
         if (r.failed()) {
-          LOG.warn("saveRecords:: Error during batch record save", r.cause());
+          LOG.warn("saveRecords :: Error during batch record save", r.cause());
           finalPromise.fail(r.cause());
         } else {
-          LOG.debug("saveRecords:: batch record save was successful");
+          LOG.debug("saveRecords :: batch record save was successful");
           finalPromise.complete(r.result());
         }
       });
@@ -774,32 +776,61 @@ public class RecordDaoImpl implements RecordDao {
     Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) {
-      return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
+      return Future.failedFuture("saveRecordsByExternalIds :: operation must be executed by a Vertx thread");
     }
 
     context.owner().executeBlocking(
       () -> {
-        final RecordCollection recordCollection;
         try (Connection connection = getConnection(tenantId)) {
-          recordCollection = DSL.using(connection).transactionResult(ctx -> {
+          return DSL.using(connection).transactionResult(ctx -> {
             DSLContext dsl = DSL.using(ctx);
             var queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
             var records = queryResult.fetch(this::toRecord);
-            return new RecordCollection().withRecords(records).withTotalRecords(records.size());
+
+            if (CollectionUtils.isEmpty(records)) {
+              LOG.warn("saveRecordsByExternalIds :: No records returned from the fetch query");
+              return new RecordsBatchResponse().withTotalRecords(0);
+            }
+            var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
+            var modifiedRecords = recordsModifier.apply(existingRecordsCollection);
+
+            // validate snapshot
+            var snapshotId = modifiedRecords.getRecords().iterator().next().getSnapshotId();
+            var snapshotIdsAreDifferent = records.stream().anyMatch(r -> !Objects.equals(snapshotId, r.getSnapshotId()));
+            if (snapshotIdsAreDifferent) {
+              throw new BadRequestException("Batch record collection only supports single snapshot");
+            }
+            validateSnapshot(UUID.fromString(snapshotId), ctx);
+
+            // extract db records to save
+            Set<UUID> matchedIds = new HashSet<>();
+            List<RecordsLbRecord> dbRecords = new ArrayList<>();
+            List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
+            List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+            List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
+
+            List<String> errorMessages = validateAndExtractDatabasePersistRecords(modifiedRecords.getRecords(), recordType,
+              matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
+
+            // save records
+            LOG.info("saveRecordsByExternalIds :: recordCollection: {}", modifiedRecords.getTotalRecords());
+            persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
+
+            // return result
+            queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
+            records = queryResult.fetch(this::toRecord);
+            return new RecordsBatchResponse()
+              .withRecords(records)
+              .withTotalRecords(records.size())
+              .withErrorMessages(errorMessages);
           });
+        } catch (DuplicateEventException e) {
+          LOG.info("saveRecordsByExternalIds :: Skipped saving records due to duplicate event: {}", e.getMessage());
+          throw e;
         } catch (SQLException | DataAccessException e) {
-          LOG.warn("saveRecordsByExternalIds:: Failed to read records", e);
+          LOG.warn("saveRecordsByExternalIds :: Failed to read and save modified records", e);
           throw e;
         }
-
-        if (recordCollection == null || CollectionUtils.isEmpty(recordCollection.getRecords())) {
-          LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
-          return new RecordsBatchResponse().withTotalRecords(0);
-        }
-
-        var modifiedRecords = recordsModifier.apply(recordCollection);
-        var snapshotId = modifiedRecords.getRecords().iterator().next().getSnapshotId();
-        return saveRecords(modifiedRecords, snapshotId, recordType, tenantId);
       },
       r -> {
         if (r.failed()) {
@@ -846,6 +877,81 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
   }
 
+  private void persistDatabaseRecords(DSLContext dsl,
+                                      RecordType recordType,
+                                      Set<UUID> matchedIds,
+                                      List<RecordsLbRecord> dbRecords,
+                                      List<RawRecordsLbRecord> dbRawRecords,
+                                      List<Record2<UUID, JSONB>> dbParsedRecords,
+                                      List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
+    LOG.info("persistDatabaseRecords :: dbRecords: {}", dbRecords.size());
+    List<UUID> ids = new ArrayList<>();
+
+    // lookup the latest generation by matched id and committed snapshot updated before current snapshot
+    dsl.select(RECORDS_LB.MATCHED_ID, RECORDS_LB.ID, RECORDS_LB.GENERATION)
+      .distinctOn(RECORDS_LB.MATCHED_ID)
+      .from(RECORDS_LB)
+      .innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID))
+      .where(RECORDS_LB.MATCHED_ID.in(matchedIds)
+        .and(SNAPSHOTS_LB.STATUS.in(JobExecutionStatus.COMMITTED, JobExecutionStatus.ERROR, JobExecutionStatus.CANCELLED))
+      )
+      .orderBy(RECORDS_LB.MATCHED_ID.asc(), RECORDS_LB.GENERATION.desc())
+      .fetchStream().forEach(r -> ids.add(r.get(RECORDS_LB.ID)));
+
+    dbRecords.forEach(dbRecord -> {
+      var generation = Optional.ofNullable(dbRecord.getGeneration())
+        .map(g -> ++g)
+        .orElse(0);
+      LOG.debug("persistDatabaseRecords :: matchedId: {}, set new generation: {}", dbRecord.getMatchedId(), generation);
+      dbRecord.setGeneration(generation);
+    });
+
+    // update matching records state
+    if(CollectionUtils.isNotEmpty(ids)) {
+      LOG.debug("persistDatabaseRecords :: set ids: {} state to OLD", ids.size());
+      dsl.update(RECORDS_LB)
+        .set(RECORDS_LB.STATE, RecordState.OLD)
+        .where(RECORDS_LB.ID.in(ids))
+        .execute();
+    }
+
+    // batch insert records updating generation if required
+    var recordsLoadingErrors = dsl.loadInto(RECORDS_LB)
+      .onErrorAbort()
+      .loadRecords(dbRecords)
+      .fieldsCorresponding()
+      .execute()
+      .errors();
+
+    validateRecordsPersist(recordsLoadingErrors);
+
+    // batch insert raw records
+    dsl.loadInto(RAW_RECORDS_LB)
+      .onDuplicateKeyUpdate()
+      .onErrorAbort()
+      .loadRecords(dbRawRecords)
+      .fieldsCorresponding()
+      .execute();
+
+    // batch insert parsed records
+    recordType.toLoaderOptionsStep(dsl)
+      .onDuplicateKeyUpdate()
+      .onErrorAbort()
+      .loadRecords(dbParsedRecords)
+      .fieldsCorresponding()
+      .execute();
+
+    if (!dbErrorRecords.isEmpty()) {
+      // batch insert error records
+      dsl.loadInto(ERROR_RECORDS_LB)
+        .onDuplicateKeyUpdate()
+        .onErrorAbort()
+        .loadRecords(dbErrorRecords)
+        .fieldsCorresponding()
+        .execute();
+    }
+  }
+
   private RecordsBatchResponse saveRecords(RecordCollection recordCollection, String snapshotId, RecordType recordType,
                                            String tenantId) {
     Set<UUID> matchedIds = new HashSet<>();
@@ -854,56 +960,15 @@ public class RecordDaoImpl implements RecordDao {
     List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
     List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
-    List<String> errorMessages = new ArrayList<>();
+    // make sure only one snapshot id
+    var snapshotIdsAreDifferent = recordCollection.getRecords().stream()
+      .anyMatch(r -> !Objects.equals(snapshotId, r.getSnapshotId()));
+    if (snapshotIdsAreDifferent) {
+      throw new BadRequestException("Batch record collection only supports single snapshot");
+    }
 
-    recordCollection.getRecords()
-      .stream()
-      .map(RecordDaoUtil::ensureRecordHasId)
-      .map(RecordDaoUtil::ensureRecordHasMatchedId)
-      .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
-      .map(RecordDaoUtil::ensureRecordForeignKeys)
-      .forEach(record -> {
-        // collect unique matched ids to query to determine generation
-        matchedIds.add(UUID.fromString(record.getMatchedId()));
-
-        // make sure only one snapshot id
-        if (!Objects.equals(snapshotId, record.getSnapshotId())) {
-          throw new BadRequestException("Batch record collection only supports single snapshot");
-        }
-        validateRecordType(record, recordType);
-
-        // if record has parsed record, validate by attempting format
-        if (Objects.nonNull(record.getParsedRecord())) {
-          try {
-            recordType.formatRecord(record);
-            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
-            dbParsedRecords.add(dbParsedRecord);
-          } catch (Exception e) {
-            // create error record and remove from record
-            Object content = Optional.ofNullable(record.getParsedRecord())
-              .map(ParsedRecord::getContent)
-              .orElse(null);
-            var errorRecord = new ErrorRecord()
-              .withId(record.getId())
-              .withDescription(e.getMessage())
-              .withContent(content);
-            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
-            record.withErrorRecord(errorRecord)
-              .withParsedRecord(null)
-              .withLeaderRecordStatus(null);
-          }
-        }
-
-        if (Objects.nonNull(record.getRawRecord())) {
-          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
-        }
-
-        if (Objects.nonNull(record.getErrorRecord())) {
-          dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
-        }
-
-        dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
-      });
+    List<String> errorMessages = validateAndExtractDatabasePersistRecords(recordCollection.getRecords(), recordType,
+      matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
     try (Connection connection = getConnection(tenantId)) {
       return DSL.using(connection).transactionResult(ctx -> {
@@ -962,13 +1027,7 @@ public class RecordDaoImpl implements RecordDao {
           .execute()
           .errors();
 
-        recordsLoadingErrors.forEach(error -> {
-          if (error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
-            throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
-          }
-          LOG.warn("saveRecords:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
-          LOG.debug("saveRecords:: Failed to execute statement from batch: {}", error.query());
-        });
+        validateRecordsPersist(recordsLoadingErrors);
 
         // batch insert raw records
         dsl.loadInto(RAW_RECORDS_LB)
@@ -1015,6 +1074,71 @@ public class RecordDaoImpl implements RecordDao {
       Throwable throwable = ex.getCause() != null ? ex.getCause() : ex;
       throw new RecordUpdateException(throwable);
     }
+  }
+
+  private List<String> validateAndExtractDatabasePersistRecords(List<Record> records,
+                                                                RecordType recordType,
+                                                                Set<UUID> matchedIds,
+                                                                List<RecordsLbRecord> dbRecords,
+                                                                List<RawRecordsLbRecord> dbRawRecords,
+                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
+                                                                List<ErrorRecordsLbRecord> dbErrorRecords) {
+    List<String> errorMessages = new ArrayList<>();
+    records.stream()
+      .map(RecordDaoUtil::ensureRecordHasId)
+      .map(RecordDaoUtil::ensureRecordHasMatchedId)
+      .map(RecordDaoUtil::ensureRecordHasSuppressDiscovery)
+      .map(RecordDaoUtil::ensureRecordForeignKeys)
+      .forEach(record -> {
+        // collect unique matched ids to query to determine generation
+        matchedIds.add(UUID.fromString(record.getMatchedId()));
+
+        validateRecordType(record, recordType);
+
+        // if record has parsed record, validate by attempting format
+        if (Objects.nonNull(record.getParsedRecord())) {
+          try {
+            recordType.formatRecord(record);
+            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+            dbParsedRecords.add(dbParsedRecord);
+          } catch (Exception e) {
+            // create error record and remove from record
+            Object content = Optional.ofNullable(record.getParsedRecord())
+              .map(ParsedRecord::getContent)
+              .orElse(null);
+            var errorRecord = new ErrorRecord()
+              .withId(record.getId())
+              .withDescription(e.getMessage())
+              .withContent(content);
+            errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
+            record.withErrorRecord(errorRecord)
+              .withParsedRecord(null)
+              .withLeaderRecordStatus(null);
+          }
+        }
+
+        if (Objects.nonNull(record.getRawRecord())) {
+          dbRawRecords.add(RawRecordDaoUtil.toDatabaseRawRecord(record.getRawRecord()));
+        }
+
+        if (Objects.nonNull(record.getErrorRecord())) {
+          dbErrorRecords.add(ErrorRecordDaoUtil.toDatabaseErrorRecord(record.getErrorRecord()));
+        }
+
+        dbRecords.add(RecordDaoUtil.toDatabaseRecord(record));
+      });
+
+    return errorMessages;
+  }
+
+  private void validateRecordsPersist(List<LoaderError> recordsLoadingErrors) {
+    recordsLoadingErrors.forEach(error -> {
+      if (error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
+        throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
+      }
+      LOG.warn("validateRecordsPersist :: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
+      LOG.debug("validateRecordsPersist :: Failed to execute statement from batch: {}", error.query());
+    });
   }
 
   private void validateRecordType(Record recordDto, RecordType recordType) {

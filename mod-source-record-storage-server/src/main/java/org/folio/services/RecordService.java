@@ -89,11 +89,13 @@ public interface RecordService {
    * @param recordType  record type
    * @param recordsModifier records collection modifier operator
    * @param okapiHeaders okapi headers
+   * @param maxSaveRetryCount max count of retries to save records
    * @return future with response containing list of successfully saved records and error messages for records that were not saved
    */
   Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds, RecordType recordType,
                                                         RecordsModifierOperator recordsModifier,
-                                                        Map<String, String> okapiHeaders);
+                                                        Map<String, String> okapiHeaders,
+                                                        int maxSaveRetryCount);
 
   /**
    * Updates record with given id

@@ -1,3 +1,6 @@
+## 2025-01-24 5.9.7
+* [MODSOURCE-842](https://folio-org.atlassian.net/browse/MODSOURCE-842) Fix bib fields order on link update event
+
 ## 2025-01-23 5.9.6
 * [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
 

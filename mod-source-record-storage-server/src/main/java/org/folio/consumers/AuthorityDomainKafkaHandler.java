@@ -14,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.AsyncRecordHandler;
-import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordService;
 import org.folio.services.util.KafkaUtil;
 import org.springframework.stereotype.Component;
@@ -75,7 +74,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
   }
 
   private Future<String> performHardDelete(String authorityId, Map<String, String> okapiHeaders) {
-    return recordService.deleteRecordsByExternalId(authorityId, IdType.RECORD, okapiHeaders).map(authorityId);
+    return recordService.deleteRecordsByExternalId(authorityId, okapiHeaders).map(authorityId);
   }
 
   private void logError(String authorityId, EventSubType subType, String tenantId) {

@@ -9,7 +9,12 @@ import static org.folio.services.RecordServiceImpl.UPDATE_RECORD_WITH_LINKED_DAT
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Flowable;
 import io.vertx.core.CompositeFuture;
@@ -45,6 +50,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -75,6 +81,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -733,6 +740,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           context.fail(snapshotSaved.cause());
         }
         recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
+          verify(recordDomainEventPublisher).publishRecordUpdated(eq(record1Saved.result()), eq(recordToUpdateGenerationSaved.result()), any());
           context.assertTrue(recordToUpdateGenerationSaved.succeeded());
           context.assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
           context.assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
@@ -1078,6 +1086,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
+        verify(recordDomainEventPublisher, times(1)).publishRecordUpdated(eq(save.result()), eq(update.result()), any());
         context.assertTrue(update.result().getMetadata().getUpdatedDate()
           .after(update.result().getMetadata().getCreatedDate()));
         context.assertNotNull(update.result().getRawRecord());
@@ -1091,6 +1100,52 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             context.fail(get.cause());
           }
           context.assertTrue(get.result().isPresent());
+          async.complete();
+        });
+      });
+    });
+  }
+
+  @Test
+  public void shouldUpdateParsedRecord(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getRecord(0);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    recordDao.saveRecord(original, okapiHeaders).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+      Record expected = new Record()
+        .withId(original.getId())
+        .withSnapshotId(original.getSnapshotId())
+        .withMatchedId(original.getMatchedId())
+        .withRecordType(original.getRecordType())
+        .withState(State.OLD)
+        .withGeneration(original.getGeneration())
+        .withOrder(original.getOrder())
+        .withRawRecord(original.getRawRecord())
+        .withParsedRecord(original.getParsedRecord())
+        .withAdditionalInfo(original.getAdditionalInfo())
+        .withExternalIdsHolder(original.getExternalIdsHolder())
+        .withMetadata(original.getMetadata());
+      recordService.updateParsedRecord(expected, okapiHeaders).onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        recordService.getRecordById(expected.getId(), TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isPresent());
+
+          ArgumentCaptor<Record> captureOldRecord = ArgumentCaptor.forClass(Record.class);
+          ArgumentCaptor<Record> captureNewRecord = ArgumentCaptor.forClass(Record.class);
+
+          verify(recordDomainEventPublisher, times(1))
+            .publishRecordUpdated(captureOldRecord.capture(), captureNewRecord.capture(), any());
+
+          compareRecords(context, captureOldRecord.getValue(), save.result());
+          compareRecords(context, captureNewRecord.getValue(), get.result().get());
           async.complete();
         });
       });
@@ -1512,6 +1567,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
+        verify(recordDomainEventPublisher, times(1)).publishRecordUpdated(eq(save.result()), eq(update.result()), any());
         SnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
           if (getSnapshot.failed()) {
             context.fail(getSnapshot.cause());
@@ -1605,6 +1661,96 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertEquals(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION, ar.cause().getMessage());
         assertThrows(RecordUpdateException.class, () -> {
           throw ar.cause();
+        });
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldHardDeleteMarcRecord(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getMarcBibRecord();
+    String recordId = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+    String hrId = RandomStringUtils.randomAlphanumeric(9);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
+    Record sourceRecord = new Record()
+      .withId(recordId)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(externalIdsHolder)
+      .withMetadata(original.getMetadata());
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordService.saveRecord(sourceRecord, okapiHeaders).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+
+      recordService.deleteRecordsByExternalId(sourceRecord.getExternalIdsHolder().getInstanceId(), okapiHeaders).onComplete(delete -> {
+        if (delete.failed()) {
+          context.fail(delete.cause());
+        }
+        verify(recordDomainEventPublisher, times(1)).publishRecordDeleted(eq(save.result()), any());
+
+        recordService.getRecordById(sourceRecord.getId(), TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isEmpty());
+        });
+        async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void shouldSoftDeleteMarcRecord(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getMarcBibRecord();
+    String recordId = UUID.randomUUID().toString();
+    String instanceId = UUID.randomUUID().toString();
+    String hrId = RandomStringUtils.randomAlphanumeric(9);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
+    Record sourceRecord = new Record()
+      .withId(recordId)
+      .withSnapshotId(original.getSnapshotId())
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withOrder(original.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(externalIdsHolder)
+      .withMetadata(original.getMetadata());
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordService.saveRecord(sourceRecord, okapiHeaders).onComplete(save -> {
+      if (save.failed()) {
+        context.fail(save.cause());
+      }
+
+      recordService.deleteRecordById(sourceRecord.getId(), IdType.RECORD, okapiHeaders).onComplete(delete -> {
+        if (delete.failed()) {
+          context.fail(delete.cause());
+        }
+        recordService.getRecordById(sourceRecord.getId(), TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+
+          context.assertTrue(get.result().isPresent());
+          context.assertTrue(get.result().get().getDeleted());
+          verify(recordDomainEventPublisher, times(1))
+            .publishRecordUpdated(eq(save.result()), eq(get.result().get()), any());
         });
         async.complete();
       });
@@ -1767,6 +1913,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (get.failed()) {
           context.fail(get.cause());
         }
+        verify(recordDomainEventPublisher, times(1)).publishRecordCreated(eq(save.result()), any());
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
@@ -1818,6 +1965,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (batch.failed()) {
         context.fail(batch.cause());
       }
+
+      ArgumentCaptor<Record> captureOldRecord = ArgumentCaptor.forClass(Record.class);
+      verify(recordDomainEventPublisher, times(batch.result().getTotalRecords())).publishRecordCreated(captureOldRecord.capture(), any());
+      compareRecords(context, captureOldRecord.getAllValues(), expected);
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
       compareRecords(context, expected, batch.result().getRecords());
@@ -2094,6 +2245,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(batch.cause());
       }
       List<Record> updated = original.stream()
+        .map(record -> clone(record, Record.class))
         .map(record -> record
           .withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
         .collect(Collectors.toList());
@@ -2108,6 +2260,16 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (update.failed()) {
           context.fail(update.cause());
         }
+
+        ArgumentCaptor<Record> captureOldRecords = ArgumentCaptor.forClass(Record.class);
+        ArgumentCaptor<Record> captureNewRecords = ArgumentCaptor.forClass(Record.class);
+
+        verify(recordDomainEventPublisher, times(update.result().getTotalRecords()))
+          .publishRecordUpdated(captureOldRecords.capture(), captureNewRecords.capture(), any());
+
+        compareRecords(context, captureOldRecords.getAllValues(), original);
+        compareRecords(context, captureNewRecords.getAllValues(), updated);
+
         context.assertEquals(0, update.result().getErrorMessages().size());
         context.assertEquals(expected.size(), update.result().getTotalRecords());
         compareParsedRecords(context, expected, update.result().getParsedRecords());
@@ -2190,6 +2352,19 @@ public class RecordServiceTest extends AbstractLBServiceTest {
                 context.fail(get.cause());
               }
               context.assertTrue(get.result().isPresent());
+
+              ArgumentCaptor<Record> oldRecordCapture = ArgumentCaptor.forClass(Record.class);
+              ArgumentCaptor<Record> newRecordCapture = ArgumentCaptor.forClass(Record.class);
+
+              Record expectedOldRecord = clone(save.result(), Record.class).withErrorRecord(null);
+              Record expectedNewRecord = clone(get.result().get(), Record.class).withErrorRecord(null);
+
+              verify(recordDomainEventPublisher, times(1))
+                .publishRecordUpdated(oldRecordCapture.capture(), newRecordCapture.capture(), any());
+
+              compareRecords(context, oldRecordCapture.getValue(), expectedOldRecord);
+              compareRecords(context, newRecordCapture.getValue(), expectedNewRecord);
+
               context.assertNotNull(get.result().get().getRawRecord());
               context.assertNotNull(get.result().get().getParsedRecord());
               expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));
@@ -2398,5 +2573,14 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private void compareExternalIdsHolder(TestContext context, ExternalIdsHolder expected, ExternalIdsHolder actual) {
     context.assertEquals(expected.getInstanceId(), actual.getInstanceId());
+  }
+
+  private static <T> T clone(T obj, Class<T> type) {
+    try {
+      final ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
+      return jsonMapper.readValue(jsonMapper.writeValueAsString(obj), type);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalArgumentException(ex);
+    }
   }
 }

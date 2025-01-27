@@ -1163,10 +1163,17 @@ public class RecordDaoImpl implements RecordDao {
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
       record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
-      .compose(optionalRecord -> optionalRecord.map(oldRecord -> GenericCompositeFuture.all(Lists.newArrayList(
-          updateExternalIdsForRecord(txQE, record),
-          ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-        )).onSuccess(v -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, record, okapiHeaders)).map(v -> record.getParsedRecord()))
+      .compose(optionalRecord -> optionalRecord.map(oldRecord ->
+          updateExternalIdsForRecord(txQE, record).compose(updatedRecord ->
+            ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+              .onSuccess(v -> recordDomainEventPublisher.publishRecordUpdated(oldRecord,
+                updatedRecord
+                  .withErrorRecord(oldRecord.getErrorRecord())
+                  .withRawRecord(oldRecord.getRawRecord())
+                  .withParsedRecord(record.getParsedRecord()),
+                okapiHeaders))
+              .map(v -> record.getParsedRecord()))
+        )
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
   }
 
@@ -1417,7 +1424,7 @@ public class RecordDaoImpl implements RecordDao {
           .map(record -> {
             Record oldRecord = clone(record, Record.class);
             return RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress)))
-              .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, updatedRecord, okapiHeaders));
+              .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, record, okapiHeaders));
           })
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
       .map(u -> true);
@@ -1430,7 +1437,8 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> deleteRecordsByExternalId(String externalId, IdType idType, Map<String, String> okapiHeaders) {
+  public Future<Boolean> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders) {
+    var idType = IdType.EXTERNAL;
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
     var externalUuid = UUID.fromString(externalId);
@@ -1688,7 +1696,7 @@ public class RecordDaoImpl implements RecordDao {
     return getRecords(condition, recordType, new ArrayList<>(), 0, recordCollection.getTotalRecords(), tenantId);
   }
 
-  private Future<Boolean> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
+  private Future<Record> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", record.getRecordType());
     return RecordDaoUtil.findById(txQE, record.getId())
       .map(optionalRecord -> {
@@ -1703,8 +1711,7 @@ public class RecordDaoImpl implements RecordDao {
         persistedRecord.withExternalIdsHolder(record.getExternalIdsHolder())
           .withAdditionalInfo(record.getAdditionalInfo())
           .withMetadata(record.getMetadata());
-        return RecordDaoUtil.update(txQE, persistedRecord)
-          .map(update -> true);
+        return RecordDaoUtil.update(txQE, persistedRecord);
       });
   }
 

@@ -1,5 +1,5 @@
 ## 2025-01-27 v5.8.10
-* [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
+* [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
 
 ## 2025-01-16 v5.8.9
 * [MODSOURCE-849](https://folio-org.atlassian.net/browse/MODSOURCE-849) Optimize process of clean up marc indexers table
@@ -33,20 +33,6 @@
 * [MODSOURCE-742](https://folio-org.atlassian.net/browse/MODSOURCE-742) PostgreSQL SSL connection does not work
 * [MODSOURCE-758](https://folio-org.atlassian.net/browse/MODSOURCE-758) Alleviate Blocking of Eventloop During New Tenant Initialization
 * [MODSOURCE-756](https://issues.folio.org/browse/MODSOURCE-756) After setting an instance as marked for deletion it is no longer editable in quickmarc
-* [MODSOURCE-753](https://folio-org.atlassian.net/browse/MODSOURCE-753) Change SQL query parameters for MARC Search
-* [MODSOURCE-773](https://folio-org.atlassian.net/browse/MODSOURCE-773) MARC Search omits suppressed from discovery records in default search
-* [MODINV-1044](https://folio-org.atlassian.net/browse/MODINV-1044) Additional Requirements - Update Data Import logic to normalize OCLC 035 values
-* [MODSOURMAN-1200](https://folio-org.atlassian.net/browse/MODSOURMAN-1200) Find record by match id on update generation 
-* [MODINV-1049](https://folio-org.atlassian.net/browse/MODINV-1049) Existing "035" field is not retained the original position in imported record 
-* [MODSOURCE-785](https://folio-org.atlassian.net/browse/MODSOURCE-785) Update 005 field when set MARC for deletion
-* [MODSOURMAN-783](https://folio-org.atlassian.net/browse/MODSOURCE-783) Extend MARC-MARC search query to account for qualifiers
-* [MODSOURCE-752](https://folio-org.atlassian.net/browse/MODSOURCE-752) Emit Domain Events For Source Records
-* [MODSOURCE-795](https://folio-org.atlassian.net/browse/MODSOURCE-795) Upgrade Spring 5 to 6 by 2024-08-31
-* [MODSOURMAN-1203](https://folio-org.atlassian.net/browse/MODSOURMAN-1203) Add validation on MARC_BIB record save
-* [MODSOURCE-796](https://folio-org.atlassian.net/browse/MODSOURCE-796) Fix inconsistencies in permission namings
-* [MODSOURCE-809](https://folio-org.atlassian.net/browse/MODSOURCE-809) mod-source-record-storage Ramsons 2024 R2 - RMB v35.3.x update
-* [MODSOURCE-787](https://folio-org.atlassian.net/browse/MODSOURCE-787) Extend MARC-MARC search query to account for comparison part
-* [MODSOURCE-791](https://folio-org.atlassian.net/browse/MODSOURCE-791) Fix Timeout exception during postSourceStorageStreamMarcRecordIdentifiers
 
 ## 2024-03-20 5.8.0
 * [MODSOURCE-733](https://issues.folio.org/browse/MODSOURCE-733) Reduce Memory Allocation of Strings

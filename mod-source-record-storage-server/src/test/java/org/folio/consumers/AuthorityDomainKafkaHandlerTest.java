@@ -29,7 +29,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.enums.RecordState;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
@@ -157,9 +156,6 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private ConsumerRecord<String, String> getConsumerRecord(HashMap<String, String> payload) {
     ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload));
     consumerRecord.headers().add(new RecordHeader("domain-event-type", "DELETE".getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL.getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN.getBytes(StandardCharsets.UTF_8)));
     return consumerRecord;
   }
 

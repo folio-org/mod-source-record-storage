@@ -54,12 +54,12 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
 
     logInput(authorityId, eventSubType, tenantId);
     return (switch (eventSubType) {
-      case SOFT_DELETE -> performSoftDelete(authorityId, tenantId, okapiHeaders);
+      case SOFT_DELETE -> performSoftDelete(authorityId, tenantId);
       case HARD_DELETE -> performHardDelete(authorityId, okapiHeaders);
     }).onFailure(throwable -> logError(authorityId, eventSubType, tenantId));
   }
 
-  private Future<String> performSoftDelete(String authorityId, String tenantId, Map<String, String> okapiHeaders) {
+  private Future<String> performSoftDelete(String authorityId, String tenantId) {
     var condition = filterRecordByExternalId(authorityId);
     return recordService.getRecords(condition, RecordType.MARC_AUTHORITY, Collections.emptyList(), 0, 1, tenantId)
       .compose(recordCollection -> {
@@ -69,7 +69,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
         }
         var matchedId = recordCollection.getRecords().get(0).getMatchedId();
 
-        return recordService.deleteRecordById(matchedId, IdType.RECORD, okapiHeaders);
+        return recordService.updateRecordsState(matchedId, RecordState.DELETED, RecordType.MARC_AUTHORITY, tenantId);
       }).map(authorityId);
   }
 

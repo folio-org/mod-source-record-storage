@@ -42,7 +42,6 @@ import static org.jooq.impl.DSL.trueCondition;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.reactivex.Flowable;
@@ -1317,7 +1316,7 @@ public class RecordDaoImpl implements RecordDao {
             Map<String, Record> recordIdToOldRecord = oldRecords.getRecords().stream()
               .collect(Collectors.toMap(
                 Record::getId,
-                record -> record
+                aRecord -> aRecord
               ));
 
             recordsUpdated.forEach(updated -> {
@@ -1343,9 +1342,11 @@ public class RecordDaoImpl implements RecordDao {
         Field<UUID> prtId = field(name(ID), UUID.class);
         Field<JSONB> prtContent = field(name(CONTENT), JSONB.class);
 
+        recordCollection.getRecords().forEach(aRecord ->
+          formUpdateConditions(aRecord, records, recordUpdates, parsedRecordUpdates, prtContent, prtId, errorMessages));
+
         List<Record> processedRecords = recordCollection.getRecords()
           .stream()
-          .peek(record -> formUpdateConditions(record, records, recordUpdates, parsedRecordUpdates, prtContent, prtId, errorMessages))
           .filter(processedRecord -> Objects.nonNull(processedRecord.getParsedRecord().getId()))
           .toList();
 
@@ -1403,17 +1404,19 @@ public class RecordDaoImpl implements RecordDao {
     return promise.future();
   }
 
-  private static void formUpdateConditions(Record record, List<Record> records, List<UpdateConditionStep<RecordsLbRecord>> recordUpdates, List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates, Field<JSONB> prtContent, Field<UUID> prtId, List<String> errorMessages) {
+  private static void formUpdateConditions(Record aRecord, List<Record> records, List<UpdateConditionStep<RecordsLbRecord>> recordUpdates,
+                                           List<UpdateConditionStep<org.jooq.Record>> parsedRecordUpdates,
+                                           Field<JSONB> prtContent, Field<UUID> prtId, List<String> errorMessages) {
     UpdateSetFirstStep<RecordsLbRecord> updateFirstStep = DSL.update(RECORDS_LB);
     UpdateSetMoreStep<RecordsLbRecord> updateStep = null;
 
     // check for external record properties to update
-    ExternalIdsHolder externalIdsHolder = record.getExternalIdsHolder();
-    AdditionalInfo additionalInfo = record.getAdditionalInfo();
-    Metadata metadata = record.getMetadata();
+    ExternalIdsHolder externalIdsHolder = aRecord.getExternalIdsHolder();
+    AdditionalInfo additionalInfo = aRecord.getAdditionalInfo();
+    Metadata metadata = aRecord.getMetadata();
 
     if (Objects.nonNull(externalIdsHolder)) {
-      var recordType = record.getRecordType();
+      var recordType = aRecord.getRecordType();
       String externalId = getExternalId(externalIdsHolder, recordType);
       String externalHrid = getExternalHrid(externalIdsHolder, recordType);
       if (StringUtils.isNotEmpty(externalId)) {
@@ -1453,25 +1456,25 @@ public class RecordDaoImpl implements RecordDao {
     }
 
     // only attempt update if has id and external values to update
-    if (Objects.nonNull(updateStep) && Objects.nonNull(record.getId())) {
-      records.add(record);
-      recordUpdates.add(updateStep.where(RECORDS_LB.ID.eq(UUID.fromString(record.getId()))));
+    if (Objects.nonNull(updateStep) && Objects.nonNull(aRecord.getId())) {
+      records.add(aRecord);
+      recordUpdates.add(updateStep.where(RECORDS_LB.ID.eq(UUID.fromString(aRecord.getId()))));
     }
 
     try {
-      RecordType recordType = toRecordType(record.getRecordType().name());
-      recordType.formatRecord(record);
+      RecordType recordType = toRecordType(aRecord.getRecordType().name());
+      recordType.formatRecord(aRecord);
 
       parsedRecordUpdates.add(
         DSL.update(table(name(recordType.getTableName())))
-          .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord())))
-          .where(prtId.eq(UUID.fromString(record.getParsedRecord().getId())))
+          .set(prtContent, JSONB.valueOf(ParsedRecordDaoUtil.normalizeContent(aRecord.getParsedRecord())))
+          .where(prtId.eq(UUID.fromString(aRecord.getParsedRecord().getId())))
       );
 
     } catch (Exception e) {
-      errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, record.getId(), e.getMessage()));
+      errorMessages.add(format(INVALID_PARSED_RECORD_MESSAGE_TEMPLATE, aRecord.getId(), e.getMessage()));
       // if invalid parsed record, set id to null to filter out
-      record.getParsedRecord()
+      aRecord.getParsedRecord()
         .setId(null);
     }
   }
@@ -1545,10 +1548,10 @@ public class RecordDaoImpl implements RecordDao {
     LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
         .compose(optionalRecord -> optionalRecord
-          .map(record -> {
-            Record oldRecord = clone(record, Record.class);
-            return RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress)))
-              .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, record, okapiHeaders));
+          .map(aRecord -> {
+            Record oldRecord = clone(aRecord, Record.class);
+            return RecordDaoUtil.update(txQE, aRecord.withAdditionalInfo(aRecord.getAdditionalInfo().withSuppressDiscovery(suppress)))
+              .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, aRecord, okapiHeaders));
           })
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
       .map(u -> true);
@@ -1567,7 +1570,7 @@ public class RecordDaoImpl implements RecordDao {
     LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
     var externalUuid = UUID.fromString(externalId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, externalId, idType)
-      .compose(optionalRecord -> optionalRecord.map(record -> txQE
+      .compose(optionalRecord -> optionalRecord.map(aRecord -> txQE
         .execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB)
           .using(RECORDS_LB)
           .where(MARC_RECORDS_LB.ID.eq(RECORDS_LB.ID))
@@ -1575,7 +1578,7 @@ public class RecordDaoImpl implements RecordDao {
         .compose(u ->
           txQE.execute(dsl -> dsl.deleteFrom(RECORDS_LB)
               .where(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)))
-            .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordDeleted(record, okapiHeaders))
+            .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordDeleted(aRecord, okapiHeaders))
         )).orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId))))).map(v -> true));
   }
 
@@ -1820,40 +1823,40 @@ public class RecordDaoImpl implements RecordDao {
     return getRecords(condition, recordType, new ArrayList<>(), 0, recordCollection.getTotalRecords(), tenantId);
   }
 
-  private Future<Record> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
-    LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", record.getRecordType());
-    return RecordDaoUtil.findById(txQE, record.getId())
+  private Future<Record> updateExternalIdsForRecord(ReactiveClassicGenericQueryExecutor txQE, Record aRecord) {
+    LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", aRecord.getRecordType());
+    return RecordDaoUtil.findById(txQE, aRecord.getId())
       .map(optionalRecord -> {
         if (optionalRecord.isPresent()) {
           return optionalRecord;
         }
-        String rollBackMessage = format(RECORD_NOT_FOUND_TEMPLATE, record.getId());
+        String rollBackMessage = format(RECORD_NOT_FOUND_TEMPLATE, aRecord.getId());
         throw new NotFoundException(rollBackMessage);
       })
       .map(Optional::get)
       .compose(persistedRecord -> {
-        persistedRecord.withExternalIdsHolder(record.getExternalIdsHolder())
-          .withAdditionalInfo(record.getAdditionalInfo())
-          .withMetadata(record.getMetadata());
+        persistedRecord.withExternalIdsHolder(aRecord.getExternalIdsHolder())
+          .withAdditionalInfo(aRecord.getAdditionalInfo())
+          .withMetadata(aRecord.getMetadata());
         return RecordDaoUtil.update(txQE, persistedRecord);
       });
   }
 
   private void validateRecords(List<Record> records) {
     Set<String> recordTypes = new HashSet<>();
-    records.forEach(record -> {
-      validateParsedRecordId(record);
+    records.forEach(aRecord -> {
+      validateParsedRecordId(aRecord);
 
       // make sure only one record type
-      recordTypes.add(record.getRecordType().name());
+      recordTypes.add(aRecord.getRecordType().name());
       if (recordTypes.size() > 1) {
         throw new BadRequestException("Batch record collection only supports single record type");
       }
     });
   }
 
-  private void validateParsedRecordId(Record record) {
-    if (Objects.isNull(record.getParsedRecord()) || StringUtils.isEmpty(record.getParsedRecord().getId())) {
+  private void validateParsedRecordId(Record aRecord) {
+    if (Objects.isNull(aRecord.getParsedRecord()) || StringUtils.isEmpty(aRecord.getParsedRecord().getId())) {
       throw new BadRequestException("Each parsed record should contain an id");
     }
   }

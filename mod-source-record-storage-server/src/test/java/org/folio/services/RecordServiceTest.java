@@ -1673,8 +1673,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
+    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
     Record sourceRecord = new Record()
       .withId(recordId)
       .withSnapshotId(original.getSnapshotId())
@@ -1717,8 +1718,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
+    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
     Record sourceRecord = new Record()
       .withId(recordId)
       .withSnapshotId(original.getSnapshotId())

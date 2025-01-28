@@ -2333,7 +2333,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         });
     });
   }
-
   private void updateSuppressFromDiscoveryForMarcRecord(TestContext context, Record expected) {
     Async async = context.async();
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -2342,7 +2341,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       if (save.failed()) {
         context.fail(save.cause());
       }
-      recordService.updateSuppressFromDiscoveryForRecord(expected.getMatchedId(), IdType.RECORD, true, okapiHeaders)
+      recordService.updateSuppressFromDiscoveryForRecord(expected.getMatchedId(), IdType.RECORD, true, TENANT_ID)
         .onComplete(update -> {
           if (update.failed()) {
             context.fail(update.cause());
@@ -2353,20 +2352,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
               if (get.failed()) {
                 context.fail(get.cause());
               }
+              verify(recordDomainEventPublisher, times(0)).publishRecordUpdated(any(), any(), any());
               context.assertTrue(get.result().isPresent());
-
-              ArgumentCaptor<Record> oldRecordCapture = ArgumentCaptor.forClass(Record.class);
-              ArgumentCaptor<Record> newRecordCapture = ArgumentCaptor.forClass(Record.class);
-
-              Record expectedOldRecord = clone(save.result(), Record.class).withErrorRecord(null);
-              Record expectedNewRecord = clone(get.result().get(), Record.class).withErrorRecord(null);
-
-              verify(recordDomainEventPublisher, times(1))
-                .publishRecordUpdated(oldRecordCapture.capture(), newRecordCapture.capture(), any());
-
-              compareRecords(context, oldRecordCapture.getValue(), expectedOldRecord);
-              compareRecords(context, newRecordCapture.getValue(), expectedNewRecord);
-
               context.assertNotNull(get.result().get().getRawRecord());
               context.assertNotNull(get.result().get().getParsedRecord());
               expected.setAdditionalInfo(expected.getAdditionalInfo().withSuppressDiscovery(true));

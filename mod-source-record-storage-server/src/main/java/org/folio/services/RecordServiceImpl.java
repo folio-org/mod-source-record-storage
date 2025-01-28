@@ -350,8 +350,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, Map<String, String> okapiHeaders) {
-    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, okapiHeaders);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
+    return recordDao.updateSuppressFromDiscoveryForRecord(id, idType, suppress, tenantId);
   }
 
   @Override

@@ -1543,16 +1543,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+  public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
     LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
     return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
         .compose(optionalRecord -> optionalRecord
-          .map(aRecord -> {
-            Record oldRecord = clone(aRecord, Record.class);
-            return RecordDaoUtil.update(txQE, aRecord.withAdditionalInfo(aRecord.getAdditionalInfo().withSuppressDiscovery(suppress)))
-              .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, aRecord, okapiHeaders));
-          })
+          .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
       .map(u -> true);
   }

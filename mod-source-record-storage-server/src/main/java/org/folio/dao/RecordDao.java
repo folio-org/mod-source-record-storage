@@ -403,10 +403,10 @@ public interface RecordDao {
    * @param id             id
    * @param idType external id type
    * @param suppress       suppress from discovery
-   * @param okapiHeaders okapi headers
+   * @param tenantId       tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, Map<String, String> okapiHeaders);
+  Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId);
 
   /**
    * Execute action within transaction.

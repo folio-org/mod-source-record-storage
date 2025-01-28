@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,15 +35,15 @@ public class RecordDomainEventPublisher {
   private KafkaSender kafkaSender;
 
   public void publishRecordCreated(Record created, Map<String, String> okapiHeaders) {
-    publishRecord(new DomainEventPayload(null, created), okapiHeaders, SOURCE_RECORD_CREATED);
+    publishRecord(new DomainEventPayload(null, simplifyRecord(created)), okapiHeaders, SOURCE_RECORD_CREATED);
   }
 
   public void publishRecordUpdated(Record old, Record updated, Map<String, String> okapiHeaders) {
-    publishRecord(new DomainEventPayload(old, updated), okapiHeaders, SOURCE_RECORD_UPDATED);
+    publishRecord(new DomainEventPayload(simplifyRecord(old), simplifyRecord(updated)), okapiHeaders, SOURCE_RECORD_UPDATED);
   }
 
   public void publishRecordDeleted(Record deleted, Map<String, String> okapiHeaders) {
-    publishRecord(new DomainEventPayload(deleted, null), okapiHeaders, SOURCE_RECORD_DELETED);
+    publishRecord(new DomainEventPayload(simplifyRecord(deleted), null), okapiHeaders, SOURCE_RECORD_DELETED);
   }
 
   private void publishRecord(DomainEventPayload domainEventPayload, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
@@ -104,4 +105,13 @@ public class RecordDomainEventPublisher {
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   private record DomainEventPayload(@JsonProperty("old") Record oldRecord, @JsonProperty("new") Record newRecord) {}
+
+  private Record simplifyRecord(Record aRecord) {
+    if (aRecord != null) {
+      return MarcUtil.clone(aRecord, Record.class)
+        .withErrorRecord(null)
+        .withRawRecord(null);
+    }
+    return null;
+  }
 }

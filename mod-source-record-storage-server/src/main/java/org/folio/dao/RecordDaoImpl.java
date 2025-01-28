@@ -2016,13 +2016,4 @@ public class RecordDaoImpl implements RecordDao {
     }
     return condition;
   }
-
-  private static <T> T clone(T obj, Class<T> type) {
-    try {
-      final ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
-      return jsonMapper.readValue(jsonMapper.writeValueAsString(obj), type);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException(ex);
-    }
-  }
 }

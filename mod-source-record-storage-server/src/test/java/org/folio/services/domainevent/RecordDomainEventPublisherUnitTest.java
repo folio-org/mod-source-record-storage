@@ -17,8 +17,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.folio.TestUtil;
+import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
 import org.junit.Test;
@@ -189,9 +191,12 @@ public class RecordDomainEventPublisherUnitTest {
       .withUpdatedDate(new Date(20000L));
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
+      .withErrorRecord(new ErrorRecord())
+      .withRawRecord(new RawRecord())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
+    var expectedOldRecord = TestUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
@@ -199,7 +204,7 @@ public class RecordDomainEventPublisherUnitTest {
     var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_CREATED.name();
-    var expectedPayload = new JsonObject().put("new", JsonObject.mapFrom(aRecord)).encode();
+    var expectedPayload = new JsonObject().put("new", JsonObject.mapFrom(expectedOldRecord)).encode();
 
     // when
     publisher.publishRecordCreated(aRecord, givenHeaders);
@@ -223,11 +228,15 @@ public class RecordDomainEventPublisherUnitTest {
       .withUpdatedDate(new Date(20000L));
     var oldRecord = new Record()
       .withId(UUID.randomUUID().toString())
+      .withErrorRecord(new ErrorRecord())
+      .withRawRecord(new RawRecord())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
 
     var newRecord = TestUtil.clone(oldRecord, Record.class).withParsedRecord(new ParsedRecord().withContent(parsedContentUpdated));
+    var expectedOldRecord = TestUtil.clone(oldRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+    var expectedNewRecord = TestUtil.clone(newRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
@@ -236,8 +245,8 @@ public class RecordDomainEventPublisherUnitTest {
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, oldRecord);
     var eventType = SOURCE_RECORD_UPDATED.name();
     var expectedPayload = new JsonObject()
-      .put("old", JsonObject.mapFrom(oldRecord))
-      .put("new", JsonObject.mapFrom(newRecord)).encode();
+      .put("old", JsonObject.mapFrom(expectedOldRecord))
+      .put("new", JsonObject.mapFrom(expectedNewRecord)).encode();
 
     // when
     publisher.publishRecordUpdated(oldRecord, newRecord, givenHeaders);
@@ -260,9 +269,12 @@ public class RecordDomainEventPublisherUnitTest {
       .withUpdatedDate(new Date(20000L));
     var aRecord = new Record()
       .withId(UUID.randomUUID().toString())
+      .withErrorRecord(new ErrorRecord())
+      .withRawRecord(new RawRecord())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
+    var expectedDeletedRecord = TestUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
@@ -270,7 +282,7 @@ public class RecordDomainEventPublisherUnitTest {
     var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_DELETED.name();
-    var expectedPayload = new JsonObject().put("old", JsonObject.mapFrom(aRecord)).encode();
+    var expectedPayload = new JsonObject().put("old", JsonObject.mapFrom(expectedDeletedRecord)).encode();
 
     // when
     publisher.publishRecordDeleted(aRecord, givenHeaders);

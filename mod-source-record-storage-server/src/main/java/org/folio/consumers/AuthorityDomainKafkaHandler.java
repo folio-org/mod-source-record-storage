@@ -11,9 +11,9 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.AsyncRecordHandler;
+import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.RecordService;
 import org.folio.services.util.KafkaUtil;
 import org.springframework.stereotype.Component;

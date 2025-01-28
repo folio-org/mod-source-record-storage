@@ -1,3 +1,6 @@
+## 2025-01-27 v5.8.10
+* [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
+
 ## 2025-01-16 v5.8.9
 * [MODSOURCE-849](https://folio-org.atlassian.net/browse/MODSOURCE-849) Optimize process of clean up marc indexers table
 

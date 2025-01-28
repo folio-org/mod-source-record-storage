@@ -180,7 +180,8 @@ public class RecordServiceImpl implements RecordService {
   public Future<RecordsBatchResponse> saveRecordsByExternalIds(List<String> externalIds,
                                                                RecordType recordType,
                                                                RecordsModifierOperator recordsModifier,
-                                                               Map<String, String> okapiHeaders) {
+                                                               Map<String, String> okapiHeaders,
+                                                               int maxSaveRetryCount) {
     if (CollectionUtils.isEmpty(externalIds)) {
       LOG.warn("saveRecordsByExternalIds:: Skipping the records save, no external IDs are provided");
       return Future.succeededFuture(new RecordsBatchResponse().withTotalRecords(0));
@@ -192,7 +193,6 @@ public class RecordServiceImpl implements RecordService {
     }
 
     AtomicInteger retryCount = new AtomicInteger(0);
-    final int maxRetryCount = 3;
 
     RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
       try {
@@ -212,7 +212,7 @@ public class RecordServiceImpl implements RecordService {
     };
 
     RecordsModifierOperator recordsModifierWithMatchedIdsSetter = recordsModifier.andThen(recordsMatchedIdsSetter);
-    return retrySave(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders, retryCount, maxRetryCount);
+    return retrySave(externalIds, recordType, recordsModifierWithMatchedIdsSetter, okapiHeaders, retryCount, maxSaveRetryCount);
   }
 
   private Future<RecordsBatchResponse> retrySave(List<String> externalIds, RecordType recordType,

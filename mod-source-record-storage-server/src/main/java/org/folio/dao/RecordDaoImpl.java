@@ -1528,9 +1528,9 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders) {
     LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
     return getRecordById(txQE, oldRecord.getId())
-      .compose(optionalRecord -> optionalRecord.map(exisitngRecord ->
+      .compose(optionalRecord -> optionalRecord.map(existingRecord ->
           insertOrUpdateRecord(txQE, oldRecord).compose(r -> insertOrUpdateRecord(txQE, newRecord))
-            .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(exisitngRecord, updatedRecord, okapiHeaders)))
+            .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(existingRecord, updatedRecord, okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, oldRecord.getId())))));
   }
 

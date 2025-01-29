@@ -1140,12 +1140,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
           ArgumentCaptor<Record> captureOldRecord = ArgumentCaptor.forClass(Record.class);
           ArgumentCaptor<Record> captureNewRecord = ArgumentCaptor.forClass(Record.class);
+          Record expectedNewRecord = TestUtil.clone(get.result().get(), Record.class).withErrorRecord(null).withRawRecord(null);
 
           verify(recordDomainEventPublisher, times(1))
             .publishRecordUpdated(captureOldRecord.capture(), captureNewRecord.capture(), any());
 
           compareRecords(context, captureOldRecord.getValue(), save.result());
-          compareRecords(context, captureNewRecord.getValue(), get.result().get());
+          compareRecords(context, captureNewRecord.getValue(), expectedNewRecord);
           async.complete();
         });
       });

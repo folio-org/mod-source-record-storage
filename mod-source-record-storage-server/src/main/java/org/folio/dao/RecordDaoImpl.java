@@ -1285,12 +1285,8 @@ public class RecordDaoImpl implements RecordDao {
       .compose(optionalRecord -> optionalRecord.map(oldRecord ->
           updateExternalIdsForRecord(txQE, record).compose(updatedRecord ->
             ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
-              .onSuccess(v -> recordDomainEventPublisher.publishRecordUpdated(oldRecord,
-                updatedRecord
-                  .withErrorRecord(oldRecord.getErrorRecord())
-                  .withRawRecord(oldRecord.getRawRecord())
-                  .withParsedRecord(record.getParsedRecord()),
-                okapiHeaders))
+              .onSuccess(v -> recordDomainEventPublisher
+                .publishRecordUpdated(oldRecord, updatedRecord.withParsedRecord(record.getParsedRecord()), okapiHeaders))
               .map(v -> record.getParsedRecord()))
         )
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));

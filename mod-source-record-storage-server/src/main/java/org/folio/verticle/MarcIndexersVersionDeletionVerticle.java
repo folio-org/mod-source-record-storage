@@ -45,7 +45,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   @Value("${srs.marcIndexers.delete.interval.seconds:1800}")
   private int interval;
 
-  @Value("${srs.marcIndexers.delete.plannedTime}")
+  @Value("${srs.marcIndexers.delete.plannedTime:}")
   private String plannedTime;
 
   @Value("${srs.marcIndexers.delete.dirtyBatchSize:100000}")

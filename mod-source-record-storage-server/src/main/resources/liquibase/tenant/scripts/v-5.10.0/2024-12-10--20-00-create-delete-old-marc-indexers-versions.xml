@@ -31,44 +31,55 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2024-12-10--17-00-create-delete-old-marc-indexers-versions" author="Volodymyr_Rohach">
+  <changeSet id="2024-12-10--17-00-create-delete-old-marc-indexers-versions" author="Aliaksandr_Fedasiuk">
+    <sql>
+      DROP PROCEDURE IF EXISTS ${database.defaultSchemaName}.delete_old_marc_indexers_versions;
+    </sql>
     <createProcedure>
-      CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions() LANGUAGE plpgsql AS $$
+      CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions(IN pLimit INTEGER) LANGUAGE plpgsql AS $$
       BEGIN
-      WITH dirty_records AS (
-        SELECT mrt.marc_id, mrt.version
-        FROM marc_records_tracking mrt
-        WHERE mrt.is_dirty = true
-      ),
-      deleted_dirty AS (
-      DELETE FROM marc_indexers mi
-        USING dirty_records dr
-      WHERE mi.marc_id = dr.marc_id AND dr.version > mi.version
-        RETURNING mi.marc_id
+        WITH dirty_records AS (
+          SELECT mrt.marc_id, mrt.version
+          FROM marc_records_tracking mrt
+          WHERE mrt.is_dirty = true
+          LIMIT pLimit
         ),
-      old_records AS (
-      SELECT ot.marc_id
-      FROM old_records_tracking ot
-      WHERE ot.has_been_processed = false
+        deleted_dirty AS (
+          DELETE FROM marc_indexers mi
+            USING dirty_records dr
+          WHERE mi.marc_id = dr.marc_id AND dr.version > mi.version
+          RETURNING mi.marc_id
         ),
-      deleted_old AS (
-      DELETE FROM marc_indexers mi
-        USING old_records ors
-      WHERE mi.marc_id = ors.marc_id
-        RETURNING mi.marc_id
+        old_records AS (
+          SELECT ot.marc_id
+          FROM old_records_tracking ot
+          WHERE ot.has_been_processed = false
+          LIMIT pLimit
         ),
-      combined_deletions AS (
-      SELECT marc_id FROM deleted_dirty
-      UNION
-      SELECT marc_id FROM deleted_old
+        deleted_old AS (
+          DELETE FROM marc_indexers mi
+            USING old_records ors
+          WHERE mi.marc_id = ors.marc_id
+          RETURNING mi.marc_id
+        ),
+        combined_deletions AS (
+          SELECT marc_id FROM dirty_records
+          UNION
+          SELECT marc_id FROM old_records
+        ),
+        update_old_records AS (
+          UPDATE old_records_tracking
+          SET has_been_processed = true
+          WHERE marc_id IN (SELECT marc_id FROM combined_deletions)
+          RETURNING marc_id
         )
-      INSERT INTO marc_indexers_deleted_ids (marc_id)
-      SELECT DISTINCT marc_id FROM combined_deletions
-        ON CONFLICT (marc_id) DO NOTHING;
+        UPDATE marc_records_tracking
+        SET is_dirty = false
+        WHERE marc_id IN (SELECT marc_id FROM combined_deletions);
+      RETURN;
       END $$;
     </createProcedure>
   </changeSet>
-
 
   <changeSet id="2024-12-10--17-00-create-index-on-is-dirty-true" author="Volodymyr_Rohach">
     <sql>

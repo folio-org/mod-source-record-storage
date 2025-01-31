@@ -220,7 +220,7 @@ public class RecordDaoImpl implements RecordDao {
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
-  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "CALL delete_old_marc_indexers_versions()";
+  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
   public static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
   public static final String HAS_BEEN_PROCESSED_FLAG = "has_been_processed";
   public static final String MARC_ID_COLUMN = "marc_id";
@@ -1570,54 +1570,23 @@ public class RecordDaoImpl implements RecordDao {
    * or 'false' if it was not.
    */
   @Override
-  public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId) {
+  public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId, Integer oneTimeLimit) {
     return executeInTransaction(txQE -> acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, tenantId.hashCode())
       .compose(isLockAcquired -> {
         if (Boolean.FALSE.equals(isLockAcquired)) {
           LOG.info("deleteMarcIndexersOldVersions:: Previous marc_indexers old version deletion still ongoing, tenantId: '{}'", tenantId);
           return Future.succeededFuture(false);
         }
-        return deleteMarcIndexersOldVersions(txQE, tenantId);
+        return deleteMarcIndexersOldVersions(txQE, tenantId, oneTimeLimit);
       }), tenantId);
   }
 
-  private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId) {
+  private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId, Integer oneTimeLimit) {
     LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
     long startTime = System.nanoTime();
 
-
-    return txQE.execute(dsl ->
-        dsl.createTemporaryTableIfNotExists(DELETE_MARC_INDEXERS_TEMP_TABLE)
-          .column(MARC_ID, SQLDataType.UUID)
-          .constraint(primaryKey(MARC_ID))
-          .onCommitDrop()
-      )
-      .compose(ar -> txQE.execute(
-          dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE))
-        .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
-      )
-      .compose(res -> {
-        Table<Record1<UUID>> subquery = select(field(MARC_ID, SQLDataType.UUID))
-          .from(table(DELETE_MARC_INDEXERS_TEMP_TABLE)).asTable("subquery");
-
-        return txQE.execute(dsl ->
-            dsl.update(table(OLD_RECORDS_TRACKING_TABLE))
-              .set(field(HAS_BEEN_PROCESSED_FLAG), true)
-              .where(field(MARC_ID_COLUMN).in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
-          )
-          .compose(updateResult ->
-            txQE.execute(dsl ->
-              dsl.update(MARC_RECORDS_TRACKING)
-                .set(MARC_RECORDS_TRACKING.IS_DIRTY, false)
-                .where(MARC_RECORDS_TRACKING.MARC_ID
-                  .in(select(subquery.field(MARC_ID, SQLDataType.UUID)).from(subquery)))
-            )
-          )
-          .onFailure(th -> {
-            double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
-            LOG.error("Something happened while updating tracking tables tenantId={}. Duration= {}s", tenantId, durationSeconds, th);
-          });
-      })
+    return txQE.execute(dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE, oneTimeLimit))
+      .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
       .map(res -> {
         double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
         LOG.info("deleteMarcIndexersOldVersions:: Completed successfully for tenantId={}. Duration= {}s", tenantId, durationSeconds);

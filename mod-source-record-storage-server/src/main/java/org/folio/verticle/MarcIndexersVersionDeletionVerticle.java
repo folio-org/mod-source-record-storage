@@ -47,8 +47,8 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   @Value("${srs.marcIndexers.delete.plannedTime:00:00}")
   private String plannedTime;
 
-  @Value("${srs.marcIndexers.delete.oneTimeLimit:100000}")
-  private Integer oneTimeLimit;
+  @Value("${srs.marcIndexers.delete.dirtyBatchSize:100000}")
+  private Integer dirtyBatchSize;
 
   private Future<Boolean> currentDeletion = Future.succeededFuture();
 
@@ -64,21 +64,21 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
     if (!"00:00".equals(plannedTime) && interval == 1800) {
       LOGGER.info("Using scheduler based on planned time: {}", plannedTime);
-      setupTimedDeletion(plannedTime);
+      setupTimedDeletion(plannedTime, dirtyBatchSize);
     } else {
       LOGGER.info("Using periodic interval scheduler: {}s", interval);
-      setupPeriodicDeletion(intervalMillis);
+      setupPeriodicDeletion(intervalMillis, dirtyBatchSize);
     }
 
     startFuture.complete();
   }
 
-  private void setupPeriodicDeletion(long intervalMillis) {
+  private void setupPeriodicDeletion(long intervalMillis, Integer dirtyBatchSize) {
     LOGGER.info("Setting up periodic deletion every {}s", interval);
-    vertx.setPeriodic(intervalMillis, id -> executeDeletionTask());
+    vertx.setPeriodic(intervalMillis, id -> executeDeletionTask(dirtyBatchSize));
   }
 
-  private void setupTimedDeletion(String plannedTime) {
+  private void setupTimedDeletion(String plannedTime, Integer batchSize) {
     LOGGER.info("Setting up timed deletion based on planned times: {}", plannedTime);
     try {
       scheduleTimes = Arrays.stream(plannedTime.split(","))
@@ -87,16 +87,16 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
         .sorted()
         .collect(Collectors.toList());
       LOGGER.info("Scheduled times for deletion: {}", scheduleTimes);
-      scheduleNextTask(vertx, this::executeDeletionTask);
+      scheduleNextTask(vertx, () -> executeDeletionTask(batchSize));
     } catch (DateTimeParseException e) {
       LOGGER.error("Error parsing time, defaulting to periodic deletion with default interval", e);
-      setupPeriodicDeletion(1800 * 1000L);
+      setupPeriodicDeletion(1800 * 1000L, batchSize);
     }
   }
 
-  private void executeDeletionTask() {
+  private void executeDeletionTask(Integer batchSize) {
     if (currentDeletion.isComplete()) {
-      currentDeletion = deleteOldMarcIndexerVersions(oneTimeLimit);
+      currentDeletion = deleteOldMarcIndexerVersions(batchSize);
     } else {
       LOGGER.info("Previous marc_indexers old version deletion still ongoing.");
     }
@@ -104,7 +104,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   private void scheduleNextTask(Vertx vertx, Runnable task) {
     long delay = calculateDelayToNextTask();
-    LOGGER.info("Scheduling next task with delay: {}s", delay/1000L);
+    LOGGER.debug("Scheduling next task with delay: {}s", delay/1000L);
     vertx.setTimer(delay, id -> {
       task.run();
       scheduleNextTask(vertx, task);
@@ -130,26 +130,26 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   /**
    * Deletes old versions of Marc Indexers for all tenants in the system and returns a Future of Boolean.
    */
-  Future<Boolean> deleteOldMarcIndexerVersions(Integer oneTimeLimit) {
-    LOGGER.info("Performing marc_indexers old versions deletion...");
+  Future<Boolean> deleteOldMarcIndexerVersions(Integer batchSize) {
+    LOGGER.info("Perform deletion of old records from marc_indexers...");
     long startTime = System.nanoTime();
     return tenantDataProvider.getModuleTenants("marc_records_tracking")
       .onFailure(ar ->
-        LOGGER.error("could not get the list of tenants to delete marc indexer versions", ar.getCause()))
+        LOGGER.error("Could not get the list of tenants to delete from marc_indexer.", ar.getCause()))
       .compose(ar -> {
         Future<Boolean> future = Future.succeededFuture();
         if (ar.isEmpty()) {
-          LOGGER.info("no tenants available for marc_indexers deletion");
+          LOGGER.info("No tenants available.");
         }
         for (String tenantId : ar) {
-          future = future.compose(v -> recordDao.deleteMarcIndexersOldVersions(tenantId, oneTimeLimit));
+          future = future.compose(v -> recordDao.deleteMarcIndexersOldVersions(tenantId, batchSize));
         }
         return future;
       })
       .onSuccess(ar -> {
         long endTime = System.nanoTime();
         double durationSeconds = (endTime - startTime) / 1_000_000.0 / 1_000;
-        LOGGER.info("marc_indexers old versions deletion completed. duration={}s", durationSeconds);
+        LOGGER.info("Old versions from marc_indexers deleted in {}s", durationSeconds);
       });
   }
 }

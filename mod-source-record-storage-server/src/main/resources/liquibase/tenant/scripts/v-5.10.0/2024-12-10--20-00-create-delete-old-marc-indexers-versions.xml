@@ -38,7 +38,7 @@
     <createProcedure>
       CREATE OR REPLACE PROCEDURE ${database.defaultSchemaName}.delete_old_marc_indexers_versions(IN pLimit INTEGER) LANGUAGE plpgsql AS $$
       BEGIN
-        WITH dirty_records AS (
+        WITH dirty_records AS MATERIALIZED (
           SELECT mrt.marc_id, mrt.version
           FROM marc_records_tracking mrt
           WHERE mrt.is_dirty = true
@@ -50,7 +50,7 @@
           WHERE mi.marc_id = dr.marc_id AND dr.version > mi.version
           RETURNING mi.marc_id
         ),
-        old_records AS (
+        old_records AS MATERIALIZED (
           SELECT ot.marc_id
           FROM old_records_tracking ot
           WHERE ot.has_been_processed = false
@@ -62,7 +62,7 @@
           WHERE mi.marc_id = ors.marc_id
           RETURNING mi.marc_id
         ),
-        combined_deletions AS (
+        combined_deletions AS MATERIALIZED (
           SELECT marc_id FROM dirty_records
           UNION
           SELECT marc_id FROM old_records

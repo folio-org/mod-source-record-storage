@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
@@ -56,10 +57,25 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
-    this.scheduleTimes = Arrays.stream(deleteTimes.split(","))
-      .map(LocalTime::parse)
-      .sorted()
-      .collect(Collectors.toList());
+    LOGGER.info("deleteOldMarcIndexerVersions:: schedule time: {}", deleteTimes);
+    try {
+      scheduleTimes = Arrays.stream(deleteTimes.split(","))
+        .map(String::trim)
+        .map(time -> {
+          try {
+            return LocalTime.parse(time);
+          } catch (DateTimeParseException e) {
+            LOGGER.error("Error parsing time: '{}'. Defaulting to 01:00", time, e);
+            return LocalTime.of(1, 0);
+          }
+        })
+        .sorted()
+        .collect(Collectors.toList());
+      LOGGER.info("Scheduled times: {}", scheduleTimes);
+    } catch (Exception e) {
+      LOGGER.error("Unexpected error occurred while setting up scheduled times, defaulting to 01:00", e);
+      scheduleTimes = Arrays.asList(LocalTime.of(1, 0));
+    }
     scheduleNextTask(vertx, this::deleteTask);
     startFuture.complete();
   }

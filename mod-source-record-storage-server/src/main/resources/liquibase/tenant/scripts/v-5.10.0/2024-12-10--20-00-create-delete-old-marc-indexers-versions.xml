@@ -31,7 +31,7 @@
     </sql>
   </changeSet>
 
-  <changeSet id="2024-12-10--17-00-create-delete-old-marc-indexers-versions" author="Aliaksandr_Fedasiuk">
+  <changeSet id="2024-12-10--17-00-create-delete-old-marc-indexers-versions-v2" author="Aliaksandr_Fedasiuk">
     <sql>
       DROP PROCEDURE IF EXISTS ${database.defaultSchemaName}.delete_old_marc_indexers_versions;
     </sql>

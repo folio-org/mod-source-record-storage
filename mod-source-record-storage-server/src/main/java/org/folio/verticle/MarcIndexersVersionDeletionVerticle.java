@@ -41,8 +41,11 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   private final TenantDataProvider tenantDataProvider;
   private List<LocalTime> scheduleTimes;
 
-  @Value("${srs.marcIndexers.delete.time:01:00}")
-  private String deleteTimes;
+  @Value("${srs.marcIndexers.delete.interval.seconds:1800}")
+  private int interval;
+
+  @Value("${srs.marcIndexers.delete.plannedTime:00:00}")
+  private String plannedTime;
 
   @Value("${srs.marcIndexers.delete.oneTimeLimit:100000}")
   private Integer oneTimeLimit;
@@ -57,43 +60,55 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
-    LOGGER.info("deleteOldMarcIndexerVersions:: schedule time: {}", deleteTimes);
+    long intervalMillis = interval * 1000L;
+
+    if (!"00:00".equals(plannedTime) && interval == 1800) {
+      LOGGER.info("Using scheduler based on planned time: {}", plannedTime);
+      setupTimedDeletion(plannedTime);
+    } else {
+      LOGGER.info("Using periodic interval scheduler: {}s", interval);
+      setupPeriodicDeletion(intervalMillis);
+    }
+
+    startFuture.complete();
+  }
+
+  private void setupPeriodicDeletion(long intervalMillis) {
+    LOGGER.info("Setting up periodic deletion every {}s", interval);
+    vertx.setPeriodic(intervalMillis, id -> executeDeletionTask());
+  }
+
+  private void setupTimedDeletion(String plannedTime) {
+    LOGGER.info("Setting up timed deletion based on planned times: {}", plannedTime);
     try {
-      scheduleTimes = Arrays.stream(deleteTimes.split(","))
+      scheduleTimes = Arrays.stream(plannedTime.split(","))
         .map(String::trim)
-        .map(time -> {
-          try {
-            return LocalTime.parse(time);
-          } catch (DateTimeParseException e) {
-            LOGGER.error("deleteOldMarcIndexerVersions:: Error parsing time: '{}'. Stopping processing and defaulting to 01:00", time, e);
-            throw new RuntimeException("Invalid time format encountered, defaulting to 01:00");
-          }
-        })
+        .map(LocalTime::parse)
         .sorted()
         .collect(Collectors.toList());
-      LOGGER.info("deleteOldMarcIndexerVersions:: Scheduled times: {}", scheduleTimes);
-    } catch (RuntimeException e) {
-      LOGGER.error("deleteOldMarcIndexerVersions:: An error occurred while setting up scheduled times, defaulting to 01:00", e);
-      scheduleTimes = Arrays.asList(LocalTime.of(1, 0));
+      LOGGER.info("Scheduled times for deletion: {}", scheduleTimes);
+      scheduleNextTask(vertx, this::executeDeletionTask);
+    } catch (DateTimeParseException e) {
+      LOGGER.error("Error parsing time, defaulting to periodic deletion with default interval", e);
+      setupPeriodicDeletion(1800 * 1000L);
     }
-    scheduleNextTask(vertx, this::deleteTask);
-    startFuture.complete();
+  }
+
+  private void executeDeletionTask() {
+    if (currentDeletion.isComplete()) {
+      currentDeletion = deleteOldMarcIndexerVersions(oneTimeLimit);
+    } else {
+      LOGGER.info("Previous marc_indexers old version deletion still ongoing.");
+    }
   }
 
   private void scheduleNextTask(Vertx vertx, Runnable task) {
     long delay = calculateDelayToNextTask();
+    LOGGER.info("Scheduling next task with delay: {}s", delay/1000L);
     vertx.setTimer(delay, id -> {
       task.run();
       scheduleNextTask(vertx, task);
     });
-  }
-
-  private void deleteTask() {
-    if (currentDeletion.isComplete()) {
-      currentDeletion = deleteOldMarcIndexerVersions(oneTimeLimit);
-    } else {
-      LOGGER.info("Previous marc_indexers old version deletion still ongoing");
-    }
   }
 
   private long calculateDelayToNextTask() {

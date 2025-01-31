@@ -65,15 +65,15 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
           try {
             return LocalTime.parse(time);
           } catch (DateTimeParseException e) {
-            LOGGER.error("Error parsing time: '{}'. Defaulting to 01:00", time, e);
-            return LocalTime.of(1, 0);
+            LOGGER.error("deleteOldMarcIndexerVersions:: Error parsing time: '{}'. Stopping processing and defaulting to 01:00", time, e);
+            throw new RuntimeException("Invalid time format encountered, defaulting to 01:00");
           }
         })
         .sorted()
         .collect(Collectors.toList());
-      LOGGER.info("Scheduled times: {}", scheduleTimes);
-    } catch (Exception e) {
-      LOGGER.error("Unexpected error occurred while setting up scheduled times, defaulting to 01:00", e);
+      LOGGER.info("deleteOldMarcIndexerVersions:: Scheduled times: {}", scheduleTimes);
+    } catch (RuntimeException e) {
+      LOGGER.error("deleteOldMarcIndexerVersions:: An error occurred while setting up scheduled times, defaulting to 01:00", e);
       scheduleTimes = Arrays.asList(LocalTime.of(1, 0));
     }
     scheduleNextTask(vertx, this::deleteTask);

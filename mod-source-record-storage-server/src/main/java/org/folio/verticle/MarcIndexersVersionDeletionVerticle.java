@@ -60,6 +60,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
+    LOGGER.info("Specified values: planned time: {}, interval: {}", plannedTime, interval);
     long intervalMillis = interval * 1000L;
 
     if (!"00:00".equals(plannedTime) && interval == 1800) {

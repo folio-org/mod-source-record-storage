@@ -20,7 +20,6 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
@@ -63,7 +62,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   @Override
   public void start(Promise<Void> startFuture) {
     LOGGER.info("Specified values:: planned time: {}, interval: {}",
-      isBlank(plannedTime) ? "not specified" : plannedTime, interval);
+      isBlank(plannedTime) ? "is not specified" : plannedTime, interval);
     long intervalMillis = interval * 1000L;
 
     if (isNotBlank(plannedTime)) {
@@ -88,8 +87,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
       scheduleTimes = Arrays.stream(_plannedTime.split(","))
         .map(String::trim)
         .map(LocalTime::parse)
-        .sorted()
-        .collect(Collectors.toList());
+        .sorted().toList();
       LOGGER.info("Scheduled times for deletion: {}", scheduleTimes);
       scheduleNextTask(vertx, () -> executeDeletionTask(batchSize));
     } catch (DateTimeParseException e) {

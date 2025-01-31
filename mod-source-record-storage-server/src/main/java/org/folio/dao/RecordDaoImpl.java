@@ -33,7 +33,6 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.inline;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
-import static org.jooq.impl.DSL.primaryKey;
 import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
@@ -152,7 +151,6 @@ import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
-import org.jooq.impl.SQLDataType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -215,15 +213,10 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.EXTERNAL_HRID
   };
 
-  private static final String DELETE_MARC_INDEXERS_TEMP_TABLE = "marc_indexers_deleted_ids";
-
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
   public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
-  public static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
-  public static final String HAS_BEEN_PROCESSED_FLAG = "has_been_processed";
-  public static final String MARC_ID_COLUMN = "marc_id";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;

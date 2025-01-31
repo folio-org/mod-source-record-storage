@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
@@ -45,7 +46,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   @Value("${srs.marcIndexers.delete.interval.seconds:1800}")
   private int interval;
 
-  @Value("${srs.marcIndexers.delete.plannedTime:}")
+  @Value("${srs.marcIndexers.delete.plannedTime:#{null}}")
   private String plannedTime;
 
   @Value("${srs.marcIndexers.delete.dirtyBatchSize:100000}")
@@ -61,7 +62,8 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
-    LOGGER.info("Specified values: planned time: {}, interval: {}", plannedTime, interval);
+    LOGGER.info("Specified values: planned time: {}, interval: {}",
+      isBlank(plannedTime) ? "not specified" : plannedTime, interval);
     long intervalMillis = interval * 1000L;
 
     if (isNotBlank(plannedTime)) {

@@ -62,7 +62,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startFuture) {
-    LOGGER.info("Specified values: planned time: {}, interval: {}",
+    LOGGER.info("Specified values:: planned time: {}, interval: {}",
       isBlank(plannedTime) ? "not specified" : plannedTime, interval);
     long intervalMillis = interval * 1000L;
 
@@ -77,12 +77,12 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
     startFuture.complete();
   }
 
-  private void setupPeriodicDeletion(long intervalMillis, Integer batchSize) {
+  void setupPeriodicDeletion(long intervalMillis, Integer batchSize) {
     LOGGER.info("Setting up periodic deletion every {}s", interval);
     vertx.setPeriodic(intervalMillis, id -> executeDeletionTask(batchSize));
   }
 
-  private void setupTimedDeletion(String _plannedTime, Integer batchSize) {
+  void setupTimedDeletion(String _plannedTime, Integer batchSize) {
     LOGGER.info("Setting up timed deletion based on planned times: {}", _plannedTime);
     try {
       scheduleTimes = Arrays.stream(_plannedTime.split(","))

@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.commons.lang.StringUtils.isNotBlank;
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
 /**
@@ -44,7 +45,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
   @Value("${srs.marcIndexers.delete.interval.seconds:1800}")
   private int interval;
 
-  @Value("${srs.marcIndexers.delete.plannedTime:00:00}")
+  @Value("${srs.marcIndexers.delete.plannedTime}")
   private String plannedTime;
 
   @Value("${srs.marcIndexers.delete.dirtyBatchSize:100000}")
@@ -63,7 +64,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
     LOGGER.info("Specified values: planned time: {}, interval: {}", plannedTime, interval);
     long intervalMillis = interval * 1000L;
 
-    if (!"00:00".equals(plannedTime) && interval == 1800) {
+    if (isNotBlank(plannedTime)) {
       LOGGER.info("Using scheduler based on planned time: {}", plannedTime);
       setupTimedDeletion(plannedTime, dirtyBatchSize);
     } else {

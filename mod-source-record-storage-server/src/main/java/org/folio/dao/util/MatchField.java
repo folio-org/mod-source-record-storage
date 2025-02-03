@@ -18,6 +18,7 @@ public class MatchField {
   private final Value value;
   private final QualifierMatch qualifierMatch;
   private final String fieldPath;
+  private final ComparisonPartType comparisonPartType;
 
   public MatchField(String tag, String ind1, String ind2, String subfield, Value value) {
     this.tag = tag;
@@ -27,9 +28,11 @@ public class MatchField {
     this.value = value;
     this.fieldPath = tag + ind1 + ind2 + subfield;
     this.qualifierMatch = null;
+    comparisonPartType = null;
   }
 
-  public MatchField(String tag, String ind1, String ind2, String subfield, Value value, QualifierMatch qualifierMatch) {
+  public MatchField(String tag, String ind1, String ind2, String subfield, Value value, QualifierMatch qualifierMatch,
+                    ComparisonPartType comparisonPartType) {
     this.tag = tag;
     this.ind1 = ind1;
     this.ind2 = ind2;
@@ -37,9 +40,15 @@ public class MatchField {
     this.value = value;
     this.qualifierMatch = qualifierMatch;
     this.fieldPath = tag + ind1 + ind2 + subfield;
+    this.comparisonPartType = comparisonPartType;
   }
 
   public record QualifierMatch(Filter.Qualifier qualifier, String value) {
+  }
+
+  public enum ComparisonPartType {
+    NUMERICS_ONLY(),
+    ALPHANUMERICS_ONLY();
   }
 
   public String getTag() {
@@ -84,5 +93,9 @@ public class MatchField {
 
   public boolean isExternalHrid() {
     return EXTERNAL_HRID_MARC_FIELD.equals(fieldPath);
+  }
+
+  public ComparisonPartType getComparisonPartType() {
+    return comparisonPartType;
   }
 }

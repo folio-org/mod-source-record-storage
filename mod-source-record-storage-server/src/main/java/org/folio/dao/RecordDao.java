@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import net.sf.jsqlparser.JSQLParserException;
+import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
@@ -109,7 +110,7 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return {@link Future} of {@link RecordsIdentifiersCollection}
    */
-  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+  Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField, Filter.ComparisonPartType comparisonPartType,
                                                                     boolean returnTotalRecords, TypeConnection typeConnection,
                                                                     boolean externalIdRequired, int offset, int limit, String tenantId);
 

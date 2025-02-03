@@ -51,6 +51,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.RecordDao;
+import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.ParsedRecordDaoUtil;
@@ -406,15 +407,12 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(RecordMatchingDto recordMatchingDto, String tenantId) {
-    MatchField matchField = prepareMatchField(recordMatchingDto);
+    CompositeMatchField compositeMatchField = prepareCompositeMatchField(recordMatchingDto);
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
     Filter.ComparisonPartType comparisonPartType = recordMatchingDto.getFilters().get(0).getComparisonPartType();
 
-    if (matchField.isDefaultField()) {
-      return processDefaultMatchField(matchField, typeConnection, recordMatchingDto, tenantId);
-    }
-    return recordDao.getMatchedRecordsIdentifiers(matchField, comparisonPartType, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
+    return recordDao.getMatchedRecordsIdentifiers(compositeMatchField, comparisonPartType, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
       true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
@@ -549,7 +547,31 @@ public class RecordServiceImpl implements RecordService {
     if (filter.getQualifier() != null && filter.getQualifierValue() != null) {
       qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
     }
-    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier);
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier, null);
+  }
+
+  private CompositeMatchField prepareCompositeMatchField(RecordMatchingDto recordMatchingDto) {
+    List<MatchField> matchFields = recordMatchingDto.getFilters().stream()
+      .map(this::prepareMatchField)
+      .toList();
+
+    return new CompositeMatchField(matchFields);
+  }
+
+  private MatchField prepareMatchField(Filter filter) {
+    String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
+    String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
+    String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
+    MatchField.QualifierMatch qualifier = null;
+    if (filter.getQualifier() != null && filter.getQualifierValue() != null) {
+      qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
+    }
+
+    MatchField.ComparisonPartType comparisonPartType = filter.getComparisonPartType() != null
+      ? MatchField.ComparisonPartType.valueOf(filter.getComparisonPartType().name())
+      : null;
+
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier, comparisonPartType);
   }
 
   private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {

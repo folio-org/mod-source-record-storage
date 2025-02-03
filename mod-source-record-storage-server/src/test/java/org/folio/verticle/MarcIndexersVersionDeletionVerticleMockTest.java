@@ -34,7 +34,7 @@ public class MarcIndexersVersionDeletionVerticleMockTest {
     vertx = mock(Vertx.class);
     AtomicInteger counter = new AtomicInteger(0);
     when(vertx.setTimer(anyLong(), any())).thenAnswer(invocation -> {
-      if (counter.getAndIncrement() < 10) {  // Ограничиваем количество вызовов
+      if (counter.getAndIncrement() < 10) {
         Handler<Long> handler = invocation.getArgument(1);
         handler.handle(1L);
       }

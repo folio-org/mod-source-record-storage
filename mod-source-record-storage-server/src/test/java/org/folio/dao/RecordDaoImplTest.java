@@ -198,7 +198,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
     // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
       .transaction(txQE -> AdvisoryLockUtil.acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
-        .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID)));
+        .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID, 2)));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

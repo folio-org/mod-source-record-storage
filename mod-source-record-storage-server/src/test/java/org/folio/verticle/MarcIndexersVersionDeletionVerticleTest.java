@@ -108,7 +108,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
       .compose(v -> existOldMarcIndexersVersions())
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions())
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
       .compose(deleteRes -> existOldMarcIndexersVersions());
 
     future.onComplete(ar -> {
@@ -126,7 +126,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions())
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
       .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()));
 
     future.onComplete(ar -> {

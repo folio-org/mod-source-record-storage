@@ -1,3 +1,6 @@
+## 2025-02-03 5.9.8
+* [MODSOURCE-855](https://folio-org.atlassian.net/browse/MODSOURCE-855) Fix issues of delete_old_marc_indexers_versions function causing high DB CPU usage 
+
 ## 2025-01-24 5.9.7
 * [MODSOURCE-842](https://folio-org.atlassian.net/browse/MODSOURCE-842) Fix bib fields order on link update event
 

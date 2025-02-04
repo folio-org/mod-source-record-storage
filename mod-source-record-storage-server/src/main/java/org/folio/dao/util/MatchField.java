@@ -28,7 +28,7 @@ public class MatchField {
     this.value = value;
     this.fieldPath = tag + ind1 + ind2 + subfield;
     this.qualifierMatch = null;
-    comparisonPartType = null;
+    this.comparisonPartType = null;
   }
 
   public MatchField(String tag, String ind1, String ind2, String subfield, Value value, QualifierMatch qualifierMatch,

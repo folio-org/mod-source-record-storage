@@ -2,17 +2,12 @@ package org.folio.services;
 
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
 import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
-import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
-import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
@@ -33,7 +28,6 @@ import io.vertx.sqlclient.Row;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +65,6 @@ import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
@@ -100,7 +93,6 @@ public class RecordServiceImpl implements RecordService {
 
   private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
-  private static final String MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG = "Only one matching filter is allowed in the current API implementation";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
@@ -410,8 +402,8 @@ public class RecordServiceImpl implements RecordService {
     CompositeMatchField compositeMatchField = prepareCompositeMatchField(recordMatchingDto);
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
-    return recordDao.getMatchedRecordsIdentifiers(compositeMatchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
-      true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
+    return recordDao.getMatchedRecordsIdentifiers(compositeMatchField, recordMatchingDto.getReturnTotalRecordsCount(),
+      typeConnection, true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
   @Override
@@ -531,23 +523,6 @@ public class RecordServiceImpl implements RecordService {
     return false;
   }
 
-  private MatchField prepareMatchField(RecordMatchingDto recordMatchingDto) {
-    // only one matching filter is expected in the current implementation for processing records matching
-    if (recordMatchingDto.getFilters().size() > 1) {
-      throw new BadRequestException(MULTIPLE_MATCHING_FILTERS_SPECIFIED_MSG);
-    }
-
-    Filter filter = recordMatchingDto.getFilters().get(0);
-    String ind1 = filter.getIndicator1() != null ? filter.getIndicator1() : StringUtils.EMPTY;
-    String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
-    String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
-    MatchField.QualifierMatch qualifier = null;
-    if (filter.getQualifier() != null && filter.getQualifierValue() != null) {
-      qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
-    }
-    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier, null);
-  }
-
   private CompositeMatchField prepareCompositeMatchField(RecordMatchingDto recordMatchingDto) {
     List<MatchField> matchFields = recordMatchingDto.getFilters().stream()
       .map(this::prepareMatchField)
@@ -575,32 +550,6 @@ public class RecordServiceImpl implements RecordService {
       case MARC_HOLDING -> TypeConnection.MARC_HOLDINGS;
       case MARC_AUTHORITY -> TypeConnection.MARC_AUTHORITY;
     };
-  }
-
-  private Future<RecordsIdentifiersCollection> processDefaultMatchField(MatchField matchField, TypeConnection typeConnection,
-                                                                        RecordMatchingDto recordMatchingDto, String tenantId) {
-    Condition condition = filterRecordByState(Record.State.ACTUAL.value());
-    List<String> values = ((ListValue) matchField.getValue()).getValue();
-    var qualifier = matchField.getQualifierMatch();
-
-    //ComparationPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
-
-    if (matchField.isMatchedId()) {
-      condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier));
-    } else if (matchField.isExternalId()) {
-      condition = condition.and(getExternalIdsConditionWithQualifier(values, IdType.EXTERNAL, qualifier));
-    } else if (matchField.isExternalHrid()) {
-      condition = condition.and(filterRecordByExternalHridValuesWithQualifier(values, qualifier));
-    }
-
-    return recordDao.getRecords(condition, typeConnection.getDbType(), Collections.emptyList(), recordMatchingDto.getOffset(),
-        recordMatchingDto.getLimit(), recordMatchingDto.getReturnTotalRecordsCount(), tenantId)
-      .map(recordCollection -> recordCollection.getRecords().stream()
-        .map(sourceRecord -> new RecordIdentifiersDto()
-          .withRecordId(sourceRecord.getId())
-          .withExternalId(RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType())))
-        .collect(collectingAndThen(toList(), identifiers -> new RecordsIdentifiersCollection()
-          .withIdentifiers(identifiers).withTotalRecords(recordCollection.getTotalRecords()))));
   }
 
   private static void update005field(Record targetRecord) {

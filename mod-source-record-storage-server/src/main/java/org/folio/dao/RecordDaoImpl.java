@@ -395,7 +395,8 @@ public class RecordDaoImpl implements RecordDao {
     return switch (comparisonPartType) {
       //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
-      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[\\D]', '', 'g')";
       default -> DEFAULT_VALUE;
     };
   }
@@ -612,11 +613,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-//  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField,
                                                                            boolean returnTotalRecords, TypeConnection typeConnection,
                                                                            boolean externalIdRequired, int offset, int limit, String tenantId) {
-//    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
 //    if (matchedField.getValue() instanceof MissingValue) {
 //      return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
 //    }
@@ -678,12 +677,10 @@ public class RecordDaoImpl implements RecordDao {
     Condition condition = DSL.noCondition();
     for (MatchField matchField : compositeMatchField.getMatchFields()) {
       Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
-      Filter.ComparisonPartType comparisonPartType = matchField.getComparisonPartType() != null
-        ? Filter.ComparisonPartType.valueOf(matchField.getComparisonPartType().name())
-        : null;
 
-      Condition matchFieldCondition = matchField.isDefaultField() ? getDefaultMatchFieldCondition(matchField)
-        : getMatchedFieldCondition(matchField, comparisonPartType, marcIndexersPartitionTable.getName());
+      Condition matchFieldCondition = matchField.isDefaultField()
+        ? getDefaultMatchFieldCondition(matchField)
+        : getMatchedFieldCondition(matchField, matchField.getComparisonPartType(), marcIndexersPartitionTable.getName());
 
       condition = condition.and(matchFieldCondition);
     }
@@ -694,7 +691,7 @@ public class RecordDaoImpl implements RecordDao {
     List<String> values = ((ListValue) matchField.getValue()).getValue();
     MatchField.QualifierMatch qualifier = matchField.getQualifierMatch();
 
-    //ComparisonPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
+    // ComparisonPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
     if (matchField.isMatchedId()) {
       return getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier);
     } else if (matchField.isExternalId()) {

@@ -410,9 +410,7 @@ public class RecordServiceImpl implements RecordService {
     CompositeMatchField compositeMatchField = prepareCompositeMatchField(recordMatchingDto);
     TypeConnection typeConnection = getTypeConnection(recordMatchingDto.getRecordType());
 
-    Filter.ComparisonPartType comparisonPartType = recordMatchingDto.getFilters().get(0).getComparisonPartType();
-
-    return recordDao.getMatchedRecordsIdentifiers(compositeMatchField, comparisonPartType, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
+    return recordDao.getMatchedRecordsIdentifiers(compositeMatchField, recordMatchingDto.getReturnTotalRecordsCount(), typeConnection,
       true, recordMatchingDto.getOffset(), recordMatchingDto.getLimit(), tenantId);
   }
 
@@ -567,11 +565,8 @@ public class RecordServiceImpl implements RecordService {
       qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
     }
 
-    MatchField.ComparisonPartType comparisonPartType = filter.getComparisonPartType() != null
-      ? MatchField.ComparisonPartType.valueOf(filter.getComparisonPartType().name())
-      : null;
-
-    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier, comparisonPartType);
+    return new MatchField(filter.getField(), ind1, ind2, subfield, ListValue.of(filter.getValues()), qualifier,
+      filter.getComparisonPartType());
   }
 
   private TypeConnection getTypeConnection(RecordMatchingDto.RecordType recordType) {

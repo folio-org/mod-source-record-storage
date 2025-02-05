@@ -233,9 +233,6 @@ public class RecordDaoImpl implements RecordDao {
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
 
-  @org.springframework.beans.factory.annotation.Value("${srs.record.matching.fallback-query.enable:false}")
-  private boolean enableFallbackQuery;
-
   @Autowired
   public RecordDaoImpl(final PostgresClientFactory postgresClientFactory,
                        final RecordDomainEventPublisher recordDomainEventPublisher) {
@@ -322,44 +319,10 @@ public class RecordDaoImpl implements RecordDao {
           .offset(offset)
           .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
       }
-    )).compose(queryResult -> handleMatchedRecordsSearchResult(queryResult, matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId));
-  }
-
-  private Future<List<Record>> handleMatchedRecordsSearchResult(QueryResult queryResult, MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                                TypeConnection typeConnection,
-                                                                boolean externalIdRequired, int offset, int limit, String tenantId) {
-    if (enableFallbackQuery && !queryResult.hasResults()) {
-      return getMatchedRecordsWithoutIndexersVersionUsage(matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId);
-    }
-    return Future.succeededFuture(queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).toList());
-  }
-
-  public Future<List<Record>> getMatchedRecordsWithoutIndexersVersionUsage(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                                           TypeConnection typeConnection, boolean externalIdRequired,
-                                                                           int offset, int limit, String tenantId) {
-    Name prt = name(typeConnection.getDbType().getTableName());
-    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .select(getAllRecordFields(prt))
-      .distinctOn(RECORDS_LB.ID)
-      .from(RECORDS_LB)
-      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-      .where(
-        filterRecordByType(typeConnection.getRecordType().value())
-          .and(filterRecordByState(Record.State.ACTUAL.value()))
-          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
-      )
-      .offset(offset)
-      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> queryResult.stream()
       .map(res -> asRow(res.unwrap()))
       .map(this::toRecord)
-      .toList()
-    );
+      .toList());
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {

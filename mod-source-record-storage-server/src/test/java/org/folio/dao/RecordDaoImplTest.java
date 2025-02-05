@@ -3,7 +3,6 @@ package org.folio.dao;
 import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.DELETED;
-import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,12 +37,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @RunWith(VertxUnitRunner.class)
 public class RecordDaoImplTest extends AbstractLBServiceTest {
 
-  private static final String ENABLE_FALLBACK_QUERY_FIELD = "enableFallbackQuery";
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
@@ -117,26 +114,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldReturnRecordOnGetMatchedRecordsWhenThereIsNoTrackingRecordAndFallbackQueryEnabled(TestContext context) {
-    Async async = context.async();
-    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
-    MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
-
-    Future<List<Record>> future = deleteTrackingRecordById(record.getId())
-      .compose(v -> recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
-
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(1, ar.result().size());
-      context.assertEquals(record.getId(), ar.result().get(0).getId());
-      async.complete();
-    });
-  }
-
-  @Test
   public void shouldReturnMultipleRecordsOnGetMatchedRecordsIfMatchedRecordIdsNotSpecified(TestContext context) {
     Async async = context.async();
-    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
 
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
@@ -172,8 +151,6 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   @Test
   public void shouldReturnSingleRecordsOnGetMatchedRecordsIfMatchedRecordIdsSpecified(TestContext context) {
     Async async = context.async();
-    ReflectionTestUtils.setField(recordDao, ENABLE_FALLBACK_QUERY_FIELD, true);
-
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
     Snapshot copyRecordSnapshot = TestMocks.getSnapshot(1);
@@ -245,13 +222,6 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       context.assertFalse(ar.result());
       async.complete();
     });
-  }
-
-  private Future<Boolean> deleteTrackingRecordById(String recordId) {
-    return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dslContext -> dslContext
-        .deleteFrom(MARC_RECORDS_TRACKING)
-        .where(MARC_RECORDS_TRACKING.MARC_ID.eq(UUID.fromString(recordId))))
-      .map(deleted -> deleted != 0);
   }
 
 }

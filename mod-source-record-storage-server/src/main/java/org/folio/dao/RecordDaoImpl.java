@@ -19,6 +19,7 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jaxrs.model.RecordMatchingDto.LogicalOperator.AND;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -112,6 +113,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -675,6 +677,8 @@ public class RecordDaoImpl implements RecordDao {
 
   private Condition getCompositeMatchedFieldCondition(CompositeMatchField compositeMatchField) {
     Condition condition = DSL.noCondition();
+    RecordMatchingDto.LogicalOperator logicalOperator = compositeMatchField.getLogicalOperator();
+
     for (MatchField matchField : compositeMatchField.getMatchFields()) {
       Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
 
@@ -682,7 +686,7 @@ public class RecordDaoImpl implements RecordDao {
         ? getDefaultMatchFieldCondition(matchField)
         : getMatchedFieldCondition(matchField, matchField.getComparisonPartType(), marcIndexersPartitionTable.getName());
 
-      condition = condition.and(matchFieldCondition);
+      condition = logicalOperator == AND ? condition.and(matchFieldCondition) : condition.or(matchFieldCondition);
     }
     return condition;
   }

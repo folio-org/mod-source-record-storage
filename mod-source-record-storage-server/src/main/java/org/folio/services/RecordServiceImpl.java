@@ -528,7 +528,7 @@ public class RecordServiceImpl implements RecordService {
       .map(this::prepareMatchField)
       .toList();
 
-    return new CompositeMatchField(matchFields);
+    return new CompositeMatchField(matchFields, recordMatchingDto.getLogicalOperator());
   }
 
   private MatchField prepareMatchField(Filter filter) {

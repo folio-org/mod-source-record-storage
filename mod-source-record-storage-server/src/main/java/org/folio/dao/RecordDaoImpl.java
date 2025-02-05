@@ -615,13 +615,9 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField,
-                                                                           boolean returnTotalRecords, TypeConnection typeConnection,
-                                                                           boolean externalIdRequired, int offset, int limit, String tenantId) {
-//    if (matchedField.getValue() instanceof MissingValue) {
-//      return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
-//    }
-
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField, boolean returnTotalRecords,
+                                                                           TypeConnection typeConnection, boolean externalIdRequired,
+                                                                           int offset, int limit, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
       TableLike<Record1<Integer>> countQuery;
       if (returnTotalRecords) {

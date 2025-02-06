@@ -1,3 +1,6 @@
+## 2025-02-06 v5.8.11
+* [MODSOURCE-855](https://folio-org.atlassian.net/browse/MODSOURCE-855) Fix issues of delete_old_marc_indexers_versions function causing high DB CPU usage
+
 ## 2025-01-27 v5.8.10
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
 

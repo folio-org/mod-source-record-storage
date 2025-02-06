@@ -4,6 +4,9 @@ import org.folio.rest.jaxrs.model.RecordMatchingDto;
 
 import java.util.List;
 
+/**
+ * The model of the field containing multiple MatchField that need to be matched.
+ */
 public class CompositeMatchField {
 
   private final List<MatchField> matchFields;

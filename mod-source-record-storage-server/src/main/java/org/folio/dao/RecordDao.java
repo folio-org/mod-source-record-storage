@@ -384,7 +384,7 @@ public interface RecordDao {
    *
    * @return boolean future
    */
-  Future<Boolean> deleteMarcIndexersOldVersions(String tenantId);
+  Future<Boolean> deleteMarcIndexersOldVersions(String tenantId, Integer oneTimeLimit);
 
   /**
    * Creates new Record and updates status of the "old" one,

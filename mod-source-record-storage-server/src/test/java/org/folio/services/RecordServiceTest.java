@@ -46,6 +46,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.MarcUtil;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
@@ -1140,7 +1141,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
           ArgumentCaptor<Record> captureOldRecord = ArgumentCaptor.forClass(Record.class);
           ArgumentCaptor<Record> captureNewRecord = ArgumentCaptor.forClass(Record.class);
-          Record expectedNewRecord = TestUtil.clone(get.result().get(), Record.class).withErrorRecord(null).withRawRecord(null);
+          Record expectedNewRecord = MarcUtil.clone(get.result().get(), Record.class).withErrorRecord(null).withRawRecord(null);
 
           verify(recordDomainEventPublisher, times(1))
             .publishRecordUpdated(captureOldRecord.capture(), captureNewRecord.capture(), any());

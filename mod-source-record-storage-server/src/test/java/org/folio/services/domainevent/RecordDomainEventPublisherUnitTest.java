@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.folio.TestUtil;
+import org.folio.dao.util.MarcUtil;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -196,7 +196,7 @@ public class RecordDomainEventPublisherUnitTest {
       .withRecordType(Record.RecordType.MARC_BIB)
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
-    var expectedOldRecord = TestUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+    var expectedOldRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";
@@ -234,9 +234,9 @@ public class RecordDomainEventPublisherUnitTest {
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
 
-    var newRecord = TestUtil.clone(oldRecord, Record.class).withParsedRecord(new ParsedRecord().withContent(parsedContentUpdated));
-    var expectedOldRecord = TestUtil.clone(oldRecord, Record.class).withErrorRecord(null).withRawRecord(null);
-    var expectedNewRecord = TestUtil.clone(newRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+    var newRecord = MarcUtil.clone(oldRecord, Record.class).withParsedRecord(new ParsedRecord().withContent(parsedContentUpdated));
+    var expectedOldRecord = MarcUtil.clone(oldRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+    var expectedNewRecord = MarcUtil.clone(newRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
@@ -274,7 +274,7 @@ public class RecordDomainEventPublisherUnitTest {
       .withRecordType(Record.RecordType.MARC_BIB)
       .withParsedRecord(new ParsedRecord().withContent(parsedContent))
       .withMetadata(metadata);
-    var expectedDeletedRecord = TestUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+    var expectedDeletedRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
     var okapiUrl = "OKAPI_URL";

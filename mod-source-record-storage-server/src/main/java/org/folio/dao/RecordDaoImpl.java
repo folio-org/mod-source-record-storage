@@ -1330,10 +1330,7 @@ public class RecordDaoImpl implements RecordDao {
         recordCollection.getRecords().forEach(aRecord ->
           formUpdateConditions(aRecord, records, recordUpdates, parsedRecordUpdates, prtContent, prtId, errorMessages));
 
-        List<Record> processedRecords = recordCollection.getRecords()
-          .stream()
-          .filter(processedRecord -> Objects.nonNull(processedRecord.getParsedRecord().getId()))
-          .toList();
+        List<Record> processedRecords = recordCollection.getRecords();
 
         try (Connection connection = getConnection(tenantId)) {
           DSL.using(connection).transaction(ctx -> {

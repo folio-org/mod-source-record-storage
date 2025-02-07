@@ -1,10 +1,7 @@
 package org.folio;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.folio.dbschema.ObjectMapperTool;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,15 +23,6 @@ public final class TestUtil {
       return IOUtils.resourceToString(resource, StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
-    }
-  }
-
-  public static <T> T clone(T obj, Class<T> type) {
-    try {
-      final ObjectMapper jsonMapper = ObjectMapperTool.getMapper();
-      return jsonMapper.readValue(jsonMapper.writeValueAsString(obj), type);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalArgumentException(ex);
     }
   }
 }

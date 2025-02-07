@@ -1,0 +1,12 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2025-02-07--15-00-create-composite-records-index-for-several-fields" author="Volodymyr_Rohach">
+    <sql>
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_records_composite ON ${database.defaultSchemaName}.records_lb (record_type, state, external_id);
+    </sql>
+  </changeSet>
+</databaseChangeLog>

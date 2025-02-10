@@ -360,8 +360,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Void> deleteRecordsByExternalId(String externalId, String tenantId) {
-    return recordDao.deleteRecordsByExternalId(externalId, tenantId).map(b -> null);
+  public Future<Void> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders) {
+    return recordDao.deleteRecordsByExternalId(externalId, okapiHeaders).map(b -> null);
   }
 
   @Override

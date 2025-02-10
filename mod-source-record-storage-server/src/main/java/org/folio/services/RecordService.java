@@ -244,10 +244,10 @@ public interface RecordService {
    * Deletes records by external id
    *
    * @param externalId external id
-   * @param tenantId   tenant id
+   * @param okapiHeaders okapi headers
    * @return future with true if succeeded
    */
-  Future<Void> deleteRecordsByExternalId(String externalId, String tenantId);
+  Future<Void> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders);
 
   /**
    * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,

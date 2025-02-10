@@ -361,10 +361,10 @@ public interface RecordDao {
    * Deletes in transaction all records associated with externalId
    *
    * @param externalId  external id
-   * @param tenantId   tenant id
+   * @param okapiHeaders okapi headers
    * @return future with true if succeeded
    */
-  Future<Boolean> deleteRecordsByExternalId(String externalId, String tenantId);
+  Future<Boolean> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders);
 
   /**
    *  Performs purge the 'DELETED' records.

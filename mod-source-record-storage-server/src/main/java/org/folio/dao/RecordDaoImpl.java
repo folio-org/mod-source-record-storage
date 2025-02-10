@@ -614,11 +614,13 @@ public class RecordDaoImpl implements RecordDao {
       return;
     }
 
+    Set<String> processedFields = new HashSet<>();
     selectJoinStep = selectJoinStep.innerJoin(MARC_RECORDS_TRACKING)
       .on(RECORDS_LB.ID.eq(field(MARC_RECORDS_TRACKING.MARC_ID)));
 
     for (MatchField matchField : compositeMatchField.getMatchFields()) {
-      if (!matchField.isDefaultField()) {
+      if (!matchField.isDefaultField() && !processedFields.contains(matchField.getTag())) {
+        processedFields.add(matchField.getTag());
         Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
         selectJoinStep = selectJoinStep.innerJoin(marcIndexersPartitionTable)
           .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))

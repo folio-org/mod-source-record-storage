@@ -55,7 +55,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
     logInput(authorityId, eventSubType, tenantId);
     return (switch (eventSubType) {
       case SOFT_DELETE -> performSoftDelete(authorityId, tenantId, okapiHeaders);
-      case HARD_DELETE -> performHardDelete(authorityId, tenantId);
+      case HARD_DELETE -> performHardDelete(authorityId, okapiHeaders);
     }).onFailure(throwable -> logError(authorityId, eventSubType, tenantId));
   }
 
@@ -73,8 +73,8 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
       }).map(authorityId);
   }
 
-  private Future<String> performHardDelete(String authorityId, String tenantId) {
-    return recordService.deleteRecordsByExternalId(authorityId, tenantId).map(authorityId);
+  private Future<String> performHardDelete(String authorityId, Map<String, String> okapiHeaders) {
+    return recordService.deleteRecordsByExternalId(authorityId, okapiHeaders).map(authorityId);
   }
 
   private void logError(String authorityId, EventSubType subType, String tenantId) {

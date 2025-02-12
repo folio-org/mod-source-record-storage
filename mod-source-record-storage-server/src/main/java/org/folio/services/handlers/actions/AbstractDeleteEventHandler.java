@@ -71,7 +71,14 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
     var okapiHeaders = toOkapiHeaders(payload);
     LOG.info("handlePayload:: Handling 'delete' event for the record id = {}", payloadRecord.getId());
     recordService.deleteRecordById(payloadRecord.getMatchedId(), IdType.RECORD, okapiHeaders)
-      .recover(throwable -> throwable instanceof NotFoundException ? Future.succeededFuture() : Future.failedFuture(throwable))
+      .recover(throwable -> {
+        if (throwable instanceof NotFoundException) {
+          LOG.debug("handlePayload:: No records found, recordId: '{}'", payloadRecord.getMatchedId());
+          return Future.succeededFuture();
+        }
+        LOG.warn("handlePayload:: Error during record deletion", throwable);
+        return Future.failedFuture(throwable);
+      })
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
         payload.getContext().remove(getRecordKey());

@@ -386,7 +386,7 @@ public class RecordDaoImpl implements RecordDao {
       //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
       // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
-      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[\\D]', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\d]', '', 'g')";
       default -> DEFAULT_VALUE;
     };
   }

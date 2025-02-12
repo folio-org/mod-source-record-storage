@@ -375,6 +375,7 @@ public class RecordDaoImpl implements RecordDao {
     return condition(sql);
   }
 
+  @SuppressWarnings("squid:S125")
   private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
 
     String DEFAULT_VALUE = "\"{partition}\".\"value\"";
@@ -385,7 +386,8 @@ public class RecordDaoImpl implements RecordDao {
     return switch (comparisonPartType) {
       //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
-      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\d]', '', 'g')";
       default -> DEFAULT_VALUE;
     };
   }

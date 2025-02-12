@@ -1,3 +1,6 @@
+## 2025-02-03 5.9.9
+* [MODSOURCE-860](https://folio-org.atlassian.net/browse/MODSOURCE-860) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
+
 ## 2025-02-03 5.9.8
 * [MODSOURCE-855](https://folio-org.atlassian.net/browse/MODSOURCE-855) Fix issues of delete_old_marc_indexers_versions function causing high DB CPU usage 
 

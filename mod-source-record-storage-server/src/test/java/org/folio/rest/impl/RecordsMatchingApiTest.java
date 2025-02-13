@@ -260,7 +260,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
     postRecords(context, record);
 
-    var incomingValueNumeric = "393893";
+    var incomingValueNumeric = "ocn393893";
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, incomingValueNumeric.substring(0, SPLIT_INDEX));
     var endWith =  new MatchField.QualifierMatch(ENDS_WITH, incomingValueNumeric.substring(SPLIT_INDEX));
     var contains = new MatchField.QualifierMatch(CONTAINS, incomingValueNumeric.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));

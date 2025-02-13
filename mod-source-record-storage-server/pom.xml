@@ -282,7 +282,7 @@
   </dependencies>
 
   <properties>
-    <testcontainers.version>1.18.3</testcontainers.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>

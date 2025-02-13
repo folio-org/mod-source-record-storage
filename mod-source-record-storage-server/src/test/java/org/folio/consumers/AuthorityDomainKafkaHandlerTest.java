@@ -5,14 +5,18 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.kafka.client.consumer.impl.KafkaConsumerRecordImpl;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -21,6 +25,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.IdType;
+import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -29,6 +34,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
@@ -54,6 +60,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private RecordService recordService;
   private Record record;
   private AuthorityDomainKafkaHandler handler;
+  private static final String currentDate = "20240718132044.6";
 
   @BeforeClass
   public static void setUpClass() throws IOException {
@@ -61,7 +68,10 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(recordId)
-      .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
+      .withContent(
+        new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray()
+          .add(new JsonObject().put("005", currentDate))));
   }
 
   @Before
@@ -123,6 +133,16 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
             context.assertTrue(result.result().isPresent());
             SourceRecord updatedRecord = result.result().get();
             context.assertTrue(updatedRecord.getDeleted());
+            context.assertTrue(updatedRecord.getAdditionalInfo().getSuppressDiscovery());
+            context.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(updatedRecord.getParsedRecord()));
+
+            //Complex verifying "005" field is NOT empty inside parsed record.
+            LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content = (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) updatedRecord.getParsedRecord().getContent();
+            LinkedHashMap<String, String> map = content.get("fields").get(0);
+            String resulted005FieldValue = map.get("005");
+            context.assertNotNull(resulted005FieldValue);
+            context.assertNotEquals(currentDate, resulted005FieldValue);
+
             async.complete();
           });
       });
@@ -156,6 +176,9 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private ConsumerRecord<String, String> getConsumerRecord(HashMap<String, String> payload) {
     ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload));
     consumerRecord.headers().add(new RecordHeader("domain-event-type", "DELETE".getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL.getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN.getBytes(StandardCharsets.UTF_8)));
     return consumerRecord;
   }
 

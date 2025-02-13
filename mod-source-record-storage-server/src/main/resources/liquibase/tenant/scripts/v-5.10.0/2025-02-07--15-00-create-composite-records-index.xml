@@ -6,7 +6,7 @@
 
   <changeSet id="2025-02-07--15-00-create-composite-records-index-for-several-fields" author="Volodymyr_Rohach">
     <sql>
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_records_composite ON ${database.defaultSchemaName}.records_lb (record_type, state, external_id);
+      CREATE INDEX IF NOT EXISTS idx_records_composite ON ${database.defaultSchemaName}.records_lb (record_type, state, external_id);
     </sql>
   </changeSet>
 </databaseChangeLog>

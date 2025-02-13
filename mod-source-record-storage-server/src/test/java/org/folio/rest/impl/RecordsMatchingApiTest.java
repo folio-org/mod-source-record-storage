@@ -628,7 +628,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchRecordByMarcFieldAndExternalIds(TestContext context) {
-    String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    String parsedContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     Record[] records = IntStream.range(0, 2)
       .mapToObj(i -> UUID.randomUUID().toString())
       .map(recordId -> new Record()
@@ -638,7 +638,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withGeneration(0)
         .withRecordType(MARC_BIB)
         .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
-        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
+        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedContent))
         .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())
           .withInstanceHrid(String.valueOf(new Random().nextInt(100)))))
       .toArray(Record[]::new);

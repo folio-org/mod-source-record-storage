@@ -6,7 +6,8 @@
 * [MODSOURCE-821](https://folio-org.atlassian.net/browse/MODSOURCE-821) Add System User Support for Eureka env
 * [MODSOURCE-834](https://folio-org.atlassian.net/browse/MODSOURCE-834) MARC Indexers Clean up is Taking Too Long
 * [MODDATAIMP-1133](https://folio-org.atlassian.net/browse/MODDATAIMP-1133) Second update of the same MARC authority / MARC holdings record completes with errors
-* [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers
+* [MODSOURCE-832](https://folio-org.atlassian.net/browse/MODSOURCE-832) Add consistent handling and updating for same Marc Bib records linked to Authority by two or more consumers 
+* [MODSOURCE-860](https://folio-org.atlassian.net/browse/MODSOURCE-860) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
 * [MODINV-1114](https://folio-org.atlassian.net/browse/MODINV-1114) Extend matching records endpoint to support multiple marc-bib match results processing
 
 ## 2024-10-28 5.9.0

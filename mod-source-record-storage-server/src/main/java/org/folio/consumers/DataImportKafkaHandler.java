@@ -38,7 +38,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
-  private static final String USER_ID_HEADER = "userId";
+  static final String USER_ID_HEADER = "userId";
 
   private Vertx vertx;
   private KafkaConfig kafkaConfig;
@@ -52,7 +52,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   }
 
   // TODO: possible wrong placement of entity logs when cache error
-  private void sendPayloadWithDiError(DataImportEventPayload eventPayload) {
+  private void sendPayloadWithDiError2(DataImportEventPayload eventPayload) {
     LOGGER.info("sendPayloadWithDiError:: Sending event with type '{}' to kafka topic '{}' with jobExecutionId: '{}' ",
       DI_ERROR.value(), kafkaConfig.getEnvId(), eventPayload.getJobExecutionId());
     eventPayload.setEventType(DI_ERROR.value());
@@ -68,6 +68,43 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     }
   }
 
+  private void sendPayloadWithDiError(DataImportEventPayload eventPayload) {
+    int retryCount = 0;
+    final int maxRetryCount = 3;
+    long retryDelay = 1000;
+
+    eventPayload.setEventType(DI_ERROR.value());
+    vertx.setTimer(retryDelay, timerId -> sendEventWithRetry(eventPayload, retryCount, maxRetryCount, retryDelay));
+  }
+
+  private void sendEventWithRetry(DataImportEventPayload eventPayload, int retryCount, int maxRetryCount, long retryDelay) {
+    String eventType = eventPayload.getEventType();
+    String jobExecutionId = eventPayload.getJobExecutionId();
+    String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
+    LOGGER.debug("sendEventWithRetry:: Sending event with type '{}' to kafka topic '{}' with jobExecutionId: '{}' and recordId: '{}'",
+      DI_ERROR.value(), kafkaConfig.getEnvId(), eventPayload.getJobExecutionId(), recordId);
+    try (var eventPublisher = new KafkaEventPublisher(kafkaConfig, vertx, 100)) {
+      eventPublisher.publish(eventPayload)
+        .whenComplete((event, throwable) -> {
+          if (throwable != null) {
+            if (retryCount < maxRetryCount) {
+              LOGGER.error("sendPayloadWithDiError:: Error sending event with type '{}' with jobExecutionId: '{}' and recordId: '{}', retry attempt {}: {}",
+                eventType, recordId, jobExecutionId,retryCount + 1, throwable.getCause().getMessage());
+              vertx.setTimer(retryDelay, nextTimerId -> sendEventWithRetry(eventPayload, retryCount + 1, maxRetryCount, retryDelay));
+            } else {
+              LOGGER.error("sendPayloadWithDiError:: Failed to send event with type '{}' with jobExecutionId: '{}' and recordId: '{}' after {} attempts: {}",
+                eventType, recordId, jobExecutionId, maxRetryCount, throwable.getCause().getMessage());
+            }
+          } else {
+            LOGGER.info("sendPayloadWithDiError:: Successfully sent event with type '{}' with jobExecutionId: '{}' and recordId: '{}'",
+              eventType, jobExecutionId, recordId);
+          }
+        });
+    } catch (Exception e) {
+      LOGGER.error("sendPayloadWithDiError:: Error creating Kafka publisher: {}", e.getMessage());
+    }
+  }
+
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.info("handle:: Handling kafka record: {}", targetRecord);
@@ -80,16 +117,21 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       LOGGER.info("handle:: Data import event payload has been received with event type: '{}' by jobExecutionId: '{}' and recordId: '{}' and chunkId: '{}' and userId: '{}'",
         eventPayload.getEventType(), eventPayload.getJobExecutionId(), recordId, chunkId, userId);
+
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
       eventPayload.getContext().put(USER_ID_HEADER, userId);
-      LOGGER.info("debug 1: recordId: {}", recordId);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
-      LOGGER.info("debug 2: recordId: {}, jobProfileSnapshotId: {}", recordId, jobProfileSnapshotId);
+      LOGGER.info("handle:: debug 2: recordId: {}, jobProfileSnapshotId: {}", recordId, jobProfileSnapshotId);
       profileSnapshotCache.get(jobProfileSnapshotId, params)
-        .onFailure(e -> sendPayloadWithDiError(eventPayload))
+        .onFailure(e -> {
+          LOGGER.error("handle:: debug 2.1: Failed to process data import event payload from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",
+            targetRecord.topic(), eventPayload.getJobExecutionId(), recordId, chunkId, e);
+          sendPayloadWithDiError(eventPayload);
+          promise.fail(e);
+        })
         .toCompletionStage()
         .thenCompose(snapshotOptional -> snapshotOptional
           .map(profileSnapshot -> EventManager.handleEvent(eventPayload, profileSnapshot))

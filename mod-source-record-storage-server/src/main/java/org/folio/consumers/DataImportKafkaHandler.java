@@ -107,7 +107,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
-    LOGGER.info("handle:: Handling kafka record: {}", targetRecord);
+    LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
@@ -149,7 +149,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
               eventPayload.getJobExecutionId(), recordId, chunkId));
           } else {
             try {
-              LOGGER.error("handle:: debug 5: Successfully processed data import event payload from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",
+              LOGGER.info("handle:: debug 5: Successfully processed data import event payload from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",
                 targetRecord.topic(), eventPayload.getJobExecutionId(), recordId, chunkId);
               promise.complete(targetRecord.key());
             } catch (Exception e) {

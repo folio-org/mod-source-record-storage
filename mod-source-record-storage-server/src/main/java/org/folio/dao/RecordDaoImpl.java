@@ -345,9 +345,9 @@ public class RecordDaoImpl implements RecordDao {
   @SuppressWarnings("squid:S125")
   private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
 
-    String DEFAULT_VALUE = "\"{partition}\".\"value\"";
+    String defaultValue = "\"{partition}\".\"value\"";
     if (comparisonPartType == null) {
-      return DEFAULT_VALUE;
+      return defaultValue;
     }
 
     return switch (comparisonPartType) {
@@ -355,7 +355,7 @@ public class RecordDaoImpl implements RecordDao {
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
       // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
       case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\d]', '', 'g')";
-      default -> DEFAULT_VALUE;
+      default -> defaultValue;
     };
   }
 
@@ -378,7 +378,7 @@ public class RecordDaoImpl implements RecordDao {
     };
   }
 
-  private String getValueInSqlFormat(Value value) {
+  private String getValueInSqlFormat(Value<?> value) {
     if (Value.ValueType.STRING.equals(value.getType())) {
       return format(VALUE_IN_SINGLE_QUOTES, value.getValue());
     }
@@ -1421,11 +1421,9 @@ public class RecordDaoImpl implements RecordDao {
       }
     }
 
-    if (Objects.nonNull(additionalInfo)) {
-      if (Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
-        updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-          .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
-      }
+    if (Objects.nonNull(additionalInfo) && Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
+      updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+        .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
     }
 
     if (Objects.nonNull(metadata)) {

@@ -175,12 +175,12 @@ public class RecordServiceImpl implements RecordService {
       promise.complete(new RecordsBatchResponse().withTotalRecords(0));
       return promise.future();
     }
-    List<Future> setMatchedIdsFutures = new ArrayList<>();
+    List<Future<Record>> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
       okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
-      .compose(ar -> ar.succeeded() ?
-        recordDao.saveRecords(recordCollection, okapiHeaders)
+      .compose(ar -> ar.succeeded()
+        ? recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
       .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
   }
@@ -448,7 +448,7 @@ public class RecordServiceImpl implements RecordService {
 
   private void setMatchedIdFromExistingSourceRecord(Record record, String tenantId, Promise<Record> promise, String externalId, IdType idType) {
     recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
-      .onComplete((ar) -> {
+      .onComplete(ar -> {
         if (ar.succeeded()) {
           Optional<SourceRecord> sourceRecord = ar.result();
           if (sourceRecord.isPresent()) {
@@ -470,10 +470,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private static Future mapToDuplicateExceptionIfNeeded(Throwable throwable) {
-    if (throwable instanceof PgException pgException) {
-      if (StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
-        return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
-      }
+    if (throwable instanceof PgException pgException && DUPLICATE_CONSTRAINT.equals(pgException.getConstraint())) {
+      return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
     }
     return Future.failedFuture(throwable);
   }

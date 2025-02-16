@@ -14,11 +14,12 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.Filter;
+import org.folio.rest.jaxrs.model.Filter.ComparisonPartType;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.jaxrs.model.Record;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -27,9 +28,10 @@ import org.junit.runner.RunWith;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
-import org.folio.rest.jaxrs.model.Filter.ComparisonPartType;
 import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.ALPHANUMERICS_ONLY;
 import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.NUMERICS_ONLY;
 import static org.folio.rest.jaxrs.model.Filter.Qualifier.BEGINS_WITH;
@@ -38,9 +40,10 @@ import static org.folio.rest.jaxrs.model.Filter.Qualifier.ENDS_WITH;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
+import static org.folio.rest.jaxrs.model.RecordMatchingDto.LogicalOperator.AND;
+import static org.folio.rest.jaxrs.model.RecordMatchingDto.LogicalOperator.OR;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
@@ -53,8 +56,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/parsedMarcAuthorityWith999field.json";
   private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
   private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
-  private static final String FIELD_035 = "12569";
-  private static final String FIELD_007 = "12345";
+  private static final String FIELD_007 = "12569";
+  private static final String FIELD_035 = "12345";
   private static final int SPLIT_INDEX = 2;
 
   private static String rawRecordContent;
@@ -447,9 +450,9 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchRecordByMultipleDataFieldsAndQualifier() {
-    var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_007.substring(0, SPLIT_INDEX));
-    var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_007.substring(SPLIT_INDEX));
-    var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_007.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_035.substring(0, SPLIT_INDEX));
+    var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_035.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_035.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
     shouldMatchRecordByMultipleDataFieldsAndQualifier(beginWith);
     shouldMatchRecordByMultipleDataFieldsAndQualifier(endWith);
     shouldMatchRecordByMultipleDataFieldsAndQualifier(contains);
@@ -499,9 +502,9 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchRecordByMultipleControlledFieldsAndQualifier() {
-    var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_035.substring(0, SPLIT_INDEX));
-    var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_035.substring(SPLIT_INDEX));
-    var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_035.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
+    var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_007.substring(0, SPLIT_INDEX));
+    var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_007.substring(SPLIT_INDEX));
+    var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_007.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
     shouldMatchRecordByMultipleControlledFieldsAndQualifier(beginWith);
     shouldMatchRecordByMultipleControlledFieldsAndQualifier(endWith);
     shouldMatchRecordByMultipleControlledFieldsAndQualifier(contains);
@@ -624,6 +627,129 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldMatchRecordByMarcFieldAndExternalIds(TestContext context) {
+    String parsedContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    Record[] records = IntStream.range(0, 2)
+      .mapToObj(i -> UUID.randomUUID().toString())
+      .map(recordId -> new Record()
+        .withId(recordId)
+        .withMatchedId(recordId)
+        .withSnapshotId(snapshot.getJobExecutionId())
+        .withGeneration(0)
+        .withRecordType(MARC_BIB)
+        .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
+        .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedContent))
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())
+          .withInstanceHrid(String.valueOf(new Random().nextInt(100)))))
+      .toArray(Record[]::new);
+
+    postRecords(context, records);
+    Record expectedRecord = records[0];
+
+    List<Filter> filters = List.of(
+      new Filter()
+        .withValues(List.of("(OCoLC)63611770"))
+        .withField("035")
+        .withIndicator1("")
+        .withIndicator2("")
+        .withSubfield("a"),
+      new Filter()
+        .withValues(List.of(expectedRecord.getExternalIdsHolder().getInstanceId(), UUID.randomUUID().toString()))
+        .withField("999")
+        .withIndicator1("f")
+        .withIndicator2("f")
+        .withSubfield("i")
+    );
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withLogicalOperator(AND)
+        .withFilters(filters))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(expectedRecord.getId()))
+      .body("identifiers[0].externalId", is(expectedRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchRecordByMultipleFiltersWithSpecifiedComparisonPartTypes() {
+    List<Filter> filters = List.of(
+      new Filter()
+        .withValues(List.of("nin00009530412"))
+        .withField("035")
+        .withIndicator1("")
+        .withIndicator2("")
+        .withComparisonPartType(ALPHANUMERICS_ONLY)
+        .withQualifier(ENDS_WITH)
+        .withQualifierValue("00009530412")
+        .withSubfield("a"),
+      new Filter()
+        .withValues(List.of("123"))
+        .withField("024")
+        .withIndicator1("8")
+        .withIndicator2("0")
+        .withSubfield("a")
+        .withComparisonPartType(NUMERICS_ONLY)
+        .withQualifier(BEGINS_WITH)
+        .withQualifierValue("test")
+    );
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withLogicalOperator(AND)
+        .withFilters(filters))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchRecordIfMultipleFiltersSpecifiedAndLogicalOperatorIsOr() {
+    List<Filter> filters = List.of(
+      new Filter()
+        .withValues(List.of("nin00009530412"))
+        .withField("035")
+        .withIndicator1("")
+        .withIndicator2("")
+        .withSubfield("a"),
+      new Filter()
+        .withValues(List.of("12345"))
+        .withField("024")
+        .withIndicator1("8")
+        .withIndicator2("0")
+        .withSubfield("a")
+    );
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withLogicalOperator(OR)
+        .withFilters(filters))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingRecord.getId()))
+      .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
   public void shouldReturnUnprocessableEntityIfFilterIsNotSpecified() {
     RestAssured.given()
       .spec(spec)
@@ -651,35 +777,6 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .post(RECORDS_MATCHING_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
-  }
-
-  @Test
-  public void shouldReturnBadRequestIfMoreThanOneFilterIsSpecified() {
-    List<Filter> filters = List.of(
-      new Filter()
-        .withValues(List.of("(OCoLC)63611770"))
-      .withField("035")
-      .withIndicator1("")
-      .withIndicator2("")
-      .withSubfield("a"),
-      new Filter()
-        .withValues(List.of("12345"))
-        .withField("240")
-        .withIndicator1("")
-        .withIndicator2("")
-        .withSubfield("a")
-    );
-    assertThat(filters.size(), greaterThan(1));
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(new RecordMatchingDto()
-        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
-        .withFilters(filters))
-      .post(RECORDS_MATCHING_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST);
   }
 
   @Test

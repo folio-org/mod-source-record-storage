@@ -55,22 +55,17 @@ public class JobProfileSnapshotCache {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        try {
-          if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
-            LOGGER.info("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
-            return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
-          } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
-            LOGGER.warn("loadJobProfileSnapshot:: JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
-            return CompletableFuture.completedFuture(Optional.empty());
-          } else {
-            String message = String.format("loadJobProfileSnapshot:: Error loading jobProfileSnapshot by id: '%s', status code: %s, response message: %s",
-              profileSnapshotId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
-            LOGGER.warn(message);
-            return CompletableFuture.failedFuture(new CacheLoadingException(message));
-          }
-        } catch (Exception e) {
-          LOGGER.error("loadJobProfileSnapshot:: Error loading jobProfileSnapshot by id: '{}'", profileSnapshotId, e);
-          return CompletableFuture.failedFuture(e);
+        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
+          LOGGER.info("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
+          return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
+          LOGGER.warn("loadJobProfileSnapshot:: JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
+          return CompletableFuture.completedFuture(Optional.empty());
+        } else {
+          String message = String.format("loadJobProfileSnapshot:: Error loading jobProfileSnapshot by id: '%s', status code: %s, response message: %s",
+            profileSnapshotId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
+          LOGGER.warn(message);
+          return CompletableFuture.failedFuture(new CacheLoadingException(message));
         }
       });
   }

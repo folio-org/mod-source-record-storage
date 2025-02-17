@@ -133,9 +133,16 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
           promise.fail(e);
         })
         .toCompletionStage()
-        .thenCompose(snapshotOptional -> snapshotOptional
-          .map(profileSnapshot -> EventManager.handleEvent(eventPayload, profileSnapshot))
-          .orElse(CompletableFuture.failedFuture(new EventProcessingException(format("Job profile snapshot with id '%s' does not exist", jobProfileSnapshotId)))))
+        .thenCompose(snapshotOptional -> {
+          LOGGER.debug("handle:: debug 2.2: snapshotOptional.isPresent: {} for jobProfileSnapshotId {}", snapshotOptional.isPresent(), jobProfileSnapshotId);
+          return snapshotOptional
+            .map(profileSnapshot -> {
+                LOGGER.debug("handle:: debug 2.3: EventManager.handleEvent for jobExecutionId: '{}' with recordId: '{}'",
+                  eventPayload.getJobExecutionId(), recordId);
+                return EventManager.handleEvent(eventPayload, profileSnapshot);
+            })
+            .orElse(CompletableFuture.failedFuture(new EventProcessingException(format("Job profile snapshot with id '%s' does not exist", jobProfileSnapshotId))));
+        })
         .whenComplete((processedPayload, throwable) -> {
           LOGGER.info("handle:: debug 2.5: recordId: {}, chunkId: {}", recordId, chunkId);
           if (throwable != null) {

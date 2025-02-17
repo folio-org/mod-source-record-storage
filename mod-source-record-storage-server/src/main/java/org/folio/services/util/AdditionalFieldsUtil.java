@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang.StringUtils;
@@ -210,6 +209,7 @@ public final class AdditionalFieldsUtil {
   }
 
   public static boolean addControlledFieldToMarcRecord(Record record, String field, String value, boolean replace) {
+    LOGGER.info("addControlledFieldToMarcRecord:: Adding controlled field {} with value {} to record {}", field, value, record.getId());
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {

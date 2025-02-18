@@ -103,6 +103,15 @@
         },
         {
           "methods": [
+            "POST"
+          ],
+          "pathPattern": "/source-storage/records/{id}/un-delete",
+          "permissionsRequired": [
+            "source-storage.records.undelete.item.post"
+          ]
+        },
+        {
+          "methods": [
             "DELETE"
           ],
           "pathPattern": "/source-storage/records/{id}",
@@ -357,6 +366,11 @@
       "description": "Update record's generation"
     },
     {
+      "permissionName": "source-storage.records.undelete.item.post",
+      "displayName": "Source Storage - undelete record",
+      "description": "Undelete record"
+    },
+    {
       "permissionName": "source-storage.parsed-records.collection.put",
       "displayName": "Source Storage - update records",
       "description": "Update records"
@@ -474,6 +488,7 @@
         "source-storage.migrations.post",
         "source-storage.migrations.item.get",
         "source-storage.records.generation.item.put",
+        "source-storage.records.undelete.item.post",
         "source-storage.parsed-records.collection.put",
         "source-storage.batch-records.collection.post",
         "source-storage.batch.records.collection.post",

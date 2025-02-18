@@ -1845,6 +1845,49 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldUnDeleteMarcRecord(TestContext context) {
+    Async async = context.async();
+    var marcBibMock = TestMocks.getMarcBibRecord();
+    var sourceRecord = new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(marcBibMock.getSnapshotId())
+      .withRecordType(marcBibMock.getRecordType())
+      .withState(State.DELETED)
+      .withOrder(marcBibMock.getOrder())
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withAdditionalInfo(marcBibMock.getAdditionalInfo())
+      .withExternalIdsHolder(
+        new ExternalIdsHolder()
+          .withInstanceId(UUID.randomUUID().toString())
+          .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+      .withMetadata(marcBibMock.getMetadata());
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordService.saveRecord(sourceRecord, okapiHeaders).onComplete(saveResult -> {
+      if (saveResult.failed()) {
+        context.fail(saveResult.cause());
+      }
+      recordService.unDeleteRecordById(sourceRecord.getId(), IdType.RECORD, okapiHeaders).onComplete(undeleteResult -> {
+        if (undeleteResult.failed()) {
+          context.fail(undeleteResult.cause());
+        }
+        recordService.getRecordById(sourceRecord.getId(), TENANT_ID).onComplete(getResult -> {
+          if (getResult.failed()) {
+            context.fail(getResult.cause());
+          }
+          context.assertTrue(getResult.result().isPresent());
+          context.assertFalse(getResult.result().get().getDeleted());
+          verify(recordDomainEventPublisher, times(1))
+            .publishRecordUpdated(eq(saveResult.result()), eq(getResult.result().get()), any());
+        });
+        async.complete();
+      });
+    });
+  }
+
+  @Test
   public void shouldSoftDeleteMarcRecord(TestContext context) {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();

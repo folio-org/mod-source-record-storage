@@ -283,4 +283,6 @@ public interface RecordService {
   Future<Void> updateRecordsState(String matchedId, RecordState state, RecordType recordType, String tenantId);
 
   Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders);
+
+  Future<Void> unDeleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders);
 }

@@ -98,6 +98,7 @@ public class RecordServiceImpl implements RecordService {
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
+  private static final Character CORRECTED_LEADER_RECORD_STATUS = 'c';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final String EXTERNAL_IDS_MISSING_ERROR = "MARC_BIB records must contain external instance and hr id's and 001 field into parsed record";
   protected static final String UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION = "Record with source=LINKED_DATA cannot be updated using QuickMARC. Please use Linked Data Editor.";
@@ -437,6 +438,21 @@ public class RecordServiceImpl implements RecordService {
         record.withState(Record.State.DELETED);
         record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
+        return record;
+      })
+      .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
+  }
+
+  @Override
+  public Future<Void> unDeleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    return recordDao.getRecordByExternalId(id, idType, tenantId)
+      .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+      .map(record -> {
+        update005field(record);
+        record.withState(Record.State.ACTUAL);
+        record.setAdditionalInfo(record.getAdditionalInfo().withDeleted(false));
+        ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
         return record;
       })
       .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);

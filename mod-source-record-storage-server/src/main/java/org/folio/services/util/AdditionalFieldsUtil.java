@@ -178,7 +178,8 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.warn("addFieldToMarcRecord:: Failed to add additional subfield {} for field {} to record {}", subfield, field, record.getId(), e);
+      LOGGER.warn("addFieldToMarcRecord:: Failed to add additional subfield {} for field {} to record {}",
+        subfield, field, record != null ? record.getId() : null, e);
     }
     return result;
   }
@@ -273,26 +274,35 @@ public final class AdditionalFieldsUtil {
         MarcJsonWriter marcJsonWriter = new MarcJsonWriter(baos);
         org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
         if (marcRecord != null) {
+          LOGGER.info("removeField:: Started removing controlled field {} with value {} from record {}", fieldName, value, record.getId());
           if (StringUtils.isEmpty(value)) {
             isFieldRemoveSucceed = removeFirstFoundFieldByName(marcRecord, fieldName);
           } else {
             isFieldRemoveSucceed = removeFieldByNameAndValue(marcRecord, fieldName, subfield, value);
           }
 
+          LOGGER.info("removeField:: Removing controlled field {} with value {} from record {} is {}", fieldName, value, record.getId(), isFieldRemoveSucceed);
           if (isFieldRemoveSucceed) {
+            LOGGER.info("removeField:: Writing record {} after removing controlled field {} with value {}", record.getId(), fieldName, value);
             // use stream writer to recalculate leader
             marcStreamWriter.write(marcRecord);
+
+            LOGGER.info("removeField:: Writing record {} after removing controlled field {} with value {} by jsonWriter", record.getId(), fieldName, value);
             marcJsonWriter.write(marcRecord);
 
             String parsedContentString = new JsonObject(baos.toString()).encode();
+
+            LOGGER.info("removeField:: Prepared parsedContentString for record {}", record.getId());
             // save parsed content string to cache then set it on the record
             parsedRecordContentCache.put(parsedContentString, marcRecord);
             record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
           }
         }
+      } else {
+        LOGGER.info("removeField:: Record or parsed record content is null for record {}", record != null ? record.getId() : null);
       }
     } catch (Exception e) {
-      LOGGER.warn("removeField:: Failed to remove controlled field {} from record {}", fieldName, record.getId(), e);
+      LOGGER.warn("removeField:: Failed to remove controlled field {} from record {}", fieldName, record != null ? record.getId() : null, e);
     }
     return isFieldRemoveSucceed;
   }
@@ -410,7 +420,8 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.warn("addDataFieldToMarcRecord:: Failed to add additional data field {} to record {}", tag, record.getId(), e);
+      LOGGER.warn("addDataFieldToMarcRecord:: Failed to add additional data field {} to record {}",
+        tag, record != null ? record.getId() : null, e);
     }
     return result;
   }
@@ -533,7 +544,8 @@ public final class AdditionalFieldsUtil {
         }
       }
     } catch (Exception e) {
-      LOGGER.warn("Failed to update OCLC subfield for record: {}", recordForUpdate.getId(), e);
+      LOGGER.warn("Failed to update OCLC subfield for record: {}",
+        recordForUpdate != null ? recordForUpdate.getId() : null, e);
     }
   }
 
@@ -645,6 +657,7 @@ public final class AdditionalFieldsUtil {
       }
     } catch (Exception ex) {
       LOGGER.error("updateLatestTransactionDate:: Failed to update field '005' for record with id '{}'", targetRecord.getId(), ex);
+      throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", targetRecord.getId()));
     }
   }
 

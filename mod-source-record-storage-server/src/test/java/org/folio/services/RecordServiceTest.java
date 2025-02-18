@@ -1641,6 +1641,44 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldUpdateRecordStateToDeletedWhenLeaderIsDeletedAndAdditionalInfoIsNull(TestContext context) {
+    Async async = context.async();
+    Record original = TestMocks.getMarcBibRecord();
+    String snapshotId = UUID.randomUUID().toString();
+    ParsedRecord parsedRecord = new ParsedRecord()
+      .withId(original.getId())
+      .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500").put("fields", new JsonArray()));
+
+    ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
+      .withId(original.getId())
+      .withRecordType(ParsedRecordDto.RecordType.fromValue(original.getRecordType().toString()))
+      .withParsedRecord(parsedRecord)
+      .withExternalIdsHolder(original.getExternalIdsHolder())
+      .withMetadata(original.getMetadata());
+
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+
+    recordDao.saveRecord(original, okapiHeaders)
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .onComplete(update -> {
+        if (update.failed()) {
+          context.fail(update.cause());
+        }
+        context.assertTrue(update.result().getDeleted());
+        context.assertEquals(State.DELETED, update.result().getState());
+        context.assertTrue(update.result().getAdditionalInfo().getSuppressDiscovery());
+        recordDao.getRecordById(original.getId(), TENANT_ID).onComplete(get -> {
+          if (get.failed()) {
+            context.fail(get.cause());
+          }
+          context.assertTrue(get.result().isPresent());
+          context.assertEquals(State.OLD, get.result().get().getState());
+          async.complete();
+        });
+      });
+  }
+
+  @Test
   public void shouldUpdateRecordStateToActualWhenLeaderChangedFromDeleted(TestContext context) {
     Async async = context.async();
     String snapshotId = UUID.randomUUID().toString();

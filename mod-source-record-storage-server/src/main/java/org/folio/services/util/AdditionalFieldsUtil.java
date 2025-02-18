@@ -209,11 +209,13 @@ public final class AdditionalFieldsUtil {
   }
 
   public static boolean addControlledFieldToMarcRecord(Record record, String field, String value, boolean replace) {
-    LOGGER.info("addControlledFieldToMarcRecord:: Adding controlled field {} with value {} to record {}", field, value, record.getId());
+    LOGGER.info("addControlledFieldToMarcRecord:: Started adding controlled field {} with value {} to record {}", field, value, record.getId());
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
+        LOGGER.info("addControlledFieldToMarcRecord:: Check conditions before adding controlled field {} with value {} to record {}", field, value, record.getId());
         if (replace) {
+          LOGGER.info("addControlledFieldToMarcRecord:: Removing controlled field {} from record {} before changes", field, record.getId());
           removeField(record, field);
         }
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
@@ -222,18 +224,31 @@ public final class AdditionalFieldsUtil {
         MarcFactory factory = MarcFactory.newInstance();
         org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
         if (marcRecord != null) {
+          LOGGER.info("addControlledFieldToMarcRecord:: Adding controlled field {} with value {} to record {}", field, value, record.getId());
           ControlField dataField = factory.newControlField(field, value);
           marcRecord.addVariableField(dataField);
           // use stream writer to recalculate leader
+          LOGGER.info("addControlledFieldToMarcRecord:: Writing by streamWriter controlled field {} with value {} to record {}",
+            field, value, record.getId()
+          );
           streamWriter.write(marcRecord);
+
+          LOGGER.info("addControlledFieldToMarcRecord:: Writing by jsonWriter controlled field {} with value {} to record {}",
+            field, value, record.getId()
+          );
           jsonWriter.write(marcRecord);
 
+          LOGGER.info(
+            "addControlledFieldToMarcRecord:: Prepared parsedContentString for record {}", record.getId()
+          );
           String parsedContentString = new JsonObject(os.toString()).encode();
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(parsedContentString, marcRecord);
           record.setParsedRecord(record.getParsedRecord().withContent(parsedContentString));
           result = true;
         }
+      } else {
+        LOGGER.warn("addControlledFieldToMarcRecord:: Record or parsed record content is null for record {}", record.getId());
       }
     } catch (Exception e) {
       LOGGER.warn("addControlledFieldToMarcRecord:: Failed to add additional controlled field {} to record {}", field, record.getId(), e);
@@ -623,8 +638,13 @@ public final class AdditionalFieldsUtil {
    * @param mappingParameters mapping parameters
    */
   public static void updateLatestTransactionDate(Record targetRecord, MappingParameters mappingParameters) {
-    if (isField005NeedToUpdate(targetRecord, mappingParameters)) {
-      updateLatestTransactionDate(targetRecord);
+    LOGGER.info("updateLatestTransactionDate:: Updating field '005' for record with id '{}'", targetRecord.getId());
+    try {
+      if (isField005NeedToUpdate(targetRecord, mappingParameters)) {
+        updateLatestTransactionDate(targetRecord);
+      }
+    } catch (Exception ex) {
+      LOGGER.error("updateLatestTransactionDate:: Failed to update field '005' for record with id '{}'", targetRecord.getId(), ex);
     }
   }
 
@@ -701,18 +721,25 @@ public final class AdditionalFieldsUtil {
    * @return true for case when field 005 have to updated
    */
   private static boolean isField005NeedToUpdate(Record record, MappingParameters mappingParameters) {
+    LOGGER.info("isField005NeedToUpdate:: Checking if field '005' needs to be updated for record with id '{}'", record.getId());
     boolean needToUpdate = true;
-    List<MarcFieldProtectionSetting> fieldProtectionSettings = mappingParameters.getMarcFieldProtectionSettings();
-    if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
-      MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes()));
-      if (reader.hasNext()) {
-        org.marc4j.marc.Record marcRecord = reader.next();
-        for (VariableField field : marcRecord.getVariableFields(AdditionalFieldsUtil.TAG_005)) {
-          needToUpdate = isNotProtected(fieldProtectionSettings, (ControlField) field);
-          break;
+    try {
+      List<MarcFieldProtectionSetting> fieldProtectionSettings = mappingParameters.getMarcFieldProtectionSettings();
+      if ((fieldProtectionSettings != null) && !fieldProtectionSettings.isEmpty()) {
+        LOGGER.info("isField005NeedToUpdate:: Checking if field '005' is protected for record with id '{}'", record.getId());
+        MarcReader reader = new MarcJsonReader(new ByteArrayInputStream(record.getParsedRecord().getContent().toString().getBytes()));
+        if (reader.hasNext()) {
+          org.marc4j.marc.Record marcRecord = reader.next();
+          for (VariableField field : marcRecord.getVariableFields(AdditionalFieldsUtil.TAG_005)) {
+            needToUpdate = isNotProtected(fieldProtectionSettings, (ControlField) field);
+            break;
+          }
         }
       }
+    } catch (Exception ex) {
+      LOGGER.error("isField005NeedToUpdate:: Failed to check if field '005' needs to be updated for record with id '{}'", record.getId(), ex);
     }
+    LOGGER.info("isField005NeedToUpdate:: Field '005' needs to be updated for record with id '{}': {}", record.getId(), needToUpdate);
     return needToUpdate;
   }
 

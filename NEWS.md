@@ -12,9 +12,9 @@
 * [MODSOURCE-863](https://folio-org.atlassian.net/browse/MODSOURCE-863) Add index to speed up the querying of a composite record
 * [MODSOURCE-859](https://folio-org.atlassian.net/browse/MODSOURCE-859) Added record undelete endpoint
 
-| METHOD | URL                                      | DESCRIPTION                                         |
-|--------|------------------------------------------|-----------------------------------------------------|
-| POST   | /source-storage/records/{id}/un-delete   | Undelete the record by setting the state to ACTUAL. |
+| METHOD | URL                                      | DESCRIPTION         |
+|--------|------------------------------------------|---------------------|
+| POST   | /source-storage/records/{id}/un-delete   | Undelete a record.  |
 
 ## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035

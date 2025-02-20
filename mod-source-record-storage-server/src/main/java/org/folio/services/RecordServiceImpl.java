@@ -55,6 +55,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.Filter;
@@ -367,21 +368,41 @@ public class RecordServiceImpl implements RecordService {
             .withJobExecutionId(snapshotId)
             .withProcessingStartedDate(new Date())
             .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
-          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-            .withId(newRecordId)
-            .withSnapshotId(snapshot.getJobExecutionId())
-            .withMatchedId(parsedRecordDto.getId())
-            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-            .withState(Record.State.ACTUAL)
-            .withOrder(existingRecord.getOrder())
-            .withGeneration(existingRecord.getGeneration() + 1)
-            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
+          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, getNewRecord(parsedRecordDto, existingRecord, snapshot, newRecordId),
+            existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
+  }
+
+  private static Record getNewRecord(ParsedRecordDto parsedRecordDto, Record existingRecord, Snapshot snapshot, String newRecordId) {
+    Record newRecord = new Record()
+      .withId(newRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withMatchedId(parsedRecordDto.getId())
+      .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+      .withOrder(existingRecord.getOrder())
+      .withGeneration(existingRecord.getGeneration() + 1)
+      .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+      .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+      .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+      .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+      .withMetadata(parsedRecordDto.getMetadata());
+
+    if (Objects.equals(ParsedRecordDaoUtil.getLeaderStatus(parsedRecordDto.getParsedRecord()), DELETED_LEADER_RECORD_STATUS.toString())) {
+      newRecord.setState(Record.State.DELETED);
+      newRecord.setDeleted(true);
+
+      if (newRecord.getAdditionalInfo() != null) {
+        newRecord.setAdditionalInfo(newRecord.getAdditionalInfo().withSuppressDiscovery(true));
+      } else {
+        newRecord.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
+      }
+    } else {
+      newRecord.setDeleted(false);
+      newRecord.setState(Record.State.ACTUAL);
+    }
+
+    return newRecord;
   }
 
   @Override

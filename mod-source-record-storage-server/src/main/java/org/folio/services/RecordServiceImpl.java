@@ -451,7 +451,6 @@ public class RecordServiceImpl implements RecordService {
       .map(record -> {
         update005field(record);
         record.withState(Record.State.ACTUAL);
-        record.setAdditionalInfo(record.getAdditionalInfo().withDeleted(false));
         ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
         return record;
       })

@@ -229,19 +229,13 @@ public final class AdditionalFieldsUtil {
           ControlField dataField = factory.newControlField(field, value);
           marcRecord.addVariableField(dataField);
           // use stream writer to recalculate leader
-          LOGGER.info("addControlledFieldToMarcRecord:: Writing by streamWriter controlled field {} with value {} to record {}",
-            field, value, record.getId()
-          );
+          LOGGER.info("addControlledFieldToMarcRecord:: Writing by streamWriter controlled field {} with value {} to record {}", field, value, record.getId());
           streamWriter.write(marcRecord);
 
-          LOGGER.info("addControlledFieldToMarcRecord:: Writing by jsonWriter controlled field {} with value {} to record {}",
-            field, value, record.getId()
-          );
+          LOGGER.info("addControlledFieldToMarcRecord:: Writing by jsonWriter controlled field {} with value {} to record {}", field, value, record.getId());
           jsonWriter.write(marcRecord);
 
-          LOGGER.info(
-            "addControlledFieldToMarcRecord:: Prepared parsedContentString for record {}", record.getId()
-          );
+          LOGGER.info("addControlledFieldToMarcRecord:: Prepared parsedContentString for record {}", record.getId());
           String parsedContentString = new JsonObject(os.toString()).encode();
           // save parsed content string to cache then set it on the record
           parsedRecordContentCache.put(parsedContentString, marcRecord);
@@ -249,10 +243,10 @@ public final class AdditionalFieldsUtil {
           result = true;
         }
       } else {
-        LOGGER.warn("addControlledFieldToMarcRecord:: Record or parsed record content is null for record {}", record.getId());
+        LOGGER.warn("addControlledFieldToMarcRecord:: Record or parsed record content is null for record {}", record != null ? record.getId() : null);
       }
     } catch (Exception e) {
-      LOGGER.warn("addControlledFieldToMarcRecord:: Failed to add additional controlled field {} to record {}", field, record.getId(), e);
+      LOGGER.warn("addControlledFieldToMarcRecord:: Failed to add additional controlled field {} to record {}", field, record != null ? record.getId() : null, e);
     }
     return result;
   }
@@ -650,13 +644,13 @@ public final class AdditionalFieldsUtil {
    * @param mappingParameters mapping parameters
    */
   public static void updateLatestTransactionDate(Record targetRecord, MappingParameters mappingParameters) {
-    LOGGER.info("updateLatestTransactionDate:: Updating field '005' for record with id '{}'", targetRecord.getId());
+    LOGGER.info("updateLatestTransactionDate(1):: Updating field '005' for record with id '{}'", targetRecord.getId());
     try {
       if (isField005NeedToUpdate(targetRecord, mappingParameters)) {
         updateLatestTransactionDate(targetRecord);
       }
     } catch (Exception ex) {
-      LOGGER.error("updateLatestTransactionDate:: Failed to update field '005' for record with id '{}'", targetRecord.getId(), ex);
+      LOGGER.error("updateLatestTransactionDate(1):: Failed to update field '005' for record with id '{}'", targetRecord.getId(), ex);
       throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", targetRecord.getId()));
     }
   }
@@ -666,11 +660,12 @@ public final class AdditionalFieldsUtil {
    * @param targetRecord            record to update
    */
   public static void updateLatestTransactionDate(Record targetRecord) {
-      String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
-      boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(targetRecord, AdditionalFieldsUtil.TAG_005, date, true);
-      if (!isLatestTransactionDateUpdated) {
-        throw new PostProcessingException(format("Failed to update field '005' to record with id '%s'", targetRecord.getId()));
-      }
+    LOGGER.info("updateLatestTransactionDate(2):: Updating field '005' for record with id '{}'", targetRecord.getId());
+    String date = AdditionalFieldsUtil.dateTime005Formatter.format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
+    boolean isLatestTransactionDateUpdated = AdditionalFieldsUtil.addControlledFieldToMarcRecord(targetRecord, AdditionalFieldsUtil.TAG_005, date, true);
+    if (!isLatestTransactionDateUpdated) {
+      throw new PostProcessingException(format("updateLatestTransactionDate(2):: Failed to update field '005' to record with id '%s'", targetRecord.getId()));
+    }
   }
 
   /**

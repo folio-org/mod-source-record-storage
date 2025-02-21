@@ -152,8 +152,15 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
             LOGGER.error("handle:: debug 4: Failed to process data import event payload from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",
               targetRecord.topic(), eventPayload.getJobExecutionId(), recordId, chunkId);
-            promise.fail(format("handle:: Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
-              eventPayload.getJobExecutionId(), recordId, chunkId));
+            try {
+              promise.fail(format("handle:: 1 Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
+                eventPayload.getJobExecutionId(), recordId, chunkId));
+            } catch (Exception err) {
+              LOGGER.error("handle:: debug 4.5: Failed to process data import kafka record from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",
+                targetRecord.topic(), eventPayload.getJobExecutionId(), recordId, chunkId, err);
+              promise.fail(format("handle:: 2 Failed to process data import event payload from topic '%s' by jobExecutionId: '%s' with recordId: '%s' and chunkId: '%s' ", targetRecord.topic(),
+                eventPayload.getJobExecutionId(), recordId, chunkId));
+            }
           } else {
             try {
               LOGGER.info("handle:: debug 5: Successfully processed data import event payload from topic '{}' by jobExecutionId: '{}' with recordId: '{}' and chunkId: '{}' ",

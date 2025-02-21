@@ -27,7 +27,9 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
-import static org.apache.logging.log4j.Level.*;
+import static org.apache.logging.log4j.Level.DEBUG;
+import static org.apache.logging.log4j.Level.ERROR;
+import static org.apache.logging.log4j.Level.INFO;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 

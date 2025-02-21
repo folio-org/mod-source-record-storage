@@ -8,6 +8,7 @@ import static org.folio.dao.util.ParsedRecordDaoUtil.PARSED_RECORD_CONTENT;
 import static org.folio.dao.util.RawRecordDaoUtil.RAW_RECORD_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
+import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHridValuesWithQualifier;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByMultipleIds;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalIdNonNull;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
@@ -15,8 +16,10 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByType;
 import static org.folio.dao.util.RecordDaoUtil.getExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
+import static org.folio.dao.util.RecordDaoUtil.getExternalIdsConditionWithQualifier;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
+import static org.folio.rest.jaxrs.model.RecordMatchingDto.LogicalOperator.AND;
 import static org.folio.rest.jooq.Tables.ERROR_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
@@ -81,6 +84,7 @@ import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.ErrorRecordDaoUtil;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -107,6 +111,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordIdentifiersDto;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
 import org.folio.rest.jaxrs.model.SourceRecord;
@@ -220,9 +225,6 @@ public class RecordDaoImpl implements RecordDao {
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
 
-  @org.springframework.beans.factory.annotation.Value("${srs.record.matching.fallback-query.enable:false}")
-  private boolean enableFallbackQuery;
-
   @Autowired
   public RecordDaoImpl(final PostgresClientFactory postgresClientFactory,
                        final RecordDomainEventPublisher recordDomainEventPublisher) {
@@ -309,44 +311,10 @@ public class RecordDaoImpl implements RecordDao {
           .offset(offset)
           .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
       }
-    )).compose(queryResult -> handleMatchedRecordsSearchResult(queryResult, matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId));
-  }
-
-  private Future<List<Record>> handleMatchedRecordsSearchResult(QueryResult queryResult, MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                                TypeConnection typeConnection,
-                                                                boolean externalIdRequired, int offset, int limit, String tenantId) {
-    if (enableFallbackQuery && !queryResult.hasResults()) {
-      return getMatchedRecordsWithoutIndexersVersionUsage(matchedField, comparisonPartType, typeConnection, externalIdRequired, offset, limit, tenantId);
-    }
-    return Future.succeededFuture(queryResult.stream().map(res -> asRow(res.unwrap())).map(this::toRecord).toList());
-  }
-
-  public Future<List<Record>> getMatchedRecordsWithoutIndexersVersionUsage(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                                           TypeConnection typeConnection, boolean externalIdRequired,
-                                                                           int offset, int limit, String tenantId) {
-    Name prt = name(typeConnection.getDbType().getTableName());
-    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .select(getAllRecordFields(prt))
-      .distinctOn(RECORDS_LB.ID)
-      .from(RECORDS_LB)
-      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-      .where(
-        filterRecordByType(typeConnection.getRecordType().value())
-          .and(filterRecordByState(Record.State.ACTUAL.value()))
-          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
-      )
-      .offset(offset)
-      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS)
     )).map(queryResult -> queryResult.stream()
       .map(res -> asRow(res.unwrap()))
       .map(this::toRecord)
-      .toList()
-    );
+      .toList());
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {
@@ -374,18 +342,20 @@ public class RecordDaoImpl implements RecordDao {
     return condition(sql);
   }
 
+  @SuppressWarnings("squid:S125")
   private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
 
-    String DEFAULT_VALUE = "\"{partition}\".\"value\"";
+    String defaultValue = "\"{partition}\".\"value\"";
     if (comparisonPartType == null) {
-      return DEFAULT_VALUE;
+      return defaultValue;
     }
 
     return switch (comparisonPartType) {
       //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
-      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
-      default -> DEFAULT_VALUE;
+      // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
+      case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\d]', '', 'g')";
+      default -> defaultValue;
     };
   }
 
@@ -408,7 +378,7 @@ public class RecordDaoImpl implements RecordDao {
     };
   }
 
-  private String getValueInSqlFormat(Value value) {
+  private String getValueInSqlFormat(Value<?> value) {
     if (Value.ValueType.STRING.equals(value.getType())) {
       return format(VALUE_IN_SINGLE_QUOTES, value.getValue());
     }
@@ -519,7 +489,7 @@ public class RecordDaoImpl implements RecordDao {
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
                                            RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
     /* Building a search query */
-    //TODO: adjust bracets in condtion statements
+    //TODO: adjust brackets in condition statements
     CommonTableExpression commonTableExpression = null;
     if (parseFieldsResult.isEnabled()) {
       String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
@@ -601,53 +571,93 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
-                                                                           boolean returnTotalRecords, TypeConnection typeConnection,
-                                                                           boolean externalIdRequired, int offset, int limit, String tenantId) {
-    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
-    if (matchedField.getValue() instanceof MissingValue) {
-      return Future.succeededFuture(new RecordsIdentifiersCollection().withTotalRecords(0));
-    }
-
+  public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField, boolean returnTotalRecords,
+                                                                           TypeConnection typeConnection, boolean externalIdRequired,
+                                                                           int offset, int limit, String tenantId) {
     return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
       TableLike<Record1<Integer>> countQuery;
       if (returnTotalRecords) {
-        countQuery = select(countDistinct(RECORDS_LB.ID))
-          .from(RECORDS_LB)
-          .innerJoin(marcIndexersPartitionTable)
-          .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-          .innerJoin(MARC_RECORDS_TRACKING)
-          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
-            .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+        SelectJoinStep<Record1<Integer>> baseCountQuery = select(countDistinct(RECORDS_LB.ID)).from(RECORDS_LB);
+        joinOnTablesForSearchByMarcFields(baseCountQuery, matchedField);
+        countQuery = baseCountQuery
           .where(filterRecordByType(typeConnection.getRecordType().value())
             .and(filterRecordByState(Record.State.ACTUAL.value()))
             .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-            .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName())));
+            .and(getCompositeMatchedFieldCondition(matchedField)));
       } else {
         countQuery = select(inline(null, Integer.class).as(COUNT));
       }
 
-      SelectConditionStep<org.jooq.Record> searchQuery = dsl
+      SelectJoinStep<org.jooq.Record> baseSearchQuery = dsl
         .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
         .distinctOn(RECORDS_LB.ID)
-        .from(RECORDS_LB)
-        .innerJoin(marcIndexersPartitionTable)
-        .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))))
-        .innerJoin(MARC_RECORDS_TRACKING)
-        .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
-          .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))))
+        .from(RECORDS_LB);
+
+      joinOnTablesForSearchByMarcFields(baseSearchQuery, matchedField);
+      SelectConditionStep<org.jooq.Record> searchQuery = baseSearchQuery
         .where(filterRecordByType(typeConnection.getRecordType().value())
           .and(filterRecordByState(Record.State.ACTUAL.value()))
           .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName())));
+          .and(getCompositeMatchedFieldCondition(matchedField)));
 
-      return DSL.select()
+      return dsl.select()
         .from(searchQuery)
         .rightJoin(countQuery).on(DSL.trueCondition())
         .orderBy(searchQuery.field(ID).asc())
         .offset(offset)
         .limit(limit);
     })).map(result -> toRecordsIdentifiersCollection(result, returnTotalRecords));
+  }
+
+  private void joinOnTablesForSearchByMarcFields(SelectJoinStep<?> selectJoinStep, CompositeMatchField compositeMatchField) {
+    if (compositeMatchField.isDefaultField()) {
+      return;
+    }
+
+    Set<String> processedFields = new HashSet<>();
+    selectJoinStep = selectJoinStep.innerJoin(MARC_RECORDS_TRACKING)
+      .on(RECORDS_LB.ID.eq(field(MARC_RECORDS_TRACKING.MARC_ID)));
+
+    for (MatchField matchField : compositeMatchField.getMatchFields()) {
+      if (!matchField.isDefaultField() && !processedFields.contains(matchField.getTag())) {
+        processedFields.add(matchField.getTag());
+        Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
+        selectJoinStep = selectJoinStep.innerJoin(marcIndexersPartitionTable)
+          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+            .and(MARC_RECORDS_TRACKING.VERSION.eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+      }
+    }
+  }
+
+  private Condition getCompositeMatchedFieldCondition(CompositeMatchField compositeMatchField) {
+    Condition condition = DSL.noCondition();
+    RecordMatchingDto.LogicalOperator logicalOperator = compositeMatchField.getLogicalOperator();
+
+    for (MatchField matchField : compositeMatchField.getMatchFields()) {
+      Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
+
+      Condition matchFieldCondition = matchField.isDefaultField()
+        ? getDefaultMatchFieldCondition(matchField)
+        : getMatchedFieldCondition(matchField, matchField.getComparisonPartType(), marcIndexersPartitionTable.getName());
+
+      condition = logicalOperator == AND ? condition.and(matchFieldCondition) : condition.or(matchFieldCondition);
+    }
+    return condition;
+  }
+
+  private Condition getDefaultMatchFieldCondition(MatchField matchField) {
+    List<String> values = ((ListValue) matchField.getValue()).getValue();
+    MatchField.QualifierMatch qualifier = matchField.getQualifierMatch();
+
+    // ComparisonPartType is not used in this case because it is illogical to apply filters of this type to UUID values.
+    if (matchField.isMatchedId()) {
+      return getExternalIdsConditionWithQualifier(values, IdType.RECORD, qualifier);
+    } else if (matchField.isExternalId()) {
+      return getExternalIdsConditionWithQualifier(values, IdType.EXTERNAL, qualifier);
+    } else if (matchField.isExternalHrid()) {
+      return filterRecordByExternalHridValuesWithQualifier(values, qualifier);
+    }
+    return DSL.noCondition();
   }
 
   private RecordsIdentifiersCollection toRecordsIdentifiersCollection(QueryResult result, boolean returnTotalRecords) {
@@ -1411,11 +1421,9 @@ public class RecordDaoImpl implements RecordDao {
       }
     }
 
-    if (Objects.nonNull(additionalInfo)) {
-      if (Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
-        updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
-          .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
-      }
+    if (Objects.nonNull(additionalInfo) && Objects.nonNull(additionalInfo.getSuppressDiscovery())) {
+      updateStep = (Objects.isNull(updateStep) ? updateFirstStep : updateStep)
+        .set(RECORDS_LB.SUPPRESS_DISCOVERY, additionalInfo.getSuppressDiscovery());
     }
 
     if (Objects.nonNull(metadata)) {

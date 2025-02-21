@@ -6,7 +6,13 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -21,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -141,6 +148,43 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     future.whenComplete((eventPayload, throwable) -> {
       context.assertNotNull(throwable);
       context.assertEquals("Failed to handle event payload, cause event payload context does not contain required data to modify MARC record", throwable.getMessage());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldHandleErrorDuringRecordDeletion(TestContext context) {
+    Async async = context.async();
+    // given
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withContext(payloadContext)
+      .withTenant(TENANT_ID)
+      .withCurrentNode(new ProfileSnapshotWrapper()
+        .withId(UUID.randomUUID().toString())
+        .withContentType(ACTION_PROFILE)
+        .withContent(new ActionProfile()
+          .withId(UUID.randomUUID().toString())
+          .withName("Delete Marc Authorities")
+          .withAction(DELETE)
+          .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY)
+        )
+      );
+
+    RecordService spyRecordService = spy(recordService);
+    doReturn(Future.failedFuture(new RuntimeException("Deletion error")))
+      .when(spyRecordService).deleteRecordById(anyString(), any(IdType.class), anyMap());
+
+    EventHandler spyEventHandler = new MarcAuthorityDeleteEventHandler(spyRecordService);
+
+    // when
+    CompletableFuture<DataImportEventPayload> future = spyEventHandler.handle(dataImportEventPayload);
+
+    // then
+    future.whenComplete((eventPayload, throwable) -> {
+      context.assertNotNull(throwable);
+      context.assertEquals("Deletion error", throwable.getMessage());
       async.complete();
     });
   }

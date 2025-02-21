@@ -75,5 +75,6 @@
   <include file="scripts/v-5.10.0/2024-12-10--18-00-create-and-fill-old-records-tracking-table.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2024-12-10--19-00-migrate-is-dirty-false.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2024-12-10--20-00-create-delete-old-marc-indexers-versions.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.10.0/2025-02-07--15-00-create-composite-records-index.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

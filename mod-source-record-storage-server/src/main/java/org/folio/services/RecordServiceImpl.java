@@ -448,11 +448,11 @@ public class RecordServiceImpl implements RecordService {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-      .map(record -> {
-        update005field(record);
-        record.withState(Record.State.ACTUAL);
-        ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
-        return record;
+      .map(foundRecord -> {
+        update005field(foundRecord);
+        foundRecord.withState(Record.State.ACTUAL);
+        ParsedRecordDaoUtil.updateLeaderStatus(foundRecord.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
+        return foundRecord;
       })
       .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
   }

@@ -1860,7 +1860,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(
         new ExternalIdsHolder()
           .withInstanceId(UUID.randomUUID().toString())
-          .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+          .withInstanceHrid("12345abcd"))
       .withMetadata(marcBibMock.getMetadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);

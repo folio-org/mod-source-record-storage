@@ -454,7 +454,7 @@ public class RecordServiceImpl implements RecordService {
         ParsedRecordDaoUtil.updateLeaderStatus(foundRecord.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
         return foundRecord;
       })
-      .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
+      .compose(foundRecord -> updateRecord(foundRecord, okapiHeaders)).map(r -> null);
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

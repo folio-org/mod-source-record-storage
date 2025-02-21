@@ -1112,6 +1112,41 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldUnDeletedRecord(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+    var deletedRecord = new Record()
+      .withId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withMatchedId(FIRST_UUID)
+      .withOrder(0)
+      .withState(Record.State.DELETED)
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_UUID));
+    postRecords(testContext, deletedRecord);
+
+    var async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .post(SOURCE_STORAGE_RECORDS_PATH + "/" + deletedRecord.getId() + "/un-delete")
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + deletedRecord.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("deleted", is(false));
+    async.complete();
+  }
+
+  @Test
   public void shouldReturnParsedResultsWithAnyStateWithNoParametersSpecified(TestContext testContext) {
     postSnapshots(testContext, snapshot_1, snapshot_2);
 

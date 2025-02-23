@@ -125,7 +125,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
         })
         .toCompletionStage()
         .thenCompose(snapshotOptional -> {
-          printLogInfo(DEBUG, format("handle:: Is snapshot profile with id: '{}' received: '{}'", jobProfileSnapshotId, snapshotOptional.isPresent()), debugInfo);
+          printLogInfo(DEBUG, format("handle:: Is snapshot profile with id: '%s' is received: '%s'", jobProfileSnapshotId, snapshotOptional.isPresent()), debugInfo);
           return snapshotOptional.map(profileSnapshot -> {
               printLogInfo(DEBUG, "handle:: Handle event by EventManager", debugInfo);
               return EventManager.handleEvent(eventPayload, profileSnapshot);

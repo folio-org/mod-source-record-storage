@@ -75,8 +75,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload payload) {
     String jobExecutionId = payload.getJobExecutionId();
+    String eventType = payload.getEventType();
     String recordId = null;
-    LOG.info("handle:: Start handling event for with jobExecutionId: '{}'", jobExecutionId);
+    LOG.debug("handle:: Start handling event with type '{}' for with jobExecutionId: '{}'", eventType, jobExecutionId);
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
       var payloadContext = payload.getContext();
@@ -86,7 +87,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         return future;
       }
       recordId = payload.getContext().get(RECORD_ID_HEADER);
-      LOG.info("handle:: Start handling event for with jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId);
+      LOG.info("handle:: Handling event with type: '{}' for with jobExecutionId: '{}' and recordId: '{}'", eventType, jobExecutionId, recordId);
 
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
@@ -97,7 +98,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       OkapiConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
 
-      LOG.info("handle:: Load mapping parameters for jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId);
+      LOG.debug("handle:: Load mapping parameters for jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId);
       String finalRecordId = recordId;
 
       mappingParametersCache.get(payload.getJobExecutionId(), okapiParams)
@@ -105,51 +106,49 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         .compose(mappingParameters -> modifyRecord(payload, mappingProfile, mappingParameters)
           .compose(v -> prepareModificationResult(payload, marcMappingOption))
           .compose(changedRecord -> {
-            LOG.info("handle:: Start modifying MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start modifying MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
-              LOG.info("handle:: Start filling HRID field for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+              LOG.debug("handle:: Start filling HRID field for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 
               String changed001 = getValueFromControlledField(changedRecord, HR_ID_FROM_FIELD);
-              LOG.info("handle:: Start filling 035 field for jobExecutionId: '{}', and recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+              LOG.debug("handle:: Start filling 035 field for jobExecutionId: '{}', and recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               if (StringUtils.isNotBlank(incoming001) && !incoming001.equals(changed001)) {
                 fill035FieldInMarcRecordIfNotExists(changedRecord, incoming001);
               }
 
-              LOG.info("handle:: Start removing 035 field with actual HRID for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+              LOG.debug("handle:: Start removing 035 field with actual HRID for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               remove035WithActualHrId(changedRecord, hrId);
               remove003FieldIfNeeded(changedRecord, hrId);
             }
-            LOG.info("handle:: Start increasing generation record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start increasing generation record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             increaseGeneration(changedRecord);
 
-            LOG.info("handle:: Start setting updatedBy for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start setting updatedBy for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             setUpdatedBy(changedRecord, userId);
 
-            LOG.info("handle:: Start updating latest transaction date for jobExecutionId: '{}', recordId: '{}'and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start updating latest transaction date for jobExecutionId: '{}', recordId: '{}'and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             updateLatestTransactionDate(changedRecord, mappingParameters);
 
-            LOG.info("handle:: Start normalizing 035 field for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start normalizing 035 field for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             normalize035(changedRecord);
             payloadContext.put(modifiedEntityType().value(), Json.encode(changedRecord));
             return Future.succeededFuture(changedRecord);
           })
           .compose(changedRecord -> {
             String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
-            LOG.info("handle:: Start saving modified MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}' for centralTenantId: '{}'", jobExecutionId, finalRecordId, changedRecord.getId(), centralTenantId);
+            LOG.debug("handle:: Start saving modified MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}' for centralTenantId: '{}'", jobExecutionId, finalRecordId, changedRecord.getId(), centralTenantId);
             var okapiHeaders = toOkapiHeaders(payload);
             if (centralTenantId != null) {
               okapiHeaders.put(OKAPI_TENANT_HEADER, centralTenantId);
               return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
                 .compose(snapshot -> recordService.saveRecord(changedRecord, okapiHeaders));
             }
-            LOG.info("handle:: Start saving modified MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
+            LOG.debug("handle:: Start saving modified MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             return recordService.saveRecord(changedRecord, okapiHeaders);
           })
         )
-        .onSuccess(savedRecord -> {
-          submitSuccessfulEventType(payload, future, marcMappingOption);
-        })
+        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))
         .onFailure(throwable -> {
           LOG.error("handle:: Error while processing for jobExecutionId: {} and recordId: {}", jobExecutionId, finalRecordId, throwable);
           future.completeExceptionally(throwable);
@@ -163,9 +162,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
     String recordId = payload.getContext().get(RECORD_ID_HEADER);
-    LOG.info("submitSuccessfulEventType:: Start submitting successful event type for jobExecutionId: '{}' and recordId: '{}'",
-      payload.getJobExecutionId(), recordId);
-      payload.setEventType(getUpdateEventType());
+    String updatedEventType = getUpdateEventType();
+    LOG.debug("submitSuccessfulEventType:: Start submitting successful event type '{}' for jobExecutionId: '{}' and recordId: '{}'",
+      updatedEventType, payload.getJobExecutionId(), recordId);
+      payload.setEventType(updatedEventType);
       future.complete(payload);
   }
 
@@ -195,15 +195,18 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                       MappingParameters mappingParameters) {
+
+    String jobExecutionId = dataImportEventPayload.getJobExecutionId();
+    String recordId = dataImportEventPayload.getContext().get(RECORD_ID_HEADER);
     try {
-      LOG.debug("modifyRecord:: Start modifying record for jobExecutionId: '{}'", dataImportEventPayload.getJobExecutionId());
+      LOG.debug("modifyRecord:: Start modifying record for jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId);
       MarcRecordModifier marcRecordModifier = new MarcRecordModifier();
       marcRecordModifier.initialize(dataImportEventPayload, mappingParameters, mappingProfile, modifiedEntityType());
       marcRecordModifier.modifyRecord(mappingProfile.getMappingDetails().getMarcMappingDetails());
       marcRecordModifier.getResult(dataImportEventPayload);
       return Future.succeededFuture();
     } catch (IOException e) {
-      LOG.error("modifyRecord:: Failed to modify record", e);
+      LOG.error("modifyRecord:: Failed to modify record for jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId, e);
       return Future.failedFuture(e);
     }
   }
@@ -226,7 +229,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   private Future<Record> prepareModificationResult(DataImportEventPayload payload, MappingDetail.MarcMappingOption marcMappingOption) {
-    LOG.info("prepareModificationResult:: Start preparing modification result for jobExecutionId: '{}'", payload.getJobExecutionId());
+    LOG.debug("prepareModificationResult:: Start preparing modification result for jobExecutionId: '{}'", payload.getJobExecutionId());
     try {
       Record changedRecord = null;
       HashMap<String, String> context = payload.getContext();
@@ -239,8 +242,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         changedRecord.setOrder(incomingRecord.getOrder());
         context.put(modifiedEntityType().value(), Json.encode(changedRecord));
       }
-      LOG.info("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}' and recordId: '{}'",
-        payload.getJobExecutionId(), changedRecord != null ? changedRecord.getId() : null);
+      if (changedRecord != null) {
+        LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}' and recordId: '{}'",
+          payload.getJobExecutionId(), changedRecord.getId());
+      }
       return Future.succeededFuture(changedRecord);
     } catch (Exception e) {
       LOG.error("prepareModificationResult:: Error preparing modification result for jobExecutionId: '{}'", payload.getJobExecutionId(), e);
@@ -263,6 +268,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   private void increaseGeneration(Record changedRecord) {
+    LOG.debug("increaseGeneration:: Start increasing generation for record with id: '{}'", changedRecord.getId());
     var generation = changedRecord.getGeneration();
     if (nonNull(generation)) {
       changedRecord.setGeneration(++generation);

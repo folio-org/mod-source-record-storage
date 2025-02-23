@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -56,7 +55,7 @@ public class JobProfileSnapshotCache {
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
         if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
-          LOGGER.info("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
+          LOGGER.debug("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
         } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
           LOGGER.warn("loadJobProfileSnapshot:: JobProfileSnapshot was not found by id '{}'", profileSnapshotId);

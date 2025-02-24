@@ -61,6 +61,7 @@ public class ModTenantAPI extends TenantAPI {
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> vertx.executeBlocking(() -> {
             LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+            LOGGER.info("loadData:: Schemas initialization is completed");
             return null;
           })
           .compose(ar -> setLoadSampleParameter(attributes, context))
@@ -86,6 +87,7 @@ public class ModTenantAPI extends TenantAPI {
       } else {
         handler.handle(Future.failedFuture(ar.cause()));
       }
+      LOGGER.info("postTenant:: Post tenant request is completed");
     }, context));
   }
 

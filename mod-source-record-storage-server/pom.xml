@@ -287,7 +287,7 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
     <vertx-jooq.version>6.5.5</vertx-jooq.version>
-    <aspectj.version>1.9.19</aspectj.version>
+    <aspectj.version>1.9.22.1</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.30</lombok.version>

@@ -1,3 +1,6 @@
+## 2025-02-26 5.9.10
+* [MODSOURCE-863](https://folio-org.atlassian.net/browse/MODSOURCE-863) Add index to speed up the querying of a composite record
+
 ## 2025-02-17 5.9.9
 * [MODSOURCE-860](https://folio-org.atlassian.net/browse/MODSOURCE-860) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
 

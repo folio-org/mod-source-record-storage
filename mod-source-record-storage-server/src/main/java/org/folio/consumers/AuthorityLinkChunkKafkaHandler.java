@@ -88,11 +88,10 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    LOGGER.info("handle:: Start handling kafka record value: {}", consumerRecord.value());
-    LOGGER.info("handle:: Start handling kafka record headers: {}", consumerRecord.headers());
+    LOGGER.trace("handle:: Start handling kafka record value: {}", consumerRecord.value());
     LOGGER.info("handle:: Start Handling kafka record");
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
-    LOGGER.info("handle:: userId: {}", userId);
+
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
       .compose(linksUpdate -> {
@@ -103,13 +102,8 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
         return recordService.saveRecordsByExternalIds(instanceIds, RecordType.MARC_BIB, recordsModifier, okapiHeaders, maxBibSaveRetryCount)
           .compose(recordsBatchResponse -> {
-            LOGGER.info("handle:: recordsBatchResponse {}", recordsBatchResponse);
-            LOGGER.info("handle:: linksUpdate {}", linksUpdate);
-            LOGGER.info("handle:: consumerRecords: {}", consumerRecord);
-
             sendReports(recordsBatchResponse, linksUpdate, consumerRecord.headers());
             var marcBibUpdateStats = mapRecordsToBibUpdateEventsByInstanceId(recordsBatchResponse, linksUpdate);
-            LOGGER.info("handle:: Sending bib update events {} ", marcBibUpdateStats);
             return Future.all(marcBibUpdateStats.entrySet().stream()
                 .map(entry -> sendEvents(entry.getValue(), linksUpdate, entry.getKey(), consumerRecord))
                 .toList()
@@ -209,7 +203,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       bibRecord.setId(newRecordId);
       bibRecord.getRawRecord().setId(newRecordId);
       bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
-      setUpdatedBy(bibRecord, "b52fa581-42d5-4044-b7af-2eccdb97dfba");
+      setUpdatedBy(bibRecord, userId);
     });
     return recordCollection;
   }
@@ -337,7 +331,6 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
                                     KafkaConsumerRecord<String, String> consumerRecord) {
     LOGGER.info("Sending {} bib update events for jobId {}, authorityId {}",
       marcBibUpdateEvents.size(), event.getJobId(), event.getAuthorityId());
-    LOGGER.info("Sending {} bib update events", marcBibUpdateEvents);
 
     return Future.fromCompletionStage(
       CompletableFuture.allOf(

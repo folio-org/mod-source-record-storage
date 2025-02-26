@@ -88,10 +88,10 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    LOGGER.trace("handle:: Start handling kafka record value: {}", consumerRecord.value());
+    LOGGER.info("handle:: Start handling kafka record value: {}", consumerRecord.value());
     LOGGER.info("handle:: Start Handling kafka record");
     var userId = extractHeaderValue(XOkapiHeaders.USER_ID, consumerRecord.headers());
-
+    LOGGER.info("handle:: userId: {}", userId);
     var result = mapToEvent(consumerRecord)
       .compose(this::createSnapshot)
       .compose(linksUpdate -> {
@@ -203,7 +203,7 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
       bibRecord.setId(newRecordId);
       bibRecord.getRawRecord().setId(newRecordId);
       bibRecord.setSnapshotId(bibAuthorityLinksUpdate.getJobId());
-      setUpdatedBy(bibRecord, userId);
+      setUpdatedBy(bibRecord, "b52fa581-42d5-4044-b7af-2eccdb97dfba");
     });
     return recordCollection;
   }

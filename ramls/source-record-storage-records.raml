@@ -197,3 +197,15 @@ resourceTypes:
                 body:
                   application/json:
                     type: record
+    /un-delete:
+          displayName: Undelete
+          post:
+            description: Undelete specific record
+            queryParameters:
+              idType:
+                description: Type of Id for Record lookup
+                type: string
+                example: INSTANCE
+                default: RECORD
+            responses:
+              204:

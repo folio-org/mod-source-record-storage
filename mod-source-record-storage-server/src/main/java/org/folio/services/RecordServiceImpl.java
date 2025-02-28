@@ -55,6 +55,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
+import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.Filter;
@@ -97,6 +98,7 @@ public class RecordServiceImpl implements RecordService {
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
   private static final Character DELETED_LEADER_RECORD_STATUS = 'd';
+  private static final Character CORRECTED_LEADER_RECORD_STATUS = 'c';
   public static final String UPDATE_RECORD_DUPLICATE_EXCEPTION = "Incoming record could be a duplicate, incoming record generation should not be the same as matched record generation and the execution of job should be started after of creating the previous record generation";
   public static final String EXTERNAL_IDS_MISSING_ERROR = "MARC_BIB records must contain external instance and hr id's and 001 field into parsed record";
   protected static final String UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION = "Record with source=LINKED_DATA cannot be updated using QuickMARC. Please use Linked Data Editor.";
@@ -370,21 +372,41 @@ public class RecordServiceImpl implements RecordService {
             .withJobExecutionId(snapshotId)
             .withProcessingStartedDate(new Date())
             .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
-          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, new Record()
-            .withId(newRecordId)
-            .withSnapshotId(snapshot.getJobExecutionId())
-            .withMatchedId(parsedRecordDto.getId())
-            .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-            .withState(Record.State.ACTUAL)
-            .withOrder(existingRecord.getOrder())
-            .withGeneration(existingRecord.getGeneration() + 1)
-            .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-            .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-            .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-            .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-            .withMetadata(parsedRecordDto.getMetadata()), existingRecord.withState(Record.State.OLD), okapiHeaders)))
+          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, getNewRecord(parsedRecordDto, existingRecord, snapshot, newRecordId),
+            existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
+  }
+
+  private static Record getNewRecord(ParsedRecordDto parsedRecordDto, Record existingRecord, Snapshot snapshot, String newRecordId) {
+    Record newRecord = new Record()
+      .withId(newRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withMatchedId(parsedRecordDto.getId())
+      .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
+      .withOrder(existingRecord.getOrder())
+      .withGeneration(existingRecord.getGeneration() + 1)
+      .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
+      .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
+      .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
+      .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
+      .withMetadata(parsedRecordDto.getMetadata());
+
+    if (Objects.equals(ParsedRecordDaoUtil.getLeaderStatus(parsedRecordDto.getParsedRecord()), DELETED_LEADER_RECORD_STATUS.toString())) {
+      newRecord.setState(Record.State.DELETED);
+      newRecord.setDeleted(true);
+
+      if (newRecord.getAdditionalInfo() != null) {
+        newRecord.setAdditionalInfo(newRecord.getAdditionalInfo().withSuppressDiscovery(true));
+      } else {
+        newRecord.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
+      }
+    } else {
+      newRecord.setDeleted(false);
+      newRecord.setState(Record.State.ACTUAL);
+    }
+
+    return newRecord;
   }
 
   @Override
@@ -422,6 +444,20 @@ public class RecordServiceImpl implements RecordService {
         return record;
       })
       .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
+  }
+
+  @Override
+  public Future<Void> unDeleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
+    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    return recordDao.getRecordByExternalId(id, idType, tenantId)
+      .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
+      .map(foundRecord -> {
+        update005field(foundRecord);
+        foundRecord.withState(Record.State.ACTUAL);
+        ParsedRecordDaoUtil.updateLeaderStatus(foundRecord.getParsedRecord(), CORRECTED_LEADER_RECORD_STATUS);
+        return foundRecord;
+      })
+      .compose(foundRecord -> updateRecord(foundRecord, okapiHeaders)).map(r -> null);
   }
 
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {

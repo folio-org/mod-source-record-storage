@@ -11,6 +11,11 @@
 * [MODSOURCE-860](https://folio-org.atlassian.net/browse/MODSOURCE-860) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching 
 * [MODINV-1114](https://folio-org.atlassian.net/browse/MODINV-1114) Extend matching records endpoint to support multiple marc-bib match results processing
 * [MODSOURCE-863](https://folio-org.atlassian.net/browse/MODSOURCE-863) Add index to speed up the querying of a composite record
+* [MODSOURCE-859](https://folio-org.atlassian.net/browse/MODSOURCE-859) Added record undelete endpoint
+
+| METHOD | URL                                      | DESCRIPTION         |
+|--------|------------------------------------------|---------------------|
+| POST   | /source-storage/records/{id}/un-delete   | Undelete a record.  |
 
 ## 2024-10-28 5.9.0
 * [MODSOURCE-767](https://folio-org.atlassian.net/browse/MODSOURCE-767) Single record overlay creates duplicate OCLC#/035

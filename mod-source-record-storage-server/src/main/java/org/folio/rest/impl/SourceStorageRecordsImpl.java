@@ -193,4 +193,18 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
     });
   }
 
+  @Override
+  public void postSourceStorageRecordsUnDeleteById(String id, String idType, Map<String, String> okapiHeaders,
+                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.unDeleteRecordById(id, toExternalIdType(idType), okapiHeaders).map(r -> true)
+          .map(updated -> PostSourceStorageRecordsUnDeleteByIdResponse.respond204()).map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("postSourceStorageRecordsUnDeleteById:: Failed to undelete record by id {}", id, e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
 }

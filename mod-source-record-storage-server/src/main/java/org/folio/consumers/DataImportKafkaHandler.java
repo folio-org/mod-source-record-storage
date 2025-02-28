@@ -39,7 +39,6 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String LOG_MESSAGE_TEMPLATE = "%s for jobExecutionId: '%s' and recordId: '%s' and chunkId: '%s' and userId: '%s'";
-  private static final String ERROR_LOG_MESSAGE_TEMPLATE = "%s for jobExecutionId: '%s' and recordId: '%s' and chunkId: '%s' and userId: '%s'. Error: %s";
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
@@ -156,12 +155,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   }
 
   private static void printLogInfo(Level level, String message, Throwable tr, String... args) {
-    String formattedMessage;
+    String formattedMessage = format(LOG_MESSAGE_TEMPLATE, message, args[0], args[1], args[2], args[3]);
     if (tr != null) {
-      formattedMessage = format(ERROR_LOG_MESSAGE_TEMPLATE, message, args[0], args[1], args[2], args[3], tr.getMessage());
+      LOGGER.log(level, formattedMessage, tr);
     } else {
-      formattedMessage = format(LOG_MESSAGE_TEMPLATE, message, args[0], args[1], args[2], args[3]);
+      LOGGER.log(level, formattedMessage);
     }
-    LOGGER.log(level, formattedMessage);
   }
 }

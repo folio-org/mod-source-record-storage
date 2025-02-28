@@ -8,6 +8,7 @@ import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_DELETE_RECEIVED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
@@ -21,6 +22,7 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -83,12 +85,17 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT =
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
+  private static final String INCORRECT_PARSED_CONTENT_WITHOUT_001 =
+    "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
   private final String snapshotId = UUID.randomUUID().toString();
   private final String recordId = UUID.randomUUID().toString();
+  private final String incorrectRecordId = UUID.randomUUID().toString();
   private Snapshot snapshotForRecordUpdate;
   private final MarcMappingDetail marcMappingDetail = new MarcMappingDetail()
     .withOrder(0)
@@ -112,6 +119,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .notifier(new Slf4jNotifier(true)));
 
   private Record record;
+  private Record incorrectRecord;
 
   @Before
   public void setUp(TestContext context) throws IOException {
@@ -121,10 +129,14 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
     RawRecord rawRecord = new RawRecord().withId(recordId)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     ParsedRecord parsedRecord = new ParsedRecord().withId(recordId)
       .withContent(PARSED_CONTENT);
+
+    RawRecord incorrectRawRecord = new RawRecord().withId(incorrectRecordId)
+      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+    ParsedRecord incorrectParsedRecord = new ParsedRecord().withId(incorrectRecordId)
+      .withContent(INCORRECT_PARSED_CONTENT_WITHOUT_001);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(snapshotId)
@@ -147,12 +159,29 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
 
+    incorrectRecord = new Record()
+      .withId(incorrectRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withMatchedId(incorrectRecordId)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(incorrectRawRecord)
+      .withParsedRecord(incorrectParsedRecord)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
+      .onComplete(context.asyncAssertSuccess());
+
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
+      .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
@@ -243,6 +272,83 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     validate005Field(expectedDate, actualRecord);
     assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));
+  }
+
+  @Test
+  public void shouldBeSentDiErrorMessageWhenIncomingRecordDoesNotContainField001() throws InterruptedException {
+    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withContentType(JOB_PROFILE)
+      .withContent(JsonObject.mapFrom(new JobProfile()
+        .withId(UUID.randomUUID().toString())
+        .withDataType(JobProfile.DataType.MARC)).getMap())
+      .withChildSnapshotWrappers(singletonList(
+        new ProfileSnapshotWrapper()
+          .withContentType(ACTION_PROFILE)
+          .withContent(JsonObject.mapFrom(new ActionProfile()
+            .withId(UUID.randomUUID().toString())
+            .withAction(UPDATE)
+            .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC)).getMap())
+          .withChildSnapshotWrappers(singletonList(
+            new ProfileSnapshotWrapper()
+              .withContentType(MAPPING_PROFILE)
+              .withContent(JsonObject.mapFrom(new MappingProfile()
+                .withId(UUID.randomUUID().toString())
+                .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
+                .withExistingRecordType(MARC_BIBLIOGRAPHIC)
+                .withMappingDetails(new MappingDetail()
+                  .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
+                  .withMarcMappingDetails(List.of(marcMappingDetail)))).getMap())))));
+
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
+
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/linking-rules/.*"), true))
+      .willReturn(WireMock.ok().withBody("[]")));
+
+    String incomingParsedContent =
+      "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
+    var instanceId = UUID.randomUUID().toString();
+    Record incomingRecord = new Record()
+      .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+
+    DataImportEventPayload eventPayload = new DataImportEventPayload()
+      .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
+      .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withOkapiUrl(mockServer.baseUrl())
+      .withTenant(TENANT_ID)
+      .withToken(TOKEN)
+      .withContext(new HashMap<>() {{
+        put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(incorrectRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+        put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+      }});
+
+    String topic = getTopicName(DI_SRS_MARC_BIB_RECORD_CREATED.value());
+    KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
+    kafkaRecord.addHeader(RECORD_ID_HEADER, incorrectRecord.getId(), UTF_8);
+    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
+
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, singletonList(kafkaRecord)).useDefaults();
+
+    // when
+    cluster.send(request);
+
+    // then
+    var value = DI_ERROR.value();
+    String observeTopic = getTopicName(value);
+    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
+      .observeFor(50, TimeUnit.SECONDS)
+      .build());
+
+    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
+    DataImportEventPayload dataImportEventPayload =
+      Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+    assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
+    assertTrue(dataImportEventPayload.getContext().get("ERROR")
+      .contains("HRID (001 field) is not found in the incoming record."));
   }
 
   @Test

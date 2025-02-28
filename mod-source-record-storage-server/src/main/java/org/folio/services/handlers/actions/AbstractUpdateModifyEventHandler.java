@@ -108,6 +108,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
           .compose(changedRecord -> {
             LOG.debug("handle:: Start modifying MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             if (isHridFillingNeeded() || isUpdateOption(marcMappingOption)) {
+              if (StringUtils.isBlank(hrId)) {
+                return Future.failedFuture("handle:: HRID (001 field) is not found in the incoming record.");
+              }
+
               LOG.debug("handle:: Start filling HRID field for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               addControlledFieldToMarcRecord(changedRecord, HR_ID_FROM_FIELD, hrId, true);
 

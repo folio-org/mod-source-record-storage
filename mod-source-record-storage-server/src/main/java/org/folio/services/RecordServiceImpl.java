@@ -172,7 +172,10 @@ public class RecordServiceImpl implements RecordService {
             return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
           }
         }), tenantId)
-      .recover(RecordServiceImpl::mapToDuplicateExceptionIfNeeded);
+      .recover(throwable -> {
+        LOG.error("saveRecord:: Error saving record with id: '{}'", record.getId(), throwable);
+        return mapToDuplicateExceptionIfNeeded(throwable);
+      });
   }
 
   @Override
@@ -481,11 +484,9 @@ public class RecordServiceImpl implements RecordService {
       });
   }
 
-  private static Future mapToDuplicateExceptionIfNeeded(Throwable throwable) {
-    if (throwable instanceof PgException pgException) {
-      if (StringUtils.equals(pgException.getConstraint(), DUPLICATE_CONSTRAINT)) {
-        return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
-      }
+  private static <T> Future<T> mapToDuplicateExceptionIfNeeded(Throwable throwable) {
+    if (throwable instanceof PgException pgException && DUPLICATE_CONSTRAINT.equals(pgException.getConstraint())) {
+      return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
     }
     return Future.failedFuture(throwable);
   }

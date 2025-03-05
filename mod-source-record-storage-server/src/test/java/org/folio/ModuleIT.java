@@ -168,7 +168,7 @@ class ModuleIT {
         .when()
         .post("/_/tenant")
         .then()
-        .statusCode(201)
+        .statusCode(204)
         .extract()
         .header("Location");
 

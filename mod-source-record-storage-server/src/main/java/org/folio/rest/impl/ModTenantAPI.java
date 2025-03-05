@@ -78,7 +78,7 @@ public class ModTenantAPI extends TenantAPI {
     Future<Void> result = tenantAttributes.getPurge() != null && tenantAttributes.getPurge()
       ? new KafkaAdminClientService(context.owner()).deleteKafkaTopics(RecordStorageKafkaTopic.values(), tenantId(headers))
       : Future.succeededFuture();
-    result.onComplete(x -> super.postTenant(tenantAttributes, headers, ar -> {
+    result.onComplete(x -> super.postTenantSync(tenantAttributes, headers, ar -> {
       if (ar.succeeded()) {
         Vertx vertx = context.owner();
         var kafkaAdminClientService = new KafkaAdminClientService(vertx);

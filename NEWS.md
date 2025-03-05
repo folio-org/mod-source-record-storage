@@ -12,6 +12,7 @@
 * [MODINV-1114](https://folio-org.atlassian.net/browse/MODINV-1114) Extend matching records endpoint to support multiple marc-bib match results processing
 * [MODSOURCE-863](https://folio-org.atlassian.net/browse/MODSOURCE-863) Add index to speed up the querying of a composite record
 * [MODSOURCE-859](https://folio-org.atlassian.net/browse/MODSOURCE-859) Added record undelete endpoint
+* [MODSOURCE-868](https://folio-org.atlassian.net/browse/MODSOURCE-868) Update to mod-source-record-storage Java 21
 
 | METHOD | URL                                      | DESCRIPTION         |
 |--------|------------------------------------------|---------------------|

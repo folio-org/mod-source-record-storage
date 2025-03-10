@@ -159,9 +159,13 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()))
     );
 
-    String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
+    var recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
+    var userId = eventPayload.getContext().get(USER_ID_HEADER);
     if (recordId != null) {
       kafkaHeaders.add(KafkaHeader.header(RECORD_ID_HEADER, recordId));
+    }
+    if (userId != null) {
+      kafkaHeaders.add(KafkaHeader.header("x-okapi-user-id", userId));
     }
     return kafkaHeaders;
   }

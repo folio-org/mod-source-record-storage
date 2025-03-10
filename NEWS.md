@@ -1,3 +1,6 @@
+## 2025-03-10 5.9.11
+* [MODSOURCE-873](https://folio-org.atlassian.net/browse/MODSOURCE-873) Prevent import hanging during bulk edit operations
+
 ## 2025-02-26 5.9.10
 * [MODSOURCE-863](https://folio-org.atlassian.net/browse/MODSOURCE-863) Add index to speed up the querying of a composite record
 

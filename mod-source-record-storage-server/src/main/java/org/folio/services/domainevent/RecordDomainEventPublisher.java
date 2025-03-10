@@ -98,7 +98,7 @@ public class RecordDomainEventPublisher {
     return List.of(
       KafkaHeader.header(OKAPI_URL_HEADER, okapiHeaders.get(OKAPI_URL_HEADER)),
       KafkaHeader.header(OKAPI_TENANT_HEADER, okapiHeaders.get(OKAPI_TENANT_HEADER)),
-      //KafkaHeader.header(OKAPI_TOKEN_HEADER, okapiHeaders.get(OKAPI_TOKEN_HEADER)),
+      KafkaHeader.header(OKAPI_TOKEN_HEADER, okapiHeaders.get(OKAPI_TOKEN_HEADER)),
       KafkaHeader.header(RECORD_TYPE, recordType.value())
     );
   }

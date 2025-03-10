@@ -168,9 +168,11 @@ class ModuleIT {
         .when()
         .post("/_/tenant")
         .then()
-        .statusCode(201)
+        .statusCode(204)
         .extract()
         .header("Location");
+
+    LOG.info("---location---: {}", location);
 
     when()
       .get(location + "?wait=60000")

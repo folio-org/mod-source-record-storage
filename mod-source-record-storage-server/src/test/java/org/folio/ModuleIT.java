@@ -172,6 +172,8 @@ class ModuleIT {
         .extract()
         .header("Location");
 
+    LOG.info("---location---: {}", location);
+
     when()
       .get(location + "?wait=60000")
       .then()

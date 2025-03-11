@@ -102,7 +102,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.14.0-SNAPSHOT</version>
+      <version>1.14.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -127,7 +127,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>3.1.0-SNAPSHOT</version>
+      <version>3.0.0</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -137,7 +137,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-liquibase-util</artifactId>
-      <version>1.10.0-SNAPSHOT</version>
+      <version>1.10.0</version>
       <type>jar</type>
       <exclusions>
         <exclusion>
@@ -187,7 +187,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.4.0-SNAPSHOT</version>
+      <version>4.4.0</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -196,7 +196,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>3.3.0-SNAPSHOT</version>
+      <version>3.3.0</version>
     </dependency>
     <dependency>
       <groupId>com.github.jsqlparser</groupId>

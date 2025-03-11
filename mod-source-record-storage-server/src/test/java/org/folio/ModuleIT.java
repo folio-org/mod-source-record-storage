@@ -166,17 +166,21 @@ class ModuleIT {
   }
 
   private void postTenant(JsonObject body) {
-    String location =
+    var response =
       given()
         .body(body.encodePrettily())
         .when()
         .post("/_/tenant")
         .then()
         .statusCode(201)
-        .extract()
-        .header("Location");
+        .extract();
 
-    LOG.info("Location: {}", location);
+    response.headers()
+        .asList().stream()
+        .map(h -> h.getName() + ": " + h.getValue())
+        .forEach(LOG::info);
+
+    var location = response.header("Location");
 
     when()
       .get(location + "?wait=60000")

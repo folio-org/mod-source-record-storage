@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +112,7 @@ class ModuleIT {
   }
 
   @Test
+  @DisplayName("Test health check")
   void health() {
     // request without X-Okapi-Tenant
     when().
@@ -127,6 +129,7 @@ class ModuleIT {
    * <a href="https://folio-org.atlassian.net/browse/MODINVUP-91">https://folio-org.atlassian.net/browse/MODINVUP-91</a>
    */
   @Test
+  @DisplayName("Test can log module")
   void canLog() {
     setTenant("logtenant");
 
@@ -141,6 +144,7 @@ class ModuleIT {
   }
 
   @Test
+  @DisplayName("Install the module")
   void install() {
     setTenant("install");
 
@@ -171,6 +175,8 @@ class ModuleIT {
         .statusCode(201)
         .extract()
         .header("Location");
+
+    LOG.info("Location: {}", location);
 
     when()
       .get(location + "?wait=60000")

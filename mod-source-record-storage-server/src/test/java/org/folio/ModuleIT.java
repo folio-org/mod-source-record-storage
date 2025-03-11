@@ -175,12 +175,14 @@ class ModuleIT {
         .statusCode(201)
         .extract();
 
+    LOG.info("===Headers===");
     response.headers()
         .asList().stream()
         .map(h -> h.getName() + ": " + h.getValue())
         .forEach(LOG::info);
 
     var location = response.header("Location");
+    LOG.info("Location: {}", location);
 
     when()
       .get(location + "?wait=60000")

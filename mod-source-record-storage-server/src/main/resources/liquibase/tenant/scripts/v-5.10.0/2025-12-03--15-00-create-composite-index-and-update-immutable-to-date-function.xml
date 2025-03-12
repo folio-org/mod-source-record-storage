@@ -1,0 +1,30 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+
+  <changeSet id="2025-12-03--15-00--update-immutable-to-date-function" author="Volodymyr_Rohach">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.immutable_to_date(input_text TEXT) RETURNS date AS $$
+      DECLARE
+      output_date DATE;
+      BEGIN
+                  output_date := to_date(substring(input_text, 1, 8), 'yyyymmdd');
+      EXCEPTION WHEN others THEN
+                  RETURN NULL;
+      END;
+      RETURN output_date;
+      END IF;
+      END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+    </sql>
+  </changeSet>
+
+  <changeSet id="2025-12-03--15-00-composite-index-field-no-and-immutable-function" author="Volodymyr_Rohach">
+    <sql>
+      CREATE INDEX IF NOT EXISTS idx_marc_indexers_005_field_no_and_immutable_to_date ON ${database.defaultSchemaName}.marc_indexers_005 (field_no, ${database.defaultSchemaName}.immutable_to_date(value));
+    </sql>
+  </changeSet>
+</databaseChangeLog>

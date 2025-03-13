@@ -1,4 +1,4 @@
-## 2025-XX-XX 5.10.0-SNAPSHOT
+## 2025-03-13 5.10.0
 * [MODSOURMAN-1278](https://folio-org.atlassian.net/browse/MODSOURMAN-1278) Data import job stuck in progress with 99-100%
 * [MODSOURCE-803](https://folio-org.atlassian.net/browse/MODSOURCE-803) DuplicateException is thrown when saving batch of Bib records for linked Authority
 * [MODSOURCE-817](https://folio-org.atlassian.net/browse/MODSOURCE-817) Fix data consistency in handling and updating Marc Bib records for links.instance-authority event

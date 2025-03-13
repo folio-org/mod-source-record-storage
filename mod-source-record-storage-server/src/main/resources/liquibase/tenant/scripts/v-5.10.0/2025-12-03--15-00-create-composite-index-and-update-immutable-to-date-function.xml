@@ -7,18 +7,20 @@
 
   <changeSet id="2025-12-03--15-00--update-immutable-to-date-function" author="Volodymyr_Rohach">
     <sql splitStatements="false">
-      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.immutable_to_date(input_text TEXT) RETURNS date AS $$
+      CREATE OR REPLACE FUNCTION ${database.defaultSchemaName}.immutable_to_date(input_text TEXT)
+      RETURNS date AS $$
       DECLARE
       output_date DATE;
       BEGIN
-                  output_date := to_date(substring(input_text, 1, 8), 'yyyymmdd');
-      EXCEPTION WHEN others THEN
-                  RETURN NULL;
+      BEGIN
+        output_date := to_date(substring(input_text, 1, 8), 'yyyymmdd');
+      EXCEPTION
+        WHEN others THEN
+            RETURN NULL;
       END;
       RETURN output_date;
-      END IF;
       END;
-        $$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;
     </sql>
   </changeSet>
 

@@ -76,5 +76,6 @@
   <include file="scripts/v-5.10.0/2024-12-10--19-00-migrate-is-dirty-false.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2024-12-10--20-00-create-delete-old-marc-indexers-versions.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2025-02-07--15-00-create-composite-records-index.xml" relativeToChangelogFile="true"/>
+  <include file="scripts/v-5.10.0/2025-12-03--15-00-create-composite-index-and-update-immutable-to-date-function.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

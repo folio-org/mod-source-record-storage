@@ -413,7 +413,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') = ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and immutable_to_date(value) = ?)", result.getWhereExpression());
   }
 
   @Test
@@ -426,7 +426,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <> ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and immutable_to_date(value) <> ?)", result.getWhereExpression());
   }
 
   @Test
@@ -439,7 +439,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') >= ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and immutable_to_date(value) >= ?)", result.getWhereExpression());
   }
 
   @Test
@@ -452,7 +452,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(singletonList("201701025"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') <= ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and immutable_to_date(value) <= ?)", result.getWhereExpression());
   }
 
   @Test
@@ -465,7 +465,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(Arrays.asList("201701025", "20200213"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?)", result.getWhereExpression());
+    assertEquals("( \"field_no\" = '005' and immutable_to_date(value) between ? and ?)", result.getWhereExpression());
   }
 
   @Test
@@ -478,7 +478,7 @@ public class SearchExpressionParserUnitTest {
     assertTrue(result.isEnabled());
     assertEquals(asList("(OCoLC)63611770", "1", "1%", "20141107%", "abc", "20171128", "20200114"), result.getBindingParams());
     assertEquals(new HashSet<>(asList("001", "035", "036", "005")), result.getFieldsToJoin());
-    assertEquals("(( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?) and ( \"field_no\" = '036' and \"ind1\" <> ?)) or (( \"field_no\" = '036' and \"ind1\" like ?) and ( \"field_no\" = '005' and \"value\" like ?)) or (( \"field_no\" = '001' and substring(\"value\", 2, 3) = ?) and ( \"field_no\" = '005' and to_date(substring(value, 1, 8), 'yyyymmdd') between ? and ?))", result.getWhereExpression());
+    assertEquals("(( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" = ?) and ( \"field_no\" = '036' and \"ind1\" <> ?)) or (( \"field_no\" = '036' and \"ind1\" like ?) and ( \"field_no\" = '005' and \"value\" like ?)) or (( \"field_no\" = '001' and substring(\"value\", 2, 3) = ?) and ( \"field_no\" = '005' and immutable_to_date(value) between ? and ?))", result.getWhereExpression());
   }
 
   @Test

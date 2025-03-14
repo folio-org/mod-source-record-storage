@@ -29,4 +29,10 @@ $$ LANGUAGE plpgsql IMMUTABLE;
       CREATE INDEX IF NOT EXISTS idx_marc_indexers_005_field_no_and_immutable_to_date ON ${database.defaultSchemaName}.marc_indexers_005 (field_no, ${database.defaultSchemaName}.immutable_to_date(value));
     </sql>
   </changeSet>
+
+  <changeSet id="2025-12-03--15-00-drop-index-005-value-date" author="Volodymyr_Rohach">
+    <sql>
+      DROP INDEX IF EXISTS idx_marc_indexers_005_value_date;
+    </sql>
+  </changeSet>
 </databaseChangeLog>

@@ -6,7 +6,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
 
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
@@ -19,6 +18,7 @@ import java.nio.file.Path;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +111,7 @@ class ModuleIT {
   }
 
   @Test
+  @DisplayName("Test health check")
   void health() {
     // request without X-Okapi-Tenant
     when().
@@ -127,6 +128,7 @@ class ModuleIT {
    * <a href="https://folio-org.atlassian.net/browse/MODINVUP-91">https://folio-org.atlassian.net/browse/MODINVUP-91</a>
    */
   @Test
+  @DisplayName("Test can log module")
   void canLog() {
     setTenant("logtenant");
 
@@ -141,6 +143,7 @@ class ModuleIT {
   }
 
   @Test
+  @DisplayName("Install the module")
   void install() {
     setTenant("install");
 
@@ -162,22 +165,12 @@ class ModuleIT {
   }
 
   private void postTenant(JsonObject body) {
-    String location =
-      given()
+    given()
         .body(body.encodePrettily())
         .when()
         .post("/_/tenant")
         .then()
-        .statusCode(201)
-        .extract()
-        .header("Location");
-
-    when()
-      .get(location + "?wait=60000")
-      .then()
-      .statusCode(200)  // the body contains the job status
-      .body("complete", is(true))  // job is complete
-      .body("error", is(nullValue()));  // job has succeeded without error
+        .statusCode(204);
   }
 
 }

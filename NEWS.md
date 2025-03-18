@@ -1,3 +1,6 @@
+## 2025-03-10 5.9.12
+* [MODSOURCE-871](https://folio-org.atlassian.net/browse/MODSOURCE-871) 504 Gateway Time-out Error is returned for MARC Search request against Central tenant
+
 ## 2025-03-10 5.9.11
 * [MODSOURCE-873](https://folio-org.atlassian.net/browse/MODSOURCE-873) Prevent import hanging during bulk edit operations
 

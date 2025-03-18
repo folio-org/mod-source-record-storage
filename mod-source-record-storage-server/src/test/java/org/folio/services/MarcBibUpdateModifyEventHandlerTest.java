@@ -214,6 +214,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     try {
       tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
         if (res2.result().statusCode() == 204) {
+          async.complete();
           return;
         }
         if (res2.result().statusCode() == 201) {

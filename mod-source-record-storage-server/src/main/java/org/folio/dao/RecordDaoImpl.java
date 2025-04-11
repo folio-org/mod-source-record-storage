@@ -30,16 +30,16 @@ import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
+import static org.jooq.impl.DSL.count;
 import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.exists;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.inline;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
+import static org.jooq.impl.DSL.with;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
@@ -221,6 +221,7 @@ public class RecordDaoImpl implements RecordDao {
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
   public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
+  public static final String MARC_INDEXERS_LEADER = "marc_indexers_leader";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
@@ -489,45 +490,20 @@ public class RecordDaoImpl implements RecordDao {
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
                                            RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
     /* Building a search query */
-    //TODO: adjust brackets in condition statements
-    CommonTableExpression commonTableExpression = null;
-    if (parseFieldsResult.isEnabled()) {
-      String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
+    SelectJoinStep<?> searchQuery = initSearchQuery(parseFieldsResult);
 
-      Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
-      String cteHavingExpression = buildCteDistinctCountCondition(expr);
+    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
+    appendWhere(searchQuery, parseLeaderResult, searchParameters);
+    searchQuery.groupBy(RECORDS_LB.EXTERNAL_ID);
 
-      commonTableExpression = DSL.name(CTE).as(
-        DSL.selectDistinct(MARC_INDEXERS_MARC_ID)
-          .from(MARC_INDEXERS)
-          .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
-          .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
-          .groupBy(MARC_INDEXERS_MARC_ID)
-          .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))
-      );
-    }
-
-    SelectJoinStep searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoin(searchQuery, parseLeaderResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
     }
     if (searchParameters.getLimit() != null) {
       searchQuery.limit(searchParameters.getLimit());
     }
-    /* Building a count query */
-    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoin(countQuery, parseLeaderResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-    /* Join both in one query */
-    String sql = "";
-    if (parseFieldsResult.isEnabled()) {
-      sql = DSL.with(commonTableExpression).select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    } else {
-      sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    }
-    String finalSql = sql;
+    String finalSql = searchQuery.getSQL(ParamType.INLINED);
+
     LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
     return getCachedPool(tenantId)
       .rxGetConnection()
@@ -544,26 +520,61 @@ public class RecordDaoImpl implements RecordDao {
           .doFinally(conn::close)));
   }
 
-  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {
+  private SelectJoinStep<?> initSearchQuery(ParseFieldsResult parseFieldsResult) throws JSQLParserException {
+    SelectJoinStep<?> searchQuery;
+    if (parseFieldsResult.isEnabled()) {
+      searchQuery = with(buildCommonTableExpression(parseFieldsResult))
+        .select(RECORDS_LB.EXTERNAL_ID)
+        .select(count(RECORDS_LB.EXTERNAL_ID))
+        .from(RECORDS_LB);
+    } else {
+      searchQuery = select(RECORDS_LB.EXTERNAL_ID)
+        .select(count(RECORDS_LB.EXTERNAL_ID))
+        .from(RECORDS_LB);
+    }
+    return searchQuery;
+  }
+
+  private CommonTableExpression<Record1<UUID>> buildCommonTableExpression(ParseFieldsResult parseFieldsResult)
+    throws JSQLParserException {
+    //TODO: adjust brackets in condition statements
+    CommonTableExpression<Record1<UUID>> commonTableExpression;
+    String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
+    Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
+    String cteHavingExpression = buildCteDistinctCountCondition(expr);
+
+    commonTableExpression = name(CTE).as(
+      select(MARC_INDEXERS_MARC_ID)
+        .from(MARC_INDEXERS)
+        .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
+        .where(condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
+        .groupBy(MARC_INDEXERS_MARC_ID)
+        .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray())));
+    return commonTableExpression;
+  }
+
+  private void appendJoin(SelectJoinStep<?> step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled() && !parseLeaderResult.isIndexedFieldsCriteriaOnly()) {
-      Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
-      selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
+      Table<org.jooq.Record> marcIndexersLeader = table(name(MARC_INDEXERS_LEADER));
+      step.innerJoin(marcIndexersLeader)
+        .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
+    }
+    if (parseFieldsResult.isEnabled()) {
+      Table<org.jooq.Record> cte = table(name(CTE));
+      step.innerJoin(cte)
+        .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, cte, name(MARC_ID))));
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
+  private void appendWhere(SelectJoinStep<?> step, ParseLeaderResult parseLeaderResult, RecordSearchParameters searchParameters) {
     Condition recordTypeCondition = RecordDaoUtil.filterRecordByType(searchParameters.getRecordType().value());
     Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(searchParameters.isDeleted());
     Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(searchParameters.isSuppressedFromDiscovery());
     Condition leaderCondition = parseLeaderResult.isEnabled()
       ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
       : DSL.noCondition();
-    Condition fieldsCondition = parseFieldsResult.isEnabled()
-      ? exists(select(field("*")).from("cte")
-      .where("records_lb.id = cte.marc_id"))
-      : DSL.noCondition();
+
     step.where(leaderCondition)
-      .and(fieldsCondition)
       .and(recordStateCondition)
       .and(suppressedFromDiscoveryCondition)
       .and(recordTypeCondition)

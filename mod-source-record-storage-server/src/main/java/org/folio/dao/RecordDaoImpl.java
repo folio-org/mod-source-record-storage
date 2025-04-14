@@ -30,7 +30,6 @@ import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
-import static org.jooq.impl.DSL.count;
 import static org.jooq.impl.DSL.countDistinct;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.inline;
@@ -220,6 +219,7 @@ public class RecordDaoImpl implements RecordDao {
   public static final String OR = " or ";
   public static final String MARC_INDEXERS = "marc_indexers";
   public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
+  public static final Field<Integer> MARC_INDEXERS_VERSION = field(TABLE_FIELD_TEMPLATE, Integer.class, field(MARC_INDEXERS), field(VERSION));
   public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
   public static final String MARC_INDEXERS_LEADER = "marc_indexers_leader";
 
@@ -494,7 +494,6 @@ public class RecordDaoImpl implements RecordDao {
 
     appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
     appendWhere(searchQuery, parseLeaderResult, searchParameters);
-    searchQuery.groupBy(RECORDS_LB.EXTERNAL_ID);
 
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
@@ -524,12 +523,10 @@ public class RecordDaoImpl implements RecordDao {
     SelectJoinStep<?> searchQuery;
     if (parseFieldsResult.isEnabled()) {
       searchQuery = with(buildCommonTableExpression(parseFieldsResult))
-        .select(RECORDS_LB.EXTERNAL_ID)
-        .select(count(RECORDS_LB.EXTERNAL_ID))
+        .select(RECORDS_LB.EXTERNAL_ID, inline(1).as(COUNT))
         .from(RECORDS_LB);
     } else {
-      searchQuery = select(RECORDS_LB.EXTERNAL_ID)
-        .select(count(RECORDS_LB.EXTERNAL_ID))
+      searchQuery = select(RECORDS_LB.EXTERNAL_ID, inline(1).as(COUNT))
         .from(RECORDS_LB);
     }
     return searchQuery;
@@ -540,16 +537,15 @@ public class RecordDaoImpl implements RecordDao {
     //TODO: adjust brackets in condition statements
     CommonTableExpression<Record1<UUID>> commonTableExpression;
     String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
-    Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
-    String cteHavingExpression = buildCteDistinctCountCondition(expr);
 
     commonTableExpression = name(CTE).as(
       select(MARC_INDEXERS_MARC_ID)
         .from(MARC_INDEXERS)
-        .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
+        .join(MARC_RECORDS_TRACKING)
+          .on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
+          .and(MARC_RECORDS_TRACKING.VERSION.eq(MARC_INDEXERS_VERSION))
         .where(condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
-        .groupBy(MARC_INDEXERS_MARC_ID)
-        .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray())));
+        .groupBy(MARC_INDEXERS_MARC_ID));
     return commonTableExpression;
   }
 

@@ -151,6 +151,7 @@ import org.jooq.TableLike;
 import org.jooq.UpdateConditionStep;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
+import org.jooq.WithStep;
 import org.jooq.conf.ParamType;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
@@ -163,13 +164,15 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LogManager.getLogger();
 
   private static final String CTE = "cte";
-
+  private static final String FILTERED_MARC_IDS = "filtered_marc_ids";
+  private static final String FILTERED_RECORDS = "filtered_records";
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
   private static final String VERSION = "version";
   private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
+  private static final String EXTERNAL_ID = "external_id";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
   private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
 
@@ -197,6 +200,7 @@ public class RecordDaoImpl implements RecordDao {
   private static final String HASH = "#";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
+  private static final Field<UUID> EXTERNAL_ID_FIELD = field(name(EXTERNAL_ID), UUID.class);
 
   private static final Field<?>[] RECORD_FIELDS = new Field<?>[]{
     RECORDS_LB.ID,
@@ -490,10 +494,8 @@ public class RecordDaoImpl implements RecordDao {
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
                                            RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
     /* Building a search query */
-    SelectJoinStep<?> searchQuery = initSearchQuery(parseFieldsResult);
-
-    appendJoin(searchQuery, parseLeaderResult, parseFieldsResult);
-    appendWhere(searchQuery, parseLeaderResult, searchParameters);
+    WithStep CTEs = initCTEs(parseLeaderResult, parseFieldsResult, searchParameters);
+    SelectJoinStep<?> searchQuery = select(EXTERNAL_ID_FIELD).from(FILTERED_RECORDS);
 
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
@@ -501,8 +503,9 @@ public class RecordDaoImpl implements RecordDao {
     if (searchParameters.getLimit() != null) {
       searchQuery.limit(searchParameters.getLimit());
     }
-    String finalSql = searchQuery.getSQL(ParamType.INLINED);
+    SelectJoinStep<?> countQuery = select(countDistinct(EXTERNAL_ID_FIELD)).from(FILTERED_RECORDS);
 
+    String finalSql = CTEs.select().from(searchQuery).rightJoin(countQuery).on(trueCondition()).getSQL(ParamType.INLINED);
     LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
     return getCachedPool(tenantId)
       .rxGetConnection()
@@ -519,26 +522,26 @@ public class RecordDaoImpl implements RecordDao {
           .doFinally(conn::close)));
   }
 
-  private SelectJoinStep<?> initSearchQuery(ParseFieldsResult parseFieldsResult) throws JSQLParserException {
-    SelectJoinStep<?> searchQuery;
+  private WithStep initCTEs(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
+                                            RecordSearchParameters searchParameters) throws JSQLParserException {
+    WithStep searchQuery;
+    CommonTableExpression<Record1<UUID>> filteredRecordCte = buildFilteredRecordsCTE(parseLeaderResult, parseFieldsResult, searchParameters);
+
     if (parseFieldsResult.isEnabled()) {
-      searchQuery = with(buildCommonTableExpression(parseFieldsResult))
-        .select(RECORDS_LB.EXTERNAL_ID, inline(1).as(COUNT))
-        .from(RECORDS_LB);
+      searchQuery = with(buildFilteredMarcIdsCTE(parseFieldsResult), filteredRecordCte);
     } else {
-      searchQuery = select(RECORDS_LB.EXTERNAL_ID, inline(1).as(COUNT))
-        .from(RECORDS_LB);
+      searchQuery = with(filteredRecordCte);
     }
     return searchQuery;
   }
 
-  private CommonTableExpression<Record1<UUID>> buildCommonTableExpression(ParseFieldsResult parseFieldsResult)
+  private CommonTableExpression<Record1<UUID>> buildFilteredMarcIdsCTE(ParseFieldsResult parseFieldsResult)
     throws JSQLParserException {
     //TODO: adjust brackets in condition statements
     CommonTableExpression<Record1<UUID>> commonTableExpression;
     String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
 
-    commonTableExpression = name(CTE).as(
+    commonTableExpression = name(FILTERED_MARC_IDS).as(
       select(MARC_INDEXERS_MARC_ID)
         .from(MARC_INDEXERS)
         .join(MARC_RECORDS_TRACKING)
@@ -549,6 +552,17 @@ public class RecordDaoImpl implements RecordDao {
     return commonTableExpression;
   }
 
+  private CommonTableExpression<Record1<UUID>> buildFilteredRecordsCTE(ParseLeaderResult parseLeaderResult,
+                                                                       ParseFieldsResult parseFieldsResult,
+                                                                       RecordSearchParameters searchParameters) {
+    SelectJoinStep<Record1<UUID>> query = select(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+
+    appendJoin(query, parseLeaderResult, parseFieldsResult);
+    appendWhere(query, parseLeaderResult, searchParameters);
+
+    return name(FILTERED_RECORDS).as(query);
+  }
+
   private void appendJoin(SelectJoinStep<?> step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled() && !parseLeaderResult.isIndexedFieldsCriteriaOnly()) {
       Table<org.jooq.Record> marcIndexersLeader = table(name(MARC_INDEXERS_LEADER));
@@ -556,7 +570,7 @@ public class RecordDaoImpl implements RecordDao {
         .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
     }
     if (parseFieldsResult.isEnabled()) {
-      Table<org.jooq.Record> cte = table(name(CTE));
+      Table<org.jooq.Record> cte = table(name(FILTERED_MARC_IDS));
       step.innerJoin(cte)
         .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, cte, name(MARC_ID))));
     }

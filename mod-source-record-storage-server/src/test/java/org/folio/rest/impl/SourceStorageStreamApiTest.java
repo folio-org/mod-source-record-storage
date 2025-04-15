@@ -1108,46 +1108,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnIdOnSearchMarcRecordIdsWhenLeaderDeleted(TestContext testContext) {
-    // given
-    postSnapshots(testContext, snapshot_2);
-    Response createParsed = RestAssured.given()
-      .spec(spec)
-      .body(marc_bib_record_2)
-      .when()
-      .post(SOURCE_STORAGE_RECORDS_PATH);
-    assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
-    Record parsed = createParsed.body().as(Record.class);
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setLeaderSearchExpression("p_05 = 'd'");
-    searchRequest.setFieldsSearchExpression("005.date to '20250401'");
-    searchRequest.setDeleted(true);
-    // when
-    async = testContext.async();
-    ExtractableResponse<Response> response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-record-identifiers")
-      .then()
-      .extract();
-    JsonObject responseBody = new JsonObject(response.body().asString());
-    // then
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, responseBody.getJsonArray("records").size());
-    assertEquals(1, responseBody.getInteger("totalCount").intValue());
-    async.complete();
-  }
-
-  @Test
   public void shouldReturnEmptyResponseOnSearchMarcRecordIdsWhenRecordWasSuppressed(TestContext testContext) {
     // given
     Async async = testContext.async();

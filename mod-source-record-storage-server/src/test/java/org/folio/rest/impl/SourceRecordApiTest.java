@@ -1435,7 +1435,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(UUID.randomUUID().toString())
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(SECOND_HRID))
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.DELETED);
 
     Record record3 = new Record()
       .withId(UUID.randomUUID().toString())

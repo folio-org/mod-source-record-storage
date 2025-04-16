@@ -540,7 +540,7 @@ public class RecordDaoImpl implements RecordDao {
     Condition leaderCondition = parseLeaderResult.isEnabled()
       ? condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
       : noCondition();
-    Condition parseFieldCondition = parseLeaderResult.isEnabled()
+    Condition parseFieldCondition = parseFieldsResult.isEnabled()
       ? buildParseFieldCondition(parseFieldsResult)
       : noCondition();
 

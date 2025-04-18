@@ -561,7 +561,9 @@ public class RecordDaoImpl implements RecordDao {
     int i = 1;
     for (Expression expression : expressions) {
       cteWhereCondition.append(expression.toString());
-      if (i < expressions.size()) cteWhereCondition.append(OR);
+      if (i < expressions.size()) {
+        cteWhereCondition.append(OR);
+      }
       i++;
     }
     return condition(cteWhereCondition.toString(), parseFieldsResult.getBindingParams().toArray());

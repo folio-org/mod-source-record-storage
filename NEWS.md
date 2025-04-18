@@ -1,3 +1,6 @@
+## 2025-04-18 5.10.2
+* [MODSOURCE-887](https://folio-org.atlassian.net/browse/MODSOURCE-887) Upgrade di-processing-core to v4.4.1 to fix MARC record updates with wildcard subfield protection
+
 ## 2025-03-26 5.10.1
 * [MODSOURCE-871](https://folio-org.atlassian.net/browse/MODSOURCE-871) 504 Gateway Time-out Error is returned for MARC Search request against Central tenant
 

@@ -182,20 +182,8 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
-    var metadata = new Metadata()
-      .withCreatedByUserId("createdByUserId")
-      .withCreatedByUsername("createdByUsername")
-      .withCreatedDate(new Date(10000L))
-      .withUpdatedByUserId("updatedByUserId")
-      .withUpdatedByUsername("updatedByUsername")
-      .withUpdatedDate(new Date(20000L));
-    var aRecord = new Record()
-      .withId(UUID.randomUUID().toString())
-      .withErrorRecord(new ErrorRecord())
-      .withRawRecord(new RawRecord())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
-      .withMetadata(metadata);
+    var metadata = getMetadata();
+    var aRecord = getRecord(parsedContent, metadata);
     var expectedOldRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
@@ -219,20 +207,8 @@ public class RecordDomainEventPublisherUnitTest {
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
     var parsedContentUpdated = "parsedContentUpdated";
-    var metadata = new Metadata()
-      .withCreatedByUserId("createdByUserId")
-      .withCreatedByUsername("createdByUsername")
-      .withCreatedDate(new Date(10000L))
-      .withUpdatedByUserId("updatedByUserId")
-      .withUpdatedByUsername("updatedByUsername")
-      .withUpdatedDate(new Date(20000L));
-    var oldRecord = new Record()
-      .withId(UUID.randomUUID().toString())
-      .withErrorRecord(new ErrorRecord())
-      .withRawRecord(new RawRecord())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
-      .withMetadata(metadata);
+    var metadata = getMetadata();
+    var oldRecord = getRecord(parsedContent, metadata);
 
     var newRecord = MarcUtil.clone(oldRecord, Record.class).withParsedRecord(new ParsedRecord().withContent(parsedContentUpdated));
     var expectedOldRecord = MarcUtil.clone(oldRecord, Record.class).withErrorRecord(null).withRawRecord(null);
@@ -260,20 +236,8 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
-    var metadata = new Metadata()
-      .withCreatedByUserId("createdByUserId")
-      .withCreatedByUsername("createdByUsername")
-      .withCreatedDate(new Date(10000L))
-      .withUpdatedByUserId("updatedByUserId")
-      .withUpdatedByUsername("updatedByUsername")
-      .withUpdatedDate(new Date(20000L));
-    var aRecord = new Record()
-      .withId(UUID.randomUUID().toString())
-      .withErrorRecord(new ErrorRecord())
-      .withRawRecord(new RawRecord())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
-      .withMetadata(metadata);
+    var metadata = getMetadata();
+    var aRecord = getRecord(parsedContent, metadata);
     var expectedDeletedRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "OKAPI_TENANT_HEADER";
@@ -291,12 +255,63 @@ public class RecordDomainEventPublisherUnitTest {
     verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders, aRecord.getId());
   }
 
+  @Test
+  public void publishRecordCreatedWithoutTokenInKafkaHeader() {
+    // given
+    ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
+    var parsedContent = "parsedContent";
+    var metadata = getMetadata();
+    var newRecord = getRecord(parsedContent, metadata);
+    var expectedNewRecord = MarcUtil.clone(newRecord, Record.class).withErrorRecord(null).withRawRecord(null);
+
+    var tenantId = "TENANT";
+    var expectedHeaders = List.of(KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
+      KafkaHeader.header("folio.srs.recordType", newRecord.getRecordType().value())
+    );
+    var eventType = SOURCE_RECORD_CREATED.name();
+    var expectedPayload = new JsonObject()
+      .put("new", JsonObject.mapFrom(expectedNewRecord)).encode();
+
+    // when
+    publisher.publishRecordCreated(newRecord, Map.of(OKAPI_TENANT_HEADER, tenantId));
+
+    // then
+    verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders, newRecord.getId());
+  }
+
   private List<KafkaHeader> getKafkaHeaders(String okapiUrl, String tenantId, String token, Record aRecord) {
+    if (token == null) {
+      return List.of(
+        KafkaHeader.header(OKAPI_URL_HEADER, okapiUrl),
+        KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
+        KafkaHeader.header("folio.srs.recordType", aRecord.getRecordType().value())
+      );
+    }
     return List.of(
       KafkaHeader.header(OKAPI_URL_HEADER, okapiUrl),
       KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
       KafkaHeader.header(OKAPI_TOKEN_HEADER, token),
       KafkaHeader.header("folio.srs.recordType", aRecord.getRecordType().value())
     );
+  }
+
+  private Record getRecord(String parsedContent, Metadata metadata) {
+    return new Record()
+      .withId(UUID.randomUUID().toString())
+      .withErrorRecord(new ErrorRecord())
+      .withRawRecord(new RawRecord())
+      .withRecordType(Record.RecordType.MARC_BIB)
+      .withParsedRecord(new ParsedRecord().withContent(parsedContent))
+      .withMetadata(metadata);
+  }
+
+  private Metadata getMetadata() {
+    return new Metadata()
+      .withCreatedByUserId("createdByUserId")
+      .withCreatedByUsername("createdByUsername")
+      .withCreatedDate(new Date(10000L))
+      .withUpdatedByUserId("updatedByUserId")
+      .withUpdatedByUsername("updatedByUsername")
+      .withUpdatedDate(new Date(20000L));
   }
 }

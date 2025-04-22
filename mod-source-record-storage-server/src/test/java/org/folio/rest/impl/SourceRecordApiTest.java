@@ -576,7 +576,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marcRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
-      .withState(Record.State.ACTUAL)
+      .withState(Record.State.DELETED)
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(SECOND_HRID));
 
@@ -982,7 +982,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(firstSrsId)
       .withLeaderRecordStatus("d")
       .withOrder(11)
-      .withState(Record.State.ACTUAL)
+      .withState(Record.State.DELETED)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(firstInstanceId)
        .withInstanceHrid(firstHrId));
@@ -1019,8 +1019,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(6))
-      .body("totalRecords", is(6))
+      .body("sourceRecords.size()", is(5))
+      .body("totalRecords", is(5))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
 
@@ -1032,8 +1032,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(7))
-      .body("totalRecords", is(7));
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2));
     async.complete();
 
     List<String> externalIds = Arrays.stream(records)
@@ -1048,8 +1048,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=false")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(6))
-      .body("totalRecords", is(6))
+      .body("sourceRecords.size()", is(5))
+      .body("totalRecords", is(5))
       .body("sourceRecords*.deleted", everyItem(is(false)));
     async.complete();
 
@@ -1061,8 +1061,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=INSTANCE&deleted=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(7))
-      .body("totalRecords", is(7));
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2));
     async.complete();
 
     async = testContext.async();
@@ -1073,8 +1073,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?idType=RECORD")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("sourceRecords.size()", is(6))
-      .body("totalRecords", is(6));
+      .body("sourceRecords.size()", is(5))
+      .body("totalRecords", is(5));
     async.complete();
   }
 
@@ -1435,7 +1435,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(UUID.randomUUID().toString())
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(SECOND_HRID))
-      .withState(Record.State.ACTUAL);
+      .withState(Record.State.DELETED);
 
     Record record3 = new Record()
       .withId(UUID.randomUUID().toString())

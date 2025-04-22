@@ -28,15 +28,15 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
-import static org.jooq.impl.DSL.exists;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.inline;
 import static org.jooq.impl.DSL.max;
 import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.noCondition;
 import static org.jooq.impl.DSL.select;
-import static org.jooq.impl.DSL.selectDistinct;
 import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
+import static org.jooq.impl.DSL.with;
 
 
 import com.google.common.collect.Lists;
@@ -160,15 +160,20 @@ public class RecordDaoImpl implements RecordDao {
   private static final Logger LOG = LogManager.getLogger();
 
   private static final String CTE = "cte";
-
+  private static final String FILTERED_RECORDS = "filtered_records";
   private static final String ID = "id";
   private static final String MARC_ID = "marc_id";
   private static final String VERSION = "version";
   private static final String HRID = "hrid";
   private static final String CONTENT = "content";
   private static final String COUNT = "count";
+  private static final String EXTERNAL_ID = "external_id";
   private static final String TABLE_FIELD_TEMPLATE = "{0}.{1}";
   private static final String MARC_INDEXERS_PARTITION_PREFIX = "marc_indexers_";
+  public static final String OR = " or ";
+  public static final String MARC_INDEXERS = "marc_indexers";
+  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
+  public static final String MARC_INDEXERS_LEADER = "marc_indexers_leader";
 
   private static final int DEFAULT_LIMIT_FOR_GET_RECORDS = 1;
   private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
@@ -194,6 +199,9 @@ public class RecordDaoImpl implements RecordDao {
   private static final String HASH = "#";
 
   private static final Field<Integer> COUNT_FIELD = field(name(COUNT), Integer.class);
+  private static final Field<UUID> EXTERNAL_ID_FIELD = field(name(EXTERNAL_ID), UUID.class);
+  public static final Field<UUID> MARC_INDEXERS_MARC_ID_FIELD = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
+  public static final Field<Integer> MARC_INDEXERS_VERSION_FIELD = field(TABLE_FIELD_TEMPLATE, Integer.class, field(MARC_INDEXERS), field(VERSION));
 
   private static final Field<?>[] RECORD_FIELDS = new Field<?>[]{
     RECORDS_LB.ID,
@@ -212,11 +220,6 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.UPDATED_DATE,
     RECORDS_LB.EXTERNAL_HRID
   };
-
-  public static final String OR = " or ";
-  public static final String MARC_INDEXERS = "marc_indexers";
-  public static final Field<UUID> MARC_INDEXERS_MARC_ID = field(TABLE_FIELD_TEMPLATE, UUID.class, field(MARC_INDEXERS), field(MARC_ID));
-  public static final String CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE = "call delete_old_marc_indexers_versions(?)";
 
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
@@ -503,64 +506,22 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private String buildCteWhereCondition(String whereExpression) throws JSQLParserException {
-    List<Expression> expressions = new ArrayList<>();
-    StringBuilder cteWhereCondition = new StringBuilder();
-
-    Expression expr = CCJSqlParserUtil.parseCondExpression(whereExpression);
-    parseExpression(expr, expressions);
-    int i = 1;
-    for (Expression expression : expressions) {
-      cteWhereCondition.append(expression.toString());
-      if (i < expressions.size()) cteWhereCondition.append(OR);
-      i++;
-    }
-    return cteWhereCondition.toString();
-  }
-
   @Override
   public Flowable<Row> streamMarcRecordIds(ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult,
                                            RecordSearchParameters searchParameters, String tenantId) throws JSQLParserException {
     /* Building a search query */
-    //TODO: adjust bracets in condtion statements
-    CommonTableExpression commonTableExpression = null;
-    if (parseFieldsResult.isEnabled()) {
-      String cteWhereExpression = buildCteWhereCondition(parseFieldsResult.getWhereExpression());
+    CommonTableExpression<Record1<UUID>> cte = buildFilteredRecordsCTE(parseLeaderResult, parseFieldsResult, searchParameters);
+    SelectJoinStep<?> searchQuery = select(EXTERNAL_ID_FIELD).from(FILTERED_RECORDS);
 
-      Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
-      String cteHavingExpression = buildCteDistinctCountCondition(expr);
-
-      commonTableExpression = DSL.name(CTE).as(
-        DSL.selectDistinct(MARC_INDEXERS_MARC_ID)
-          .from(MARC_INDEXERS)
-          .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID))
-          .where(DSL.condition(cteWhereExpression, parseFieldsResult.getBindingParams().toArray()))
-          .groupBy(MARC_INDEXERS_MARC_ID)
-          .having(DSL.condition(cteHavingExpression, parseFieldsResult.getBindingParams().toArray()))
-      );
-    }
-
-    SelectJoinStep searchQuery = selectDistinct(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
-    appendJoin(searchQuery, parseLeaderResult);
-    appendWhere(searchQuery, parseLeaderResult, parseFieldsResult, searchParameters);
     if (searchParameters.getOffset() != null) {
       searchQuery.offset(searchParameters.getOffset());
     }
     if (searchParameters.getLimit() != null) {
       searchQuery.limit(searchParameters.getLimit());
     }
-    /* Building a count query */
-    SelectJoinStep countQuery = DSL.select(countDistinct(RECORDS_LB.EXTERNAL_ID)).from(RECORDS_LB);
-    appendJoin(countQuery, parseLeaderResult);
-    appendWhere(countQuery, parseLeaderResult, parseFieldsResult, searchParameters);
-    /* Join both in one query */
-    String sql = "";
-    if (parseFieldsResult.isEnabled()) {
-      sql = DSL.with(commonTableExpression).select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    } else {
-      sql = select().from(searchQuery).rightJoin(countQuery).on(DSL.trueCondition()).getSQL(ParamType.INLINED);
-    }
-    String finalSql = sql;
+    SelectJoinStep<?> countQuery = select(countDistinct(EXTERNAL_ID_FIELD)).from(FILTERED_RECORDS);
+
+    String finalSql = with(cte).select().from(searchQuery).rightJoin(countQuery).on(trueCondition()).getSQL(ParamType.INLINED);
     LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
     return getCachedPool(tenantId)
       .rxGetConnection()
@@ -577,30 +538,68 @@ public class RecordDaoImpl implements RecordDao {
           .doFinally(conn::close)));
   }
 
-  private void appendJoin(SelectJoinStep selectJoinStep, ParseLeaderResult parseLeaderResult) {
+  private CommonTableExpression<Record1<UUID>> buildFilteredRecordsCTE(ParseLeaderResult parseLeaderResult,
+                                                                       ParseFieldsResult parseFieldsResult,
+                                                                       RecordSearchParameters searchParameters) throws JSQLParserException {
+    SelectJoinStep<Record1<UUID>> query = select(RECORDS_LB.EXTERNAL_ID).from(RECORDS_LB);
+
+    appendJoin(query, parseLeaderResult, parseFieldsResult);
+    appendWhere(query, parseLeaderResult, parseFieldsResult, searchParameters);
+    query.groupBy(RECORDS_LB.EXTERNAL_ID);
+
+    return name(FILTERED_RECORDS).as(query);
+  }
+
+  private void appendJoin(SelectJoinStep<?> step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult) {
     if (parseLeaderResult.isEnabled() && !parseLeaderResult.isIndexedFieldsCriteriaOnly()) {
-      Table<org.jooq.Record> marcIndexersLeader = table(name("marc_indexers_leader"));
-      selectJoinStep.innerJoin(marcIndexersLeader).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
+      Table<org.jooq.Record> marcIndexersLeader = table(name(MARC_INDEXERS_LEADER));
+      step.innerJoin(marcIndexersLeader)
+        .on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersLeader, name(MARC_ID))));
+    }
+    if (parseFieldsResult.isEnabled()) {
+      step.innerJoin(MARC_INDEXERS)
+        .on(RECORDS_LB.ID.eq(MARC_INDEXERS_MARC_ID_FIELD))
+        .innerJoin(MARC_RECORDS_TRACKING)
+        .on(MARC_RECORDS_TRACKING.MARC_ID.eq(MARC_INDEXERS_MARC_ID_FIELD))
+        .and(MARC_RECORDS_TRACKING.VERSION.eq(MARC_INDEXERS_VERSION_FIELD));
     }
   }
 
-  private void appendWhere(SelectJoinStep step, ParseLeaderResult parseLeaderResult, ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) {
+  private void appendWhere(SelectJoinStep<?> step, ParseLeaderResult parseLeaderResult,
+                           ParseFieldsResult parseFieldsResult, RecordSearchParameters searchParameters) throws JSQLParserException {
     Condition recordTypeCondition = RecordDaoUtil.filterRecordByType(searchParameters.getRecordType().value());
     Condition recordStateCondition = RecordDaoUtil.filterRecordByDeleted(searchParameters.isDeleted());
     Condition suppressedFromDiscoveryCondition = RecordDaoUtil.filterRecordBySuppressFromDiscovery(searchParameters.isSuppressedFromDiscovery());
     Condition leaderCondition = parseLeaderResult.isEnabled()
-      ? DSL.condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
-      : DSL.noCondition();
-    Condition fieldsCondition = parseFieldsResult.isEnabled()
-      ? exists(select(field("*")).from("cte")
-      .where("records_lb.id = cte.marc_id"))
-      : DSL.noCondition();
-    step.where(leaderCondition)
-      .and(fieldsCondition)
+      ? condition(parseLeaderResult.getWhereExpression(), parseLeaderResult.getBindingParams().toArray())
+      : noCondition();
+    Condition parseFieldCondition = parseFieldsResult.isEnabled()
+      ? buildParseFieldCondition(parseFieldsResult)
+      : noCondition();
+
+    step.where(parseFieldCondition)
+      .and(leaderCondition)
       .and(recordStateCondition)
       .and(suppressedFromDiscoveryCondition)
       .and(recordTypeCondition)
       .and(RECORDS_LB.EXTERNAL_ID.isNotNull());
+  }
+
+  private Condition buildParseFieldCondition(ParseFieldsResult parseFieldsResult) throws JSQLParserException {
+    List<Expression> expressions = new ArrayList<>();
+    StringBuilder cteWhereCondition = new StringBuilder();
+
+    Expression expr = CCJSqlParserUtil.parseCondExpression(parseFieldsResult.getWhereExpression());
+    parseExpression(expr, expressions);
+    int i = 1;
+    for (Expression expression : expressions) {
+      cteWhereCondition.append(expression.toString());
+      if (i < expressions.size()) {
+        cteWhereCondition.append(OR);
+      }
+      i++;
+    }
+    return condition(cteWhereCondition.toString(), parseFieldsResult.getBindingParams().toArray());
   }
 
   @Override

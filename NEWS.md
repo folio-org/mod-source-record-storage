@@ -1,3 +1,6 @@
+## 2025-04-23 5.10.3
+* [MODSOURCE-875](https://folio-org.atlassian.net/browse/MODSOURCE-875) Optimize stream marc records id query
+
 ## 2025-04-18 5.10.2
 * [MODSOURCE-887](https://folio-org.atlassian.net/browse/MODSOURCE-887) Upgrade di-processing-core to v4.4.1 to fix MARC record updates with wildcard subfield protection
 

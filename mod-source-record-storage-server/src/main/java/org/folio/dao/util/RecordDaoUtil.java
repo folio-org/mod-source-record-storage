@@ -639,16 +639,20 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Get {@link Condition} to filter by state ACTUAL or DELETED
+   * Get {@link Condition} to filter by state ACTUAL or DELETED or ACTUAL and leader record status d, s, or x
    *
    * @param deleted deleted flag
    * @return condition
    */
   public static Condition filterRecordByDeleted(Boolean deleted) {
+    Condition condition = filterRecordByState(RecordState.ACTUAL.name());
     if (deleted == null) {
-      return RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED);
+      condition = RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED);
+    } else if (Boolean.TRUE.equals(deleted)) {
+      condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
+        .or(filterRecordByState(RecordState.ACTUAL.name()).and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS)));
     }
-    return filterRecordByState(deleted ? RecordState.DELETED.name() : RecordState.ACTUAL.name()) ;
+    return condition;
   }
 
   /**

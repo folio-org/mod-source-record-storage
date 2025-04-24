@@ -642,7 +642,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("externalIdsHolder.instanceId", is(FIRST_UUID))
       .body("order", is(11));
 
-  async.complete();
+    async.complete();
   }
 
   @Test
@@ -985,7 +985,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(firstInstanceId)
-       .withInstanceHrid(firstHrId));
+        .withInstanceHrid(firstHrId));
 
     String secondSrsId = UUID.randomUUID().toString();
     String secondInstanceId = UUID.randomUUID().toString();

@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2025-22-04--15-00-update-composite-index-immutable-to-date-with-marc-id-and-version" author="Roman_Chernetskyi">
+    <sql>
+      DROP INDEX IF EXISTS idx_marc_indexers_005_field_no_and_immutable_to_date;
+      CREATE INDEX IF NOT EXISTS idx_marc_indexers_005_immutable_to_date_composite ON ${database.defaultSchemaName}.marc_indexers_005 (marc_id, field_no, version, ${database.defaultSchemaName}.immutable_to_date(value));
+    </sql>
+  </changeSet>
+</databaseChangeLog>

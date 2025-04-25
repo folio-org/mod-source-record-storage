@@ -14,6 +14,7 @@
 * [MODSOURCE-859](https://folio-org.atlassian.net/browse/MODSOURCE-859) Added record undelete endpoint
 * [MODSOURCE-868](https://folio-org.atlassian.net/browse/MODSOURCE-868) Update to mod-source-record-storage Java 21
 * [MODSOURCE-871](https://folio-org.atlassian.net/browse/MODSOURCE-871) 504 Gateway Time-out Error is returned for MARC Search request against Central tenant
+* [MODSOURCE-893](https://folio-org.atlassian.net/browse/MODSOURCE-893) Fix import of MARC authority record is not tracked as "Original version" in "Version history"
 
 | METHOD | URL                                      | DESCRIPTION         |
 |--------|------------------------------------------|---------------------|

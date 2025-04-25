@@ -12,8 +12,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.MarcUtil;
@@ -95,12 +97,21 @@ public class RecordDomainEventPublisher {
   }
 
   private List<KafkaHeader> getKafkaHeaders(Map<String, String> okapiHeaders, Record.RecordType recordType) {
-    return List.of(
-      KafkaHeader.header(OKAPI_URL_HEADER, okapiHeaders.get(OKAPI_URL_HEADER)),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, okapiHeaders.get(OKAPI_TENANT_HEADER)),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, okapiHeaders.get(OKAPI_TOKEN_HEADER)),
-      KafkaHeader.header(RECORD_TYPE, recordType.value())
-    );
+    var headers = new ArrayList<KafkaHeader>();
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_URL_HEADER))
+      .ifPresent(url -> headers.add(KafkaHeader.header(OKAPI_URL_HEADER, url)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_TENANT_HEADER))
+      .ifPresent(tenant -> headers.add(KafkaHeader.header(OKAPI_TENANT_HEADER, tenant)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_TOKEN_HEADER))
+      .ifPresent(token -> headers.add(KafkaHeader.header(OKAPI_TOKEN_HEADER, token)));
+
+    Optional.ofNullable(recordType)
+      .map(Record.RecordType::value)
+      .ifPresent(value -> headers.add(KafkaHeader.header(RECORD_TYPE, value)));
+    return headers;
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)

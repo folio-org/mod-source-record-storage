@@ -1,3 +1,6 @@
+## 2025-04-25 5.10.4
+* [MODSOURCE-875](https://folio-org.atlassian.net/browse/MODSOURCE-875) Optimize stream marc records id query (fix filtering of deleted records)
+
 ## 2025-04-23 5.10.3
 * [MODSOURCE-875](https://folio-org.atlassian.net/browse/MODSOURCE-875) Optimize stream marc records id query
 

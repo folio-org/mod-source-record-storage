@@ -53,6 +53,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   private static final String RECORDS_MATCHING_PATH = "/source-storage/records/matching";
   private static final String PARSED_MARC_BIB_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcBibContentWith999field.json";
+  private static final String PARSED_MARC_BIB_WITHOUT_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcBibContentWithout999field.json";
   private static final String PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/parsedMarcAuthorityWith999field.json";
   private static final String PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH = "src/test/resources/mock/parsedContents/marcHoldingsContentWith999field.json";
   private static final String PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
@@ -62,14 +63,17 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   private static String rawRecordContent;
   private static String parsedRecordContent;
+  private static String parsedRecordContentWithout999;
 
   private Snapshot snapshot;
   private Record existingRecord;
+  private Record existingDeletedRecord;
 
   @BeforeClass
   public static void setUpBeforeClass() {
     rawRecordContent = TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH);
     parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_BIB_WITH_999_FIELD_SAMPLE_PATH);
+    parsedRecordContentWithout999 = TestUtil.readFileFromPath(PARSED_MARC_BIB_WITHOUT_999_FIELD_SAMPLE_PATH);
   }
 
   @Before
@@ -90,8 +94,20 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(new ParsedRecord().withId(existingRecordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("681394b4-10d8-4cb1-a618-0f9bd6152119").withInstanceHrid("12345"));
 
+    String deletedRecordId = UUID.randomUUID().toString();
+    this.existingDeletedRecord = new Record()
+      .withId(deletedRecordId)
+      .withMatchedId(deletedRecordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_BIB)
+      .withState(Record.State.DELETED)
+      .withRawRecord(new RawRecord().withId(deletedRecordId).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(deletedRecordId).withContent(parsedRecordContentWithout999))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("54321"));
+
     postSnapshots(context, snapshot);
-    postRecords(context, existingRecord);
+    postRecords(context, existingRecord, existingDeletedRecord);
   }
 
   @After
@@ -347,6 +363,47 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers.size()", is(1))
       .body("identifiers[0].recordId", is(existingRecord.getId()))
       .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchDeletedRecordByInstanceHridField() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(existingDeletedRecord.getExternalIdsHolder().getInstanceHrid()))
+          .withField("001"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingDeletedRecord.getId()))
+      .body("identifiers[0].externalId", is(existingDeletedRecord.getExternalIdsHolder().getInstanceId()));
+  }
+
+  @Test
+  public void shouldMatchDeletedRecordByMatchedId() {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.MARC_BIB)
+        .withFilters(List.of(new Filter()
+          .withValues(List.of(existingDeletedRecord.getMatchedId()))
+          .withField("999")
+          .withIndicator1("f")
+          .withIndicator2("f")
+          .withSubfield("s"))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(existingDeletedRecord.getId()))
+      .body("identifiers[0].externalId", is(existingDeletedRecord.getExternalIdsHolder().getInstanceId()));
   }
 
   @Test

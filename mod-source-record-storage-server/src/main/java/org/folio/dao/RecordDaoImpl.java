@@ -580,7 +580,7 @@ public class RecordDaoImpl implements RecordDao {
         joinOnTablesForSearchByMarcFields(baseCountQuery, matchedField);
         countQuery = baseCountQuery
           .where(filterRecordByType(typeConnection.getRecordType().value())
-            .and(filterRecordByState(Record.State.ACTUAL.value()))
+            .and(RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED))
             .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
             .and(getCompositeMatchedFieldCondition(matchedField)));
       } else {
@@ -595,7 +595,7 @@ public class RecordDaoImpl implements RecordDao {
       joinOnTablesForSearchByMarcFields(baseSearchQuery, matchedField);
       SelectConditionStep<org.jooq.Record> searchQuery = baseSearchQuery
         .where(filterRecordByType(typeConnection.getRecordType().value())
-          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED))
           .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
           .and(getCompositeMatchedFieldCondition(matchedField)));
 

@@ -258,8 +258,9 @@ public class PostgresClientFactory {
 
     var certificate = postgresConfig.getString(SERVER_PEM);
     if (StringUtils.isNotBlank(certificate)) {
-      System.setProperty(SERVER_PEM, certificate);
-      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+      dataSource.setSsl(true);
+      // System.setProperty(SERVER_PEM, certificate);
+      // dataSource.setSslfactory(PostgresSocketFactory.class.getName());
     } else {
       dataSource.setSslMode(DISABLE_VALUE);
     }

@@ -1,3 +1,7 @@
+## 2025-05-02 5.10.5
+* [MODSOURCE-893](https://folio-org.atlassian.net/browse/MODSOURCE-893) Fix import of MARC authority record is not tracked as "Original version" in "Version history"
+* [MODSOURCE-898](https://folio-org.atlassian.net/browse/MODSOURCE-898) Return deleted records on matching
+
 ## 2025-04-25 5.10.4
 * [MODSOURCE-875](https://folio-org.atlassian.net/browse/MODSOURCE-875) Optimize stream marc records id query (fix filtering of deleted records)
 

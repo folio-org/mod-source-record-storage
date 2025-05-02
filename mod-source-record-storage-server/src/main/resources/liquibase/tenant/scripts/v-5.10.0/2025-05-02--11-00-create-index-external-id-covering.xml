@@ -1,0 +1,13 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <changeSet id="2025-05-02--11-00-create-index-external-id-covering" author="viachaslau_khandramai">
+    <sql>
+      CREATE INDEX idx_records_lb_external_id_covering ON ${database.defaultSchemaName}.records_lb (external_id, record_type, state, suppress_discovery, leader_record_status, id, generation);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,3 +1,6 @@
+## 2025-05-06 5.10.6
+* [MODSOURCE-904](https://folio-org.atlassian.net/browse/MODSOURCE-904) Sunflower - add index to improve Data Export's SQL query performance
+
 ## 2025-05-05 5.10.5
 * [MODSOURCE-893](https://folio-org.atlassian.net/browse/MODSOURCE-893) Fix import of MARC authority record is not tracked as "Original version" in "Version history"
 

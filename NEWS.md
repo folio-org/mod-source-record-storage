@@ -1,3 +1,6 @@
+## 2025-05-06 5.9.15
+* [MODSOURCE-900](https://folio-org.atlassian.net/browse/MODSOURCE-900) Ramsons - add index to improve Data Export's SQL query performance
+
 ## 2025-04-25 5.9.14
 * [MODSOURCE-871](https://folio-org.atlassian.net/browse/MODSOURCE-871) Optimize stream marc records id query (fix filtering of deleted records)
 

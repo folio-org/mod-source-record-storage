@@ -2,7 +2,7 @@ stages:
   - name: Build
     steps:
       - runScriptConfig:
-          image: postgres:12.2
+          image: postgres:16-alpine
           shellScript: |-
             apt update
             apt install -y maven git

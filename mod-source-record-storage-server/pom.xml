@@ -289,7 +289,7 @@
     <vertx-jooq.version>6.5.5</vertx-jooq.version>
     <aspectj.version>1.9.19</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
-    <postgres.image>postgres:12-alpine</postgres.image>
+    <postgres.image>postgres:16-alpine</postgres.image>
     <lombok.version>1.18.30</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>

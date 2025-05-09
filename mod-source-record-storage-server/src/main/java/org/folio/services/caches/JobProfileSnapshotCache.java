@@ -6,9 +6,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -54,10 +54,10 @@ public class JobProfileSnapshotCache {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           LOGGER.info("loadJobProfileSnapshot:: JobProfileSnapshot was loaded by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().encode(), ProfileSnapshotWrapper.class)));
-        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
           LOGGER.warn("loadJobProfileSnapshot:: JobProfileSnapshot was not found by id '{}'", profileSnapshotId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {

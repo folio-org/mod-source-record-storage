@@ -4,7 +4,6 @@ import io.restassured.RestAssured;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import net.mguenther.kafka.junit.Wait;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 import org.folio.rest.jaxrs.model.AsyncMigrationJobInitRq;
@@ -15,7 +14,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,8 +37,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  @Ignore("investigate why test is not passing on CI")
-  public void shouldExecuteAsyncMigration() throws InterruptedException {
+  public void shouldExecuteAsyncMigration() {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -55,9 +54,8 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .body("startedDate", notNullValue())
       .extract().body().as(AsyncMigrationJob.class);
 
-    Wait.delay(3);
-
-    RestAssured.given()
+    Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+      RestAssured.given()
       .spec(spec)
       .when()
       .get(MIGRATIONS_JOBS_PATH + migrationJob.getId())
@@ -66,6 +64,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .body("id", is(migrationJob.getId()))
       .body("status", is(COMPLETED.value()))
       .body("completedDate", notNullValue());
+    });
   }
 
   @Test
@@ -95,7 +94,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
 
   @Test
   @Ignore("investigate why test is not passing on CI")
-  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() throws InterruptedException {
+  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -118,16 +117,16 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CONFLICT)
       .body(is(format("Failed to initiate migration job, because migration job with id '%s' already in progress", runningJobId)));
 
-    // waits for running job completion before finishing the test to avoid impact on other tests
-    Wait.delay(3);
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MIGRATIONS_JOBS_PATH + runningJobId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("id", is(runningJobId))
-      .body("status", is(COMPLETED.value()));
+    Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+      RestAssured.given()
+        .spec(spec)
+        .when()
+        .get(MIGRATIONS_JOBS_PATH + runningJobId)
+        .then()
+        .statusCode(HttpStatus.SC_OK)
+        .body("id", is(runningJobId))
+        .body("status", is(COMPLETED.value()));
+    });
   }
 
   private void clearTable(TestContext context) {

@@ -30,7 +30,6 @@ import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
-import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 /**
@@ -59,11 +58,12 @@ class ModuleIT {
 
   @Container
   private static final KafkaContainer kafka =
-      new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.0"))
+      TestUtil.getKafkaContainer()
       .withNetwork(network)
       .withNetworkAliases("ourkafka");
 
   @Container
+  @SuppressWarnings("resource")
   private static final PostgreSQLContainer<?> postgres =
       new PostgreSQLContainer<>(PostgresTesterContainer.getImageName())
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 0444), "/server.key")
@@ -77,6 +77,7 @@ class ModuleIT {
       .withDatabaseName("postgres");
 
   @Container
+  @SuppressWarnings("resource")
   private static final GenericContainer<?> mod =
       new GenericContainer<>(
           new ImageFromDockerfile("mod-source-record-storage").withDockerfile(Path.of("../Dockerfile")))

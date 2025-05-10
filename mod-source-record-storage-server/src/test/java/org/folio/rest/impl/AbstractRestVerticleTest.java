@@ -16,8 +16,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.reactivex.core.Vertx;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
@@ -35,13 +35,11 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.testcontainers.containers.PostgreSQLContainer;
-
+import org.testcontainers.kafka.KafkaContainer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.UUID;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
@@ -84,7 +82,7 @@ public abstract class AbstractRestVerticleTest {
       .dynamicPort()
       .notifier(new Slf4jNotifier(true)));
 
-  public static EmbeddedKafkaCluster cluster;
+  public static KafkaContainer kafkaContainer = TestUtil.getKafkaContainer();
 
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
@@ -94,15 +92,13 @@ public abstract class AbstractRestVerticleTest {
     options.setBlockedThreadCheckInterval(6000);
     vertx = Vertx.vertx(options);
 
-    cluster = provisionWith(defaultClusterConfig());
-    cluster.start();
-    String[] hostAndPort = cluster.getBrokerList().split(":");
+    kafkaContainer.start();
     //Property variables
-    System.setProperty("kafka-host", hostAndPort[0]);
-    System.setProperty("kafka-port", hostAndPort[1]);
+    System.setProperty("kafka-host", kafkaContainer.getHost());
+    System.setProperty("kafka-port", kafkaContainer.getFirstMappedPort() + "");
     //Env variables
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
+    System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
     okapiPort = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + okapiPort;
@@ -113,6 +109,7 @@ public abstract class AbstractRestVerticleTest {
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
       .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
       ));
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
     switch (useExternalDatabase) {
       case "environment":
@@ -207,7 +204,7 @@ public abstract class AbstractRestVerticleTest {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }
-      cluster.stop();
+      kafkaContainer.stop();
       async.complete();
     }));
   }

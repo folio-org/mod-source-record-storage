@@ -11,7 +11,18 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import org.apache.commons.collections4.IteratorUtils;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
 import org.folio.postgres.testing.PostgresTesterContainer;
@@ -27,15 +38,20 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.testcontainers.kafka.KafkaContainer;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 import static org.junit.Assert.assertEquals;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import lombok.SneakyThrows;
 
 public abstract class AbstractLBServiceTest {
 
@@ -66,30 +82,31 @@ public abstract class AbstractLBServiceTest {
 
   protected static PostgresClientFactory postgresClientFactory;
 
-  public static EmbeddedKafkaCluster cluster;
+  public static KafkaContainer kafkaContainer = TestUtil.getKafkaContainer();
+  private static KafkaProducer<String, String> kafkaProducer;
   public static WireMockServer wireMockServer;
 
   @BeforeClass
-  public static void setUpClass(TestContext context) throws Exception {
+  public static void setUpClass(TestContext context) {
     Async async = context.async();
     vertx = Vertx.vertx();
 
-    cluster = provisionWith(defaultClusterConfig());
-    cluster.start();
+    kafkaContainer.start();
+    kafkaProducer = createKafkaProducer();
+
     wireMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort());
     wireMockServer.start();
 
-    String[] hostAndPort = cluster.getBrokerList().split(":");
     //Env variables
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
+    System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
     System.setProperty(KAFKA_MAX_REQUEST_SIZE, String.valueOf(KAFKA_MAX_REQUEST_SIZE_VAL));
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
 
     kafkaConfig = KafkaConfig.builder()
-      .kafkaHost(hostAndPort[0])
-      .kafkaPort(hostAndPort[1])
+      .kafkaHost(kafkaContainer.getHost())
+      .kafkaPort(kafkaContainer.getFirstMappedPort() + "")
       .envId(KAFKA_ENV_ID)
       .maxRequestSize(KAFKA_MAX_REQUEST_SIZE_VAL)
       .build();
@@ -147,7 +164,7 @@ public abstract class AbstractLBServiceTest {
     vertx.close(context.asyncAssertSuccess(res -> {
       PostgresClient.stopPostgresTester();
       wireMockServer.stop();
-      cluster.stop();
+      kafkaContainer.stop();
       async.complete();
     }));
   }
@@ -174,5 +191,39 @@ public abstract class AbstractLBServiceTest {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
     assertEquals(expectedDate.substring(0, 10),
       actualDate.substring(0, 10));
+  }
+
+  private static KafkaProducer<String, String> createKafkaProducer() {
+    Properties producerProperties = new Properties();
+    producerProperties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
+    producerProperties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    producerProperties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    return new KafkaProducer<>(producerProperties);
+  }
+
+  @SneakyThrows
+  protected RecordMetadata send(String topic, String key, String value, Map<String, String> headers) {
+    ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, key, value);
+    headers.forEach((k, v) -> producerRecord.headers().add(k, v.getBytes(UTF_8)));
+    return kafkaProducer.send(producerRecord).get();
+  }
+
+  protected ConsumerRecord<String, String> getKafkaEvent(String topic) {
+    return getKafkaEvents(topic).get(0);
+  }
+
+  protected List<ConsumerRecord<String, String>> getKafkaEvents(String topic) {
+    Properties consumerProperties = new Properties();
+    consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
+    consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
+    consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    ConsumerRecords<String, String> records;
+    try (KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(consumerProperties)) {
+      kafkaConsumer.subscribe(List.of(topic));
+      records = kafkaConsumer.poll(Duration.ofSeconds(30));
+    }
+    return IteratorUtils.toList(records.iterator());
   }
 }

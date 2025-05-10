@@ -1,7 +1,6 @@
 package org.folio.verticle.consumers;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.singletonList;
 import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.ActionProfile.Action.UPDATE;
@@ -37,16 +36,11 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.ActionProfile;
 import org.folio.JobProfile;
@@ -59,6 +53,7 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
+import org.folio.rest.jaxrs.model.DataImportEventTypes;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MappingDetail;
@@ -187,7 +182,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateRecordWhenPayloadContainsUpdateMarcBibActionInCurrentNode() throws InterruptedException {
+  public void shouldUpdateRecordWhenPayloadContainsUpdateMarcBibActionInCurrentNode() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -241,24 +236,15 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
       }});
 
-    String topic = getTopicName(DI_SRS_MARC_BIB_RECORD_CREATED.value());
-    KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
-
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, singletonList(kafkaRecord)).useDefaults();
-
     // when
-    cluster.send(request);
+    send(DI_SRS_MARC_BIB_RECORD_CREATED,  eventPayload);
 
     // then
     var value = DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
     String observeTopic = getTopicName(value);
-    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(50, TimeUnit.SECONDS)
-      .build());
+    var observedRecord = getKafkaEvent(observeTopic);
 
-    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
+    Event obtainedEvent = Json.decodeValue(observedRecord.value(), Event.class);
     DataImportEventPayload dataImportEventPayload =
       Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(),
@@ -271,11 +257,11 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     validate005Field(expectedDate, actualRecord);
-    assertNotNull(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER));
+    assertNotNull(observedRecord.headers().lastHeader(RECORD_ID_HEADER));
   }
 
   @Test
-  public void shouldBeSentDiErrorMessageWhenIncomingRecordDoesNotContainField001() throws InterruptedException {
+  public void shouldBeSentDiErrorMessageWhenIncomingRecordDoesNotContainField001() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -326,24 +312,15 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
       }});
 
-    String topic = getTopicName(DI_SRS_MARC_BIB_RECORD_CREATED.value());
-    KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
-    kafkaRecord.addHeader(RECORD_ID_HEADER, incorrectRecord.getId(), UTF_8);
-    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
-
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, singletonList(kafkaRecord)).useDefaults();
-
     // when
-    cluster.send(request);
+    send(DI_SRS_MARC_BIB_RECORD_CREATED, eventPayload);
 
     // then
     var value = DI_ERROR.value();
     String observeTopic = getTopicName(value);
-    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(50, TimeUnit.SECONDS)
-      .build());
+    var observedRecord = getKafkaEvent(observeTopic);
 
-    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
+    Event obtainedEvent = Json.decodeValue(observedRecord.value(), Event.class);
     DataImportEventPayload dataImportEventPayload =
       Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
@@ -352,7 +329,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldDeleteMarcAuthorityRecord() throws InterruptedException {
+  public void shouldDeleteMarcAuthorityRecord() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -384,21 +361,12 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withJobExecutionId(snapshotId)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
 
-    String topic = getTopicName(DI_MARC_FOR_DELETE_RECEIVED.value());
-    KeyValue<String, String> kafkaRecord = buildKafkaRecord(eventPayload);
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    kafkaRecord.addHeader(CHUNK_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
-
-    var request = SendKeyValues.to(topic, singletonList(kafkaRecord)).useDefaults();
-
     // when
-    cluster.send(request);
+    send(DI_MARC_FOR_DELETE_RECEIVED, eventPayload);
 
     String observeTopic = getTopicName(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.name());
-    List<KeyValue<String, String>> observedRecords = cluster.observe(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
-    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
+    var observedRecord = getKafkaEvent(observeTopic);
+    Event obtainedEvent = Json.decodeValue(observedRecord.value(), Event.class);
     var resultPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), resultPayload.getEventType());
     assertEquals(record.getExternalIdsHolder().getAuthorityId(), resultPayload.getContext().get("AUTHORITY_RECORD_ID"));
@@ -409,14 +377,17 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     return KafkaTopicNameHelper.formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, value);
   }
 
-  private KeyValue<String, String> buildKafkaRecord(DataImportEventPayload eventPayload) {
-    Event event = new Event().withEventPayload(Json.encode(eventPayload));
-    KeyValue<String, String> record = new KeyValue<>("1", Json.encode(event));
-    record.addHeader(RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl(), StandardCharsets.UTF_8);
-    record.addHeader(RestUtil.OKAPI_TENANT_HEADER, TENANT_ID, StandardCharsets.UTF_8);
-    record.addHeader(RestUtil.OKAPI_TOKEN_HEADER, TOKEN, StandardCharsets.UTF_8);
-    record.addHeader(JOB_EXECUTION_ID_HEADER, snapshotId, StandardCharsets.UTF_8);
-    return record;
+  private void send(DataImportEventTypes eventType, DataImportEventPayload eventPayload) {
+    var topic = getTopicName(eventType.value());
+    var event = new Event().withEventPayload(Json.encode(eventPayload));
+    Map<String, String> headers = Map.of(
+        RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl(),
+        RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
+        RestUtil.OKAPI_TOKEN_HEADER, TOKEN,
+        JOB_EXECUTION_ID_HEADER, snapshotId,
+        RECORD_ID_HEADER, record.getId(),
+        CHUNK_ID_HEADER, UUID.randomUUID().toString()
+    );
+    send(topic, "1", Json.encode(event), headers);
   }
-
 }

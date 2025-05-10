@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import static java.util.Collections.singletonList;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
@@ -17,23 +18,20 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ReadKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -105,7 +103,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private Record errorRecord;
 
   @Before
-  public void setUp(TestContext context) throws IOException {
+  public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
@@ -171,8 +169,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateBibRecordAndSendRecordUpdatedEvent(TestContext context)
-    throws InterruptedException, IOException {
+  @SneakyThrows
+  public void shouldUpdateBibRecordAndSendRecordUpdatedEvent(TestContext context) {
     var async = context.async();
 
     var parsedRecord = record.getParsedRecord();
@@ -180,18 +178,14 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     var event = buildLinkEventForUpdate(updateTargets);
 
     var traceHeader = UUID.randomUUID().toString();
-    cluster.send(createRequest(event, traceHeader));
-    var keyValues = cluster.read(ReadKeyValues.from(KAFKA_SRS_BIB_PRODUCER_TOPIC)
-      .withMaxTotalPollTime(60, TimeUnit.SECONDS)
-      .filterOnHeaders(headers -> Arrays.equals(headers.lastHeader(KAFKA_TEST_HEADER).value(),
-        traceHeader.getBytes(StandardCharsets.UTF_8)))
-      .withLimit(1)
-      .build());
+    send(event, traceHeader);
+
+    var keyValues = readConsumerRecordsFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, keyValues.size());
-    var actualHeaders = keyValues.get(0).getHeaders();
+    var actualHeaders = keyValues.get(0).headers();
     OKAPI_HEADERS.forEach((key, value) ->
-      context.assertTrue(Arrays.equals(value.getBytes(StandardCharsets.UTF_8), actualHeaders.lastHeader(key).value())));
-    var actualOutgoingEvent = objectMapper.readValue(keyValues.get(0).getValue(), MarcBibUpdate.class);
+      context.assertEquals(value, new String(actualHeaders.lastHeader(key).value(), UTF_8)));
+    var actualOutgoingEvent = objectMapper.readValue(keyValues.get(0).value(), MarcBibUpdate.class);
 
     recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getNew -> {
       if (getNew.failed()) {
@@ -209,13 +203,12 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateMultipleRecordsAndSendMultipleRecordUpdatedEvents(TestContext context)
-    throws InterruptedException {
+  public void shouldUpdateMultipleRecordsAndSendMultipleRecordUpdatedEvents(TestContext context) {
     var updateTargets = buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
     var event = buildLinkEventForUpdate(updateTargets);
 
     var traceHeader = UUID.randomUUID().toString();
-    cluster.send(createRequest(event, traceHeader));
+    send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 2);
     context.assertEquals(2, values.size());
 
@@ -237,8 +230,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
    * Only $9 subfield should be removed and only in case it matches authorityId from event
    */
   @Test
-  public void shouldUpdateBibRecordForDeleteEventAndSendRecordUpdatedEvent(TestContext context)
-    throws InterruptedException, IOException {
+  @SneakyThrows
+  public void shouldUpdateBibRecordForDeleteEventAndSendRecordUpdatedEvent(TestContext context) {
     var async = context.async();
 
     var parsedRecord = record.getParsedRecord();
@@ -246,7 +239,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     var event = buildLinkEvent(updateTargets, BibAuthorityLinksUpdate.Type.DELETE);
 
     var traceHeader = UUID.randomUUID().toString();
-    cluster.send(createRequest(event, traceHeader));
+    send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
     var actualOutgoingEvent = objectMapper.readValue(values.get(0), MarcBibUpdate.class);
@@ -267,12 +260,12 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateMultipleRecordsAndSendOneFailedLinkUpdateReport(TestContext context)
-    throws InterruptedException, IOException {
+  @SneakyThrows
+  public void shouldUpdateMultipleRecordsAndSendOneFailedLinkUpdateReport(TestContext context) {
     var event = buildLinkEventForUpdate(buildUpdateTargets(INSTANCE_ID, SECOND_INSTANCE_ID, ERROR_INSTANCE_ID));
     var traceHeader = UUID.randomUUID().toString();
 
-    cluster.send(createRequest(event, traceHeader));
+    send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
 
@@ -282,24 +275,42 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     context.assertEquals(ERROR_RECORD_DESCRIPTION, report.getFailCause());
   }
 
-  private SendKeyValues<String, String> createRequest(Object payload, String traceValue) {
-    var eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(payload));
-    OKAPI_HEADERS.forEach((key, value) -> eventRecord.addHeader(key, value, Charset.defaultCharset()));
-    eventRecord.addHeader(KAFKA_TEST_HEADER, traceValue, Charset.defaultCharset());
-    return SendKeyValues.to(KAFKA_CONSUMER_TOPIC, singletonList(eventRecord)).useDefaults();
+  private void send(Object payload, String traceValue) {
+    Map<String, String> headers = new HashMap<>(OKAPI_HEADERS);
+    headers.put(KAFKA_TEST_HEADER, traceValue);
+    send(KAFKA_CONSUMER_TOPIC, KAFKA_KEY_NAME, Json.encode(payload), headers);
   }
 
   private static String getTopicName(KafkaTopic topic) {
     return topic.fullTopicName(kafkaConfig, TENANT_ID);
   }
 
-  private List<String> readValuesFromKafka(String topic, String traceHeader, int limit) throws InterruptedException {
-    return cluster.readValues(ReadKeyValues.from(topic)
-      .withMaxTotalPollTime(60, TimeUnit.SECONDS)
-      .filterOnHeaders(headers -> Arrays.equals(headers.lastHeader(KAFKA_TEST_HEADER).value(),
-        traceHeader.getBytes(StandardCharsets.UTF_8)))
-      .withLimit(limit)
-      .build());
+  private List<String> readValuesFromKafka(String topic, String traceHeader, int limit) {
+    return readConsumerRecordsFromKafka(topic, traceHeader, limit)
+        .stream()
+        .map(ConsumerRecord::value)
+        .toList();
+  }
+
+  private List<ConsumerRecord<String, String>> readConsumerRecordsFromKafka(String topic, String traceHeader, int limit) {
+    List<ConsumerRecord<String, String>> list = new ArrayList<>();
+    while (true) {
+      var list2 = getKafkaEvents(topic);
+      if (list2.isEmpty()) {
+        break;
+      }
+      list2.removeIf(consumerRecord -> !hasTraceHeader(consumerRecord, traceHeader));
+      list.addAll(list2);
+      if (list.size() >= limit) {
+        break;
+      }
+    }
+    return list;
+  }
+
+  private boolean hasTraceHeader(ConsumerRecord<String, String> consumerRecord, String traceHeader) {
+    var header = consumerRecord.headers().lastHeader(KAFKA_TEST_HEADER);
+    return (header != null) && traceHeader.equals(new String(header.value(), UTF_8));
   }
 
   private int getLinksCount(List<UpdateTarget> updateTargets) {

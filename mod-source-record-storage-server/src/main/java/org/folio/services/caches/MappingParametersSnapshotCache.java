@@ -6,9 +6,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.Json;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -53,10 +53,10 @@ public class MappingParametersSnapshotCache {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           LOGGER.info("loadMappingParametersSnapshot:: MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class)));
-        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
           LOGGER.warn("loadMappingParametersSnapshot:: MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {

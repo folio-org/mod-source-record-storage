@@ -1,7 +1,7 @@
 package org.folio.services;
 
 import static java.lang.String.format;
-import static org.apache.http.HttpStatus.SC_NO_CONTENT;
+import static org.folio.HttpStatus.HTTP_NO_CONTENT;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 
 import java.util.ArrayList;
@@ -95,7 +95,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
         if (responseAr.failed()) {
           LOG.warn("deleteInstanceById:: Error deleting inventory instance by id '{}'", id, responseAr.cause());
           promise.complete(false);
-        } else if (responseAr.result().getCode() != SC_NO_CONTENT) {
+        } else if (responseAr.result().getCode() != HTTP_NO_CONTENT.toInt()) {
           LOG.warn("deleteInstanceById:: Failed to delete inventory instance by id '{}', response status: {}", id, responseAr.result().getCode());
           promise.complete(false);
         } else {

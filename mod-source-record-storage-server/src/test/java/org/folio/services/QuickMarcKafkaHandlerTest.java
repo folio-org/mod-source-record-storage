@@ -7,6 +7,8 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.kafka.KafkaTopicNameHelper.formatTopicName;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
@@ -15,16 +17,10 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -119,10 +115,8 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateParsedRecordAndSendRecordUpdatedEvent(TestContext context) throws InterruptedException {
+  public void shouldUpdateParsedRecordAndSendRecordUpdatedEvent(TestContext context) {
     Async async = context.async();
-
-    ParsedRecord parsedRecord = record.getParsedRecord();
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     Future<Record> future = recordService.saveRecord(record, okapiHeaders);
@@ -137,13 +131,11 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
     var payload = new HashMap<String, String>();
     payload.put("PARSED_RECORD_DTO", Json.encode(parsedRecordDto));
 
-    cluster.send(createRequest(payload));
+    send(payload);
 
     String observeTopic =
       formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_SRS_MARC_RECORD_UPDATED.name());
-    cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    getKafkaEvent(observeTopic);
 
     future.onComplete(ar -> {
       if (ar.failed()) {
@@ -179,23 +171,23 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSendErrorEventWhenNoDataInPayload() throws InterruptedException {
-    cluster.send(createRequest(new HashMap<>()));
+  public void shouldSendErrorEventWhenNoDataInPayload() {
+    send(new HashMap<>());
 
     String observeTopic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_ERROR.name());
-    cluster.observeValues(ObserveKeyValues.on(observeTopic, 1)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    var event = getKafkaEvent(observeTopic);
+    assertThat(event.value(), containsString("Event payload does not contain required PARSED_RECORD_DTO data"));
   }
 
-  private SendKeyValues<String, String> createRequest(HashMap<String, String> payload) {
+  private void send(HashMap<String, String> payload) {
     String topic = formatTopicName(kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, QM_RECORD_UPDATED.name());
     Event event = new Event().withId(UUID.randomUUID().toString()).withEventPayload(Json.encode(payload));
-    KeyValue<String, String> eventRecord = new KeyValue<>(KAFKA_KEY_NAME, Json.encode(event));
-    eventRecord.addHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL, Charset.defaultCharset());
-    eventRecord.addHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID, Charset.defaultCharset());
-    eventRecord.addHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN, Charset.defaultCharset());
-    return SendKeyValues.to(topic, Collections.singletonList(eventRecord)).useDefaults();
+    send(topic, KAFKA_KEY_NAME, Json.encode(event),
+        Map.of(
+            OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL,
+            OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID,
+            OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN
+            ));
   }
 
 }

@@ -199,52 +199,6 @@
       <version>4.9</version>
     </dependency>
     <dependency>
-      <groupId>net.mguenther.kafka</groupId>
-      <artifactId>kafka-junit</artifactId>
-      <version>${kafkajunit.version}</version>
-      <scope>test</scope>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-log4j12</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>log4j</groupId>
-          <artifactId>log4j</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>net.sf.jopt-simple</groupId>
-          <artifactId>jopt-simple</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-clients</artifactId>
-      <version>${kafkaclients.version}</version>
-      <classifier>test</classifier>
-      <scope>test</scope>
-    </dependency>
-    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.13</artifactId>
-      <version>${kafkaclients.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.13</artifactId>
-      <version>${kafkaclients.version}</version>
-      <classifier>test</classifier>
-      <scope>test</scope>
-    </dependency>
-    <dependency>  <!-- remove this dependency when using kafka-junit >= 3.6.0 -->
-      <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-tools</artifactId>
-      <version>${kafkaclients.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
       <scope>test</scope>

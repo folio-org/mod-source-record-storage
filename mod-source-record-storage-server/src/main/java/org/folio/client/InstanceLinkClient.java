@@ -6,9 +6,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.LinkingRuleDto;
 import org.folio.dataimport.util.OkapiConnectionParams;
@@ -28,11 +28,11 @@ public class InstanceLinkClient {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           LOGGER.info("getLinksByInstanceId:: InstanceLinkDtoCollection was loaded by instanceId '{}'", instanceId);
           return CompletableFuture.completedFuture(
             Optional.of(Json.decodeValue(httpResponse.getBody(), InstanceLinkDtoCollection.class)));
-        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
           LOGGER.warn("getLinksByInstanceId:: InstanceLinkDtoCollection was not found by instanceId '{}'", instanceId);
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
@@ -53,11 +53,11 @@ public class InstanceLinkClient {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (HttpStatus.SC_OK == httpResponse.getResponse().statusCode()) {
+        if (HttpStatus.HTTP_OK.toInt() == httpResponse.getResponse().statusCode()) {
           LOGGER.info("getLinkingRuleList:: LinkingRuleDto list was loaded '{}'", httpResponse.getResponse().statusCode());
           return CompletableFuture.completedFuture(
             Optional.of(Arrays.asList(Json.decodeValue(httpResponse.getBody(), LinkingRuleDto[].class))));
-        } else if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NOT_FOUND) {
+        } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
           LOGGER.warn("getLinkingRuleList:: no LinkingRuleDto was found '{}'", httpResponse.getResponse().statusCode());
           return CompletableFuture.completedFuture(Optional.empty());
         } else {
@@ -79,7 +79,7 @@ public class InstanceLinkClient {
       .toCompletionStage()
       .toCompletableFuture()
       .thenAccept(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_NO_CONTENT) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NO_CONTENT.toInt()) {
           LOGGER.info("updateInstanceLinks:: InstanceLinkDtoCollection was updated successfully for instanceId '{}'",
             instanceId);
         } else {

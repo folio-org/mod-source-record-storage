@@ -6,9 +6,9 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
-import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.services.entities.ConsortiumConfiguration;
@@ -63,7 +63,7 @@ public class ConsortiumConfigurationCache {
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.SC_OK) {
+        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           JsonArray userTenants = httpResponse.getJson().getJsonArray("userTenants");
           if (userTenants.isEmpty()) {
             LOGGER.debug("loadConsortiumConfiguration:: consortiumConfiguration was not found for tenantId '{}'", params.getTenantId());

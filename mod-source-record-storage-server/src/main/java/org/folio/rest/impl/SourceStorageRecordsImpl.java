@@ -13,6 +13,7 @@ import java.util.Map;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.json.Json;
 import org.folio.dataimport.util.ExceptionHelper;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
@@ -103,6 +104,9 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
                                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        LOG.warn("putSourceStorageRecordsGenerationById:: Received req to update record generation by matchedId {}, recordId: {}, instanceId: {}, record: '{}'",
+          matchedId, entity.getId(), entity.getExternalIdsHolder().getInstanceId(), Json.encode(entity));
+
         recordService.updateRecordGeneration(matchedId, entity, okapiHeaders)
           .map(updated -> PutSourceStorageRecordsGenerationByIdResponse.respond200WithApplicationJson(entity))
           .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)

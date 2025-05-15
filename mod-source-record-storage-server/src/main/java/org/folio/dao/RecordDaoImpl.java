@@ -720,6 +720,19 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Void> updateRecordMetadata(String externalId, String updatedDate, String tenantId) {
+    LOG.info("updateRecordMetadata:: Updating records updatedDate {} for tenant {}", updatedDate, tenantId);
+    Promise<Void> promise = Promise.promise();
+    getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
+        .set(RECORDS_LB.UPDATED_DATE, OffsetDateTime.parse(updatedDate))
+        .where(RECORDS_LB.EXTERNAL_ID.eq(UUID.fromString(externalId)))
+      )
+      .onSuccess(succeededAr -> promise.complete())
+      .onFailure(promise::fail);
+    return promise.future();
+  }
+
+  @Override
   public Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record recordDto,
                                    Map<String, String> okapiHeaders) {
     LOG.trace("saveRecord:: Saving {} record {}", recordDto.getRecordType(), recordDto.getId());

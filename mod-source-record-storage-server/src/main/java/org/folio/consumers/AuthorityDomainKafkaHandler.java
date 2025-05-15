@@ -36,12 +36,24 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
 
   @Override
   public Future<String> handle(KafkaConsumerRecord<String, String> consumerRecord) {
-    log.trace("handle:: Handling kafka record: '{}'", consumerRecord);
+    log.info("handle:: Handling kafka record: '{}'", consumerRecord);
 
     var kafkaHeaders = consumerRecord.headers();
     var okapiHeaders = toOkapiHeaders(kafkaHeaders);
 
     String authorityId = consumerRecord.key();
+    if (KafkaUtil.headerExists(DOMAIN_EVENT_TYPE_HEADER, "UPDATE", consumerRecord.headers())) {
+      log.info("handle:: Expected only {} domain type. Skipping authority domain kafka record [ID: '{}']",
+        DELETE_DOMAIN_EVENT_TYPE, authorityId);
+      var eventPayload = new JsonObject(consumerRecord.value());
+      var tenantId = eventPayload.getString(TENANT_FLD);
+      var externalId = eventPayload.getJsonObject("new").getString("id");
+      var updatedDate = eventPayload.getJsonObject("new")
+        .getJsonObject("metadata")
+        .getString("updatedDate");
+      recordService.updateRecordMetadata(externalId, updatedDate, tenantId);
+      return Future.succeededFuture(authorityId);
+    }
     if (isUnexpectedDomainEvent(consumerRecord)) {
       log.trace("handle:: Expected only {} domain type. Skipping authority domain kafka record [ID: '{}']",
         DELETE_DOMAIN_EVENT_TYPE, authorityId);

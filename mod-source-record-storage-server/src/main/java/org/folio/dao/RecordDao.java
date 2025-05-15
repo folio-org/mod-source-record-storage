@@ -440,4 +440,14 @@ public interface RecordDao {
    * @return void future
    */
   Future<Void> updateRecordsState(String matchedId, RecordState recordState, RecordType recordType, String tenantId);
+
+  /**
+   * Updates record metadata
+   *
+   * @param externalId  external id
+   * @param updatedDate updated date
+   * @param tenantId    tenant id
+   * @return void future
+   */
+  Future<Void> updateRecordMetadata(String externalId, String updatedDate, String tenantId);
 }

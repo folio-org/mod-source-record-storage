@@ -460,6 +460,15 @@ public class RecordServiceImpl implements RecordService {
       .compose(foundRecord -> updateRecord(foundRecord, okapiHeaders)).map(r -> null);
   }
 
+  @Override
+  public Future<Void> updateRecordMetadata(String externalId, String updatedDate, String tenantId) {
+    return recordDao.updateRecordMetadata(externalId, updatedDate, tenantId)
+      .onFailure(throwable -> {
+        LOG.error("updateRecordMetadata:: Error updating record metadata for externalId: {}", externalId, throwable);
+        throw new BadRequestException(throwable.getMessage());
+      });
+  }
+
   private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
     String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {

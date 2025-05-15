@@ -23,7 +23,7 @@
     <log4j.version>2.23.1</log4j.version>
     <raml-module-builder.version>35.4.0</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>4.5.7</vertx.version>
+    <vertx.version>4.5.14</vertx.version>
     <junit.version>5.10.2</junit.version>
     <rest-assured.version>5.5.1</rest-assured.version>
     <kafkaclients.version>3.9.0</kafkaclients.version>

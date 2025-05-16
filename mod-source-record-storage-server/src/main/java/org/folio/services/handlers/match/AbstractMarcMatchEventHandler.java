@@ -5,7 +5,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.apache.commons.collections.MapUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,7 +42,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
-import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByMultipleIds;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
@@ -242,7 +242,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     } else {
       matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
     }
-    return matchProfile.getMatchDetails().get(0);
+    return matchProfile.getMatchDetails().getFirst();
   }
 
   /**
@@ -251,7 +251,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private Future<DataImportEventPayload> processSucceededResult(List<Record> records, DataImportEventPayload payload) {
     if (records.size() == 1) {
       payload.setEventType(matchedEventType.toString());
-      payload.getContext().put(getMatchedMarcKey(), Json.encode(records.get(0)));
+      payload.getContext().put(getMatchedMarcKey(), Json.encode(records.getFirst()));
       LOG.debug("processSucceededResult:: Matched 1 record for tenant with id {}", payload.getTenant());
       return Future.succeededFuture(payload);
     }
@@ -274,8 +274,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   private boolean canProcessMultiMatchResult(DataImportEventPayload eventPayload) {
     List<ProfileSnapshotWrapper> childProfiles = eventPayload.getCurrentNode().getChildSnapshotWrappers();
-    return isNotEmpty(childProfiles) && ReactToType.MATCH.equals(childProfiles.get(0).getReactTo())
-      && MATCH_PROFILE.equals(childProfiles.get(0).getContentType());
+    return isNotEmpty(childProfiles) && ReactToType.MATCH.equals(childProfiles.getFirst().getReactTo())
+      && MATCH_PROFILE.equals(childProfiles.getFirst().getContentType());
   }
 
   /* Logic for processing errors */

@@ -1,3 +1,8 @@
+## 2025-05-16 5.10.7
+* Upgrade from confluentinc/cp-kafka:7.3.1 to apache/kafka-native:3.8.0
+* [MODSOURCE-891](https://folio-org.atlassian.net/browse/MODSOURCE-891) Replace net.mguenther.kafka:kafka-junit (EOL)
+* [MODSOURCE-905](https://folio-org.atlassian.net/browse/MODSOURCE-905) Upgrade all dependencies for Sunflower fixing vulnerabilities
+
 ## 2025-05-06 5.10.6
 * [MODSOURCE-904](https://folio-org.atlassian.net/browse/MODSOURCE-904) Sunflower - add index to improve Data Export's SQL query performance
 

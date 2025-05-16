@@ -23,11 +23,11 @@
     <log4j.version>2.23.1</log4j.version>
     <raml-module-builder.version>35.4.0</raml-module-builder.version>
     <main.basedir>${project.basedir}</main.basedir>
-    <vertx.version>4.5.7</vertx.version>
+    <vertx.version>4.5.14</vertx.version>
     <junit.version>5.10.2</junit.version>
-    <rest-assured.version>4.5.1</rest-assured.version>
-    <kafkaclients.version>3.6.0</kafkaclients.version>
-    <spring.version>6.1.12</spring.version>
+    <rest-assured.version>5.5.1</rest-assured.version>
+    <kafkaclients.version>3.9.0</kafkaclients.version>
+    <spring.version>6.2.6</spring.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>

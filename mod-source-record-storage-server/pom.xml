@@ -122,7 +122,7 @@
     <dependency>
       <groupId>io.xlate</groupId>
       <artifactId>staedi</artifactId>
-      <version>1.16.0</version>
+      <version>1.25.3</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -182,7 +182,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.4.1</version>
+      <version>4.4.3</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -239,7 +239,7 @@
     <aspectj.version>1.9.19</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
     <postgres.image>postgres:16-alpine</postgres.image>
-    <lombok.version>1.18.30</lombok.version>
+    <lombok.version>1.18.38</lombok.version>
     <generate_routing_context>/source-storage/stream/records,/source-storage/stream/source-records,/source-storage/stream/marc-record-identifiers</generate_routing_context>
   </properties>
 
@@ -277,7 +277,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.2.0</version>
+        <version>3.6.0</version>
         <executions>
           <execution>
             <id>add_generated_sources_folder</id>
@@ -584,7 +584,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.2.4</version>
+        <version>3.6.0</version>
         <executions>
           <execution>
             <phase>package</phase>

@@ -145,8 +145,11 @@ public final class AdditionalFieldsUtil {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
-        //var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
-        var sourceParsedRecordString = new JsonObject(Json.encode(record.getParsedRecord().getContent())).encode();
+
+        String sourceParsedRecordString = record.getParsedRecord().getContent() instanceof String
+          ? (String) record.getParsedRecord().getContent()
+          : Json.encode(record.getParsedRecord().getContent());
+
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();

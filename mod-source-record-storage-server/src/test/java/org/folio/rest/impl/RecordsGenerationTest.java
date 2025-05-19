@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -459,7 +458,11 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .put("fields", new JsonArray()
           .add(new JsonObject().put("001", RandomStringUtils.randomAlphanumeric(9)))
           .add(new JsonObject().put("999", new JsonObject()
-          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+            .put("ind1", "f")
+            .put("ind2", "f")
+          .put("subfields", new JsonArray()
+            .add(new JsonObject().put("s", srsId))
+            .add(new JsonObject().put("i", instanceId)))))));
 
     Record newRecord = new Record()
       .withId(srsId)

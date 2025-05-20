@@ -1,3 +1,7 @@
+## 2025-05-20 5.10.8
+* [MODSOURCE-898](https://folio-org.atlassian.net/browse/[MODSOURCE-898) Deleted from Inventory MARC records are not matching during update
+* [MODSOURCE-915](https://folio-org.atlassian.net/browse/[MODSOURCE-915) Update aspectj-maven-plugin to version 1.14.1 and add support for java 21
+
 ## 2025-05-16 5.10.7
 * Upgrade from confluentinc/cp-kafka:7.3.1 to apache/kafka-native:3.8.0
 * [MODSOURCE-891](https://folio-org.atlassian.net/browse/MODSOURCE-891) Replace net.mguenther.kafka:kafka-junit (EOL)

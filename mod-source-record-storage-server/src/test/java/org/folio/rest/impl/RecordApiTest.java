@@ -9,7 +9,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +22,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.text.RandomStringGenerator;
 import org.apache.http.HttpStatus;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.junit.Assert;
@@ -56,13 +54,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
 
-  private static final SecureRandom secureRandom = new SecureRandom();
-  private static final RandomStringGenerator generator = new RandomStringGenerator.Builder()
-    .withinRange('0', 'z')
-            .filteredBy(Character::isLetterOrDigit)
-            .usingRandom(secureRandom::nextInt)
-            .build();
-  private static final String FIRST_HRID = generator.generate(9);
+  private static final String FIRST_HRID = "hrid00010";
   private static final String GENERATION = "generation";
 
   private static RawRecord rawMarcRecord;

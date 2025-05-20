@@ -15,7 +15,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.TestMocks;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -74,7 +73,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(TestMocks.getRecord(0).getRawRecord().withId(recordId))
       .withParsedRecord(TestMocks.getRecord(0).getParsedRecord().withId(recordId))
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)

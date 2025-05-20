@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.ActionProfile;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
@@ -152,7 +151,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid("hrid00001"));
 
     incorrectRecord = new Record()
       .withId(incorrectRecordId)
@@ -164,7 +163,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withParsedRecord(incorrectParsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid("incorrectHrid"));
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
@@ -226,7 +225,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
       .withOkapiUrl(mockServer.baseUrl())
       .withTenant(TENANT_ID)
       .withToken(TOKEN)
@@ -302,7 +301,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withJobExecutionId(snapshotForRecordUpdate.getJobExecutionId())
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
       .withOkapiUrl(mockServer.baseUrl())
       .withTenant(TENANT_ID)
       .withToken(TOKEN)
@@ -359,7 +358,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withTenant(TENANT_ID)
       .withToken(TOKEN)
       .withJobExecutionId(snapshotId)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     send(DI_MARC_FOR_DELETE_RECEIVED, eventPayload);

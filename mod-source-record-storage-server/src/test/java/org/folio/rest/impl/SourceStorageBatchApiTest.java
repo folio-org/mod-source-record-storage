@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
@@ -73,7 +72,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String VALID_HRID = "12345";
   private static final String MARC_RECORD_HRID = "393893";
-  private static final String HRID = RandomStringUtils.randomAlphanumeric(9);
+  private static final String HRID = "hrid00020";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -906,7 +905,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .extract().response().body().as(RecordsBatchResponse.class);
 
-    Record createdRecord = createdRecordCollection.getRecords().get(0);
+    Record createdRecord = createdRecordCollection.getRecords().getFirst();
     assertThat(createdRecord.getId(), notNullValue());
     assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
     assertThat(createdRecord.getRecordType(), is(record_2.getRecordType()));
@@ -1044,7 +1043,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
-    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
+    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().getFirst();
     assertThat(updatedParsedRecord.getId(), notNullValue());
 
     assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
@@ -1141,7 +1140,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .extract().response().body().as(ParsedRecordsBatchResponse.class);
 
-    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().get(0);
+    ParsedRecord updatedParsedRecord = updatedParsedRecordCollection.getParsedRecords().getFirst();
     assertThat(updatedParsedRecord.getId(), notNullValue());
 
     assertThat(JsonObject.mapFrom(updatedParsedRecord).encode(), containsString("\"leader\":\"01542ccm a2200361   4500\""));
@@ -1308,9 +1307,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnIdsWhenQueryParamListNotExceedMaxSize(TestContext testContext) {
     String [] ids = new String[32767];
-    for (int i = 0; i < ids.length; i++) {
-      ids[i]= "invalidId";
-    }
+    Arrays.fill(ids, "invalidId");
     searchMarcBibIdsByMatcher(testContext, Arrays.asList(ids), contains("invalidId"));
   }
 

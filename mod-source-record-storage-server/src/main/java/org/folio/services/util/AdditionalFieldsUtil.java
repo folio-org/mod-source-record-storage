@@ -146,8 +146,8 @@ public final class AdditionalFieldsUtil {
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
 
-        String sourceParsedRecordString = record.getParsedRecord().getContent() instanceof String
-          ? (String) record.getParsedRecord().getContent()
+        String sourceParsedRecordString = record.getParsedRecord().getContent() instanceof String contentStr
+          ? contentStr
           : Json.encode(record.getParsedRecord().getContent());
 
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());

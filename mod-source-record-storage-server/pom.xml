@@ -241,7 +241,7 @@
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
     <vertx-jooq.version>6.5.5</vertx-jooq.version>
-    <aspectj.version>1.9.19</aspectj.version>
+    <aspectj.version>1.9.21</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
     <postgres.image>postgres:12-alpine</postgres.image>
     <lombok.version>1.18.38</lombok.version>
@@ -471,11 +471,11 @@
       <plugin>
         <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.13.1</version>
+        <version>1.14.1</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <release>17</release>
+          <release>21</release>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
           <forceAjcCompile>true</forceAjcCompile>

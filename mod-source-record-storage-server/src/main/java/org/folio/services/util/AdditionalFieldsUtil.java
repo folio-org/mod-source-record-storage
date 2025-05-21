@@ -145,7 +145,11 @@ public final class AdditionalFieldsUtil {
     boolean result = false;
     try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
       if (record != null && record.getParsedRecord() != null && record.getParsedRecord().getContent() != null) {
-        var sourceParsedRecordString = record.getParsedRecord().getContent().toString();
+
+        String sourceParsedRecordString = record.getParsedRecord().getContent() instanceof String contentStr
+          ? contentStr
+          : Json.encode(record.getParsedRecord().getContent());
+
         MarcWriter streamWriter = new MarcStreamWriter(new ByteArrayOutputStream());
         MarcJsonWriter jsonWriter = new MarcJsonWriter(os);
         MarcFactory factory = MarcFactory.newInstance();
@@ -734,7 +738,7 @@ public final class AdditionalFieldsUtil {
    * Checks whether field 005 needs to be updated or this field is protected.
    *
    * @param record            record to check
-   * @param mappingParameters
+   * @param mappingParameters mapping parameters
    * @return true for case when field 005 have to updated
    */
   private static boolean isField005NeedToUpdate(Record record, MappingParameters mappingParameters) {

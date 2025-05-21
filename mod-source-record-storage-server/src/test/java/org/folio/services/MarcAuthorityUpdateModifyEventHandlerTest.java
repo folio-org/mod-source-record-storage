@@ -37,7 +37,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -186,7 +185,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid("hrid00123"));
 
     ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -217,7 +216,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -231,7 +230,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -259,7 +258,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -276,7 +275,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);

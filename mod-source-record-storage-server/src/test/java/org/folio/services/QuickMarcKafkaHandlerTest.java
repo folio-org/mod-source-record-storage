@@ -21,7 +21,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
@@ -95,7 +94,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid("hrid00001"));
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))

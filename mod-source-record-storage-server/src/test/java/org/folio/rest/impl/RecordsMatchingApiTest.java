@@ -5,7 +5,6 @@ import io.restassured.response.Response;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -60,6 +59,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String FIELD_007 = "12569";
   private static final String FIELD_035 = "12345";
   private static final int SPLIT_INDEX = 2;
+  private static final String HR_ID = "hrId12345";
 
   private static String rawRecordContent;
   private static String parsedRecordContent;
@@ -275,7 +275,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
       .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
     postRecords(context, record);
 
@@ -656,7 +656,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withRecordType(MARC_BIB)
         .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
         .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
-        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
       postRecords(context, record);
     }
@@ -851,7 +851,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withRecordType(MARC_BIB)
         .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
         .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
-        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
       postRecords(context, record);
     }

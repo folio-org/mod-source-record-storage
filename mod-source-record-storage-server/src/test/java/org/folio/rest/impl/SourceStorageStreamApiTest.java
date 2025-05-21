@@ -12,7 +12,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -64,7 +63,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
-  private static final String FIRST_HRID = RandomStringUtils.randomAlphanumeric(9);
+  private static final String FIRST_HRID = "id1234567";
 
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
@@ -210,7 +209,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(0, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -248,7 +247,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(4, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -295,7 +294,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
       .subscribe();
   }
 
@@ -337,7 +336,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         testContext.assertEquals(false, actual.get(1).getAdditionalInfo().getSuppressDiscovery());
         testContext.assertEquals(false, actual.get(1).getAdditionalInfo().getSuppressDiscovery());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -380,10 +379,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         testContext.assertEquals(1, actual.size());
-        testContext.assertEquals(marc_holdings_record_1.getSnapshotId(), actual.get(0).getSnapshotId());
-        testContext.assertEquals(false, actual.get(0).getAdditionalInfo().getSuppressDiscovery());
+        testContext.assertEquals(marc_holdings_record_1.getSnapshotId(), actual.getFirst().getSnapshotId());
+        testContext.assertEquals(false, actual.getFirst().getAdditionalInfo().getSuppressDiscovery());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
       .subscribe();
   }
 
@@ -421,7 +420,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(2, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -523,7 +522,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         testContext.assertEquals(secondHrid, actual.get(0).getExternalIdsHolder().getInstanceHrid());
         testContext.assertEquals(secondHrid, actual.get(1).getExternalIdsHolder().getInstanceHrid());
         finalAsync.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -556,9 +555,9 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, SourceRecord.class))
       .doFinally(() -> {
         testContext.assertEquals(1, actual.size());
-        testContext.assertTrue(Objects.nonNull(actual.get(0).getParsedRecord()));
+        testContext.assertTrue(Objects.nonNull(actual.getFirst().getParsedRecord()));
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -590,7 +589,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(0, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -615,7 +614,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(0, actual.size());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -656,7 +655,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .doFinally(() -> {
         testContext.assertEquals(0, actual.size());
         finalAsync.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -746,7 +745,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         testContext.assertTrue(actual.get(1).getMetadata().getCreatedDate().after(actual.get(2).getMetadata().getCreatedDate()));
         testContext.assertTrue(actual.get(2).getMetadata().getCreatedDate().after(actual.get(3).getMetadata().getCreatedDate()));
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -774,10 +773,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         testContext.assertTrue(Objects.nonNull(actual.get(1).getParsedRecord()));
         testContext.assertEquals(false, actual.get(0).getDeleted());
         testContext.assertEquals(false, actual.get(1).getDeleted());
-        testContext.assertEquals(11, actual.get(0).getOrder().intValue());
-        testContext.assertEquals(101, actual.get(1).getOrder().intValue());
+        testContext.assertEquals(11, actual.get(0).getOrder());
+        testContext.assertEquals(101, actual.get(1).getOrder());
         async.complete();
-      }).collect(() -> actual, (a, r) -> a.add(r))
+      }).collect(() -> actual, List::add)
         .subscribe();
   }
 
@@ -876,9 +875,9 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
           .doFinally(() -> {
             testContext.assertEquals(0, actual.size());
             finalAsync.complete();
-          }).collect(() -> actual, (a, r) -> a.add(r))
+          }).collect(() -> actual, List::add)
             .subscribe();
-      }).collect(() -> sourceRecordList, (a, r) -> a.add(r))
+      }).collect(() -> sourceRecordList, List::add)
         .subscribe();
   }
 

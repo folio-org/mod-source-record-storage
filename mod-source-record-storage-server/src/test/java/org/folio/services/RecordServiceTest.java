@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -91,6 +90,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private static final String MARC_BIB_RECORD_SNAPSHOT_ID = "d787a937-cc4b-49b3-85ef-35bcd643c689";
   private static final String MARC_AUTHORITY_RECORD_SNAPSHOT_ID = "ee561342-3098-47a8-ab6e-0f3eba120b04";
+  private static final String HR_ID = "inst00007";
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -196,7 +196,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        compareRecords(context, expected.getFirst(), get.result().getRecords().getFirst());
         async.complete();
       });
     });
@@ -241,7 +241,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .peek(r -> r.getParsedRecord().setContent(expectedContent))
           .collect(Collectors.toList());
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        compareRecords(context, expected.getFirst(), get.result().getRecords().getFirst());
         async.complete();
       });
     });
@@ -285,7 +285,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         async.complete();
       });
@@ -330,7 +330,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
           .filter(r -> r.getState().equals(State.ACTUAL))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         async.complete();
       });
@@ -376,7 +376,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> externalIds.contains(r.getExternalIdsHolder().getInstanceId()))
           .filter(r -> r.getState().equals(State.ACTUAL))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         async.complete();
       });
@@ -498,7 +498,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldSaveMarcBibRecordWithMatchedIdFrom999field(TestContext context) {
     String marc999 = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
     Record original = TestMocks.getMarcBibRecord();
     ParsedRecord parsedRecord = new ParsedRecord().withId(marc999)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
@@ -506,7 +505,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .put("subfields",
             new JsonArray().add(new JsonObject().put("s", marc999)))
           .put("ind1", "f")
-          .put("ind2", "f"))).add(new JsonObject().put("001", hrId))).encode());
+          .put("ind2", "f"))).add(new JsonObject().put("001", HR_ID))).encode());
     Record record = new Record()
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(original.getSnapshotId())
@@ -516,7 +515,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(original.getRawRecord())
       .withParsedRecord(parsedRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
     Async async = context.async();
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -622,7 +621,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldFailUpdateRecordGenerationIfDuplicateError(TestContext context) {
     String matchedId = UUID.randomUUID().toString();
     Record original = TestMocks.getMarcBibRecord();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record1 = new Record()
       .withId(matchedId)
@@ -633,7 +631,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
 
     Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
@@ -646,7 +644,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .put("subfields",
             new JsonArray().add(new JsonObject().put("s", matchedId)))
           .put("ind1", "f")
-          .put("ind2", "f"))).add(new JsonObject().put("001", hrId))).encode());
+          .put("ind2", "f"))).add(new JsonObject().put("001", HR_ID))).encode());
     Record recordToUpdateGeneration = new Record()
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -657,7 +655,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(original.getRawRecord())
       .withParsedRecord(parsedRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
     Async async = context.async();
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -688,7 +686,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldUpdateRecordGeneration(TestContext context) {
     String matchedId = UUID.randomUUID().toString();
     Record original = TestMocks.getMarcBibRecord();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record1 = new Record()
       .withId(matchedId)
@@ -699,7 +696,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
 
     Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
@@ -712,7 +709,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .put("subfields",
             new JsonArray().add(new JsonObject().put("s", matchedId)))
           .put("ind1", "f")
-          .put("ind2", "f"))).add(new JsonObject().put("001", hrId))).encode());
+          .put("ind2", "f"))).add(new JsonObject().put("001", HR_ID))).encode());
     Record recordToUpdateGeneration = new Record()
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -722,7 +719,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(original.getRawRecord())
       .withParsedRecord(parsedRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
     Async async = context.async();
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -771,7 +768,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldUpdateRecordGenerationByMatchId(TestContext context) {
     var mock = TestMocks.getMarcBibRecord();
-    var hrId = RandomStringUtils.randomAlphanumeric(9);
     var recordToSave = new Record()
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(mock.getSnapshotId())
@@ -781,7 +777,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(mock.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(mock.getMetadata());
 
     var async = context.async();
@@ -807,7 +803,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
             .put("subfields",
               new JsonArray().add(new JsonObject().put("s", matchedId)))
             .put("ind1", "f")
-            .put("ind2", "f"))).add(new JsonObject().put("001", hrId))).encode());
+            .put("ind2", "f"))).add(new JsonObject().put("001", HR_ID))).encode());
 
       var recordToUpdateGeneration = new Record()
         .withId(UUID.randomUUID().toString())
@@ -818,7 +814,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withRawRecord(mock.getRawRecord())
         .withParsedRecord(parsedRecord)
         .withAdditionalInfo(mock.getAdditionalInfo())
-        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+        .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
         .withMetadata(mock.getMetadata());
 
       SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
@@ -857,7 +853,6 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldSaveMarcBibRecordWithMatchedIdFromRecordId(TestContext context) {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record = new Record()
       .withId(recordId)
@@ -868,7 +863,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecord)
       .withAdditionalInfo(original.getAdditionalInfo())
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(hrId))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
       .withMetadata(original.getMetadata());
     Async async = context.async();
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -919,13 +914,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldSaveMarcBibRecordWithMatchedIdFromExistingSourceRecord(TestContext context) throws IOException {
+  public void shouldSaveMarcBibRecordWithMatchedIdFromExistingSourceRecord(TestContext context) {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();
     String recordId1 = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
+
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(HR_ID);
     Record record1 = new Record()
       .withId(recordId1)
       .withSnapshotId(original.getSnapshotId())
@@ -1805,9 +1800,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(HR_ID);
     Record sourceRecord = new Record()
       .withId(recordId)
       .withSnapshotId(original.getSnapshotId())
@@ -1893,9 +1887,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record original = TestMocks.getMarcBibRecord();
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
-    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId);
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(HR_ID);
     Record sourceRecord = new Record()
       .withId(recordId)
       .withSnapshotId(original.getSnapshotId())
@@ -1985,7 +1978,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           .sorted(comparing(Record::getOrder))
           .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
-        compareRecords(context, expected.get(0), get.result().getRecords().get(0));
+        compareRecords(context, expected.getFirst(), get.result().getRecords().getFirst());
         async.complete();
       });
     });
@@ -2045,7 +2038,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       flowable.doFinally(() -> {
 
           context.assertEquals(expected.size(), actual.size());
-          compareRecords(context, expected.get(0), actual.get(0));
+          compareRecords(context, expected.getFirst(), actual.getFirst());
 
           async.complete();
 
@@ -2600,9 +2593,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       var actualRecord = actual.stream()
         .filter(r -> Objects.equals(r.getId(), record.getId()))
         .findFirst();
-      if (actualRecord.isPresent()) {
-        compareRecords(context, record, actualRecord.get());
-      }
+      actualRecord.ifPresent(value -> compareRecords(context, record, value));
     }
   }
 
@@ -2670,9 +2661,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       var sourceRecordActual = actual.stream()
         .filter(sr -> Objects.equals(sr.getRecordId(), sourceRecord.getRecordId()))
         .findFirst();
-      if (sourceRecordActual.isPresent()) {
-        compareSourceRecords(context, sourceRecord, sourceRecordActual.get());
-      }
+      sourceRecordActual.ifPresent(record -> compareSourceRecords(context, sourceRecord, record));
     }
   }
 
@@ -2706,9 +2695,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     context.assertEquals(expected.size(), actual.size());
     for (ParsedRecord parsedRecord : expected) {
       var actualParsedRecord = actual.stream().filter(a -> Objects.equals(a.getId(), parsedRecord.getId())).findFirst();
-      if (actualParsedRecord.isPresent()) {
-        compareParsedRecords(context, parsedRecord, actualParsedRecord.get());
-      }
+      actualParsedRecord.ifPresent(record -> compareParsedRecords(context, parsedRecord, record));
     }
   }
 

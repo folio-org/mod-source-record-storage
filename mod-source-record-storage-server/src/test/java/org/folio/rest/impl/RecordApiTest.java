@@ -22,7 +22,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.junit.Assert;
@@ -54,7 +53,8 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   private static final String SIXTH_UUID = UUID.randomUUID().toString();
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
-  private static final String FIRST_HRID = RandomStringUtils.randomAlphanumeric(9);
+
+  private static final String FIRST_HRID = "hrid00010";
   private static final String GENERATION = "generation";
 
   private static RawRecord rawMarcRecord;
@@ -1278,7 +1278,11 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .put("fields", new JsonArray()
           .add(new JsonObject().put("001", FIRST_HRID))
           .add(new JsonObject().put("999", new JsonObject()
-          .put("subfields", new JsonArray().add(new JsonObject().put("s", srsId)).add(new JsonObject().put("i", instanceId)))))));
+            .put("ind1", "f")
+            .put("ind2", "f")
+          .put("subfields", new JsonArray()
+            .add(new JsonObject().put("s", srsId))
+            .add(new JsonObject().put("i", instanceId)))))));
 
     Record newRecord = new Record()
       .withId(srsId)
@@ -1317,7 +1321,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID().toString() + "/suppress-from-discovery?idType=INSTANCE&suppress=true")
+      .put(SOURCE_STORAGE_RECORDS_PATH + "/" + UUID.randomUUID() + "/suppress-from-discovery?idType=INSTANCE&suppress=true")
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();

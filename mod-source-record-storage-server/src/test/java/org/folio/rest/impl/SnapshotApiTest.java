@@ -20,7 +20,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -297,7 +296,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
     String recordId = UUID.randomUUID().toString();
     var marcRecordWith001 = new ParsedRecord()
-      .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", RandomStringUtils.randomAlphanumeric(9)))).encode());
+      .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", "id000100"))).encode());
     Record record = new Record()
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -309,7 +308,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       record.withId(id).withMatchedId(id)
         .withExternalIdsHolder(new ExternalIdsHolder()
           .withInstanceId(UUID.randomUUID().toString())
-          .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+          .withInstanceHrid("hrid00100"));
       RestAssured.given()
         .spec(spec)
         .body(record)

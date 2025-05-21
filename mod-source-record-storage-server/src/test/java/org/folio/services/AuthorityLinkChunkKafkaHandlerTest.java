@@ -29,8 +29,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -65,8 +64,6 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinked.json";
-  private static final String PARSED_MARC_RECORD_LINKED_UPDATED_PATH = "src/test/resources/parsedMarcRecordLinkedUpdated.json";
-  private static final String PARSED_MARC_RECORD_UNLINKED = "src/test/resources/parsedMarcRecordUnlinked.json";
   private static final String KAFKA_KEY_NAME = "test-key";
   private static final String KAFKA_TEST_HEADER = "x-okapi-test";
   private static final String KAFKA_CONSUMER_TOPIC = getTopicName(INSTANCE_AUTHORITY);
@@ -76,12 +73,12 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String LINKED_BIB_UPDATE_JOB_ID = UUID.randomUUID().toString();
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
-  private static final String HR_ID = RandomStringUtils.randomAlphanumeric(9);
+  private static final String HR_ID = "testHRID";
   private static final String SECOND_RECORD_ID = UUID.randomUUID().toString();
   private static final String SECOND_INSTANCE_ID = UUID.randomUUID().toString();
   private static final String ERROR_RECORD_ID = UUID.randomUUID().toString();
   private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
-  private static final String ERROR_HR_ID = RandomStringUtils.randomAlphanumeric(9);
+  private static final String ERROR_HR_ID = "errorHRID";
   private static final String ERROR_RECORD_DESCRIPTION = "test error";
   private static final Integer LINK_ID = RandomUtils.nextInt();
   private static final String USER_ID = UUID.randomUUID().toString();
@@ -182,10 +179,10 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
     var keyValues = readConsumerRecordsFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, keyValues.size());
-    var actualHeaders = keyValues.get(0).headers();
+    var actualHeaders = keyValues.getFirst().headers();
     OKAPI_HEADERS.forEach((key, value) ->
       context.assertEquals(value, new String(actualHeaders.lastHeader(key).value(), UTF_8)));
-    var actualOutgoingEvent = objectMapper.readValue(keyValues.get(0).value(), MarcBibUpdate.class);
+    var actualOutgoingEvent = objectMapper.readValue(keyValues.getFirst().value(), MarcBibUpdate.class);
 
     recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getNew -> {
       if (getNew.failed()) {
@@ -242,7 +239,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
-    var actualOutgoingEvent = objectMapper.readValue(values.get(0), MarcBibUpdate.class);
+    var actualOutgoingEvent = objectMapper.readValue(values.getFirst(), MarcBibUpdate.class);
 
     recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getNew -> {
       if (getNew.failed()) {
@@ -269,7 +266,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 1);
     context.assertEquals(1, values.size());
 
-    var report = objectMapper.readValue(values.get(0), LinkUpdateReport.class);
+    var report = objectMapper.readValue(values.getFirst(), LinkUpdateReport.class);
     context.assertEquals(FAIL, report.getStatus());
     context.assertEquals(ERROR_INSTANCE_ID, report.getInstanceId());
     context.assertEquals(ERROR_RECORD_DESCRIPTION, report.getFailCause());
@@ -374,7 +371,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
                                    Record updatedRecord, List<UpdateTarget> updateTargets) {
     context.assertEquals(event.getJobId(), actualOutgoingEvent.getJobId());
     context.assertEquals(getLinksCount(updateTargets), actualOutgoingEvent.getLinkIds().size());
-    context.assertEquals(LINK_ID, actualOutgoingEvent.getLinkIds().get(0));
+    context.assertEquals(LINK_ID, actualOutgoingEvent.getLinkIds().getFirst());
     context.assertEquals(event.getTenant(), actualOutgoingEvent.getTenant());
     context.assertEquals(event.getTs(), actualOutgoingEvent.getTs());
     context.assertEquals(MarcBibUpdate.Type.UPDATE, actualOutgoingEvent.getType());

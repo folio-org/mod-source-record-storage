@@ -47,7 +47,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -275,7 +274,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"))
       .withMetadata(new Metadata());
 
     Record record_2 = new Record()
@@ -286,7 +285,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
       .withMetadata(new Metadata());
 
     ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
@@ -342,7 +341,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put("CENTRAL_TENANT_ID", CENTRAL_TENANT_ID);
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -356,7 +355,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0))
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
       .withAdditionalProperty(USER_ID_HEADER, userId);
 
     // when
@@ -410,7 +409,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -424,7 +423,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -465,7 +464,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(updateMappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -479,7 +478,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -519,7 +518,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(updateMappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -533,7 +532,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -561,7 +560,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -607,7 +606,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
@@ -710,7 +709,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridSecond"))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -736,7 +735,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
               .withIndicator2("*")
               .withSubfields(
                 List.of(new MarcSubfield().withSubfield("e"), new MarcSubfield().withSubfield("0"))))));
-        profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+        profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
           .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
             .withProfileId(updateMappingProfile.getId())
             .withContentType(MAPPING_PROFILE)
@@ -750,7 +749,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
           .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
           .withContext(payloadContext)
           .withProfileSnapshot(profileSnapshotWrapper)
-          .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+          .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
             context.assertNotNull(throwable);
@@ -787,7 +786,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContextDuplicateRecord.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
         .withProfileId(mappingProfile.getId())
         .withContentType(MAPPING_PROFILE)
@@ -801,7 +800,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContextOriginalRecord)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     DataImportEventPayload dataImportEventPayloadDuplicateRecord = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -811,7 +810,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(payloadContextDuplicateRecord)
       .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
     // when
     CompletableFuture<DataImportEventPayload> future1 = modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord);
@@ -888,7 +887,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridSecond"))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -899,7 +898,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
           .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
-          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridIncomong"));
         secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
         HashMap<String, String> payloadContext = new HashMap<>();
         payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -907,7 +906,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
         updateMappingProfile.getMappingDetails().withMarcMappingOption(UPDATE)
           .withMarcMappingDetails(emptyList());
-        profileSnapshotWrapper.getChildSnapshotWrappers().get(0)
+        profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
           .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
             .withProfileId(updateMappingProfile.getId())
             .withContentType(MAPPING_PROFILE)
@@ -922,7 +921,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
             .withContext(payloadContext)
             .withProfileSnapshot(profileSnapshotWrapper)
-            .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
+            .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
             var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);

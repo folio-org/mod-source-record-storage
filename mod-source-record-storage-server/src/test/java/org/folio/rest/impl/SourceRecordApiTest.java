@@ -26,7 +26,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,9 +58,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String SEVENTH_UUID = UUID.randomUUID().toString();
   private static final String EIGHTH_UUID = UUID.randomUUID().toString();
   private static final String NINTH_UUID = UUID.randomUUID().toString();
-  private static final String FIRST_HRID = RandomStringUtils.randomAlphanumeric(9);
-  private static final String SECOND_HRID = RandomStringUtils.randomAlphanumeric(9);
-  private static final String THIRD_HRID = RandomStringUtils.randomAlphanumeric(9);
+  private static final String FIRST_HRID = "hridFirst";
+  private static final String SECOND_HRID = "hridSecond";
+  private static final String THIRD_HRID = "hridThird";
 
   private static final RawRecord rawRecord;
   private static final ParsedRecord marcRecord;
@@ -465,7 +464,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body().as(Record.class);
 
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -475,7 +473,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hrid12345"));
 
     RestAssured.given()
       .spec(spec)
@@ -535,7 +533,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body().as(Record.class);
 
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -545,7 +542,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid(hrId));
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hrid12345"));
 
     RestAssured.given()
       .spec(spec)
@@ -859,7 +856,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertEquals(0, sourceRecordList.get(0).getOrder());
+    testContext.assertEquals(0, sourceRecordList.getFirst().getOrder());
     async.complete();
   }
 
@@ -963,7 +960,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String firstSrsId = UUID.randomUUID().toString();
     String firstInstanceId = UUID.randomUUID().toString();
-    String firstHrId = RandomStringUtils.randomAlphanumeric(9);
+    String firstHrId = "hridFirst";
 
     ParsedRecord parsedRecord = new ParsedRecord().withId(firstSrsId)
       .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
@@ -989,7 +986,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String secondSrsId = UUID.randomUUID().toString();
     String secondInstanceId = UUID.randomUUID().toString();
-    String secondHrId = RandomStringUtils.randomAlphanumeric(9);
+    String secondHrId = "hridSecond";
 
     Record deleted_record_2 = new Record()
       .withId(secondSrsId)
@@ -1402,7 +1399,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     assertThat(getResponse.statusCode(), is(HttpStatus.SC_OK));
     SourceRecordCollection sourceRecordCollection = getResponse.body().as(SourceRecordCollection.class);
     assertThat(sourceRecordCollection.getSourceRecords().size(), is(1));
-    SourceRecord sourceRecord = sourceRecordCollection.getSourceRecords().get(0);
+    SourceRecord sourceRecord = sourceRecordCollection.getSourceRecords().getFirst();
     assertThat(sourceRecord.getRecordId(), is(createdRecord.getId()));
     // NOTE: raw record is no longer returned with source records for effeciency
     // assertThat(sourceRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
@@ -1589,7 +1586,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body().as(Record.class);
 
     String externalId = UUID.randomUUID().toString();
-    String externalHrId = RandomStringUtils.randomAlphanumeric(9);
+    String externalHrId = "hridExternal";
 
     Record recordWithOldState = new Record().withId(FOURTH_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -1828,7 +1825,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body().as(Record.class);
 
     String instanceId = UUID.randomUUID().toString();
-    String hrId = RandomStringUtils.randomAlphanumeric(9);
 
     Record record = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -1838,7 +1834,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, instanceId, hrId);
+    setExternalIds(record, recordType, instanceId, "hridExternal");
 
     RestAssured.given()
       .spec(spec)
@@ -1967,7 +1963,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertEquals(0, sourceRecordList.get(0).getOrder());
+    testContext.assertEquals(0, sourceRecordList.getFirst().getOrder());
     async.complete();
   }
 

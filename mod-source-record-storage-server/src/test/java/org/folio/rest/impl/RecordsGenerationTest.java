@@ -11,7 +11,6 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -36,6 +35,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
+  private final static String HR_ID01 = "hrid00001";
+  private final static String HR_ID02 = "hrid00002";
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
 
@@ -100,7 +101,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .withMatchedId(matchedId)
         .withExternalIdsHolder(new ExternalIdsHolder()
           .withInstanceId(UUID.randomUUID().toString())
-          .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+          .withInstanceHrid("hrid00001"));
 
       Record created = RestAssured.given()
         .spec(spec)
@@ -157,7 +158,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withGeneration(5)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid(HR_ID01));
 
     Record created = RestAssured.given()
       .spec(spec)
@@ -199,7 +200,8 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
-      .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9));
+      .withInstanceHrid(HR_ID01);
+
     Record record1 = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -289,7 +291,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withMatchedId(matchedId)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid(HR_ID01));
 
     RestAssured.given()
       .spec(spec)
@@ -309,7 +311,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withMatchedId(matchedId)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid(HR_ID02));
 
     RestAssured.given()
       .spec(spec)
@@ -389,7 +391,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray()
-          .add(new JsonObject().put("001", RandomStringUtils.randomAlphanumeric(9)))
+          .add(new JsonObject().put("001", HR_ID01))
           .add(new JsonObject().put("999", new JsonObject()
           .put("subfields",
             new JsonArray().add(new JsonObject().put("s", srsId)))
@@ -405,7 +407,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withMatchedId(srsId)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid(HR_ID02));
 
     RestAssured.given()
       .spec(spec)
@@ -456,7 +458,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
       .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray()
-          .add(new JsonObject().put("001", RandomStringUtils.randomAlphanumeric(9)))
+          .add(new JsonObject().put("001", HR_ID01))
           .add(new JsonObject().put("999", new JsonObject()
             .put("ind1", "f")
             .put("ind2", "f")
@@ -473,7 +475,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .withMatchedId(matchedId)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(instanceId)
-        .withInstanceHrid(RandomStringUtils.randomAlphanumeric(9)));
+        .withInstanceHrid(HR_ID02));
 
     RestAssured.given()
       .spec(spec)

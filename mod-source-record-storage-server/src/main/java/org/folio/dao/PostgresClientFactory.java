@@ -84,7 +84,7 @@ public class PostgresClientFactory {
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
     this.vertx = Vertx.newInstance(vertx);
     // check environment variables for postgres config
-    if (Envs.allDBConfs().size() > 0) {
+    if (!Envs.allDBConfs().isEmpty()) {
       LOG.info("DB config read from environment variables");
       postgresConfig = Envs.allDBConfs();
     } else {
@@ -151,7 +151,7 @@ public class PostgresClientFactory {
    *
    * @param tenantId tenant id
    * @return pooled database connection
-   * @throws SQLException
+   * @throws SQLException if connection cannot be established
    */
   Connection getConnection(String tenantId) throws SQLException {
     return getDataSource(tenantId).getConnection();
@@ -258,8 +258,7 @@ public class PostgresClientFactory {
 
     var certificate = postgresConfig.getString(SERVER_PEM);
     if (StringUtils.isNotBlank(certificate)) {
-      System.setProperty(SERVER_PEM, certificate);
-      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+      dataSource.setSsl(true);
     } else {
       dataSource.setSslMode(DISABLE_VALUE);
     }

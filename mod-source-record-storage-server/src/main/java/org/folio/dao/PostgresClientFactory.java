@@ -87,13 +87,16 @@ public class PostgresClientFactory {
     if (!Envs.allDBConfs().isEmpty()) {
       LOG.info("DB config read from environment variables");
       postgresConfig = Envs.allDBConfs();
+      LOG.info("Postgres config read from environment variables: {}", postgresConfig.encodePrettily());
     } else {
       if (Objects.isNull(postgresConfigFilePath)) {
         // need to retrieve config file path from RMB PostgresClient
         postgresConfigFilePath = PostgresClient.getConfigFilePath();
+        LOG.info("Postgres config file path: {}", postgresConfigFilePath);
       }
       // no env variables passed in, read for module's config file
       postgresConfig = LoadConfs.loadConfig(postgresConfigFilePath);
+      LOG.info("Postgres config read from file {}: {}", postgresConfigFilePath, postgresConfig.encodePrettily());
     }
   }
 
@@ -245,7 +248,28 @@ public class PostgresClientFactory {
     config.setSchema(convertToPsqlStandard(tenantId));
     config.setUsername(postgresConfig.getString(USERNAME));
     config.setPassword(postgresConfig.getString(PASSWORD));
-    var dataSource = new HikariDataSource(config);
+
+    HikariDataSource dataSource;
+    try {
+      dataSource = new HikariDataSource(config);
+      LOG.info("getDataSource:: Created new database connection for tenant {}", tenantId);
+    } catch (Exception e) {
+      LOG.error("getDataSource:: Error validating HikariConfig for tenant {}: {}", tenantId, e.getMessage());
+    }
+
+    config.setDataSource(getPgSimpleDataSource2());
+    try {
+      dataSource = new HikariDataSource(config);
+      LOG.info("getDataSource:: Created new database connection 2 for tenant {}", tenantId);
+    } catch (Exception e) {
+      LOG.error("getDataSource2:: Error validating HikariConfig for tenant {}: {}", tenantId, e.getMessage());
+    }
+
+    config.setDataSource(getPgSimpleDataSource3());
+    LOG.info("getDataSource:: Created new database connection 3 for tenant {}", tenantId);
+
+    dataSource = new HikariDataSource(config);
+
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;
   }
@@ -257,9 +281,47 @@ public class PostgresClientFactory {
     dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
 
     var certificate = postgresConfig.getString(SERVER_PEM);
+    LOG.info("getPgSimpleDataSource:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
+    LOG.info("certificate: {}", certificate);
     if (StringUtils.isNotBlank(certificate)) {
       System.setProperty(SERVER_PEM, certificate);
       dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+      dataSource.setSsl(true);
+    } else {
+      dataSource.setSslMode(DISABLE_VALUE);
+    }
+    return dataSource;
+  }
+
+  private static DataSource getPgSimpleDataSource2() {
+    var dataSource = new PGSimpleDataSource();
+    dataSource.setServerNames(new String[]{postgresConfig.getString(HOST)});
+    dataSource.setPortNumber(postgresConfig.getInteger(PORT));
+    dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
+
+    var certificate = System.getProperty("DB_SERVER_PEM");
+    LOG.info("getPgSimpleDataSource2:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
+    LOG.info("certificate2: {}", certificate);
+    if (StringUtils.isNotBlank(certificate)) {
+      System.setProperty(SERVER_PEM, certificate);
+      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+      dataSource.setSsl(true);
+    } else {
+      dataSource.setSslMode(DISABLE_VALUE);
+    }
+    return dataSource;
+  }
+
+  private static DataSource getPgSimpleDataSource3() {
+    var dataSource = new PGSimpleDataSource();
+    dataSource.setServerNames(new String[]{postgresConfig.getString(HOST)});
+    dataSource.setPortNumber(postgresConfig.getInteger(PORT));
+    dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
+
+    var certificate = postgresConfig.getString(SERVER_PEM);
+    LOG.info("getPgSimpleDataSource3:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
+    LOG.info("certificate2: {}", certificate);
+    if (StringUtils.isNotBlank(certificate)) {
       dataSource.setSsl(true);
     } else {
       dataSource.setSslMode(DISABLE_VALUE);

@@ -239,6 +239,13 @@ public class PostgresClientFactory {
     Integer maxPoolSize = postgresConfig.getInteger(DB_MAXPOOLSIZE, DB_MAXPOOLSIZE_DEFAULT_VALUE);
     LOG.info("getDataSource:: Creating new data source for tenant {} with poolSize {}", tenantId, maxPoolSize);
 
+    for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+      LOG.info("{}={}", entry.getKey(), entry.getValue());
+    }
+
+    LOG.info("Postgres config read from environment variables: {}", postgresConfig.encodePrettily());
+    LOG.info("Postgres config file path: {}", postgresConfigFilePath);
+
     var config = new HikariConfig();
     config.setDataSource(getPgSimpleDataSource());
     config.setPoolName(format("%s-data-source", tenantId));
@@ -260,13 +267,13 @@ public class PostgresClientFactory {
     config.setDataSource(getPgSimpleDataSource2());
     try {
       dataSource = new HikariDataSource(config);
-      LOG.info("getDataSource:: Created new database connection 2 for tenant {}", tenantId);
+      LOG.info("getDataSource2:: Created new database connection 2 for tenant {}", tenantId);
     } catch (Exception e) {
       LOG.error("getDataSource2:: Error validating HikariConfig for tenant {}: {}", tenantId, e.getMessage());
     }
 
     config.setDataSource(getPgSimpleDataSource3());
-    LOG.info("getDataSource:: Created new database connection 3 for tenant {}", tenantId);
+    LOG.info("getDataSource3:: Created new database connection 3 for tenant {}", tenantId);
 
     dataSource = new HikariDataSource(config);
 
@@ -320,7 +327,7 @@ public class PostgresClientFactory {
 
     var certificate = postgresConfig.getString(SERVER_PEM);
     LOG.info("getPgSimpleDataSource3:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
-    LOG.info("certificate2: {}", certificate);
+    LOG.info("certificate3: {}", certificate);
     if (StringUtils.isNotBlank(certificate)) {
       dataSource.setSsl(true);
     } else {

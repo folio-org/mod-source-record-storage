@@ -28,6 +28,11 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -92,11 +97,9 @@ public class PostgresClientFactory {
       if (Objects.isNull(postgresConfigFilePath)) {
         // need to retrieve config file path from RMB PostgresClient
         postgresConfigFilePath = PostgresClient.getConfigFilePath();
-        LOG.info("Postgres config file path: {}", postgresConfigFilePath);
       }
       // no env variables passed in, read for module's config file
       postgresConfig = LoadConfs.loadConfig(postgresConfigFilePath);
-      LOG.info("Postgres config read from file {}: {}", postgresConfigFilePath, postgresConfig.encodePrettily());
     }
   }
 
@@ -246,6 +249,23 @@ public class PostgresClientFactory {
     LOG.info("Postgres config read from environment variables: {}", postgresConfig.encodePrettily());
     LOG.info("Postgres config file path: {}", postgresConfigFilePath);
 
+    String userHome = System.getProperty("user.home");
+    LOG.info("User home directory: {}", userHome);
+
+    Path defaultCertPath = Paths.get(userHome, ".postgresql", "root.crt");
+    LOG.info("Default PostgreSQL SSL root certificate path: {}", defaultCertPath.toAbsolutePath());
+
+    if (Files.exists(defaultCertPath)) {
+      try {
+        String certContent = Files.readString(defaultCertPath, StandardCharsets.UTF_8);
+        LOG.info("Default PostgreSQL SSL root certificate content:\n{}", certContent);
+      } catch (IOException e) {
+        LOG.error("Error reading PostgreSQL SSL root certificate file: {}", e.getMessage(), e);
+      }
+    } else {
+      LOG.warn("Default PostgreSQL SSL root certificate file not found at {}", defaultCertPath);
+    }
+
     var config = new HikariConfig();
     config.setDataSource(getPgSimpleDataSource());
     config.setPoolName(format("%s-data-source", tenantId));
@@ -256,26 +276,7 @@ public class PostgresClientFactory {
     config.setUsername(postgresConfig.getString(USERNAME));
     config.setPassword(postgresConfig.getString(PASSWORD));
 
-    HikariDataSource dataSource;
-    try {
-      dataSource = new HikariDataSource(config);
-      LOG.info("getDataSource:: Created new database connection for tenant {}", tenantId);
-    } catch (Exception e) {
-      LOG.error("getDataSource:: Error validating HikariConfig for tenant {}: {}", tenantId, e.getMessage());
-    }
-
-    config.setDataSource(getPgSimpleDataSource2());
-    try {
-      dataSource = new HikariDataSource(config);
-      LOG.info("getDataSource2:: Created new database connection 2 for tenant {}", tenantId);
-    } catch (Exception e) {
-      LOG.error("getDataSource2:: Error validating HikariConfig for tenant {}: {}", tenantId, e.getMessage());
-    }
-
-    config.setDataSource(getPgSimpleDataSource3());
-    LOG.info("getDataSource3:: Created new database connection 3 for tenant {}", tenantId);
-
-    dataSource = new HikariDataSource(config);
+    HikariDataSource dataSource = new HikariDataSource(config);
 
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;
@@ -290,44 +291,6 @@ public class PostgresClientFactory {
     var certificate = postgresConfig.getString(SERVER_PEM);
     LOG.info("getPgSimpleDataSource:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
     LOG.info("certificate: {}", certificate);
-    if (StringUtils.isNotBlank(certificate)) {
-      System.setProperty(SERVER_PEM, certificate);
-      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
-      dataSource.setSsl(true);
-    } else {
-      dataSource.setSslMode(DISABLE_VALUE);
-    }
-    return dataSource;
-  }
-
-  private static DataSource getPgSimpleDataSource2() {
-    var dataSource = new PGSimpleDataSource();
-    dataSource.setServerNames(new String[]{postgresConfig.getString(HOST)});
-    dataSource.setPortNumber(postgresConfig.getInteger(PORT));
-    dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
-
-    var certificate = System.getProperty("DB_SERVER_PEM");
-    LOG.info("getPgSimpleDataSource2:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
-    LOG.info("certificate2: {}", certificate);
-    if (StringUtils.isNotBlank(certificate)) {
-      System.setProperty(SERVER_PEM, certificate);
-      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
-      dataSource.setSsl(true);
-    } else {
-      dataSource.setSslMode(DISABLE_VALUE);
-    }
-    return dataSource;
-  }
-
-  private static DataSource getPgSimpleDataSource3() {
-    var dataSource = new PGSimpleDataSource();
-    dataSource.setServerNames(new String[]{postgresConfig.getString(HOST)});
-    dataSource.setPortNumber(postgresConfig.getInteger(PORT));
-    dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
-
-    var certificate = postgresConfig.getString(SERVER_PEM);
-    LOG.info("getPgSimpleDataSource3:: Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
-    LOG.info("certificate3: {}", certificate);
     if (StringUtils.isNotBlank(certificate)) {
       dataSource.setSsl(true);
     } else {

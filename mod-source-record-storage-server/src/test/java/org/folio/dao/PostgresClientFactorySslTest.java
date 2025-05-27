@@ -146,10 +146,9 @@ class PostgresClientFactorySslTest {
   }
 
   @Test
-  void jdbcNoSsl() throws IOException {
+  void jdbcNoSsl() {
     // client without SERVER_PEM must not connect to server
     config(null);
-    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
     var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcnossl"));
     assertThat(e.getCause().getMessage(), containsString("no encryption"));
   }

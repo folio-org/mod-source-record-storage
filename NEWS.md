@@ -1,3 +1,6 @@
+## 2025-05-27 5.9.16
+* [MODSOURCE-907](https://folio-org.atlassian.net/browse/MODSOURCE-907) (TLS)The import of file with authority record is completed with errors
+
 ## 2025-05-06 5.9.15
 * [MODSOURCE-900](https://folio-org.atlassian.net/browse/MODSOURCE-900) Ramsons - add index to improve Data Export's SQL query performance
 

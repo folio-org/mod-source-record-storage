@@ -84,10 +84,11 @@ public class PostgresClientFactory {
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
     this.vertx = Vertx.newInstance(vertx);
     // check environment variables for postgres config
-    if (Envs.allDBConfs().size() > 0) {
+    if (!Envs.allDBConfs().isEmpty()) {
       LOG.info("DB config read from environment variables");
       postgresConfig = Envs.allDBConfs();
     } else {
+      LOG.info("DB config not set in environment variables, reading from config file");
       if (Objects.isNull(postgresConfigFilePath)) {
         // need to retrieve config file path from RMB PostgresClient
         postgresConfigFilePath = PostgresClient.getConfigFilePath();
@@ -151,7 +152,7 @@ public class PostgresClientFactory {
    *
    * @param tenantId tenant id
    * @return pooled database connection
-   * @throws SQLException
+   * @throws SQLException if connection cannot be established
    */
   Connection getConnection(String tenantId) throws SQLException {
     return getDataSource(tenantId).getConnection();
@@ -245,7 +246,9 @@ public class PostgresClientFactory {
     config.setSchema(convertToPsqlStandard(tenantId));
     config.setUsername(postgresConfig.getString(USERNAME));
     config.setPassword(postgresConfig.getString(PASSWORD));
+
     var dataSource = new HikariDataSource(config);
+
     DATA_SOURCE_CACHE.put(tenantId, dataSource);
     return dataSource;
   }
@@ -257,9 +260,9 @@ public class PostgresClientFactory {
     dataSource.setDatabaseName(postgresConfig.getString(DATABASE));
 
     var certificate = postgresConfig.getString(SERVER_PEM);
+    LOG.info("Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
     if (StringUtils.isNotBlank(certificate)) {
-      System.setProperty(SERVER_PEM, certificate);
-      dataSource.setSslfactory(PostgresSocketFactory.class.getName());
+      dataSource.setSsl(true);
     } else {
       dataSource.setSslMode(DISABLE_VALUE);
     }

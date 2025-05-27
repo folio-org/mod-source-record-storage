@@ -9,13 +9,21 @@ import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.cert.CertPathValidatorException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,6 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Testcontainers
 @ExtendWith(VertxExtension.class)
 class PostgresClientFactorySslTest {
+
+  @TempDir
+  Path tempHomeDir;
+
+  private Path certFilePath;
+  private String originalUserHome;
+
   private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server-san.crt");
   private static final String SERVER_WRONG_PEM = TestUtil.resourceToString("/tls/server_wrong.crt");
 
@@ -49,6 +64,15 @@ class PostgresClientFactorySslTest {
       .withUsername(USERNAME)
       .withPassword(PASSWORD)
       .withDatabaseName(POSTGRES);
+
+  @BeforeEach
+  void setUpEach() throws IOException {
+    originalUserHome = System.getProperty("user.home");
+    System.setProperty("user.home", tempHomeDir.toString());
+
+    certFilePath = Paths.get(tempHomeDir.toString(), ".postgresql", "root.crt");
+    Files.createDirectories(certFilePath.getParent());
+  }
 
   static void setConfig(Map<String, String> map) {
     Envs.setEnv(map);
@@ -71,14 +95,10 @@ class PostgresClientFactorySslTest {
     setConfig(map);
   }
 
-  @AfterAll
-  static void afterAll() {
-    setConfig(Map.of());
-  }
-
   @Test
-  void reactiveSsl(Vertx vertx, VertxTestContext vtc) {
+  void reactiveSsl(Vertx vertx, VertxTestContext vtc) throws IOException {
     config(SERVER_PEM);
+    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
     PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(DSLContext::selectOne)
       .onComplete(vtc.succeeding(count -> {
         assertThat(count, is(1));
@@ -87,9 +107,10 @@ class PostgresClientFactorySslTest {
   }
 
   @Test
-  void reactiveNoSsl(Vertx vertx, VertxTestContext vtc) {
+  void reactiveNoSsl(Vertx vertx, VertxTestContext vtc) throws IOException {
     // client without SERVER_PEM must not connect to server
     config(null);
+    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
     PostgresClientFactory.getQueryExecutor(vertx, "reactivenossl").execute(DSLContext::selectOne)
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("no encryption"));
@@ -98,9 +119,10 @@ class PostgresClientFactorySslTest {
   }
 
   @Test
-  void reactiveWrongCert(Vertx vertx, VertxTestContext vtc) {
+  void reactiveWrongCert(Vertx vertx, VertxTestContext vtc) throws IOException {
     // client must reject if SERVER_PEM doesn't match the server key
     config(SERVER_WRONG_PEM);
+    Files.writeString(certFilePath, SERVER_WRONG_PEM, StandardCharsets.UTF_8);
     PostgresClientFactory.getQueryExecutor(vertx, "reactivewrongcert").execute(DSLContext::selectOne)
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("SSL handshake failed"));
@@ -117,8 +139,9 @@ class PostgresClientFactorySslTest {
   }
 
   @Test
-  void jdbcSsl() throws SQLException {
+  void jdbcSsl() throws SQLException, IOException {
     config(SERVER_PEM);
+    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
     assertThat(jdbc3("jdbcssl"), is(3));
   }
 
@@ -131,11 +154,22 @@ class PostgresClientFactorySslTest {
   }
 
   @Test
-  void jdbcWrongCert() {
+  void jdbcWrongCert() throws IOException {
     // client must reject if SERVER_PEM doesn't match the server key
     config(SERVER_WRONG_PEM);
+    Files.writeString(certFilePath, SERVER_WRONG_PEM, StandardCharsets.UTF_8);
     var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcwrongssl"));
     assertThat(e.getCause().getCause().getCause().getCause(), is(instanceOf(CertPathValidatorException.class)));
+  }
+
+  @AfterEach
+  void tearDownEach() {
+    System.setProperty("user.home", originalUserHome);
+  }
+
+  @AfterAll
+  static void afterAll() {
+    setConfig(Map.of());
   }
 
 }

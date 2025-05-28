@@ -1,3 +1,6 @@
+## 2025-05-28 5.10.9
+* [MODSOURCE-909](https://folio-org.atlassian.net/browse/MODSOURCE-909) (TLS) The import of file with authority record is completed with errors
+
 ## 2025-05-20 5.10.8
 * [MODSOURCE-898](https://folio-org.atlassian.net/browse/[MODSOURCE-898) Deleted from Inventory MARC records are not matching during update
 * [MODSOURCE-915](https://folio-org.atlassian.net/browse/[MODSOURCE-915) Update aspectj-maven-plugin to version 1.14.1 and add support for java 21

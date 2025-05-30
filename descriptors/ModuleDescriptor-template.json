@@ -134,7 +134,7 @@
           ],
           "pathPattern": "/source-storage/records/{id}/suppress-from-discovery",
           "permissionsRequired": [
-            "source-storage.records.update"
+            "source-storage.records.suppress-discovery.item.put"
           ]
         },
         {
@@ -399,9 +399,10 @@
       "replaces": ["source-storage.records.get"]
     },
     {
-      "permissionName": "source-storage.records.update",
-      "displayName": "Source Storage - update record",
-      "description": "Update Record's fields"
+      "permissionName": "source-storage.records.suppress-discovery.item.put",
+      "displayName": "Source Storage - update record's suppress from discovery field",
+      "description": "Update record's suppress from discovery field",
+      "replaces": ["source-storage.records.update"]
     },
     {
       "permissionName": "source-storage.records.delete",

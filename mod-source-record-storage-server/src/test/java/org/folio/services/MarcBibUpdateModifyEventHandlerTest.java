@@ -11,6 +11,8 @@ import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
@@ -28,6 +30,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -100,12 +103,14 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
+  private static final String CENTRAL_TENANT_ID_KEY = "CENTRAL_TENANT_ID";
   private static final String USER_ID_HEADER = "userId";
   private static final String INSTANCE_LINKS_URL = "/links/instances";
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
   private static final String CENTRAL_TENANT_ID = "centralTenantId";
+  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "data-import.central-record.item.put";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
@@ -191,7 +196,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     .withName("Update MARC Bibs")
     .withIncomingRecordType(MARC_BIBLIOGRAPHIC)
     .withExistingRecordType(MARC_BIBLIOGRAPHIC)
-    .withMappingDetails(new MappingDetail());
+    .withMappingDetails(new MappingDetail()
+      .withMarcMappingOption(UPDATE));
   private MappingProfile marcBibModifyMappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Modify MARC Bibs")
@@ -320,7 +326,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldUpdateMarcRecordOnCentralTenantIfCentralTenantIdIsInContext(TestContext context) {
+  public void shouldUpdateMarcRecordOnCentralTenantIfPayloadHasCentralTenantIdAndPermissionForCentralRecordUpdate(TestContext context) {
     // given
     Async async = context.async();
 
@@ -338,7 +344,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
-    payloadContext.put("CENTRAL_TENANT_ID", CENTRAL_TENANT_ID);
+    payloadContext.put(CENTRAL_TENANT_ID_KEY, CENTRAL_TENANT_ID);
+    payloadContext.put(PERMISSIONS, JsonArray.of(CENTRAL_RECORD_UPDATE_PERMISSION).encode());
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
@@ -387,6 +394,42 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             });
         });
     });
+  }
+
+  @Test
+  public void shouldReturnFailedFeatureIfCentralTenantIdIsInPayloadButPayloadHasNoPermissionForCentralRecordUpdate(TestContext context) {
+    // given
+    Record incomingRecord = new Record()
+      .withParsedRecord(new ParsedRecord().withContent(PARSED_CONTENT))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()));
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
+    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+    payloadContext.put(CENTRAL_TENANT_ID_KEY, CENTRAL_TENANT_ID);
+
+    profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
+      .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()
+        .withProfileId(updateMappingProfile.getId())
+        .withContentType(MAPPING_PROFILE)
+        .withContent(JsonObject.mapFrom(updateMappingProfile).getMap())));
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(wireMockServer.baseUrl())
+      .withToken(TOKEN)
+      .withJobExecutionId(record.getSnapshotId())
+      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value())
+      .withContext(payloadContext)
+      .withProfileSnapshot(profileSnapshotWrapper)
+      .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
+      .withAdditionalProperty(USER_ID_HEADER, userId);
+
+    // when
+    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
+
+    // then
+    Future.fromCompletionStage(future).onComplete(context.asyncAssertFailure());
   }
 
   @Test

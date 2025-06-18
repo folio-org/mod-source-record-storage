@@ -101,7 +101,6 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
-    String permissions = extractHeaderValue(PERMISSIONS, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
@@ -113,7 +112,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
       eventPayload.getContext().put(USER_ID_HEADER, userId);
-      eventPayload.getContext().put(PERMISSIONS, permissions);
+      populateWithPermissionsHeader(eventPayload, targetRecord);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -165,4 +164,13 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       LOGGER.log(level, formattedMessage);
     }
   }
+
+  private void populateWithPermissionsHeader(DataImportEventPayload eventPayload,
+                                             KafkaConsumerRecord<String, byte[]> kafkaRecord) {
+    String permissions = extractHeaderValue(PERMISSIONS, kafkaRecord.headers());
+    if (permissions != null) {
+      eventPayload.getContext().put(PERMISSIONS, permissions);
+    }
+  }
+
 }

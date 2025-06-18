@@ -31,6 +31,7 @@ import static org.apache.logging.log4j.Level.DEBUG;
 import static org.apache.logging.log4j.Level.ERROR;
 import static org.apache.logging.log4j.Level.INFO;
 import static org.folio.DataImportEventTypes.DI_ERROR;
+import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
@@ -41,8 +42,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   private static final String LOG_MESSAGE_TEMPLATE = "%s for jobExecutionId: '%s' and recordId: '%s' and chunkId: '%s' and userId: '%s'";
 
   public static final String PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
-  private static final String RECORD_ID_HEADER = "recordId";
-  private static final String CHUNK_ID_HEADER = "chunkId";
+  static final String RECORD_ID_HEADER = "recordId";
+  static final String CHUNK_ID_HEADER = "chunkId";
   static final String USER_ID_HEADER = "userId";
 
   private Vertx vertx;
@@ -100,6 +101,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
+    String permissions = extractHeaderValue(PERMISSIONS, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
@@ -111,6 +113,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
       eventPayload.getContext().put(USER_ID_HEADER, userId);
+      eventPayload.getContext().put(PERMISSIONS, permissions);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);

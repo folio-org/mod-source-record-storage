@@ -1,3 +1,6 @@
+## 2025-mm-dd 5.11.0-SNAPSHOT
+* [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
+
 ## 2025-03-13 5.10.0
 * [MODSOURMAN-1278](https://folio-org.atlassian.net/browse/MODSOURMAN-1278) Data import job stuck in progress with 99-100%
 * [MODSOURCE-803](https://folio-org.atlassian.net/browse/MODSOURCE-803) DuplicateException is thrown when saving batch of Bib records for linked Authority

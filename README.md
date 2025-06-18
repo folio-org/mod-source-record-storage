@@ -127,6 +127,10 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * "_srs.kafka.AuthorityLinkChunkConsumer.loadLimit_": 2
 * Relevant from the **Poppy** release, module versions from 5.7.0:
   * "_srs.linking-rules-cache.expiration.time.hours_": 12
+* Relevant from the **Ramsons** release, module versions from 5.9.8:
+  * "SRS\_MARCINDEXERS\_DELETE\_INTERVAL\_SECONDS": 1800
+  * "SRS\_MARCINDEXERS\_DELETE\_PLANNEDTIME" (no default, comma separated list of times of the day, for example `01:55,03:55`)
+  * "SRS\_MARCINDEXERS\_DELETE\_DIRTYBATCHSIZE": 100000
 * Variables for setting number of partitions of topics:
   * DI_PARSED_RECORDS_CHUNK_SAVED_PARTITIONS
   * DI_SRS_MARC_AUTHORITY_RECORD_MATCHED_PARTITIONS

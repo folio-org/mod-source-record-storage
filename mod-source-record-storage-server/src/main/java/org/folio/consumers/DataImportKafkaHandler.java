@@ -102,6 +102,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
     try {
+      LOGGER.info("handle:: Kafka headers: {}", targetRecord.headers());
+
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);

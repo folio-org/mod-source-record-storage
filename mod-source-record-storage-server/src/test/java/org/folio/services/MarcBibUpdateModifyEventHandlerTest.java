@@ -21,6 +21,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.services.handlers.actions.AbstractUpdateModifyEventHandler.USER_HAS_NO_PERMISSION_MSG;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -429,7 +430,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
 
     // then
-    Future.fromCompletionStage(future).onComplete(context.asyncAssertFailure());
+    Future.fromCompletionStage(future)
+      .onComplete(context.asyncAssertFailure(e -> context.assertEquals(USER_HAS_NO_PERMISSION_MSG, e.getMessage())));
   }
 
   @Test

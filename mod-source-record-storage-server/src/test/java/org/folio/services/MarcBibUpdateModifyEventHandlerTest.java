@@ -111,7 +111,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
   private static final String CENTRAL_TENANT_ID = "centralTenantId";
-  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "data-import.central-record.item.put";
+  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";

@@ -62,7 +62,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
   public static final String USER_HAS_NO_PERMISSION_MSG = "User does not have permission to update MARC record on central tenant";
-  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "data-import.central-record.item.put";
+  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
   private static final String EMPTY_PERMISSIONS_VALUE = "[]";
 
   protected RecordService recordService;

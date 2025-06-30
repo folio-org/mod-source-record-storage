@@ -92,6 +92,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
+  protected EntityType getRelatedEntityType() {
+    return EntityType.INSTANCE;
+  }
+
+  @Override
   protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
     payload.setEventType(getUpdateEventType());
     future.complete(payload);

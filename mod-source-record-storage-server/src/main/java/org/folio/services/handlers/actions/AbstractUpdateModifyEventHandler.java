@@ -4,7 +4,9 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.processing.events.services.publisher.KafkaEventPublisher.RECORD_ID_HEADER;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
@@ -22,6 +24,7 @@ import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.util.HashMap;
@@ -58,6 +61,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
+  private static final String USER_HAS_NO_PERMISSION_MSG = "User does not have permission to update record/%s on central tenant";
+  private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
+  private static final String EMPTY_PERMISSIONS_VALUE = "[]";
 
   protected RecordService recordService;
   protected SnapshotService snapshotService;
@@ -87,10 +93,17 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
         return future;
       }
       recordId = payload.getContext().get(RECORD_ID_HEADER);
-      LOG.info("handle:: Handling event with type: '{}' for with jobExecutionId: '{}' and recordId: '{}'", eventType, jobExecutionId, recordId);
-
       MappingProfile mappingProfile = retrieveMappingProfile(payload);
       MappingDetail.MarcMappingOption marcMappingOption = getMarcMappingOption(mappingProfile);
+      LOG.info("handle:: Handling event with type: '{}' for with jobExecutionId: '{}' and recordId: '{}'", eventType, jobExecutionId, recordId);
+
+      if (isCentralTenantRecordUpdateForbidden(payload, marcMappingOption)) {
+        String msg = getCentralTenantRecordUpdateForbiddenMessage();
+        LOG.warn("handle:: Failed to handle event payload reason: '{}', jobExecutionId: '{}', recordId: '{}'",
+          msg, jobExecutionId, recordId);
+        return CompletableFuture.failedFuture(new EventProcessingException(msg));
+      }
+
       String hrId = retrieveHrid(payload, marcMappingOption);
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       Record newRecord = extractRecord(payload, modifiedEntityType().value());
@@ -164,6 +177,17 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return future;
   }
 
+  private boolean isCentralTenantRecordUpdateForbidden(DataImportEventPayload payload, MappingDetail.MarcMappingOption marcMappingOption) {
+    String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
+    JsonArray permissions = new JsonArray(payload.getContext().getOrDefault(PERMISSIONS, EMPTY_PERMISSIONS_VALUE));
+    return isUpdateOption(marcMappingOption) && isNotEmpty(centralTenantId)
+      && !permissions.contains(CENTRAL_RECORD_UPDATE_PERMISSION);
+  }
+
+  private String getCentralTenantRecordUpdateForbiddenMessage() {
+    return USER_HAS_NO_PERMISSION_MSG.formatted(getRelatedEntityType().value().toLowerCase());
+  }
+
   protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
     String recordId = payload.getContext().get(RECORD_ID_HEADER);
     String updatedEventType = getUpdateEventType();
@@ -187,6 +211,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected abstract String getUpdateEventType();
 
   protected abstract EntityType modifiedEntityType();
+
+  protected abstract EntityType getRelatedEntityType();
 
   protected MappingDetail.MarcMappingOption getMarcMappingOption(MappingProfile mappingProfile) {
     return mappingProfile.getMappingDetails().getMarcMappingOption();

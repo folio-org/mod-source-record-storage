@@ -5,6 +5,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
@@ -137,6 +138,7 @@ public class DataImportKafkaHandlerTest {
   @Test
   public void shouldHandleKafkaRecordAndPopulatePayloadWithHeaders(TestContext context) {
     // Given
+    Async async = context.async();
     String expectedPermissions = JsonArray.of("test-permission").encode();
     String expectedUserId = UUID.randomUUID().toString();
     String expectedRecordId = UUID.randomUUID().toString();
@@ -180,8 +182,10 @@ public class DataImportKafkaHandlerTest {
       context.assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
       context.assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
       context.assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
-      verifyEventPublished(DI_COMPLETED.value(), context);
+      async.complete();
     }));
+    async.await();
+    verifyEventPublished(DI_COMPLETED.value(), context);
   }
 
   private void verifyEventPublished(String eventType, TestContext context) {

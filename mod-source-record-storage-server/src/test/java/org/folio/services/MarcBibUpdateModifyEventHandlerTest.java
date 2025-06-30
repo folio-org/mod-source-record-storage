@@ -21,7 +21,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.services.handlers.actions.AbstractUpdateModifyEventHandler.USER_HAS_NO_PERMISSION_MSG;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -111,6 +110,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
   private static final String CENTRAL_TENANT_ID = "centralTenantId";
+  private static final String USER_HAS_NO_PERMISSION_MSG = "User does not have permission to update record/instance on central tenant";
   private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +

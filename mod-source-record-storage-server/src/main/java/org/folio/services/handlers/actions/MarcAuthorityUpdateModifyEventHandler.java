@@ -49,4 +49,9 @@ public class MarcAuthorityUpdateModifyEventHandler extends AbstractUpdateModifyE
   protected EntityType modifiedEntityType() {
     return MARC_AUTHORITY;
   }
+
+  @Override
+  protected EntityType getRelatedEntityType() {
+    return EntityType.AUTHORITY;
+  }
 }

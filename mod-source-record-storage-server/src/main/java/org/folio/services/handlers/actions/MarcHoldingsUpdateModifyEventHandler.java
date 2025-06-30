@@ -48,4 +48,9 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
   protected EntityType modifiedEntityType() {
     return MARC_HOLDINGS;
   }
+
+  @Override
+  protected EntityType getRelatedEntityType() {
+    return EntityType.HOLDINGS;
+  }
 }

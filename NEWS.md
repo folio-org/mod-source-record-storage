@@ -1,5 +1,5 @@
 ## 2025-07-04 5.9.17
-* [MODINV-1114](https://folio-org.atlassian.net/browse/MODINV-1114) Extend matching records endpoint to support multiple marc-bib match results processing
+* [MODSOURCE-924](https://folio-org.atlassian.net/browse/MODSOURCE-924) Extend matching records endpoint to support multiple marc-bib match results processing (MODINV-1114)
 
 ## 2025-05-27 5.9.16
 * [MODSOURCE-907](https://folio-org.atlassian.net/browse/MODSOURCE-907) (TLS)The import of file with authority record is completed with errors

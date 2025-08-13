@@ -11,6 +11,8 @@ import io.vertx.core.Promise;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.GlobalLoadSensor;
 import org.folio.kafka.KafkaConfig;
@@ -49,6 +51,7 @@ public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
         .globalLoadSensor(new GlobalLoadSensor())
         .subscriptionDefinition(subscriptionDefinition)
         .processRecordErrorHandler(processRecordErrorHandler())
+        .groupInstanceId(getClass().getSimpleName() + "-" + UUID.randomUUID())
         .build());
     });
 

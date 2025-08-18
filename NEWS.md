@@ -1,3 +1,6 @@
+## 2025-08-18 5.10.10
+* [MODSOURCE-937](https://folio-org.atlassian.net/browse/[MODSOURCE-937) Configure consumer groupInstanceId
+
 ## 2025-05-28 5.10.9
 * [MODSOURCE-909](https://folio-org.atlassian.net/browse/MODSOURCE-909) (TLS) The import of file with authority record is completed with errors
 

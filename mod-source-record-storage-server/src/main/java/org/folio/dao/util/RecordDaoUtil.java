@@ -268,7 +268,8 @@ public final class RecordDaoUtil {
   public static SourceRecord toSourceRecord(Record record) {
     SourceRecord sourceRecord = new SourceRecord()
       .withRecordId(record.getMatchedId())
-      .withSnapshotId(record.getSnapshotId());
+      .withSnapshotId(record.getSnapshotId())
+      .withGeneration(record.getGeneration());
     if (Objects.nonNull(record.getRecordType())) {
       sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(record.getRecordType().toString()));
     }

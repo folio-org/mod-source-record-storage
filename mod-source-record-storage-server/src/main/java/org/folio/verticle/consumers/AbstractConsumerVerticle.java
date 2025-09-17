@@ -56,7 +56,7 @@ public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
     });
 
     List<Future<Void>> futures = new ArrayList<>();
-    consumers.forEach(consumer -> futures.add(consumer.start(recordHandler(), getConsumerName())));
+    consumers.forEach(consumer -> futures.add(consumer.start(recordHandler(), getModuleName())));
 
     GenericCompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
   }
@@ -97,7 +97,7 @@ public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
     return subscriptionDefinition;
   }
 
-  private String getConsumerName() {
+  protected String getModuleName() {
     return constructModuleName() + "_" + getClass().getSimpleName();
   }
 

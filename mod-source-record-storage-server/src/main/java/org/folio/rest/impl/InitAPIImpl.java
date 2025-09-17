@@ -23,6 +23,7 @@ import org.folio.verticle.MarcIndexersVersionDeletionVerticle;
 import org.folio.verticle.SpringVerticleFactory;
 import org.folio.verticle.consumers.AuthorityDomainConsumersVerticle;
 import org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle;
+import org.folio.verticle.consumers.CancelledJobExecutionConsumersVerticle;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
 import org.folio.verticle.consumers.QuickMarcConsumersVerticle;
@@ -95,6 +96,7 @@ public class InitAPIImpl implements InitAPI {
     Promise<String> deployConsumer3 = Promise.promise();
     Promise<String> deployConsumer4 = Promise.promise();
     Promise<String> deployConsumer5 = Promise.promise();
+    Promise<String> deployConsumer6 = Promise.promise();
 
     deployVerticle(vertx, verticleFactory, AuthorityLinkChunkConsumersVerticle.class,
       OptionalInt.of(authorityLinkChunkConsumerInstancesNumber), deployConsumer1);
@@ -106,6 +108,8 @@ public class InitAPIImpl implements InitAPI {
       OptionalInt.of(parsedMarcChunkConsumerInstancesNumber), deployConsumer4);
     deployVerticle(vertx, verticleFactory, QuickMarcConsumersVerticle.class,
       OptionalInt.of(quickMarcConsumerInstancesNumber), deployConsumer5);
+    deployVerticle(vertx, verticleFactory, CancelledJobExecutionConsumersVerticle.class,
+      OptionalInt.of(1), deployConsumer6);
 
     return GenericCompositeFuture.all(List.of(
       deployConsumer1.future(),

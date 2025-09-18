@@ -18,6 +18,7 @@ import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.publisher.KafkaEventPublisher;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.services.caches.CancelledJobsIdsCache;
 import org.folio.services.caches.JobProfileSnapshotCache;
 import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,11 +50,14 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   private Vertx vertx;
   private KafkaConfig kafkaConfig;
   private JobProfileSnapshotCache profileSnapshotCache;
+  private CancelledJobsIdsCache cancelledJobsIdCache;
 
   @Autowired
-  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache, KafkaConfig kafkaConfig) {
+  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache,
+                                CancelledJobsIdsCache cancelledJobsIdCache, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.cancelledJobsIdCache = cancelledJobsIdCache;
     this.kafkaConfig = kafkaConfig;
   }
 
@@ -108,6 +112,12 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       String jobExecutionId = eventPayload.getJobExecutionId();
       String[] debugInfo = {jobExecutionId, recordId, chunkId, userId};
       printLogInfo(Level.INFO, format("handle:: Data import event payload has been received with event type: %s", eventPayload.getEventType()), debugInfo);
+
+      if (cancelledJobsIdCache.contains(eventPayload.getJobExecutionId())) {
+        LOGGER.info("Skip processing of event, topic: '{}', tenantId: '{}', jobExecutionId: '{}' because the job has been cancelled",
+          targetRecord.topic(), eventPayload.getTenant(), eventPayload.getJobExecutionId());
+        return Future.succeededFuture(targetRecord.key());
+      }
 
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);

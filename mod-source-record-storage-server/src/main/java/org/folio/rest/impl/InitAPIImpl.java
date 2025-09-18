@@ -118,7 +118,8 @@ public class InitAPIImpl implements InitAPI {
       deployConsumer2.future(),
       deployConsumer3.future(),
       deployConsumer4.future(),
-      deployConsumer5.future()
+      deployConsumer5.future(),
+      deployConsumer6.future()
     ));
   }
 

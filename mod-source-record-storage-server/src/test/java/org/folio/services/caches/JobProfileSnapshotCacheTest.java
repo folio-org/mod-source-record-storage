@@ -36,9 +36,10 @@ public class JobProfileSnapshotCacheTest {
 
   private static final String TENANT_ID = "diku";
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
+  private static final int CACHE_EXPIRATION_TIME = 3600;
 
-  private Vertx vertx = Vertx.vertx();
-  private JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache(vertx);
+  private final Vertx vertx = Vertx.vertx();
+  private JobProfileSnapshotCache jobProfileSnapshotCache;
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -60,6 +61,7 @@ public class JobProfileSnapshotCacheTest {
 
   @Before
   public void setUp() {
+    jobProfileSnapshotCache = new JobProfileSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(jobProfileSnapshot))));
 
@@ -82,8 +84,8 @@ public class JobProfileSnapshotCacheTest {
       ProfileSnapshotWrapper actualProfileSnapshot = ar.result().get();
       context.assertEquals(jobProfileSnapshot.getId(), actualProfileSnapshot.getId());
       context.assertFalse(actualProfileSnapshot.getChildSnapshotWrappers().isEmpty());
-      context.assertEquals(jobProfileSnapshot.getChildSnapshotWrappers().get(0).getId(),
-        actualProfileSnapshot.getChildSnapshotWrappers().get(0).getId());
+      context.assertEquals(jobProfileSnapshot.getChildSnapshotWrappers().getFirst().getId(),
+        actualProfileSnapshot.getChildSnapshotWrappers().getFirst().getId());
       async.complete();
     });
   }

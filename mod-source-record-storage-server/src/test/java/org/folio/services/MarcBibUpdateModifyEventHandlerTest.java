@@ -101,7 +101,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT =
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-  private static final String MAPPING_METADATA__URL = "/mapping-metadata";
+  private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
   private static final String CENTRAL_TENANT_ID_KEY = "CENTRAL_TENANT_ID";
   private static final String USER_ID_HEADER = "userId";
@@ -121,6 +121,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String userId = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
+  private static final int CACHE_EXPIRATION_TIME = 3600;
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -245,7 +246,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
-    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
@@ -254,10 +255,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
-    LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
-    modifyRecordEventHandler =
-      new MarcBibUpdateModifyEventHandler(recordService, snapshotService, new MappingParametersSnapshotCache(vertx), vertx,
-        instanceLinkClient, linkingRulesCache);
+    LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
+    MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
+    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, snapshotService,
+      mappingParametersCache, vertx, instanceLinkClient, linkingRulesCache);
 
     snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

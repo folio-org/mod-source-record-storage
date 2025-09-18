@@ -20,14 +20,12 @@ import org.springframework.stereotype.Component;
 public class LinkingRulesCache {
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Value("${srs.linking-rules-cache.expiration.time.hours:12}")
-  private long cacheExpirationTime;
-
   private final InstanceLinkClient instanceLinkClient;
   private final AsyncCache<String, Optional<List<LinkingRuleDto>>> cache;
 
   @Autowired
-  public LinkingRulesCache(InstanceLinkClient instanceLinkClient, Vertx vertx) {
+  public LinkingRulesCache(InstanceLinkClient instanceLinkClient, Vertx vertx,
+    @Value("${srs.linking-rules-cache.expiration.time.hours:12}") long cacheExpirationTime) {
     this.instanceLinkClient = instanceLinkClient;
     cache = Caffeine.newBuilder()
       .expireAfterWrite(cacheExpirationTime, TimeUnit.HOURS)

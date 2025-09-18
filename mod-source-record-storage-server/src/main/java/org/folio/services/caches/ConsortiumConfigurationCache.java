@@ -29,12 +29,11 @@ public class ConsortiumConfigurationCache {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String USER_TENANTS_ENDPOINT = "/user-tenants?limit=1";
 
-  @Value("${srs.consortium-configuration-cache.expiration.time.seconds:3600}")
-  private long cacheExpirationTime;
   private AsyncCache<String, Optional<ConsortiumConfiguration>> cache;
 
   @Autowired
-  public ConsortiumConfigurationCache(Vertx vertx) {
+  public ConsortiumConfigurationCache(Vertx vertx,
+    @Value("${srs.consortium-configuration-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
     cache = Caffeine.newBuilder()
       .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))

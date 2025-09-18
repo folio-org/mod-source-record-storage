@@ -103,7 +103,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    mappingParametersCache = new MappingParametersSnapshotCache(vertx);
+    mappingParametersCache = new MappingParametersSnapshotCache(vertx, 3600);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);

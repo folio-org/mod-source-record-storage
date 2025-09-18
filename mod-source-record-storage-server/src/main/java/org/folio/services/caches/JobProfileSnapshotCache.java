@@ -26,12 +26,11 @@ public class JobProfileSnapshotCache {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Value("${srs.profile-snapshot-cache.expiration.time.seconds:3600}")
-  private long cacheExpirationTime;
-  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> cache;
+  private final AsyncCache<String, Optional<ProfileSnapshotWrapper>> cache;
 
   @Autowired
-  public JobProfileSnapshotCache(Vertx vertx) {
+  public JobProfileSnapshotCache(Vertx vertx,
+    @Value("${srs.profile-snapshot-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
     cache = Caffeine.newBuilder()
       .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))

@@ -23,6 +23,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 @ExtendWith(VertxExtension.class)
 class MappingParametersSnapshotCacheTest {
 
+  private static final int CACHE_EXPIRATION_TIME = 3600;
+
   @RegisterExtension
   static RunTestOnContext runTestOnContext = new RunTestOnContext();
 
@@ -32,7 +34,7 @@ class MappingParametersSnapshotCacheTest {
   @BeforeAll
   static void setUp(VertxTestContext vtc) {
     var vertx = runTestOnContext.vertx();
-    cache = new MappingParametersSnapshotCache(vertx);
+    cache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
 
     vertx.createHttpServer()
     .requestHandler(req -> {

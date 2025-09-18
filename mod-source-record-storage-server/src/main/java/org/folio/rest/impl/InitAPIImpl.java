@@ -31,6 +31,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import static io.vertx.core.ThreadingModel.WORKER;
+
 public class InitAPIImpl implements InitAPI {
 
   private static final String SPRING_CONTEXT = "springContext";
@@ -80,7 +82,7 @@ public class InitAPIImpl implements InitAPI {
           handler.handle(Future.failedFuture(ar.cause()));
         }
       });
-    } catch (Throwable th) {
+    } catch (Exception th) {
       LOGGER.error("init:: Failed to init module", th);
       handler.handle(Future.failedFuture(th));
     }
@@ -126,13 +128,13 @@ public class InitAPIImpl implements InitAPI {
 
   private void deployMarcIndexersVersionDeletionVerticle(Vertx vertx, VerticleFactory verticleFactory) {
     vertx.deployVerticle(getVerticleName(verticleFactory, (Class<?>) MarcIndexersVersionDeletionVerticle.class),
-      new DeploymentOptions().setWorker(true));
+      new DeploymentOptions().setThreadingModel(WORKER));
   }
 
   private void deployVerticle(Vertx vertx, VerticleFactory verticleFactory, Class<?> verticleClass,
                               OptionalInt instancesNumber, Promise<String> promise) {
     vertx.deployVerticle(getVerticleName(verticleFactory, verticleClass),
-      new DeploymentOptions().setWorker(true).setInstances(instancesNumber.orElse(1)), promise);
+      new DeploymentOptions().setThreadingModel(WORKER).setInstances(instancesNumber.orElse(1)), promise);
   }
 
 }

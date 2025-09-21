@@ -24,6 +24,7 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.services.RecordService;
+import org.folio.services.caches.CancelledJobsIdsCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -52,18 +53,21 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   private Vertx vertx;
   private KafkaConfig kafkaConfig;
   private final SimpleKafkaProducerManager producerManager;
+  private final CancelledJobsIdsCache cancelledJobsIdCache;
 
   // TODO: refactor srs.kafka.ParsedRecordChunksKafkaHandler
   @Value("${srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
   public ParsedRecordChunksKafkaHandler(@Autowired RecordService recordService,
+                                        @Autowired CancelledJobsIdsCache cancelledJobsIdsCache,
                                         @Autowired Vertx vertx,
                                         @Autowired KafkaConfig kafkaConfig) {
     this.recordService = recordService;
+    this.cancelledJobsIdCache = cancelledJobsIdsCache;
     this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
-    producerManager = new SimpleKafkaProducerManager(Vertx.currentContext().owner(), kafkaConfig);
+    producerManager = new SimpleKafkaProducerManager(vertx, kafkaConfig);
   }
 
   @Override
@@ -76,6 +80,12 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     String key = targetRecord.key();
 
     try {
+      if (cancelledJobsIdCache.contains(jobExecutionId)) {
+        LOGGER.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
+          targetRecord.topic(), jobExecutionId);
+        return Future.succeededFuture(targetRecord.key());
+      }
+
       Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 

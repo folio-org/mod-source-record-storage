@@ -41,6 +41,7 @@ public class LinkingRulesCacheTest {
 
   private static final String TENANT_ID = "diku";
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
+  private static final int CACHE_EXPIRATION_TIME = 12;
   private static final List<LinkingRuleDto> linkingRules = singletonList(new LinkingRuleDto()
     .withId(1)
     .withBibField("100")
@@ -53,7 +54,7 @@ public class LinkingRulesCacheTest {
   private static OkapiConnectionParams params;
 
   private final InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
-  private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
+  private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -99,12 +100,12 @@ public class LinkingRulesCacheTest {
       context.assertTrue(ar.succeeded());
       context.assertTrue(ar.result().isPresent());
       List<LinkingRuleDto> actualLinkingRules = ar.result().get();
-      context.assertEquals(linkingRules.get(0).getId(), actualLinkingRules.get(0).getId());
-      context.assertEquals(linkingRules.get(0).getAuthorityField(), actualLinkingRules.get(0).getAuthorityField());
-      context.assertEquals(linkingRules.get(0).getAuthoritySubfields(), actualLinkingRules.get(0).getAuthoritySubfields());
-      context.assertEquals(linkingRules.get(0).getBibField(), actualLinkingRules.get(0).getBibField());
-      context.assertEquals(linkingRules.get(0).getSubfieldModifications(), actualLinkingRules.get(0).getSubfieldModifications());
-      context.assertEquals(linkingRules.get(0).getValidation(), actualLinkingRules.get(0).getValidation());
+      context.assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
+      context.assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
+      context.assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
+      context.assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
+      context.assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
+      context.assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
       async.complete();
     });
   }
@@ -131,12 +132,12 @@ public class LinkingRulesCacheTest {
 
         List<LinkingRuleDto> actualLinkingRules = ar1.result().get();
 
-        context.assertEquals(linkingRules.get(0).getId(), actualLinkingRules.get(0).getId());
-        context.assertEquals(linkingRules.get(0).getAuthorityField(), actualLinkingRules.get(0).getAuthorityField());
-        context.assertEquals(linkingRules.get(0).getAuthoritySubfields(), actualLinkingRules.get(0).getAuthoritySubfields());
-        context.assertEquals(linkingRules.get(0).getBibField(), actualLinkingRules.get(0).getBibField());
-        context.assertEquals(linkingRules.get(0).getSubfieldModifications(), actualLinkingRules.get(0).getSubfieldModifications());
-        context.assertEquals(linkingRules.get(0).getValidation(), actualLinkingRules.get(0).getValidation());
+        context.assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
+        context.assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
+        context.assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
+        context.assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
+        context.assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
+        context.assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
 
         try {
           mockServer.verify(1, getRequestedFor(urlPathEqualTo(LINKING_RULES_URL)));

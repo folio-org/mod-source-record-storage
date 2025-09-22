@@ -26,12 +26,11 @@ public class MappingParametersSnapshotCache {
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Value("${srs.mapping-params-cache.expiration.time.seconds:3600}")
-  private long cacheExpirationTime;
-  private AsyncCache<String, Optional<MappingParameters>> cache;
+  private final AsyncCache<String, Optional<MappingParameters>> cache;
 
   @Autowired
-  public MappingParametersSnapshotCache(Vertx vertx) {
+  public MappingParametersSnapshotCache(Vertx vertx,
+    @Value("${srs.mapping-params-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
     cache = Caffeine.newBuilder()
       .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))

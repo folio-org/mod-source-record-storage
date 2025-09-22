@@ -115,13 +115,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
       "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
-  private static final String instanceId = UUID.randomUUID().toString();
+  private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final ObjectMapper mapper = new ObjectMapper();
-  private static final String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
-  private static final String userId = UUID.randomUUID().toString();
+  private static final String RECORD_ID = "eae222e8-70fd-4422-852c-60d22bae36b8";
+  private static final String USER_ID = UUID.randomUUID().toString();
+  private static final int CACHE_EXPIRATION_TIME = 3600;
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
-  private static final int CACHE_EXPIRATION_TIME = 3600;
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -211,10 +211,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @BeforeClass
   public static void setUpBeforeClass(TestContext context) throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
+    rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
+    parsedRecord = new ParsedRecord().withId(RECORD_ID)
       .withContent(PARSED_CONTENT);
     Async async = context.async();
     TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
@@ -275,10 +275,10 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
     record = new Record()
-      .withId(recordId)
+      .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
-      .withMatchedId(recordId)
+      .withMatchedId(RECORD_ID)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
@@ -365,7 +365,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
-      .withAdditionalProperty(USER_ID_HEADER, userId);
+      .withAdditionalProperty(USER_ID_HEADER, USER_ID);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -425,7 +425,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
-      .withAdditionalProperty(USER_ID_HEADER, userId);
+      .withAdditionalProperty(USER_ID_HEADER, USER_ID);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -755,7 +755,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridSecond"))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID).withInstanceHrid("hridSecond"))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -766,7 +766,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
           .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
-          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId));
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID));
         secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
         HashMap<String, String> payloadContext = new HashMap<>();
         payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
@@ -800,7 +800,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
           .whenComplete((eventPayload, throwable) -> {
             context.assertNotNull(throwable);
             context.assertNull(eventPayload);
-            context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", instanceId)));
+            context.assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", INSTANCE_ID)));
             verifyGetAndPut(context, 1, 0);
             async.complete();
           });
@@ -933,7 +933,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(secondRawRecord)
       .withParsedRecord(secondParsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridSecond"))
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID).withInstanceHrid("hridSecond"))
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
@@ -944,7 +944,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
           .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
-          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(instanceId).withInstanceHrid("hridIncomong"));
+          .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(INSTANCE_ID).withInstanceHrid("hridIncomong"));
         secondRecord.getParsedRecord().setContent(Json.encode(secondRecord.getParsedRecord().getContent()));
         HashMap<String, String> payloadContext = new HashMap<>();
         payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));

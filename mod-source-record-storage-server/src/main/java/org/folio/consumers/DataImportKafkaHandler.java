@@ -46,6 +46,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   static final String RECORD_ID_HEADER = "recordId";
   static final String CHUNK_ID_HEADER = "chunkId";
   static final String USER_ID_HEADER = "userId";
+  static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
 
   private Vertx vertx;
   private KafkaConfig kafkaConfig;
@@ -105,19 +106,21 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
+    String jobId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
-      Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
+      if (cancelledJobsIdCache.contains(jobId)) {
+        LOGGER.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
+          targetRecord.topic(), jobId);
+        return Future.succeededFuture(targetRecord.key());
+      }
+
+      DataImportEventPayload eventPayload = Json.decodeValue(
+        DatabindCodec.mapper().readValue(targetRecord.value(), Event.class).getEventPayload(),
+        DataImportEventPayload.class);
       String jobExecutionId = eventPayload.getJobExecutionId();
       String[] debugInfo = {jobExecutionId, recordId, chunkId, userId};
       printLogInfo(Level.INFO, format("handle:: Data import event payload has been received with event type: %s", eventPayload.getEventType()), debugInfo);
-
-      if (cancelledJobsIdCache.contains(eventPayload.getJobExecutionId())) {
-        LOGGER.info("handle:: Skipping processing of event, topic: '{}', tenantId: '{}', jobExecutionId: '{}' because the job has been cancelled",
-          targetRecord.topic(), eventPayload.getTenant(), eventPayload.getJobExecutionId());
-        return Future.succeededFuture(targetRecord.key());
-      }
 
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);

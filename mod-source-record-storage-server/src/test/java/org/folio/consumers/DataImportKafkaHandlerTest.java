@@ -52,6 +52,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.apache.commons.lang.StringUtils.EMPTY;
 import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.consumers.DataImportKafkaHandler.RECORD_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.USER_ID_HEADER;
@@ -94,7 +95,7 @@ public class DataImportKafkaHandlerTest {
     .withId(UUID.randomUUID().toString())
     .withContentType(JOB_PROFILE)
     .withContent(JsonObject.mapFrom(new JobProfile()
-        .withId(UUID.randomUUID().toString())).getMap())
+      .withId(UUID.randomUUID().toString())).getMap())
     .withChildSnapshotWrappers(List.of(new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(ACTION_PROFILE)
@@ -210,7 +211,8 @@ public class DataImportKafkaHandlerTest {
     Event event = new Event().withId("01").withEventPayload(Json.encode(dataImportEventPayload));
     List<KafkaHeader> headers = List.of(
       KafkaHeader.header(RECORD_ID_HEADER, UUID.randomUUID().toString()),
-      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString())
+      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString()),
+      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
     );
 
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);

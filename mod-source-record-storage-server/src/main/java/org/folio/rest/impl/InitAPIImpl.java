@@ -6,6 +6,7 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import io.vertx.core.ThreadingModel;
 import io.vertx.core.Vertx;
 import io.vertx.core.spi.VerticleFactory;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import static io.vertx.core.ThreadingModel.EVENT_LOOP;
 import static io.vertx.core.ThreadingModel.WORKER;
 
 public class InitAPIImpl implements InitAPI {
@@ -100,18 +102,18 @@ public class InitAPIImpl implements InitAPI {
     Promise<String> deployConsumer5 = Promise.promise();
     Promise<String> deployConsumer6 = Promise.promise();
 
-    deployVerticle(vertx, verticleFactory, AuthorityLinkChunkConsumersVerticle.class,
+    deployWorkerVerticle(vertx, verticleFactory, AuthorityLinkChunkConsumersVerticle.class,
       OptionalInt.of(authorityLinkChunkConsumerInstancesNumber), deployConsumer1);
-    deployVerticle(vertx, verticleFactory, AuthorityDomainConsumersVerticle.class,
+    deployWorkerVerticle(vertx, verticleFactory, AuthorityDomainConsumersVerticle.class,
       OptionalInt.of(authorityDomainConsumerInstancesNumber), deployConsumer2);
-    deployVerticle(vertx, verticleFactory, DataImportConsumersVerticle.class,
+    deployWorkerVerticle(vertx, verticleFactory, DataImportConsumersVerticle.class,
       OptionalInt.of(dataImportConsumerInstancesNumber), deployConsumer3);
-    deployVerticle(vertx, verticleFactory, ParsedRecordChunkConsumersVerticle.class,
+    deployWorkerVerticle(vertx, verticleFactory, ParsedRecordChunkConsumersVerticle.class,
       OptionalInt.of(parsedMarcChunkConsumerInstancesNumber), deployConsumer4);
-    deployVerticle(vertx, verticleFactory, QuickMarcConsumersVerticle.class,
+    deployWorkerVerticle(vertx, verticleFactory, QuickMarcConsumersVerticle.class,
       OptionalInt.of(quickMarcConsumerInstancesNumber), deployConsumer5);
     deployVerticle(vertx, verticleFactory, CancelledJobExecutionConsumersVerticle.class,
-      OptionalInt.of(1), deployConsumer6);
+      OptionalInt.of(1), EVENT_LOOP, deployConsumer6);
 
     return GenericCompositeFuture.all(List.of(
       deployConsumer1.future(),
@@ -132,10 +134,15 @@ public class InitAPIImpl implements InitAPI {
       new DeploymentOptions().setThreadingModel(WORKER));
   }
 
-  private void deployVerticle(Vertx vertx, VerticleFactory verticleFactory, Class<?> verticleClass,
+  private void deployWorkerVerticle(Vertx vertx, VerticleFactory verticleFactory, Class<?> verticleClass,
                               OptionalInt instancesNumber, Promise<String> promise) {
+    deployVerticle(vertx, verticleFactory, verticleClass, instancesNumber, WORKER, promise);
+  }
+
+  private void deployVerticle(Vertx vertx, VerticleFactory verticleFactory, Class<?> verticleClass,
+                              OptionalInt instancesNumber, ThreadingModel threadingModel, Promise<String> promise) {
     vertx.deployVerticle(getVerticleName(verticleFactory, verticleClass),
-      new DeploymentOptions().setThreadingModel(WORKER).setInstances(instancesNumber.orElse(1)), promise);
+      new DeploymentOptions().setThreadingModel(threadingModel).setInstances(instancesNumber.orElse(1)), promise);
   }
 
 }

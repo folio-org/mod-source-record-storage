@@ -40,7 +40,7 @@ public class CancelledJobsIdsCache {
    * @throws NullPointerException if the specified {@code jobId} is null
    */
   public boolean contains(String jobId) {
-    return cache.asMap().containsKey(jobId);
+    return cache.getIfPresent(jobId) != null;
   }
 
 }

@@ -8,12 +8,10 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.services.RecordService;
 import org.folio.services.caches.CancelledJobsIdsCache;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.List;

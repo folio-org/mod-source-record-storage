@@ -107,6 +107,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
     String jobId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
+    LOGGER.info("handle:: Data import event payload has been received topic: {}, jobId: '{}'", targetRecord.topic(), jobId);
+
     try {
       Promise<String> promise = Promise.promise();
       if (cancelledJobsIdCache.contains(jobId)) {

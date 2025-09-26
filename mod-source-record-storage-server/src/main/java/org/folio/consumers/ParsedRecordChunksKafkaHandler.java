@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
@@ -59,10 +59,11 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   @Value("${srs.kafka.ParsedRecordChunksKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
 
-  public ParsedRecordChunksKafkaHandler(@Autowired RecordService recordService,
-                                        @Autowired CancelledJobsIdsCache cancelledJobsIdsCache,
-                                        @Autowired Vertx vertx,
-                                        @Autowired KafkaConfig kafkaConfig) {
+  @Autowired
+  public ParsedRecordChunksKafkaHandler(RecordService recordService,
+                                        CancelledJobsIdsCache cancelledJobsIdsCache,
+                                        Vertx vertx,
+                                        KafkaConfig kafkaConfig) {
     this.recordService = recordService;
     this.cancelledJobsIdCache = cancelledJobsIdsCache;
     this.vertx = vertx;
@@ -71,6 +72,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   }
 
   @Override
+  @SuppressWarnings("squid:S2629")
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
@@ -137,7 +139,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
     producer.send(targetRecord)
       .<Void>mapEmpty()
-      .eventually(x -> producer.close())
+      .eventually((Supplier<Future<Void>>) producer::close)
       .onSuccess(res -> {
         String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
         LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}'",
@@ -159,7 +161,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
           String content = ParsedRecordDaoUtil.normalizeContent(targetRecord.getParsedRecord());
           targetRecord.getParsedRecord().withContent(content);
         }
-      }).collect(Collectors.toList()));
+      }).toList());
   }
 
   private void setUserMetadata(RecordCollection recordCollection, String userId) {

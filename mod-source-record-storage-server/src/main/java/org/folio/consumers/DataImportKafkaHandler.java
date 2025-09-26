@@ -48,10 +48,10 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   static final String USER_ID_HEADER = "userId";
   static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
 
-  private Vertx vertx;
-  private KafkaConfig kafkaConfig;
-  private JobProfileSnapshotCache profileSnapshotCache;
-  private CancelledJobsIdsCache cancelledJobsIdCache;
+  private final Vertx vertx;
+  private final KafkaConfig kafkaConfig;
+  private final JobProfileSnapshotCache profileSnapshotCache;
+  private final CancelledJobsIdsCache cancelledJobsIdCache;
 
   @Autowired
   public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache,
@@ -101,6 +101,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   }
 
   @Override
+  @SuppressWarnings("squid:S2629")
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());

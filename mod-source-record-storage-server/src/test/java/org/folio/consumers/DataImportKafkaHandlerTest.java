@@ -28,6 +28,7 @@ import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.services.caches.CancelledJobsIdsCache;
 import org.folio.services.caches.JobProfileSnapshotCache;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -51,6 +52,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.apache.commons.lang.StringUtils.EMPTY;
 import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.consumers.DataImportKafkaHandler.RECORD_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.USER_ID_HEADER;
@@ -64,6 +66,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +85,8 @@ public class DataImportKafkaHandlerTest {
   @Mock
   private JobProfileSnapshotCache profileSnapshotCacheMock;
   @Mock
+  private CancelledJobsIdsCache cancelledJobsIdsCacheMock;
+  @Mock
   private EventHandler mockedEventHandler;
   private DataImportKafkaHandler dataImportKafkaHandler;
   private AutoCloseable mocksCloseable;
@@ -90,7 +95,7 @@ public class DataImportKafkaHandlerTest {
     .withId(UUID.randomUUID().toString())
     .withContentType(JOB_PROFILE)
     .withContent(JsonObject.mapFrom(new JobProfile()
-        .withId(UUID.randomUUID().toString())).getMap())
+      .withId(UUID.randomUUID().toString())).getMap())
     .withChildSnapshotWrappers(List.of(new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(ACTION_PROFILE)
@@ -120,11 +125,13 @@ public class DataImportKafkaHandlerTest {
     mocksCloseable = MockitoAnnotations.openMocks(this);
     when(profileSnapshotCacheMock.get(anyString(), any(OkapiConnectionParams.class)))
       .thenReturn(Future.succeededFuture(Optional.of(jobProfileSnapshotWrapper)));
+    when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(false);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class)))
       .thenReturn(true);
     doAnswer(invocation -> CompletableFuture.completedFuture(invocation.<DataImportEventPayload>getArgument(0)))
       .when(mockedEventHandler).handle(any(DataImportEventPayload.class));
-    dataImportKafkaHandler = new DataImportKafkaHandler(vertx, profileSnapshotCacheMock, kafkaConfig);
+    dataImportKafkaHandler = new DataImportKafkaHandler(vertx, profileSnapshotCacheMock,
+      cancelledJobsIdsCacheMock, kafkaConfig);
     EventManager.clearEventHandlers();
     EventManager.registerEventHandler(mockedEventHandler);
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, 1);
@@ -186,6 +193,42 @@ public class DataImportKafkaHandlerTest {
     }));
     async.await();
     verifyEventPublished(DI_COMPLETED.value(), context);
+  }
+
+  @Test
+  public void shouldReturnSucceededFutureAndSkipEventProcessingIfEventPayloadContainsCancelledJobExecutionId(TestContext context) {
+    // given
+    String expectedKafkaRecordKey = "test_key";
+    String cancelledJobId = UUID.randomUUID().toString();
+    when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(true);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withJobExecutionId(cancelledJobId)
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withContext(new HashMap<>(Map.of(PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId())));
+
+    Event event = new Event().withId("01").withEventPayload(Json.encode(dataImportEventPayload));
+    List<KafkaHeader> headers = List.of(
+      KafkaHeader.header(RECORD_ID_HEADER, UUID.randomUUID().toString()),
+      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString()),
+      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+    );
+
+    KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
+    when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
+    when(kafkaRecord.headers()).thenReturn(headers);
+
+    // when
+    Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
+
+    // then
+    future.onComplete(context.asyncAssertSuccess(actualKafkaRecordKey -> {
+      context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
+      verify(profileSnapshotCacheMock, never()).get(anyString(), any(OkapiConnectionParams.class));
+      verify(mockedEventHandler, never()).isEligible(any(DataImportEventPayload.class));
+    }));
   }
 
   private void verifyEventPublished(String eventType, TestContext context) {

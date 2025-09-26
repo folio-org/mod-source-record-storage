@@ -18,6 +18,7 @@ import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.publisher.KafkaEventPublisher;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.services.caches.CancelledJobsIdsCache;
 import org.folio.services.caches.JobProfileSnapshotCache;
 import org.folio.services.util.RestUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,15 +46,19 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   static final String RECORD_ID_HEADER = "recordId";
   static final String CHUNK_ID_HEADER = "chunkId";
   static final String USER_ID_HEADER = "userId";
+  static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
 
-  private Vertx vertx;
-  private KafkaConfig kafkaConfig;
-  private JobProfileSnapshotCache profileSnapshotCache;
+  private final Vertx vertx;
+  private final KafkaConfig kafkaConfig;
+  private final JobProfileSnapshotCache profileSnapshotCache;
+  private final CancelledJobsIdsCache cancelledJobsIdCache;
 
   @Autowired
-  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache, KafkaConfig kafkaConfig) {
+  public DataImportKafkaHandler(Vertx vertx, JobProfileSnapshotCache profileSnapshotCache,
+                                CancelledJobsIdsCache cancelledJobsIdCache, KafkaConfig kafkaConfig) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.cancelledJobsIdCache = cancelledJobsIdCache;
     this.kafkaConfig = kafkaConfig;
   }
 
@@ -96,15 +101,24 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   }
 
   @Override
+  @SuppressWarnings("squid:S2629")
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
     String recordId = extractHeaderValue(RECORD_ID_HEADER, targetRecord.headers());
     String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
     String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
+    String jobId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
-      Event event = DatabindCodec.mapper().readValue(targetRecord.value(), Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
+      if (cancelledJobsIdCache.contains(jobId)) {
+        LOGGER.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
+          targetRecord.topic(), jobId);
+        return Future.succeededFuture(targetRecord.key());
+      }
+
+      DataImportEventPayload eventPayload = Json.decodeValue(
+        DatabindCodec.mapper().readValue(targetRecord.value(), Event.class).getEventPayload(),
+        DataImportEventPayload.class);
       String jobExecutionId = eventPayload.getJobExecutionId();
       String[] debugInfo = {jobExecutionId, recordId, chunkId, userId};
       printLogInfo(Level.INFO, format("handle:: Data import event payload has been received with event type: %s", eventPayload.getEventType()), debugInfo);

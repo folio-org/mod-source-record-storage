@@ -261,9 +261,7 @@ public final class ParsedRecordDaoUtil {
   }
 
   public static JsonObject normalize(Object content) {
-    return (content instanceof String)
-      ? new JsonObject((String) content)
-      : JsonObject.mapFrom(content);
+    return JsonObject.mapFrom(content);
   }
 
   private static ParsedRecord asParsedRecord(UUID id, Object content) {

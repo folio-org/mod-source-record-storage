@@ -69,12 +69,12 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
     return getEventPayload(consumerRecord)
       .compose(eventPayload -> {
-        String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
+        String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID()).toString();
         var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
         return getRecordDto(eventPayload)
           .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, okapiHeaders))
           .compose(updatedRecord -> {
-            eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
+            eventPayload.put(updatedRecord.getRecordType().value(), updatedRecord);
             return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, tenantId, kafkaHeaders)
               .map(aBoolean -> consumerRecord.key());
           })
@@ -122,7 +122,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   }
 
   @SuppressWarnings("unchecked")
-  private Future<HashMap<String, String>> getEventPayload(KafkaConsumerRecord<String, String> consumerRecord) {
+  private Future<HashMap<String, Object>> getEventPayload(KafkaConsumerRecord<String, String> consumerRecord) {
     try {
       var event = Json.decodeValue(consumerRecord.value(), Event.class);
       var eventPayload = Json.decodeValue(event.getEventPayload(), HashMap.class);
@@ -133,14 +133,14 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
     }
   }
 
-  private Future<ParsedRecordDto> getRecordDto(HashMap<String, String> eventPayload) {
-    String parsedRecordDtoJson = eventPayload.get(PARSED_RECORD_DTO_KEY);
-    if (StringUtils.isEmpty(parsedRecordDtoJson)) {
+  private Future<ParsedRecordDto> getRecordDto(HashMap<String, Object> eventPayload) {
+    Map<String, Object> parsedRecordDtoJson = ((Map<String, Object>) eventPayload.get(PARSED_RECORD_DTO_KEY));
+    if (parsedRecordDtoJson == null) {
       var error = "sendEventToKafka:: Event payload does not contain required PARSED_RECORD_DTO data";
       log.warn(error);
       return Future.failedFuture(error);
     } else {
-      return Future.succeededFuture(Json.decodeValue(parsedRecordDtoJson, ParsedRecordDto.class));
+      return Future.succeededFuture(Json.CODEC.fromValue(parsedRecordDtoJson, ParsedRecordDto.class));
     }
   }
 }

@@ -21,13 +21,14 @@
     </addColumn>
   </changeSet>
 
-  <changeSet id="2023-04-13--16-00-update-function-fill_in_marc_indexers" author="okolawole">
+  <changeSet id="2023-04-13--16-00-update-function-fill_in_marc_indexers" author="okolawole" runOnChange="true">
     <sql splitStatements="false">
       create or replace function ${database.defaultSchemaName}.fill_in_marc_indexers(p_marc_id uuid, p_marc_content jsonb, p_version integer)
       returns void
       as
       $fill_in_marc_indexers$
       begin
+      SET LOCAL jit = off;
       insert into ${database.defaultSchemaName}.marc_indexers (field_no, ind1, ind2, subfield_no, value, marc_id, version)
         (with vals as (select value from jsonb_array_elements((
           select value

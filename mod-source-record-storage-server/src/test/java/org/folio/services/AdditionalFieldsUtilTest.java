@@ -1,7 +1,6 @@
 package org.folio.services;
 
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_035;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_035_SUB;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.addDataFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
@@ -349,7 +348,7 @@ public class AdditionalFieldsUtilTest {
       "{\"035\":{\"subfields\":[{\"a\":\"(ybp7406411)in001\"}," +
       "{\"a\":\"(OCoLC)64758\"} ],\"ind1\":\" \",\"ind2\":\" \"}}," +
       "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    var expectedSubfields =  List.of("(ybp7406411)in001", "(OCoLC)64758");
+    var expectedSubfields =  List.of("(OCoLC)64758");
 
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
@@ -360,7 +359,7 @@ public class AdditionalFieldsUtilTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
 
     // when
-    var subfields = get035SubfieldOclcValues(record, TAG_035, TAG_035_SUB).stream().map(Subfield::getData).toList();
+    var subfields = get035SubfieldOclcValues(record, TAG_035).stream().map(Subfield::getData).toList();
     // then
     Assert.assertEquals(expectedSubfields.size(), subfields.size());
     Assert.assertEquals(expectedSubfields.get(0), subfields.get(0));
@@ -438,7 +437,7 @@ public class AdditionalFieldsUtilTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
 
     // when
-    var subfields = get035SubfieldOclcValues(record, TAG_035, TAG_035_SUB).stream().map(Subfield::getData).toList();
+    var subfields = get035SubfieldOclcValues(record, TAG_035).stream().map(Subfield::getData).toList();
     // then
     Assert.assertEquals(0, subfields.size());
   }

@@ -1,3 +1,6 @@
+## 2025-10-27 5.10.11
+* [MODSOURCE-947](https://folio-org.atlassian.net/browse/MODSOURCE-947) Fix normalization of 035 field during MARC record update
+
 ## 2025-08-18 5.10.10
 * [MODSOURCE-937](https://folio-org.atlassian.net/browse/[MODSOURCE-937) Configure consumer groupInstanceId
 

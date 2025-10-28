@@ -39,6 +39,13 @@ public class MappingParametersSnapshotCache {
 
   public Future<Optional<MappingParameters>> get(String jobExecutionId, OkapiConnectionParams params) {
     try {
+      LOGGER.info("get:: Cache keys before retrieval: {}", cache.synchronous().asMap().keySet());
+      CompletableFuture<Optional<MappingParameters>> cachedValue = cache.getIfPresent(jobExecutionId);
+      if (cachedValue != null) {
+        LOGGER.info("get:: Cache hit for jobExecutionId: '{}'", jobExecutionId);
+      } else {
+        LOGGER.info("get:: Cache miss for jobExecutionId: '{}', loading from source", jobExecutionId);
+      }
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params)));
     } catch (Exception e) {
       LOGGER.warn("get:: Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
@@ -54,7 +61,14 @@ public class MappingParametersSnapshotCache {
       .thenCompose(httpResponse -> {
         if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
           LOGGER.info("loadMappingParametersSnapshot:: MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
-          return CompletableFuture.completedFuture(Optional.of(Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class)));
+          try {
+            MappingParameters mappingParameters = Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class);
+            return CompletableFuture.completedFuture(Optional.of(mappingParameters));
+          } catch (Exception e) {
+            String errorMessage = String.format("loadMappingParametersSnapshot:: Failed to deserialize MappingParameters for jobExecutionId: '%s'. Response body: %s", jobExecutionId, httpResponse.getBody());
+            LOGGER.error(errorMessage, e);
+            return CompletableFuture.failedFuture(new CacheLoadingException(errorMessage, e));
+          }
         } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
           LOGGER.warn("loadMappingParametersSnapshot:: MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
           return CompletableFuture.completedFuture(Optional.empty());

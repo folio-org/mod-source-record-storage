@@ -2,6 +2,7 @@ package org.folio.services;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
@@ -37,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -216,6 +218,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_AUTHORITY.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+    payloadContext.put(PERMISSIONS, StringUtils.EMPTY);
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()

@@ -34,6 +34,7 @@ public class MappingParametersSnapshotCache {
     cache = Caffeine.newBuilder()
       .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))
+      .recordStats()
       .buildAsync();
   }
 

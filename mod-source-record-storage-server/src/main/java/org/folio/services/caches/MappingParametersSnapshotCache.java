@@ -56,15 +56,14 @@ public class MappingParametersSnapshotCache {
 
   public void logCacheStats() {
     CacheStats stats = cache.synchronous().stats();
-
     LOGGER.info("Cache Statistics:");
     LOGGER.info("  Request Count: {}", stats.requestCount());
     LOGGER.info("  Hit Count: {}", stats.hitCount());
-    LOGGER.info("  Hit Rate: {:.2f}%", stats.hitRate() * 100);
+    LOGGER.info("  Hit Rate: {}%", String.format("%.2f", stats.hitRate() * 100));
     LOGGER.info("  Miss Count: {}", stats.missCount());
-    LOGGER.info("  Miss Rate: {:.2f}%", stats.missRate() * 100);
+    LOGGER.info("  Miss Rate: {}%", String.format("%.2f", stats.missRate() * 100));
     LOGGER.info("  Load Count: {}", stats.loadCount());
-    LOGGER.info("  Average Load Time: {:.2f} ms", stats.averageLoadPenalty() / 1_000_000.0);
+    LOGGER.info("  Average Load Time: {}%", String.format("%.2f", stats.averageLoadPenalty() / 1_000_000.0));
     LOGGER.info("  Eviction Count: {}", stats.evictionCount());
   }
 

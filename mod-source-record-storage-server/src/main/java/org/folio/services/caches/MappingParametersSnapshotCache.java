@@ -2,6 +2,7 @@ package org.folio.services.caches;
 
 import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -44,14 +45,27 @@ public class MappingParametersSnapshotCache {
       CompletableFuture<Optional<MappingParameters>> cachedValue = cache.getIfPresent(jobExecutionId);
       if (cachedValue != null) {
         LOGGER.info("get:: Cache hit for jobExecutionId: '{}'", jobExecutionId);
-      } else {
-        LOGGER.info("get:: Cache miss for jobExecutionId: '{}', loading from source", jobExecutionId);
       }
+      logCacheStats();
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params)));
     } catch (Exception e) {
       LOGGER.warn("get:: Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
       return Future.failedFuture(e);
     }
+  }
+
+  public void logCacheStats() {
+    CacheStats stats = cache.synchronous().stats();
+
+    LOGGER.info("Cache Statistics:");
+    LOGGER.info("  Request Count: {}", stats.requestCount());
+    LOGGER.info("  Hit Count: {}", stats.hitCount());
+    LOGGER.info("  Hit Rate: {:.2f}%", stats.hitRate() * 100);
+    LOGGER.info("  Miss Count: {}", stats.missCount());
+    LOGGER.info("  Miss Rate: {:.2f}%", stats.missRate() * 100);
+    LOGGER.info("  Load Count: {}", stats.loadCount());
+    LOGGER.info("  Average Load Time: {:.2f} ms", stats.averageLoadPenalty() / 1_000_000.0);
+    LOGGER.info("  Eviction Count: {}", stats.evictionCount());
   }
 
   private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {

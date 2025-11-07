@@ -179,13 +179,17 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   @SuppressWarnings("squid:S2629")
   private boolean isCentralTenantRecordUpdateForbidden(DataImportEventPayload payload, MappingDetail.MarcMappingOption marcMappingOption) {
     String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
-    if (isUpdateOption(marcMappingOption) && isNotEmpty(centralTenantId)) {
+    if (isCentralTenantRecordUpdateProtected() && isUpdateOption(marcMappingOption) && isNotEmpty(centralTenantId)) {
       String permissionsValue = payload.getContext().get(PERMISSIONS);
       LOG.debug("isCentralTenantRecordUpdateForbidden:: Permissions header: '{}', jobExecutionId: '{}', recordId: '{}'",
         permissionsValue, payload.getJobExecutionId(), payload.getContext().get(RECORD_ID_HEADER));
       JsonArray permissions = isBlank(permissionsValue) ? new JsonArray() : new JsonArray(permissionsValue);
       return !permissions.contains(CENTRAL_RECORD_UPDATE_PERMISSION);
     }
+    return false;
+  }
+
+  protected boolean isCentralTenantRecordUpdateProtected() {
     return false;
   }
 

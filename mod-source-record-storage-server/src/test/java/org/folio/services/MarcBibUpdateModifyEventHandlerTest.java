@@ -50,6 +50,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.InstanceLinkDtoCollection;
@@ -409,6 +410,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
     payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
     payloadContext.put(CENTRAL_TENANT_ID_KEY, CENTRAL_TENANT_ID);
+    payloadContext.put(PERMISSIONS, StringUtils.EMPTY);
 
     profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
       .withChildSnapshotWrappers(Collections.singletonList(new ProfileSnapshotWrapper()

@@ -63,7 +63,6 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   private static final String MAPPING_PARAMETERS_NOT_FOUND_MSG = "MappingParameters snapshot was not found by jobExecutionId '%s'";
   private static final String USER_HAS_NO_PERMISSION_MSG = "User does not have permission to update record/%s on central tenant";
   private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
-  private static final String EMPTY_PERMISSIONS_VALUE = "[]";
 
   protected RecordService recordService;
   protected SnapshotService snapshotService;
@@ -177,11 +176,21 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return future;
   }
 
+  @SuppressWarnings("squid:S2629")
   private boolean isCentralTenantRecordUpdateForbidden(DataImportEventPayload payload, MappingDetail.MarcMappingOption marcMappingOption) {
     String centralTenantId = payload.getContext().get(CENTRAL_TENANT_ID);
-    JsonArray permissions = new JsonArray(payload.getContext().getOrDefault(PERMISSIONS, EMPTY_PERMISSIONS_VALUE));
-    return isUpdateOption(marcMappingOption) && isNotEmpty(centralTenantId)
-      && !permissions.contains(CENTRAL_RECORD_UPDATE_PERMISSION);
+    if (isCentralTenantRecordUpdateProtected() && isUpdateOption(marcMappingOption) && isNotEmpty(centralTenantId)) {
+      String permissionsValue = payload.getContext().get(PERMISSIONS);
+      LOG.debug("isCentralTenantRecordUpdateForbidden:: Permissions header: '{}', jobExecutionId: '{}', recordId: '{}'",
+        permissionsValue, payload.getJobExecutionId(), payload.getContext().get(RECORD_ID_HEADER));
+      JsonArray permissions = isBlank(permissionsValue) ? new JsonArray() : new JsonArray(permissionsValue);
+      return !permissions.contains(CENTRAL_RECORD_UPDATE_PERMISSION);
+    }
+    return false;
+  }
+
+  protected boolean isCentralTenantRecordUpdateProtected() {
+    return false;
   }
 
   private String getCentralTenantRecordUpdateForbiddenMessage() {

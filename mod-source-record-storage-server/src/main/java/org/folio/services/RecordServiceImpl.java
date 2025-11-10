@@ -378,6 +378,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private static Record getNewRecord(ParsedRecordDto parsedRecordDto, Record existingRecord, Snapshot snapshot, String newRecordId) {
+    LOG.info("getNewRecord:: Creating new record for matchedId: {} based on existing record id: {}",
+      parsedRecordDto.getId(), existingRecord.getId());
     Record newRecord = new Record()
       .withId(newRecordId)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -404,7 +406,7 @@ public class RecordServiceImpl implements RecordService {
       newRecord.setDeleted(false);
       newRecord.setState(Record.State.ACTUAL);
     }
-
+    LOG.info("getNewRecord:: Created new record {}", newRecord);
     return newRecord;
   }
 
@@ -612,7 +614,9 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private Future<Record> checkIfEditable(Record existingRecord) {
+    LOG.info("checkIfEditable:: Checking if record with id: {} is editable", existingRecord.getId());
     var linkedDataId = getFieldFromMarcRecord(existingRecord, TAG_999, INDICATOR, INDICATOR, SUBFIELD_L);
+    LOG.info("checkIfEditable:: Retrieved 999ff$l value: {} for record with id: {}", linkedDataId, existingRecord.getId());
     if (linkedDataId != null && !linkedDataId.isEmpty()) {
       return Future.failedFuture(new RecordUpdateException(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION));
     }

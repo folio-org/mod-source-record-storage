@@ -695,6 +695,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String id) {
+    LOG.info("getRecordByMatchedId:: Getting record by matched id: {}", id);
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
       .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
         .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));

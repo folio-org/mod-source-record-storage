@@ -363,8 +363,7 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders) {
-    String newRecordId = UUID.randomUUID().toString();
+  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, String newRecordId, Map<String, String> okapiHeaders) {
     return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> checkIfEditable(existingRecord)

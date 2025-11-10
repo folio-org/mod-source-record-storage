@@ -96,6 +96,15 @@
           "methods": [
             "PUT"
           ],
+          "pathPattern": "/source-storage/records/parsed-record",
+          "permissionsRequired": [
+            "source-storage.records.record.put"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
           "pathPattern": "/source-storage/records/{id}/generation",
           "permissionsRequired": [
             "source-storage.records.generation.item.put"
@@ -361,6 +370,11 @@
       "description": "Put Record"
     },
     {
+      "permissionName": "source-storage.records.record.put",
+      "displayName": "Source Storage - update record without events",
+      "description": "Put Record"
+    },
+    {
       "permissionName": "source-storage.records.generation.item.put",
       "displayName": "Source Storage - update record's generation",
       "description": "Update record's generation"
@@ -480,6 +494,7 @@
         "source-storage.snapshots.delete",
         "source-storage.records.post",
         "source-storage.records.put",
+        "source-storage.records.record.put",
         "source-storage.parsed-records.fetch.collection.post",
         "source-storage.records.delete",
         "source-storage.records.update",

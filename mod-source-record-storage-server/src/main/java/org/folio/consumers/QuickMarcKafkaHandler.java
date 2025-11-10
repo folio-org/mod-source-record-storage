@@ -72,7 +72,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
         String snapshotId = eventPayload.getOrDefault(SNAPSHOT_ID_KEY, UUID.randomUUID().toString());
         var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
         return getRecordDto(eventPayload)
-          .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, okapiHeaders))
+          .compose(recordDto -> recordService.updateSourceRecord(recordDto, snapshotId, UUID.randomUUID().toString(), okapiHeaders))
           .compose(updatedRecord -> {
             eventPayload.put(updatedRecord.getRecordType().value(), Json.encode(updatedRecord));
             return sendEvent(eventPayload, QM_SRS_MARC_RECORD_UPDATED, tenantId, kafkaHeaders)

@@ -94,6 +94,30 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
+  /parsed-record:
+    description: Update ParsedRecord
+    put:
+      is: [ validate ]
+      queryParameters:
+        newRecordId:
+            description: New Record Id
+            type: string
+            required: true
+      body:
+        application/json:
+          type: parsedRecordDto
+      responses:
+        204:
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
   /{id}:
     displayName: Record
     description: Get, Delete or Update a specific Record

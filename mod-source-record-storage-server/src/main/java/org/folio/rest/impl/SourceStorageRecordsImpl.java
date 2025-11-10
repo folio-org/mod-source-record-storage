@@ -9,11 +9,11 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 
 import java.util.List;
 import java.util.Map;
-
+import java.util.UUID;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
-
 import org.folio.dataimport.util.ExceptionHelper;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.resource.SourceStorageRecords;
@@ -23,7 +23,6 @@ import org.folio.spring.SpringContextUtil;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -188,6 +187,21 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("postSourceStorageRecordsMatching:: Failed to get identifiers of records by matching criteria", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void putSourceStorageRecordsParsedRecord(String newRecordId, ParsedRecordDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.updateSourceRecord(entity, UUID.randomUUID().toString(), newRecordId, okapiHeaders)
+          .map(updated -> PutSourceStorageRecordsParsedRecordResponse.respond204())
+          .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("putSourceStorageRecordsRecord:: Failed to update record by id {}", entity.getId(), e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

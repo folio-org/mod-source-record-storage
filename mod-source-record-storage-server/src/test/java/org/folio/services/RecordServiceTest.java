@@ -1154,6 +1154,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
       .withId(original.getId())
       .withRecordType(ParsedRecordDto.RecordType.fromValue(original.getRecordType().toString()))
@@ -1164,8 +1165,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DRAFT, RecordType.MARC_BIB, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -1191,6 +1192,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record original = TestMocks.getMarcAuthorityRecord();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
       .withId(original.getId())
       .withRecordType(ParsedRecordDto.RecordType.fromValue(original.getRecordType().toString()))
@@ -1201,7 +1203,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
       .compose(ar -> recordService.updateRecordsState(original.getMatchedId(), RecordState.DELETED, RecordType.MARC_AUTHORITY, TENANT_ID))
       .onComplete(update -> {
         if (update.failed()) {
@@ -1380,6 +1382,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Record expected = TestMocks.getMarcBibRecord();
     Async async = context.async();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
       .withId(expected.getId())
       .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
@@ -1390,7 +1393,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordDao.saveRecord(expected, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
       .onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
@@ -1553,6 +1556,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       String snapshotId = UUID.randomUUID().toString();
+      String newRecordId = UUID.randomUUID().toString();
       ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
         .withId(expected.getId())
         .withRecordType(ParsedRecordDto.RecordType.fromValue(expected.getRecordType().toString()))
@@ -1560,7 +1564,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withAdditionalInfo(expected.getAdditionalInfo())
         .withExternalIdsHolder(expected.getExternalIdsHolder())
         .withMetadata(expected.getMetadata());
-      recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders).onComplete(update -> {
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
         }
@@ -1601,6 +1605,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     ParsedRecord parsedRecord = new ParsedRecord()
       .withId(original.getId())
       .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500").put("fields", new JsonArray()));
@@ -1616,7 +1621,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
       .onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
@@ -1640,6 +1645,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     Record original = TestMocks.getMarcBibRecord();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     ParsedRecord parsedRecord = new ParsedRecord()
       .withId(original.getId())
       .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500").put("fields", new JsonArray()));
@@ -1654,7 +1660,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordDao.saveRecord(original, okapiHeaders)
-      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders))
+      .compose(ar -> recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders))
       .onComplete(update -> {
         if (update.failed()) {
           context.fail(update.cause());
@@ -1677,6 +1683,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public void shouldUpdateRecordStateToActualWhenLeaderChangedFromDeleted(TestContext context) {
     Async async = context.async();
     String snapshotId = UUID.randomUUID().toString();
+    String newRecordId = UUID.randomUUID().toString();
     Record original = TestMocks.getMarcBibRecord();
     original.setState(State.DELETED);
     original.setDeleted(true);
@@ -1704,7 +1711,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertTrue(ar.getDeleted());
         context.assertEquals(State.DELETED, ar.getState());
         context.assertTrue(ar.getAdditionalInfo().getSuppressDiscovery());
-        return recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders);
+        return recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders);
       })
       .onComplete(update -> {
         if (update.failed()) {
@@ -1775,6 +1782,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       String snapshotId = UUID.randomUUID().toString();
+      String newRecordId = UUID.randomUUID().toString();
       ParsedRecordDto parsedRecordDto = new ParsedRecordDto()
               .withId(sourceRecord.getId())
               .withRecordType(ParsedRecordDto.RecordType.fromValue(sourceRecord.getRecordType().toString()))
@@ -1783,7 +1791,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
               .withExternalIdsHolder(sourceRecord.getExternalIdsHolder())
               .withMetadata(sourceRecord.getMetadata());
 
-      recordService.updateSourceRecord(parsedRecordDto, snapshotId, okapiHeaders).onComplete(ar -> {
+      recordService.updateSourceRecord(parsedRecordDto, snapshotId, newRecordId, okapiHeaders).onComplete(ar -> {
         context.assertTrue(ar.failed());
         context.assertEquals(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION, ar.cause().getMessage());
         assertThrows(RecordUpdateException.class, () -> {

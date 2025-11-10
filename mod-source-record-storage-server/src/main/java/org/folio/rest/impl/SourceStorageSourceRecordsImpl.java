@@ -19,6 +19,7 @@ import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
@@ -30,6 +31,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,6 +121,23 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("getSourceStorageSourceRecordsById:: Failed to get source record by id: {}", id, e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void putSourceStorageSourceRecordsParsedRecord(ParsedRecordDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    LOG.info("putSourceStorageRecordsParsedRecord:: Updating source record with id: {}", entity.getId());
+    vertxContext.runOnContext(v -> {
+      try {
+        recordService.updateSourceRecord(entity, UUID.randomUUID().toString(), UUID.randomUUID().toString(), okapiHeaders)
+          .map(updated -> PutSourceStorageSourceRecordsParsedRecordResponse.respond204())
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        LOG.warn("putSourceStorageRecordsRecord:: Failed to update record by id {}", entity.getId(), e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });

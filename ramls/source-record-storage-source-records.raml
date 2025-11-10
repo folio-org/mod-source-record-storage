@@ -16,6 +16,7 @@ types:
   sourceRecord: !include raml-storage/schemas/dto/sourceRecord.json
   sourceRecordCollection: !include raml-storage/schemas/dto/sourceRecordCollection.json
   errors: !include raml-storage/raml-util/schemas/errors.schema
+  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -206,6 +207,25 @@ resourceTypes:
               example: "Not found"
         500:
           description: Internal server error
+          body:
+            text/plain:
+              example: "Internal server error"
+  /parsed-record:
+    description: Update ParsedRecord
+    put:
+      body:
+        application/json:
+          type: parsedRecordDto
+      responses:
+        204:
+          description: "ParsedRecord successfully updated"
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
           body:
             text/plain:
               example: "Internal server error"

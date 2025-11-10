@@ -12,7 +12,6 @@ documentation:
 types:
   errorRecord: !include raml-storage/schemas/mod-source-record-storage/errorRecord.json
   errorRecordCollection: !include raml-storage/schemas/mod-source-record-storage/errorRecordCollection.json
-  parsedRecordDto: !include raml-storage/schemas/dto/parsedRecordDto.json
   parsedRecord: !include raml-storage/schemas/mod-source-record-storage/parsedRecord.json
   parsedRecordCollection: !include raml-storage/schemas/mod-source-record-storage/parsedRecordCollection.json
   rawRecord: !include raml-storage/schemas/mod-source-record-storage/rawRecord.json
@@ -89,29 +88,6 @@ resourceTypes:
           body:
             application/json:
               type: recordsIdentifiersCollection
-        500:
-          description: "Internal server error"
-          body:
-            text/plain:
-              example: "Internal server error"
-  /parsed-record:
-    description: Update ParsedRecord
-    put:
-      queryParameters:
-        newRecordId:
-            description: New Record Id
-            type: string
-            required: true
-      body:
-        application/json:
-          type: parsedRecordDto
-      responses:
-        204:
-        400:
-          description: "Bad request"
-          body:
-            text/plain:
-              example: "Bad request"
         500:
           description: "Internal server error"
           body:

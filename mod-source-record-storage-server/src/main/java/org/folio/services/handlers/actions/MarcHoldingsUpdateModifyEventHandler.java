@@ -53,4 +53,9 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
   protected EntityType getRelatedEntityType() {
     return EntityType.HOLDINGS;
   }
+
+  @Override
+  protected boolean isCentralTenantRecordUpdateProtected() {
+    return false;
+  }
 }

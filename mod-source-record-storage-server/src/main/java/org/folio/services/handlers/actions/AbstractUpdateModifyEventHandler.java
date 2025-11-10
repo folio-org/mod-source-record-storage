@@ -190,7 +190,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   protected boolean isCentralTenantRecordUpdateProtected() {
-    return false;
+    return true;
   }
 
   private String getCentralTenantRecordUpdateForbiddenMessage() {

@@ -54,4 +54,9 @@ public class MarcAuthorityUpdateModifyEventHandler extends AbstractUpdateModifyE
   protected EntityType getRelatedEntityType() {
     return EntityType.AUTHORITY;
   }
+
+  @Override
+  protected boolean isCentralTenantRecordUpdateProtected() {
+    return false;
+  }
 }

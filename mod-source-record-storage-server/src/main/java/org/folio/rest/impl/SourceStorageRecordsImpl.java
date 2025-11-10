@@ -194,11 +194,13 @@ public class SourceStorageRecordsImpl implements SourceStorageRecords {
 
   @Override
   public void putSourceStorageRecordsParsedRecord(String newRecordId, ParsedRecordDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    LOG.info("putSourceStorageRecordsParsedRecord:: Updating source record with id: {}", entity.getId());
     vertxContext.runOnContext(v -> {
       try {
         recordService.updateSourceRecord(entity, UUID.randomUUID().toString(), newRecordId, okapiHeaders)
           .map(updated -> PutSourceStorageRecordsParsedRecordResponse.respond204())
-          .map(Response.class::cast).otherwise(ExceptionHelper::mapExceptionToResponse)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         LOG.warn("putSourceStorageRecordsRecord:: Failed to update record by id {}", entity.getId(), e);

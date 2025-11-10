@@ -96,15 +96,6 @@
           "methods": [
             "PUT"
           ],
-          "pathPattern": "/source-storage/records/parsed-record",
-          "permissionsRequired": [
-            "source-storage.records.record.put"
-          ]
-        },
-        {
-          "methods": [
-            "PUT"
-          ],
           "pathPattern": "/source-storage/records/{id}/generation",
           "permissionsRequired": [
             "source-storage.records.generation.item.put"
@@ -177,6 +168,15 @@
           "pathPattern": "/source-storage/source-records/{id}",
           "permissionsRequired": [
             "source-storage.source-records.item.get"
+          ]
+        },
+        {
+          "methods": [
+            "PUT"
+          ],
+          "pathPattern": "/source-storage/source-records/parsed-record",
+          "permissionsRequired": [
+            "source-storage.source-records.parsed-record.put"
           ]
         }
       ]
@@ -370,11 +370,6 @@
       "description": "Put Record"
     },
     {
-      "permissionName": "source-storage.records.record.put",
-      "displayName": "Source Storage - update record without events",
-      "description": "Put Record"
-    },
-    {
       "permissionName": "source-storage.records.generation.item.put",
       "displayName": "Source Storage - update record's generation",
       "description": "Update record's generation"
@@ -436,6 +431,11 @@
       "replaces": ["source-storage.records.get"]
     },
     {
+      "permissionName": "source-storage.source-records.parsed-record.put",
+      "displayName": "Source Storage - update record without events",
+      "description": "Put Record"
+    },
+    {
       "permissionName": "source-storage.records.item.get",
       "displayName": "Source Storage - get record",
       "description": "Get Record",
@@ -494,12 +494,12 @@
         "source-storage.snapshots.delete",
         "source-storage.records.post",
         "source-storage.records.put",
-        "source-storage.records.record.put",
         "source-storage.parsed-records.fetch.collection.post",
         "source-storage.records.delete",
         "source-storage.records.update",
         "source-storage.source-records.item.get",
         "source-storage.source-records.collection.get",
+        "source-storage.source-records.parsed-record.put",
         "source-storage.verified-records.collection.post",
         "source-storage.migrations.post",
         "source-storage.migrations.item.get",

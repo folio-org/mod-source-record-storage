@@ -28,10 +28,14 @@ public class MappingParametersSnapshotCache {
   private static final Logger LOGGER = LogManager.getLogger();
 
   private final AsyncCache<String, Optional<MappingParameters>> cache;
+  private static final int MAX_RETRIES = 3;
+  private static final long INITIAL_DELAY_MS = 200;
+  private final Vertx vertx;
 
   @Autowired
   public MappingParametersSnapshotCache(Vertx vertx,
-    @Value("${srs.mapping-params-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
+                                        @Value("${srs.mapping-params-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
+    this.vertx = vertx;
     cache = Caffeine.newBuilder()
       .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))
@@ -41,12 +45,10 @@ public class MappingParametersSnapshotCache {
 
   public Future<Optional<MappingParameters>> get(String jobExecutionId, OkapiConnectionParams params) {
     try {
-      LOGGER.info("get:: Cache keys before retrieval: {}", cache.synchronous().asMap().keySet());
-      CompletableFuture<Optional<MappingParameters>> cachedValue = cache.getIfPresent(jobExecutionId);
-      if (cachedValue != null) {
-        LOGGER.info("get:: Cache hit for jobExecutionId: '{}'", jobExecutionId);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("get:: Cache keys before retrieval: {}", cache.synchronous().asMap().keySet());
+        logCacheStats();
       }
-      logCacheStats();
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params)));
     } catch (Exception e) {
       LOGGER.warn("get:: Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
@@ -55,43 +57,68 @@ public class MappingParametersSnapshotCache {
   }
 
   public void logCacheStats() {
-    CacheStats stats = cache.synchronous().stats();
-    LOGGER.info("Cache Statistics:");
-    LOGGER.info("  Request Count: {}", stats.requestCount());
-    LOGGER.info("  Hit Count: {}", stats.hitCount());
-    LOGGER.info("  Hit Rate: {}%", String.format("%.2f", stats.hitRate() * 100));
-    LOGGER.info("  Miss Count: {}", stats.missCount());
-    LOGGER.info("  Miss Rate: {}%", String.format("%.2f", stats.missRate() * 100));
-    LOGGER.info("  Load Count: {}", stats.loadCount());
-    LOGGER.info("  Average Load Time: {}%", String.format("%.2f", stats.averageLoadPenalty() / 1_000_000.0));
-    LOGGER.info("  Eviction Count: {}", stats.evictionCount());
+    if (LOGGER.isDebugEnabled()) {
+      CacheStats stats = cache.synchronous().stats();
+      LOGGER.debug("Cache Statistics:");
+      LOGGER.debug("  Request Count: {}", stats.requestCount());
+      LOGGER.debug("  Hit Count: {}", stats.hitCount());
+      LOGGER.debug("  Hit Rate: {}%", String.format("%.2f", stats.hitRate() * 100));
+      LOGGER.debug("  Miss Count: {}", stats.missCount());
+      LOGGER.debug("  Miss Rate: {}%", String.format("%.2f", stats.missRate() * 100));
+      LOGGER.debug("  Load Count: {}", stats.loadCount());
+      LOGGER.debug("  Average Load Time: {}%", String.format("%.2f", stats.averageLoadPenalty() / 1_000_000.0));
+      LOGGER.debug("  Eviction Count: {}", stats.evictionCount());
+    }
   }
 
   private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {
-    LOGGER.debug("loadMappingParametersSnapshot:: Trying to load MappingParametersSnapshot by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, params.getOkapiUrl(), params.getTenantId());
-    return RestUtil.doRequestWithSystemUser(params, "/mapping-metadata/"+ jobExecutionId, HttpMethod.GET, null)
+    return loadWithRetry(jobExecutionId, params, 0, INITIAL_DELAY_MS);
+  }
+
+  private CompletableFuture<Optional<MappingParameters>> loadWithRetry(String jobExecutionId, OkapiConnectionParams params, int attempt, long delay) {
+    LOGGER.debug("loadWithRetry:: Attempt {} to load MappingParametersSnapshot for jobExecutionId '{}'", attempt + 1, jobExecutionId);
+
+    return RestUtil.doRequestWithSystemUser(params, "/mapping-metadata/" + jobExecutionId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
       .thenCompose(httpResponse -> {
-        if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_OK.toInt()) {
-          LOGGER.info("loadMappingParametersSnapshot:: MappingParametersSnapshot was loaded by jobExecutionId '{}'", jobExecutionId);
+        int statusCode = httpResponse.getResponse().statusCode();
+
+        if (statusCode == HttpStatus.HTTP_OK.toInt()) {
+          LOGGER.info("loadWithRetry:: Successfully loaded MappingParametersSnapshot on attempt {} for jobExecutionId '{}'", attempt + 1, jobExecutionId);
           try {
             MappingParameters mappingParameters = Json.decodeValue(httpResponse.getJson().getString("mappingParams"), MappingParameters.class);
             return CompletableFuture.completedFuture(Optional.of(mappingParameters));
           } catch (Exception e) {
-            String errorMessage = String.format("loadMappingParametersSnapshot:: Failed to deserialize MappingParameters for jobExecutionId: '%s'. Response body: %s", jobExecutionId, httpResponse.getBody());
+            String errorMessage = String.format("loadWithRetry:: Failed to deserialize on attempt %d for jobExecutionId: '%s'. Response body: %s", attempt + 1, jobExecutionId, httpResponse.getBody());
             LOGGER.error(errorMessage, e);
             return CompletableFuture.failedFuture(new CacheLoadingException(errorMessage, e));
           }
-        } else if (httpResponse.getResponse().statusCode() == HttpStatus.HTTP_NOT_FOUND.toInt()) {
-          LOGGER.warn("loadMappingParametersSnapshot:: MappingParametersSnapshot was not found by jobExecutionId '{}'", jobExecutionId);
-          return CompletableFuture.completedFuture(Optional.empty());
+        } else if (statusCode == HttpStatus.HTTP_NOT_FOUND.toInt()) {
+          if (attempt < MAX_RETRIES) {
+            LOGGER.warn("loadWithRetry:: Got 404 on attempt {}. Retrying in {} ms for jobExecutionId '{}'...", attempt + 1, delay, jobExecutionId);
+            CompletableFuture<Optional<MappingParameters>> nextAttempt = new CompletableFuture<>();
+            vertx.setTimer(delay, id -> {
+              loadWithRetry(jobExecutionId, params, attempt + 1, delay * 2)
+                .whenComplete((result, error) -> {
+                  if (error != null) {
+                    nextAttempt.completeExceptionally(error);
+                  } else {
+                    nextAttempt.complete(result);
+                  }
+                });
+            });
+            return nextAttempt;
+          } else {
+            LOGGER.error("loadWithRetry:: Got 404 on final attempt {}. Giving up for jobExecutionId '{}'.", attempt + 1, jobExecutionId);
+            return CompletableFuture.completedFuture(Optional.empty());
+          }
         } else {
-          String message = String.format("loadMappingParametersSnapshot:: Error loading MappingParametersSnapshot by jobExecutionId: '%s', status code: %s, response message: %s",
-            jobExecutionId, httpResponse.getResponse().statusCode(), httpResponse.getBody());
+          String message = String.format("loadWithRetry:: Error on attempt %d for jobExecutionId: '%s', status code: %s, response message: %s",
+            attempt + 1, jobExecutionId, statusCode, httpResponse.getBody());
           LOGGER.warn(message);
           return CompletableFuture.failedFuture(new CacheLoadingException(message));
         }
-    });
+      });
   }
 }

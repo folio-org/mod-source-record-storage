@@ -103,6 +103,11 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
+  protected boolean isCentralTenantRecordUpdateProtected() {
+    return true;
+  }
+
+  @Override
   protected Future<Void> modifyRecord(DataImportEventPayload dataImportEventPayload, MappingProfile mappingProfile,
                                       MappingParameters mappingParameters) {
     if (mappingProfile.getMappingDetails().getMarcMappingOption() == MappingDetail.MarcMappingOption.MODIFY) {

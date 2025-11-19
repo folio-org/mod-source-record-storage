@@ -44,19 +44,24 @@ public class MappingParametersSnapshotCache {
   }
 
   public Future<Optional<MappingParameters>> get(String jobExecutionId, OkapiConnectionParams params) {
-    try {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("get:: Cache keys before retrieval: {}", cache.synchronous().asMap().keySet());
-        logCacheStats();
-      }
-      return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params)));
-    } catch (Exception e) {
-      LOGGER.warn("get:: Error loading MappingParametersSnapshot by jobExecutionId: '{}'", jobExecutionId, e);
-      return Future.failedFuture(e);
+
+    if (jobExecutionId == null) {
+      LOGGER.warn("get:: Attempted to retrieve from cache with a null jobExecutionId.");
+      return Future.failedFuture(new NullPointerException("jobExecutionId cannot be null"));
     }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("get:: Retrieving mapping parameters for jobExecutionId: '{}'", jobExecutionId);
+      LOGGER.debug("get:: Current cache keys: {}", cache.synchronous().asMap().keySet());
+      logCacheStats();
+    }
+
+    return Future.fromCompletionStage(
+      cache.get(jobExecutionId, (key, executor) -> loadMappingParametersSnapshot(key, params))
+    );
   }
 
-  public void logCacheStats() {
+  private void logCacheStats() {
     if (LOGGER.isDebugEnabled()) {
       CacheStats stats = cache.synchronous().stats();
       LOGGER.debug("Cache Statistics:");

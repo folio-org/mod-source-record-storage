@@ -114,6 +114,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static final String userId = UUID.randomUUID().toString();
+  private static final int CACHE_EXPIRATION_TIME = 3600;
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
@@ -248,9 +249,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
     LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
-    modifyRecordEventHandler =
-      new MarcBibUpdateModifyEventHandler(recordService, snapshotService, new MappingParametersSnapshotCache(vertx), vertx,
-        instanceLinkClient, linkingRulesCache);
+    MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
+    modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, snapshotService,
+      mappingParametersCache, vertx, instanceLinkClient, linkingRulesCache);
 
     snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

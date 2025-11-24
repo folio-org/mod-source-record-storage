@@ -78,6 +78,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA__URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_HOLDINGS";
+  private static final int CACHE_EXPIRATION_TIME = 3600;
 
   private static String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static RawRecord rawRecord;
@@ -165,7 +166,8 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
-    modifyRecordEventHandler = new MarcHoldingsUpdateModifyEventHandler(recordService, null, new MappingParametersSnapshotCache(vertx), vertx);
+    modifyRecordEventHandler = new MarcHoldingsUpdateModifyEventHandler(recordService, null,
+      new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME), vertx);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

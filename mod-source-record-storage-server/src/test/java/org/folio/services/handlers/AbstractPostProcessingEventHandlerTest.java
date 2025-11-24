@@ -67,6 +67,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   private static ParsedRecord parsedRecord;
   protected final String snapshotId1 = UUID.randomUUID().toString();
   protected final String snapshotId2 = UUID.randomUUID().toString();
+  private static final int CACHE_EXPIRATION_TIME = 3600;
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
   protected Record record;
@@ -103,7 +104,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    mappingParametersCache = new MappingParametersSnapshotCache(vertx);
+    mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);

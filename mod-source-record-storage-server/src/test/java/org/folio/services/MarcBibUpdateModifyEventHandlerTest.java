@@ -248,7 +248,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     recordService = new RecordServiceImpl(recordDao);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
-    LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
+    LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
     MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
     modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, snapshotService,
       mappingParametersCache, vertx, instanceLinkClient, linkingRulesCache);

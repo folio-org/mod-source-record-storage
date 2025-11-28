@@ -41,6 +41,7 @@ public class LinkingRulesCacheTest {
 
   private static final String TENANT_ID = "diku";
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
+  private static final int CACHE_EXPIRATION_TIME = 12;
   private static final List<LinkingRuleDto> linkingRules = singletonList(new LinkingRuleDto()
     .withId(1)
     .withBibField("100")
@@ -53,7 +54,7 @@ public class LinkingRulesCacheTest {
   private static OkapiConnectionParams params;
 
   private final InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
-  private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx);
+  private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();

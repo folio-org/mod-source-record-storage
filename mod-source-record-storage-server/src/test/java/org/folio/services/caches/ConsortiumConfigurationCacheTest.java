@@ -34,8 +34,10 @@ public class ConsortiumConfigurationCacheTest {
   private static final String CENTRAL_TENANT_ID = "centralTenantId";
   private static final String CONSORTIUM_ID = "consortiumId";
   private static final String USER_TENANTS_ENDPOINT = "/user-tenants";
+  private static final int CACHE_EXPIRATION_TIME = 3600;
   private final Vertx vertx = Vertx.vertx();
-  private final ConsortiumConfigurationCache consortiumConfigurationCache = new ConsortiumConfigurationCache(vertx);
+  private final ConsortiumConfigurationCache consortiumConfigurationCache =
+    new ConsortiumConfigurationCache(vertx, CACHE_EXPIRATION_TIME);
   private OkapiConnectionParams params;
   private final JsonObject consortiumConfiguration = new JsonObject()
     .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));

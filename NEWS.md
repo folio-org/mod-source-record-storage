@@ -1,3 +1,7 @@
+## 2025-12-01 5.10.12
+* [MODSOURCE-951](https://folio-org.atlassian.net/browse/MODSOURCE-951) MappingParameters snapshot was not found by jobExecutionId
+* [MODSOURCE-952](https://folio-org.atlassian.net/browse/MODSOURCE-952) Fix configuration of cache expiration time
+
 ## 2025-10-27 5.10.11
 * [MODSOURCE-947](https://folio-org.atlassian.net/browse/MODSOURCE-947) Fix normalization of 035 field during MARC record update
 

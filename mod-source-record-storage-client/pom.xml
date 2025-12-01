@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>5.10.12-SNAPSHOT</version>
+    <version>5.10.12</version>
   </parent>
 
   <properties>

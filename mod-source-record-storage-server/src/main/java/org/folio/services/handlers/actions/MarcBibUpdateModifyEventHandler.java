@@ -97,12 +97,6 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   @Override
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
-    payload.setEventType(getUpdateEventType());
-    future.complete(payload);
-  }
-
-  @Override
   protected boolean isCentralTenantRecordUpdateProtected() {
     return true;
   }

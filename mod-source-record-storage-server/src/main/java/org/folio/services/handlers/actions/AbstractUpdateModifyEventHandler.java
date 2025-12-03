@@ -164,7 +164,9 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             return recordService.saveRecord(changedRecord, okapiHeaders);
           })
         )
-        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))
+        .onSuccess(savedRecord -> {
+          submitSuccessfulEventType(payload, savedRecord, future);
+        })
         .onFailure(throwable -> {
           LOG.error("handle:: Error while processing for jobExecutionId: {} and recordId: {}", jobExecutionId, finalRecordId, throwable);
           future.completeExceptionally(throwable);
@@ -197,12 +199,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return USER_HAS_NO_PERMISSION_MSG.formatted(getRelatedEntityType().value().toLowerCase());
   }
 
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
+  private void submitSuccessfulEventType(DataImportEventPayload payload, Record savedRecord, CompletableFuture<DataImportEventPayload> future) {
     String recordId = payload.getContext().get(RECORD_ID_HEADER);
     String updatedEventType = getUpdateEventType();
     LOG.debug("submitSuccessfulEventType:: Start submitting successful event type '{}' for jobExecutionId: '{}' and recordId: '{}'",
       updatedEventType, payload.getJobExecutionId(), recordId);
       payload.setEventType(updatedEventType);
+      payload.getContext().put(modifiedEntityType().value(), Json.encode(savedRecord));
       future.complete(payload);
   }
 

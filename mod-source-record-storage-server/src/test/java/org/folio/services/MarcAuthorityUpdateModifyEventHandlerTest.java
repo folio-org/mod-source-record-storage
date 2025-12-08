@@ -247,7 +247,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_AUTHORITY.value()), Record.class);
       context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
       validate005Field(context, expectedDate, actualRecord);

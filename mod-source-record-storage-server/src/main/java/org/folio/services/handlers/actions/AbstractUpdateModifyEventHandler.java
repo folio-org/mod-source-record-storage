@@ -204,6 +204,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     String updatedEventType = getUpdateEventType();
     LOG.debug("submitSuccessfulEventType:: Start submitting successful event type '{}' for jobExecutionId: '{}' and recordId: '{}'",
       updatedEventType, payload.getJobExecutionId(), recordId);
+      savedRecord.getParsedRecord().setContent(Json.encode(savedRecord.getParsedRecord().getContent()));
       payload.setEventType(updatedEventType);
       payload.getContext().put(modifiedEntityType().value(), Json.encode(savedRecord));
       future.complete(payload);

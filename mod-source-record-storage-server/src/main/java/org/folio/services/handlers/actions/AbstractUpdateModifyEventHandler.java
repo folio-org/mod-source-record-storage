@@ -164,9 +164,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             return recordService.saveRecord(changedRecord, okapiHeaders);
           })
         )
-        .onSuccess(savedRecord -> {
-          submitSuccessfulEventType(payload, savedRecord, future);
-        })
+        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, savedRecord, future))
         .onFailure(throwable -> {
           LOG.error("handle:: Error while processing for jobExecutionId: {} and recordId: {}", jobExecutionId, finalRecordId, throwable);
           future.completeExceptionally(throwable);

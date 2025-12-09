@@ -197,14 +197,26 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return USER_HAS_NO_PERMISSION_MSG.formatted(getRelatedEntityType().value().toLowerCase());
   }
 
-  private void submitSuccessfulEventType(DataImportEventPayload payload, Record savedRecord, CompletableFuture<DataImportEventPayload> future) {
+  private void submitSuccessfulEventType(DataImportEventPayload payload, Record updatedRecord, CompletableFuture<DataImportEventPayload> future) {
     String recordId = payload.getContext().get(RECORD_ID_HEADER);
     String updatedEventType = getUpdateEventType();
     LOG.debug("submitSuccessfulEventType:: Start submitting successful event type '{}' for jobExecutionId: '{}' and recordId: '{}'",
       updatedEventType, payload.getJobExecutionId(), recordId);
+      encodeParsedRecordContentToString(updatedRecord);
       payload.setEventType(updatedEventType);
-      payload.getContext().put(modifiedEntityType().value(), Json.encode(savedRecord));
+      payload.getContext().put(modifiedEntityType().value(), Json.encode(updatedRecord));
       future.complete(payload);
+  }
+
+  /**
+   * Encodes the content of the parsed record to a JSON string.
+   * This method serializes parsed content into a string format before being placed in the event payload
+   * to ensure the content is suitable for subsequent processing during the data import flow.
+   *
+   * @param recordToProcess the record whose parsed content will be encoded
+   */
+  private void encodeParsedRecordContentToString(Record recordToProcess) {
+    recordToProcess.getParsedRecord().setContent(Json.encode(recordToProcess.getParsedRecord().getContent()));
   }
 
   @Override

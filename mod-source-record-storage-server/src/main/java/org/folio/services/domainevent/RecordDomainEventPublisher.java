@@ -7,6 +7,8 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_DELETED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -107,6 +109,12 @@ public class RecordDomainEventPublisher {
 
     Optional.ofNullable(okapiHeaders.get(OKAPI_TOKEN_HEADER))
       .ifPresent(token -> headers.add(KafkaHeader.header(OKAPI_TOKEN_HEADER, token)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_USER_HEADER))
+      .ifPresent(userId -> headers.add(KafkaHeader.header(OKAPI_USER_HEADER, userId)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_REQUEST_HEADER))
+        .ifPresent(requestId -> headers.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId)));
 
     Optional.ofNullable(recordType)
       .map(Record.RecordType::value)

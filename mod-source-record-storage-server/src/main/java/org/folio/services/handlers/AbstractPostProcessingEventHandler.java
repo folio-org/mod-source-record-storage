@@ -19,8 +19,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
-import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
+import static org.folio.services.util.EventHandlingUtil.*;
 import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 import io.vertx.core.Future;
@@ -35,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -160,8 +161,18 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     );
 
     String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
-    if (recordId != null) {
+    if (StringUtils.isNotBlank(recordId)) {
       kafkaHeaders.add(KafkaHeader.header(RECORD_ID_HEADER, recordId));
+    }
+
+    String userId = eventPayload.getContext().get(USER_ID_HEADER);
+    if (StringUtils.isNotBlank(userId)) {
+      kafkaHeaders.add(KafkaHeader.header(USER_ID_HEADER, userId));
+    }
+
+    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
+    if (StringUtils.isNotBlank(requestId)) {
+      kafkaHeaders.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId));
     }
     return kafkaHeaders;
   }

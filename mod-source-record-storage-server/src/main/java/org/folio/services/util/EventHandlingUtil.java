@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
@@ -35,6 +37,8 @@ public final class EventHandlingUtil {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
+  public static final String OKAPI_REQUEST_HEADER = "x-okapi-request-id";
+  public static final String OKAPI_USER_HEADER = "x-okapi-user-id";
 
 
   private EventHandlingUtil() { }
@@ -126,6 +130,14 @@ public final class EventHandlingUtil {
     okapiHeaders.put(OKAPI_URL_HEADER, eventPayload.getOkapiUrl());
     okapiHeaders.put(OKAPI_TENANT_HEADER, eventPayload.getTenant());
     okapiHeaders.put(OKAPI_TOKEN_HEADER, eventPayload.getToken());
+    String userId = eventPayload.getContext().get(OKAPI_USER_HEADER);
+    if (StringUtils.isNotBlank(userId)) {
+      okapiHeaders.put(OKAPI_USER_HEADER, userId);
+    }
+    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
+    if (StringUtils.isNotBlank(requestId)) {
+      okapiHeaders.put(OKAPI_REQUEST_HEADER, requestId);
+    }
     return okapiHeaders;
   }
 
@@ -138,6 +150,14 @@ public final class EventHandlingUtil {
     okapiHeaders.put(OKAPI_URL_HEADER, extractHeaderValue(OKAPI_URL_HEADER, kafkaHeaders));
     okapiHeaders.put(OKAPI_TENANT_HEADER, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(OKAPI_TENANT_HEADER, kafkaHeaders));
     okapiHeaders.put(OKAPI_TOKEN_HEADER, extractHeaderValue(OKAPI_TOKEN_HEADER, kafkaHeaders));
+    String userId = extractHeaderValue(OKAPI_USER_HEADER, kafkaHeaders);
+    if (StringUtils.isNotBlank(userId)) {
+      okapiHeaders.put(OKAPI_USER_HEADER, userId);
+    }
+    String requestId = extractHeaderValue(OKAPI_REQUEST_HEADER, kafkaHeaders);
+    if (StringUtils.isNotBlank(requestId)) {
+      okapiHeaders.put(OKAPI_REQUEST_HEADER, requestId);
+    }
     return okapiHeaders;
   }
 

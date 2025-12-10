@@ -502,7 +502,7 @@ public class RecordServiceImpl implements RecordService {
             promise.complete(record.withMatchedId(record.getId()));
           }
         } else {
-          LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record");
+          LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record recordId={}", record.getId());
           promise.fail(ar.cause());
         }
       });

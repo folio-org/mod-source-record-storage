@@ -118,12 +118,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           future.complete(dataImportEventPayload);
         })
         .onFailure(throwable -> {
-          LOG.warn(FAIL_MSG, eventType, throwable);
+          LOG.warn(FAIL_MSG + " jobExecutionId={}", eventType, jobExecutionId, throwable);
           dataImportEventPayload.setEventType(getNextEventType(dataImportEventPayload));
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
-      LOG.warn(FAIL_MSG, eventType, e);
+      LOG.warn(FAIL_MSG + " jobExecutionId={}", eventType, jobExecutionId, e);
       future.completeExceptionally(e);
     }
     return future;
@@ -211,7 +211,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     String userId = (String) dataImportEventPayload.getAdditionalProperties().get(USER_ID_HEADER);
 
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
-      LOG.warn(EVENT_HAS_NO_DATA_MSG);
+      LOG.warn(EVENT_HAS_NO_DATA_MSG + " jobExecutionId={}", dataImportEventPayload.getJobExecutionId());
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);

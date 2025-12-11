@@ -171,10 +171,6 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess());
-
-    SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());

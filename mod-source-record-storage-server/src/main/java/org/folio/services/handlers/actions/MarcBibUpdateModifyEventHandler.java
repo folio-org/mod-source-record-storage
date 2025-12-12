@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -94,12 +93,6 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   @Override
   protected EntityType getRelatedEntityType() {
     return EntityType.INSTANCE;
-  }
-
-  @Override
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
-    payload.setEventType(getUpdateEventType());
-    future.complete(payload);
   }
 
   @Override

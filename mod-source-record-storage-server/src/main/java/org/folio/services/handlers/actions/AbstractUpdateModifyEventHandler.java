@@ -164,7 +164,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             return recordService.saveRecord(changedRecord, okapiHeaders);
           })
         )
-        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, future, marcMappingOption))
+        .onSuccess(savedRecord -> submitSuccessfulEventType(payload, savedRecord, future))
         .onFailure(throwable -> {
           LOG.error("handle:: Error while processing for jobExecutionId: {} and recordId: {}", jobExecutionId, finalRecordId, throwable);
           future.completeExceptionally(throwable);
@@ -197,13 +197,26 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return USER_HAS_NO_PERMISSION_MSG.formatted(getRelatedEntityType().value().toLowerCase());
   }
 
-  protected void submitSuccessfulEventType(DataImportEventPayload payload, CompletableFuture<DataImportEventPayload> future, MappingDetail.MarcMappingOption marcMappingOption) {
+  private void submitSuccessfulEventType(DataImportEventPayload payload, Record updatedRecord, CompletableFuture<DataImportEventPayload> future) {
     String recordId = payload.getContext().get(RECORD_ID_HEADER);
     String updatedEventType = getUpdateEventType();
     LOG.debug("submitSuccessfulEventType:: Start submitting successful event type '{}' for jobExecutionId: '{}' and recordId: '{}'",
       updatedEventType, payload.getJobExecutionId(), recordId);
+      encodeParsedRecordContentToString(updatedRecord);
       payload.setEventType(updatedEventType);
+      payload.getContext().put(modifiedEntityType().value(), Json.encode(updatedRecord));
       future.complete(payload);
+  }
+
+  /**
+   * Encodes the content of the parsed record to a JSON string.
+   * This method serializes parsed content into a string format before being placed in the event payload
+   * to ensure the content is suitable for subsequent processing during the data import flow.
+   *
+   * @param recordToProcess the record whose parsed content will be encoded
+   */
+  private void encodeParsedRecordContentToString(Record recordToProcess) {
+    recordToProcess.getParsedRecord().setContent(Json.encode(recordToProcess.getParsedRecord().getContent()));
   }
 
   @Override
@@ -275,16 +288,20 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       if (isUpdateOption(marcMappingOption)) {
         changedRecord = Json.decodeValue(context.remove(getMatchedMarcKey()), Record.class);
         String originalRecordId = changedRecord.getId();
-        LOG.debug("prepareModificationResult:: Preparing modification result for jobExecutionId: '{}' and recordId: '{}'. Original record: '{}'",
-          payload.getJobExecutionId(), originalRecordId, Json.encodePrettily(changedRecord));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("prepareModificationResult:: Preparing modification result for jobExecutionId: '{}' and recordId: '{}'. Original record: '{}'",
+            payload.getJobExecutionId(), originalRecordId, Json.encodePrettily(changedRecord));
+        }
         changedRecord.setSnapshotId(payload.getJobExecutionId());
         changedRecord.setGeneration(null);
         changedRecord.setId(UUID.randomUUID().toString());
         Record incomingRecord = Json.decodeValue(context.get(modifiedEntityType().value()), Record.class);
         changedRecord.setOrder(incomingRecord.getOrder());
         context.put(modifiedEntityType().value(), Json.encode(changedRecord));
-        LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'. Modified record: '{}'",
-          payload.getJobExecutionId(), originalRecordId, changedRecord.getId(), Json.encodePrettily(changedRecord));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'. Modified record: '{}'",
+            payload.getJobExecutionId(), originalRecordId, changedRecord.getId(), Json.encodePrettily(changedRecord));
+        }
       }
       if (changedRecord != null) {
         LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}' and recordId: '{}'",
@@ -302,13 +319,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   protected MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {
-    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0);
+    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().getFirst();
     return new JsonObject((Map) mappingProfileWrapper.getContent()).mapTo(MappingProfile.class);
   }
 
   private void preparePayload(DataImportEventPayload dataImportEventPayload) {
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
-    dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0));
+    dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().getFirst());
   }
 
   private void increaseGeneration(Record changedRecord) {

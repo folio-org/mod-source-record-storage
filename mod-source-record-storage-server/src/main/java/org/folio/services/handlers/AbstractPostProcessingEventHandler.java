@@ -19,7 +19,9 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.*;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
+import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
+import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 import io.vertx.core.Future;

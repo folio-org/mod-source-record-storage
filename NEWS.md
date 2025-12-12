@@ -5,6 +5,7 @@
 * [MODSOURCE-747](https://folio-org.atlassian.net/browse/MODSOURCE-747) Do not process event if JobExecution status is Cancelled
 * [MODSOURCE-930](https://folio-org.atlassian.net/browse/MODSOURCE-930) Cannot update MARC authority record by created user
 * [MODSOURCE-962](https://folio-org.atlassian.net/browse/MODSOURCE-962) MARC Modifications fail for Updates
+* [MODSOURCE-957](https://folio-org.atlassian.net/browse/MODSOURCE-957) Remove quick-marc events handling logic
 
 ## 2025-03-13 5.10.0
 * [MODSOURMAN-1278](https://folio-org.atlassian.net/browse/MODSOURMAN-1278) Data import job stuck in progress with 99-100%

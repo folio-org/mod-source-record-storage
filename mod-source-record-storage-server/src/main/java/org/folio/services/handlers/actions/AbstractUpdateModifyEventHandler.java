@@ -87,7 +87,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     try {
       var payloadContext = payload.getContext();
       if (isNull(payloadContext) || isBlank(payloadContext.get(modifiedEntityType().value()))) {
-        LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
+        LOG.warn(PAYLOAD_HAS_NO_DATA_MSG + " jobExecutionId={}", jobExecutionId);
         future.completeExceptionally(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
         return future;
       }

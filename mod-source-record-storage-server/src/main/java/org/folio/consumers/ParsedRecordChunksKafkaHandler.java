@@ -107,7 +107,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
     }
   }
 
-  private Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber, String eventType, KafkaConsumerRecord<String, byte[]> commonRecord) {
+  protected Future<String> sendBackRecordsBatchResponse(RecordsBatchResponse recordsBatchResponse, List<KafkaHeader> kafkaHeaders, String tenantId, int chunkNumber, String eventType, KafkaConsumerRecord<String, byte[]> commonRecord) {
     Event event;
     event = new Event()
       .withId(UUID.randomUUID().toString())
@@ -148,7 +148,9 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       })
       .onFailure(err -> {
         Throwable cause = err.getCause();
-        LOGGER.warn("sendBackRecordsBatchResponse:: {} write error {}", producerName, cause);
+        String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, commonRecord.headers());
+        String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
+        LOGGER.warn("sendBackRecordsBatchResponse:: {} write error jobExecutionId={} chunkId={}", producerName, jobExecutionId, chunkId, cause);
         writePromise.fail(cause);
       });
     return writePromise.future();

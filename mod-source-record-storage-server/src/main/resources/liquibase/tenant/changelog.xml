@@ -79,4 +79,5 @@
   <include file="scripts/v-5.10.0/2025-12-03--15-00-create-composite-index-and-update-immutable-to-date-function.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2025-22-04--15-00-update-composite-index-immutable-to-date-with-marc-id.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2025-05-02--11-00-create-index-external-id-covering.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

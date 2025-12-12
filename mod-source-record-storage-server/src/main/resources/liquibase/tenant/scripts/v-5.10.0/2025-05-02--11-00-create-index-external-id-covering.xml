@@ -6,8 +6,7 @@
 
   <changeSet id="2025-05-02--11-00-create-index-external-id-covering" author="viachaslau_khandramai">
     <sql>
-      DROP INDEX IF EXISTS idx_records_lb_external_id_covering;
-      CREATE INDEX IF NOT EXISTS idx_records_lb_external_id_covering ON ${database.defaultSchemaName}.records_lb (external_id, record_type, state, suppress_discovery, leader_record_status, id, generation);
+      CREATE INDEX idx_records_lb_external_id_covering ON ${database.defaultSchemaName}.records_lb (external_id, record_type, state, suppress_discovery, leader_record_status, id, generation);
     </sql>
   </changeSet>
 

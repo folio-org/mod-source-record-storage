@@ -64,7 +64,6 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
-import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.client.TenantClient;
@@ -380,7 +379,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent()));
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
       validate005Field(context, expectedDate, actualRecord);
@@ -485,7 +484,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
       context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent()));
+        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
       validate005Field(context, expectedDate, actualRecord);
@@ -539,7 +538,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent()));
+      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       validate005Field(context, expectedDate, actualRecord);
       async.complete();
@@ -593,7 +592,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent()));
+      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       validate005Field(context, expectedDate, actualRecord);
       async.complete();
@@ -983,7 +982,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
             context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
             verifyRecords(context, getParsedContentWithoutDate(expectedParsedContent),
-              getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent()));
+              getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
             validate005Field(context, expectedDate, actualRecord);
             verifyGetAndPut(context, getRequestCount, putRequestCount);
             async.complete();
@@ -1010,16 +1009,16 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     }
   }
 
-  public static String getParsedContentWithoutLeaderAndDate(Object parsedContent) {
-    JsonObject parsedContentAsJson = ParsedRecordDaoUtil.normalize(parsedContent);
+  public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
     parsedContentAsJson.remove("leader");
     remove005FieldFromRecord(parsedContentAsJson);
 
     return parsedContentAsJson.encode();
   }
 
-  public static String getParsedContentWithoutDate(Object parsedContent) {
-    JsonObject parsedContentAsJson = ParsedRecordDaoUtil.normalize(parsedContent);
+  public static String getParsedContentWithoutDate(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
     remove005FieldFromRecord(parsedContentAsJson);
 
     return parsedContentAsJson.encode();

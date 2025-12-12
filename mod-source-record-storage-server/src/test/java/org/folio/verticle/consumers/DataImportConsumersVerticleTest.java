@@ -249,7 +249,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     Record actualRecord =
       Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
     assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-      getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent()));
+      getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     validate005Field(expectedDate, actualRecord);

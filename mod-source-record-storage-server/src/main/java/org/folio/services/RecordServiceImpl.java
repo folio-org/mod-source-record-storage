@@ -3,7 +3,6 @@ package org.folio.services;
 import static java.lang.String.format;
 import static java.util.Objects.nonNull;
 import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
-import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
@@ -28,7 +27,6 @@ import io.vertx.sqlclient.Row;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,21 +53,17 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
-import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
 import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
-import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordMatchingDto;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.RecordsIdentifiersCollection;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
@@ -104,7 +98,6 @@ public class RecordServiceImpl implements RecordService {
   protected static final String UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION = "Record with source=LINKED_DATA cannot be updated using QuickMARC. Please use Linked Data Editor.";
   public static final char SUBFIELD_S = 's';
   public static final char INDICATOR = 'f';
-  public static final char SUBFIELD_L = 'l';
   private static final String TAG_001 = "001";
 
   private final RecordDao recordDao;
@@ -131,25 +124,25 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
+  public Future<Record> saveRecord(Record rec, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", record.getId(), tenantId);
-    ensureRecordHasId(record);
-    ensureRecordHasSuppressDiscovery(record);
-    if (!isRecordContainsRequiredField(record)) {
-      LOG.error("saveRecord:: Record '{}' has invalid externalIdHolder or missing 001 field into parsed record", record.getId());
+    LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", rec.getId(), tenantId);
+    ensureRecordHasId(rec);
+    ensureRecordHasSuppressDiscovery(rec);
+    if (!isRecordContainsRequiredField(rec)) {
+      LOG.error("saveRecord:: Record '{}' has invalid externalIdHolder or missing 001 field into parsed record", rec.getId());
       return Future.failedFuture(new BadRequestException(EXTERNAL_IDS_MISSING_ERROR));
     }
-    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, rec.getSnapshotId())
         .map(optionalSnapshot -> optionalSnapshot
-          .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
+          .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, rec.getSnapshotId()))))
         .compose(snapshot -> {
           if (Objects.isNull(snapshot.getProcessingStartedDate())) {
             return Future.failedFuture(new BadRequestException(format(SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE, snapshot.getStatus())));
           }
           return Future.succeededFuture();
         })
-        .compose(v -> setMatchedIdForRecord(record, tenantId))
+        .compose(v -> setMatchedIdForRecord(rec, tenantId))
         .compose(r -> {
           if (Objects.isNull(r.getGeneration())) {
             return recordDao.calculateGeneration(txQE, r);
@@ -158,17 +151,17 @@ public class RecordServiceImpl implements RecordService {
         })
         .compose(generation -> {
           if (generation > 0) {
-            return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+            return recordDao.getRecordByMatchedId(txQE, rec.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)),
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)),
                   matchedRecord.withState(Record.State.OLD), okapiHeaders))
-                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders)));
+                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders)));
           } else {
-            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
+            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders);
           }
         }), tenantId)
       .recover(throwable -> {
-        LOG.error("saveRecord:: Error saving record with id: '{}'", record.getId(), throwable);
+        LOG.error("saveRecord:: Error saving record with id: '{}'", rec.getId(), throwable);
         return mapToDuplicateExceptionIfNeeded(throwable);
       });
   }
@@ -181,7 +174,7 @@ public class RecordServiceImpl implements RecordService {
       return promise.future();
     }
     List<Future<Record>> setMatchedIdsFutures = new ArrayList<>();
-    recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
+    recordCollection.getRecords().forEach(rec -> setMatchedIdsFutures.add(setMatchedIdForRecord(rec,
       okapiHeaders.get(OKAPI_TENANT_HEADER))));
     return GenericCompositeFuture.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded()
@@ -245,21 +238,21 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
-    return recordDao.updateRecord(ensureRecordForeignKeys(record), okapiHeaders);
+  public Future<Record> updateRecord(Record rec, Map<String, String> okapiHeaders) {
+    return recordDao.updateRecord(ensureRecordForeignKeys(rec), okapiHeaders);
   }
 
   @Override
-  public Future<Record> updateRecordGeneration(String matchedId, Record record, Map<String, String> okapiHeaders) {
-    String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
+  public Future<Record> updateRecordGeneration(String matchedId, Record rec, Map<String, String> okapiHeaders) {
+    String marcField999s = getFieldFromMarcRecord(rec, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (!matchedId.equals(marcField999s)) {
       return Future.failedFuture(new BadRequestException(format(MATCHED_ID_NOT_EQUAL_TO_999_FIELD, matchedId, marcField999s)));
     }
-    record.setId(UUID.randomUUID().toString());
+    rec.setId(UUID.randomUUID().toString());
 
     return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(OKAPI_TENANT_HEADER))
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
-      .compose(v -> saveRecord(record, okapiHeaders))
+      .compose(v -> saveRecord(rec, okapiHeaders))
       .recover(throwable -> {
         if (throwable instanceof DuplicateRecordException) {
           return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
@@ -306,8 +299,8 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
-    return recordDao.updateParsedRecord(record, okapiHeaders);
+  public Future<ParsedRecord> updateParsedRecord(Record rec, Map<String, String> okapiHeaders) {
+    return recordDao.updateParsedRecord(rec, okapiHeaders);
   }
 
   @Override
@@ -363,53 +356,6 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders) {
-    String newRecordId = UUID.randomUUID().toString();
-    return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
-      .compose(optionalRecord -> optionalRecord
-        .map(existingRecord -> checkIfEditable(existingRecord)
-          .compose(sourceRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
-            .withJobExecutionId(snapshotId)
-            .withProcessingStartedDate(new Date())
-            .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
-          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, getNewRecord(parsedRecordDto, existingRecord, snapshot, newRecordId),
-            existingRecord.withState(Record.State.OLD), okapiHeaders)))
-        .orElse(Future.failedFuture(new NotFoundException(
-          format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));
-  }
-
-  private static Record getNewRecord(ParsedRecordDto parsedRecordDto, Record existingRecord, Snapshot snapshot, String newRecordId) {
-    Record newRecord = new Record()
-      .withId(newRecordId)
-      .withSnapshotId(snapshot.getJobExecutionId())
-      .withMatchedId(parsedRecordDto.getId())
-      .withRecordType(Record.RecordType.fromValue(parsedRecordDto.getRecordType().value()))
-      .withOrder(existingRecord.getOrder())
-      .withGeneration(existingRecord.getGeneration() + 1)
-      .withRawRecord(new RawRecord().withId(newRecordId).withContent(existingRecord.getRawRecord().getContent()))
-      .withParsedRecord(new ParsedRecord().withId(newRecordId).withContent(parsedRecordDto.getParsedRecord().getContent()))
-      .withExternalIdsHolder(parsedRecordDto.getExternalIdsHolder())
-      .withAdditionalInfo(parsedRecordDto.getAdditionalInfo())
-      .withMetadata(parsedRecordDto.getMetadata());
-
-    if (Objects.equals(ParsedRecordDaoUtil.getLeaderStatus(parsedRecordDto.getParsedRecord()), DELETED_LEADER_RECORD_STATUS.toString())) {
-      newRecord.setState(Record.State.DELETED);
-      newRecord.setDeleted(true);
-
-      if (newRecord.getAdditionalInfo() != null) {
-        newRecord.setAdditionalInfo(newRecord.getAdditionalInfo().withSuppressDiscovery(true));
-      } else {
-        newRecord.setAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true));
-      }
-    } else {
-      newRecord.setDeleted(false);
-      newRecord.setState(Record.State.ACTUAL);
-    }
-
-    return newRecord;
-  }
-
-  @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
     if (marcBibIds.size() > Short.MAX_VALUE) {
       throw new BadRequestException("The number of IDs should not exceed 32767");
@@ -436,14 +382,14 @@ public class RecordServiceImpl implements RecordService {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
-      .map(record -> {
-        update005field(record);
-        record.withState(Record.State.DELETED);
-        record.setAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(true));
-        ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
-        return record;
+      .map(rec -> {
+        update005field(rec);
+        rec.withState(Record.State.DELETED);
+        rec.setAdditionalInfo(rec.getAdditionalInfo().withSuppressDiscovery(true));
+        ParsedRecordDaoUtil.updateLeaderStatus(rec.getParsedRecord(), DELETED_LEADER_RECORD_STATUS);
+        return rec;
       })
-      .compose(record -> updateRecord(record, okapiHeaders)).map(r -> null);
+      .compose(rec -> updateRecord(rec, okapiHeaders)).map(r -> null);
   }
 
   @Override
@@ -460,32 +406,32 @@ public class RecordServiceImpl implements RecordService {
       .compose(foundRecord -> updateRecord(foundRecord, okapiHeaders)).map(r -> null);
   }
 
-  private Future<Record> setMatchedIdForRecord(Record record, String tenantId) {
-    String marcField999s = getFieldFromMarcRecord(record, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
+  private Future<Record> setMatchedIdForRecord(Record rec, String tenantId) {
+    String marcField999s = getFieldFromMarcRecord(rec, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
     if (marcField999s != null) {
       // Set matched id from 999$s marc field
-      LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, record.getId());
-      return Future.succeededFuture(record.withMatchedId(marcField999s));
+      LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, rec.getId());
+      return Future.succeededFuture(rec.withMatchedId(marcField999s));
     }
     Promise<Record> promise = Promise.promise();
-    String externalId = RecordDaoUtil.getExternalId(record.getExternalIdsHolder(), record.getRecordType());
-    IdType idType = getExternalIdType(record.getRecordType());
+    String externalId = RecordDaoUtil.getExternalId(rec.getExternalIdsHolder(), rec.getRecordType());
+    IdType idType = getExternalIdType(rec.getRecordType());
 
-    if (externalId != null && idType != null && record.getState() == Record.State.ACTUAL) {
-      setMatchedIdFromExistingSourceRecord(record, tenantId, promise, externalId, idType);
+    if (externalId != null && idType != null && rec.getState() == Record.State.ACTUAL) {
+      setMatchedIdFromExistingSourceRecord(rec, tenantId, promise, externalId, idType);
     } else {
       // Set matched id same as record id
-      promise.complete(record.withMatchedId(record.getId()));
+      promise.complete(rec.withMatchedId(rec.getId()));
     }
 
     return promise.future().onSuccess(r -> {
-      if (record.getRecordType() != null && !record.getRecordType().equals(Record.RecordType.EDIFACT)) {
+      if (rec.getRecordType() != null && !rec.getRecordType().equals(Record.RecordType.EDIFACT)) {
         addFieldToMarcRecord(r, TAG_999, SUBFIELD_S, r.getMatchedId());
       }
     });
   }
 
-  private void setMatchedIdFromExistingSourceRecord(Record record, String tenantId, Promise<Record> promise, String externalId, IdType idType) {
+  private void setMatchedIdFromExistingSourceRecord(Record rec, String tenantId, Promise<Record> promise, String externalId, IdType idType) {
     recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
       .onComplete(ar -> {
         if (ar.succeeded()) {
@@ -494,12 +440,12 @@ public class RecordServiceImpl implements RecordService {
             // Set matched id from existing source record
             String sourceRecordId = sourceRecord.get().getRecordId();
             LOG.debug("setMatchedIdFromExistingSourceRecord:: Set matchedId: {} from source record for record with id: {}",
-              sourceRecordId, record.getId());
-            promise.complete(record.withMatchedId(sourceRecordId));
+              sourceRecordId, rec.getId());
+            promise.complete(rec.withMatchedId(sourceRecordId));
           } else {
             // Set matched id same as record id
-            LOG.debug("setMatchedIdFromExistingSourceRecord:: Set matchedId same as record id: {}", record.getId());
-            promise.complete(record.withMatchedId(record.getId()));
+            LOG.debug("setMatchedIdFromExistingSourceRecord:: Set matchedId same as record id: {}", rec.getId());
+            promise.complete(rec.withMatchedId(rec.getId()));
           }
         } else {
           LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record");
@@ -515,14 +461,14 @@ public class RecordServiceImpl implements RecordService {
     return Future.failedFuture(throwable);
   }
 
-  private Record formatMarcRecord(Record record) {
+  private Record formatMarcRecord(Record rec) {
     try {
-      RecordType recordType = toRecordType(record.getRecordType().name());
-      recordType.formatRecord(record);
+      RecordType recordType = toRecordType(rec.getRecordType().name());
+      recordType.formatRecord(rec);
     } catch (Exception e) {
-      LOG.warn("formatMarcRecord:: Couldn't format {} record", record.getRecordType(), e);
+      LOG.warn("formatMarcRecord:: Couldn't format {} record", rec.getRecordType(), e);
     }
-    return record;
+    return rec;
   }
 
   private void filterFieldsByDataRange(AsyncResult<StrippedParsedRecordCollection> recordCollectionAsyncResult,
@@ -611,13 +557,4 @@ public class RecordServiceImpl implements RecordService {
     }
     return true;
   }
-
-  private Future<Record> checkIfEditable(Record existingRecord) {
-    var linkedDataId = getFieldFromMarcRecord(existingRecord, TAG_999, INDICATOR, INDICATOR, SUBFIELD_L);
-    if (linkedDataId != null && !linkedDataId.isEmpty()) {
-      return Future.failedFuture(new RecordUpdateException(UPDATE_RECORD_WITH_LINKED_DATA_ID_EXCEPTION));
-    }
-    return Future.succeededFuture(existingRecord);
-  }
-
 }

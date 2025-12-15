@@ -49,7 +49,7 @@
     </createProcedure>
   </changeSet>
 
-  <changeSet id="2020-04-28--08-02-create-get-source-marc-record-by-instance-id-function" author="WilliamWelling">
+  <changeSet id="2020-04-28--08-02-create-get-source-marc-record-by-instance-id-function" author="WilliamWelling" runOnChange="true">
     <createProcedure>
       create function ${database.defaultSchemaName}.get_source_marc_record_by_instance_id(p_instanceid uuid)
           returns TABLE

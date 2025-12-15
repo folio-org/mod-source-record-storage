@@ -1,3 +1,6 @@
+## 2025-12-15 5.10.13
+* [MODSOURCE-965](https://folio-org.atlassian.net/browse/MODSOURCE-965) Update di-core to 4.4.8
+
 ## 2025-12-01 5.10.12
 * [MODSOURCE-951](https://folio-org.atlassian.net/browse/MODSOURCE-951) MappingParameters snapshot was not found by jobExecutionId
 * [MODSOURCE-952](https://folio-org.atlassian.net/browse/MODSOURCE-952) Fix configuration of cache expiration time

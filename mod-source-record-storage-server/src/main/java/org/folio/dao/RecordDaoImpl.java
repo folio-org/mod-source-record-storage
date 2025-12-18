@@ -48,7 +48,8 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.reactivex.pgclient.PgPool;
+//import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.Row;
 
 import java.io.IOException;
@@ -95,7 +96,6 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.TenantUtil;
 import org.folio.kafka.exception.DuplicateEventException;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.Value;
@@ -741,23 +741,20 @@ public class RecordDaoImpl implements RecordDao {
       return Future.failedFuture("saveRecords must be executed by a Vertx thread");
     }
 
-    context.owner().executeBlocking(
-      () -> saveRecords(recordCollection, snapshotId, recordType, tenantId),
-      false,
-      r -> {
-        if (r.failed()) {
-          LOG.warn("saveRecords :: Error during batch record save", r.cause());
-          finalPromise.fail(r.cause());
-        } else {
-          LOG.debug("saveRecords :: batch record save was successful");
-          finalPromise.complete(r.result());
-        }
-      });
+    return context.owner().executeBlocking(() -> saveRecords(recordCollection, snapshotId, recordType, tenantId), false)
+      .map(recordsBatchResponse -> {
+        LOG.debug("saveRecords:: batch record save was successful");
+        recordsBatchResponse.getRecords()
+          .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders));
+        return recordsBatchResponse;
+      })
+      .onFailure(e -> LOG.warn("saveRecords:: Error during batch record save", e));
 
-    return finalPromise.future()
-      .onSuccess(response -> response.getRecords()
-        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
-      );
+
+//    return finalPromise.future()
+//      .onSuccess(response -> response.getRecords()
+//        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
+//      );
   }
 
   @Override
@@ -776,7 +773,7 @@ public class RecordDaoImpl implements RecordDao {
       return Future.failedFuture("saveRecordsByExternalIds :: operation must be executed by a Vertx thread");
     }
 
-    context.owner().executeBlocking(
+    return context.owner().executeBlocking(
       () -> {
         try (Connection connection = getConnection(tenantId)) {
           return DSL.using(connection).transactionResult(ctx -> {
@@ -828,22 +825,20 @@ public class RecordDaoImpl implements RecordDao {
           LOG.warn("saveRecordsByExternalIds :: Failed to read and save modified records", e);
           throw e;
         }
-      },
-      r -> {
-        if (r.failed()) {
-          LOG.warn("saveRecordsByExternalIds:: Error during batch record save", r.cause());
-          finalPromise.fail(r.cause());
-        } else {
-          LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
-          finalPromise.complete(r.result());
-        }
       }
-    );
+    )
+      .map(response -> {
+        LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
+        response.getRecords()
+          .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders));
+        return response;
+      })
+      .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));
 
-    return finalPromise.future()
-      .onSuccess(response -> response.getRecords()
-        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
-      );
+//    return finalPromise.future()
+//      .onSuccess(response -> response.getRecords()
+//        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
+//      );
   }
 
   private ResultQuery<org.jooq.Record> readRecords(DSLContext dsl, Condition condition, RecordType recordType, int offset, int limit,
@@ -1325,7 +1320,7 @@ public class RecordDaoImpl implements RecordDao {
   private Future<ParsedRecordsBatchResponse> updateParsedRecordsInBatch(RecordCollection recordCollection, Context context,
                                                                         String tenantId, ArrayList<Record> recordsUpdated) {
     Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
-    context.owner().<ParsedRecordsBatchResponse>executeBlocking(blockingPromise ->
+    context.owner().<ParsedRecordsBatchResponse>executeBlocking(() ->
       {
         List<Record> records = new ArrayList<>();
         List<String> errorMessages = new ArrayList<>();
@@ -1342,7 +1337,8 @@ public class RecordDaoImpl implements RecordDao {
         List<Record> processedRecords = recordCollection.getRecords();
 
         try (Connection connection = getConnection(tenantId)) {
-          DSL.using(connection).transaction(ctx -> {
+//          DSL.using(connection).transaction(ctx -> {
+          return DSL.using(connection).transactionResult(ctx -> {
             DSLContext dsl = DSL.using(ctx);
 
             // update records
@@ -1371,26 +1367,29 @@ public class RecordDaoImpl implements RecordDao {
               }
             }
 
-            blockingPromise.complete(new ParsedRecordsBatchResponse()
+            return new ParsedRecordsBatchResponse()
               .withErrorMessages(errorMessages)
               .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).toList())
-              .withTotalRecords(recordsUpdated.size()));
+              .withTotalRecords(recordsUpdated.size());
           });
         } catch (SQLException e) {
           LOG.warn("updateParsedRecords:: Failed to update records", e);
-          blockingPromise.fail(e);
+//          blockingPromise.fail(e);
+          throw e;
         }
       },
-      false,
-      result -> {
-        if (result.failed()) {
-          LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
-          promise.fail(result.cause());
-        } else {
-          LOG.debug("updateParsedRecords:: Parsed records update was successful");
-          promise.complete(result.result());
+      false)
+      .onComplete(
+        result -> {
+          if (result.failed()) {
+            LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
+            promise.fail(result.cause());
+          } else {
+            LOG.debug("updateParsedRecords:: Parsed records update was successful");
+            promise.complete(result.result());
+          }
         }
-      });
+      );
 
     return promise.future();
   }
@@ -1646,7 +1645,7 @@ public class RecordDaoImpl implements RecordDao {
           .toList();
 
         Promise<Void> result = Promise.promise();
-        GenericCompositeFuture.all(futures).onComplete(ar -> {
+        Future.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
           } else {
@@ -1677,7 +1676,8 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-  private PgPool getCachedPool(String tenantId) {
+//  private PgPool getCachedPool(String tenantId) {
+  private Pool getCachedPool(String tenantId) {
     return postgresClientFactory.getCachedPool(tenantId);
   }
 
@@ -1716,7 +1716,7 @@ public class RecordDaoImpl implements RecordDao {
         return record;
       }));
     }
-    return GenericCompositeFuture.all(futures).map(res -> record);
+    return Future.all(futures).map(res -> record);
   }
 
   private Future<Record> insertOrUpdateRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {

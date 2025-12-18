@@ -75,20 +75,23 @@ public class ModTenantAPI extends TenantAPI {
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
                          Handler<AsyncResult<Response>> handler, Context context) {
     // delete Kafka topics if tenant purged
+
     Future<Void> result = tenantAttributes.getPurge() != null && tenantAttributes.getPurge()
       ? new KafkaAdminClientService(context.owner()).deleteKafkaTopics(RecordStorageKafkaTopic.values(), tenantId(headers))
       : Future.succeededFuture();
-    result.onComplete(x -> super.postTenantSync(tenantAttributes, headers, ar -> {
-      if (ar.succeeded()) {
-        Vertx vertx = context.owner();
-        var kafkaAdminClientService = new KafkaAdminClientService(vertx);
-        kafkaAdminClientService.createKafkaTopics(srsKafkaTopicService.createTopicObjects(), tenantId);
-        handler.handle(Future.succeededFuture(ar.result()));
-      } else {
-        handler.handle(Future.failedFuture(ar.cause()));
-      }
-      LOGGER.info("postTenant:: Post tenant request is completed");
-    }, context));
+    result
+      .compose(v -> super.postTenantSync(tenantAttributes, headers, context))
+      .onComplete(ar -> {
+        if (ar.succeeded()) {
+          Vertx vertx = context.owner();
+          var kafkaAdminClientService = new KafkaAdminClientService(vertx);
+          kafkaAdminClientService.createKafkaTopics(srsKafkaTopicService.createTopicObjects(), tenantId);
+          handler.handle(Future.succeededFuture(ar.result()));
+        } else {
+          handler.handle(Future.failedFuture(ar.cause()));
+        }
+        LOGGER.info("postTenant:: Post tenant request is completed");
+      });
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {

@@ -19,7 +19,6 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
@@ -80,7 +79,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
       deleteInstancesFutures.add(deleteInstanceById(instanceId, params));
     }
 
-    GenericCompositeFuture.join(deleteInstancesFutures)
+    Future.join(deleteInstancesFutures)
       .onSuccess(ar -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();

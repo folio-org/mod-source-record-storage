@@ -19,7 +19,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.ProcessRecordErrorHandler;
 import org.folio.kafka.SubscriptionDefinition;
-import org.folio.okapi.common.GenericCompositeFuture;
 
 public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
 
@@ -58,7 +57,7 @@ public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
     List<Future<Void>> futures = new ArrayList<>();
     consumers.forEach(consumer -> futures.add(consumer.start(recordHandler(), getModuleName())));
 
-    GenericCompositeFuture.all(futures).onComplete(ar -> startPromise.complete());
+    Future.all(futures).onComplete(ar -> startPromise.complete());
   }
 
   @Override
@@ -66,7 +65,7 @@ public abstract class AbstractConsumerVerticle<K,V> extends AbstractVerticle {
     List<Future<Void>> futures = new ArrayList<>();
     consumers.forEach(consumerWrapper -> futures.add(consumerWrapper.stop()));
 
-    GenericCompositeFuture.join(futures).onComplete(ar -> stopPromise.complete());
+    Future.join(futures).onComplete(ar -> stopPromise.complete());
   }
 
   protected abstract int loadLimit();

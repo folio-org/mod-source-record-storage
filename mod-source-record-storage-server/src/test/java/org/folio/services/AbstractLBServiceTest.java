@@ -34,6 +34,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.junit.AfterClass;
@@ -130,10 +131,11 @@ public abstract class AbstractLBServiceTest {
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));
 
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, deployResponse -> {
+    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete( deployResponse -> {
       try {
-        tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
+        tenantClient.postTenant(new TenantAttributes().withModuleTo("%s-%s".formatted(ModuleName.getModuleName(), ModuleName.getModuleVersion())), res2 -> {
           postgresClientFactory = new PostgresClientFactory(vertx);
+          context.assertTrue(res2.succeeded());
           if (res2.result().statusCode() == 204) {
             async.complete();
             return;
@@ -153,20 +155,20 @@ public abstract class AbstractLBServiceTest {
         });
       } catch (Exception e) {
         e.printStackTrace();
-        async.complete();
+        context.fail(e);
       }
     });
   }
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    Async async = context.async();
+//    Async async = context.async();
     PostgresClientFactory.closeAll();
-    vertx.close(context.asyncAssertSuccess(res -> {
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
       PostgresClient.stopPostgresTester();
       wireMockServer.stop();
       kafkaContainer.stop();
-      async.complete();
+//      async.complete();
     }));
   }
 

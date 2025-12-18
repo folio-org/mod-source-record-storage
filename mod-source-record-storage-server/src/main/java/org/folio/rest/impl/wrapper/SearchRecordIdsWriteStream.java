@@ -52,22 +52,27 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     }
   }
 
-  @Override
-  public void write(Row row, Handler<AsyncResult<Void>> handler) {
-    throw new UnsupportedOperationException("The method is not supported");
-  }
+//  @Override
+//  public void write(Row row, Handler<AsyncResult<Void>> handler) {
+//    throw new UnsupportedOperationException("The method is not supported");
+//  }
+
+//  @Override
+//  public void end(Handler<AsyncResult<Void>> handler) {
+//    if (this.writeIndex == 0) {
+//      this.delegate.write(emptyResponse).onSuccess(ar -> {
+//        this.delegate.end().onComplete(handler);
+//      });
+//    } else {
+//      this.delegate.write(format(responseEnding, totalCount)).onSuccess(ar -> {
+//        this.delegate.end().onComplete(handler);
+//      });
+//    }
+//  }
 
   @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
-    if (this.writeIndex == 0) {
-      this.delegate.write(emptyResponse).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
-    } else {
-      this.delegate.write(format(responseEnding, totalCount)).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
-    }
+  public Future<Void> end() {
+    return this.delegate.end();
   }
 
   @Override
@@ -93,7 +98,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     return this;
   }
 
-  public void close() {
-    this.delegate.close();
-  }
+//  public void close() {
+//    this.delegate.close();
+//  }
 }

@@ -53,7 +53,6 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
@@ -183,7 +182,7 @@ public class RecordServiceImpl implements RecordService {
     List<Future<Record>> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(record -> setMatchedIdsFutures.add(setMatchedIdForRecord(record,
       okapiHeaders.get(OKAPI_TENANT_HEADER))));
-    return GenericCompositeFuture.all(setMatchedIdsFutures)
+    return Future.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded()
         ? recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))

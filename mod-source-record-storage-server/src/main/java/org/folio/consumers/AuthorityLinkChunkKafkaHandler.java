@@ -344,27 +344,30 @@ public class AuthorityLinkChunkKafkaHandler implements AsyncRecordHandler<String
     ).map(unused -> consumerRecord.key());
   }
 
-  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, String recordKey,
+//  private Future<Boolean> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, String recordKey,
+  private Future<Void> sendEventToKafka(KafkaTopic topic, String tenant, String jobId, String recordKey,
                                            Object marcRecord, List<KafkaHeader> kafkaHeaders) {
     var promise = Promise.<Boolean>promise();
     try {
       var kafkaRecord = createKafkaProducerRecord(topic, tenant, recordKey, marcRecord, kafkaHeaders);
-      producers.get(topic).write(kafkaRecord, ar -> {
-        if (ar.succeeded()) {
-          LOGGER.debug("Event with type {}, jobId {} was sent to kafka", topic.topicName(), jobId);
-          promise.complete(true);
-        } else {
-          var cause = ar.cause();
-          LOGGER.error("Failed to sent event {} for jobId {}, cause: {}", topic.topicName(), jobId, cause);
-          promise.fail(cause);
-        }
-      });
+      return producers.get(topic).write(kafkaRecord)
+        .onSuccess(v -> LOGGER.debug("Event with type {}, jobId {} was sent to kafka", topic.topicName(), jobId))
+        .onFailure(e -> LOGGER.error("Failed to sent event {} for jobId {}, cause:", topic.topicName(), jobId, e));
+//        if (ar.succeeded()) {
+//          LOGGER.debug("Event with type {}, jobId {} was sent to kafka", topic.topicName(), jobId);
+//          promise.complete(true);
+//        } else {
+//          var cause = ar.cause();
+//          LOGGER.error("Failed to sent event {} for jobId {}, cause: {}", topic.topicName(), jobId, cause);
+//          promise.fail(cause);
+//        }
+//      });
     } catch (Exception e) {
-      LOGGER.error("Failed to send an event for eventType {}, jobId {}, cause {}", topic.topicName(), jobId, e);
+      LOGGER.error("Failed to send an event for eventType {}, jobId {}", topic.topicName(), jobId, e);
       return Future.failedFuture(e);
     }
-    return promise.future()
-      .onFailure(th -> LOGGER.error("Failed to send {} event for jobId {}.", topic.topicName(), jobId, th));
+//    return promise.future()
+//      .onFailure(th -> LOGGER.error("Failed to send {} event for jobId {}.", topic.topicName(), jobId, th));
   }
 
   private KafkaProducerRecord<String, String> createKafkaProducerRecord(KafkaTopic topic, String tenant,

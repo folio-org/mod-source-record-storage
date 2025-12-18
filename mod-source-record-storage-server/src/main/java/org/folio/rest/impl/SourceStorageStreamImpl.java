@@ -33,7 +33,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
-import io.vertx.core.streams.Pump;
+//import io.vertx.core.streams.Pump;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.reactivex.FlowableHelper;
 import io.vertx.sqlclient.Row;
@@ -128,24 +128,41 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
 
   private void processStream(SearchRecordIdsWriteStream responseWrapper, Flowable<Row> flowable,
                              Handler<Throwable> errorHandler) {
-    Pump.pump(FlowableHelper.toReadStream(flowable)
-        .exceptionHandler(errorHandler)
-        .endHandler(end -> {
-          responseWrapper.end();
-          responseWrapper.close();
-        }), responseWrapper)
-      .start();
+    FlowableHelper.toReadStream(flowable)
+      .exceptionHandler(errorHandler)
+      .endHandler(end -> {
+        responseWrapper.end();
+//        responseWrapper.close();
+      })
+      .pipeTo(responseWrapper);
+
+//    Pump.pump(FlowableHelper.toReadStream(flowable)
+//        .exceptionHandler(errorHandler)
+//        .endHandler(end -> {
+//          responseWrapper.end();
+//          responseWrapper.close();
+//        }), responseWrapper)
+//      .start();
     flowable.doOnError(errorHandler::handle);
   }
 
   private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {
-    Pump.pump(FlowableHelper.toReadStream(flowable)
-        .exceptionHandler(errorHandler)
-        .endHandler(end -> {
-          response.end();
-          response.close();
-        }), response)
-      .start();
+    FlowableHelper.toReadStream(flowable)
+      .exceptionHandler(errorHandler)
+      .endHandler(end -> {
+        response.end();
+//        response.closed(); // todo check if the underlying connection is closed
+//        response.close();
+      })
+      .pipeTo(response);
+
+//    Pump.pump(FlowableHelper.toReadStream(flowable)
+//        .exceptionHandler(errorHandler)
+//        .endHandler(end -> {
+//          response.end();
+//          response.close();
+//        }), response)
+//      .start();
     flowable.doOnError(errorHandler::handle);
   }
 

@@ -6,7 +6,9 @@ import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGeneri
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.reactivex.pgclient.PgBuilder;
+//import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
 import org.apache.commons.lang3.StringUtils;
@@ -62,7 +64,8 @@ public class PostgresClientFactory {
 
   private static final int DB_MAXPOOLSIZE_DEFAULT_VALUE = 15;
 
-  private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
+//  private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
+  private static final Map<String, Pool> POOL_CACHE = new HashMap<>();
 
   private static final Map<String, DataSource> DATA_SOURCE_CACHE = new HashMap<>();
 
@@ -138,12 +141,12 @@ public class PostgresClientFactory {
   }
 
   /**
-   * Get {@link PgPool}
+   * Get {@link Pool}
    *
    * @param tenantId tenant id
    * @return pooled database client
    */
-  public PgPool getCachedPool(String tenantId) {
+  public Pool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
   }
 
@@ -204,7 +207,8 @@ public class PostgresClientFactory {
     return postgresConfigFilePath;
   }
 
-  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
+//  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
+  private static Pool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
     if (POOL_CACHE.containsKey(tenantId)) {
       LOG.debug("getCachedPool:: Using existing database connection pool for tenant {}", tenantId);
@@ -219,7 +223,13 @@ public class PostgresClientFactory {
       .setConnectionTimeout(connectionTimeout)
       .setConnectionTimeoutUnit(TimeUnit.SECONDS)
       .setMaxSize(maxPoolSize);
-    PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
+//    PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
+
+    Pool client = PgBuilder.pool()
+      .with(poolOptions)
+      .connectingTo(connectOptions)
+      .using(vertx)
+      .build();
     POOL_CACHE.put(tenantId, client);
     return client;
   }
@@ -274,7 +284,7 @@ public class PostgresClientFactory {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 
-  private static void close(PgPool client) {
+  private static void close(Pool client) {
     client.close();
   }
 

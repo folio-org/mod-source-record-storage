@@ -58,7 +58,7 @@ public class RecordDomainEventPublisher {
       Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      var jsonContent = JsonObject.mapFrom(domainEventPayload);
+      var jsonContent = JsonObject.mapFrom(domainEventPayload); // todo: do we need that
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {

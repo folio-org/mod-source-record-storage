@@ -23,7 +23,6 @@ import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.AsyncResult;
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -54,7 +53,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       if (vertxContext.get(LOAD_SAMPLE_PARAMETER) != null && (Boolean) vertxContext.get(LOAD_SAMPLE_PARAMETER)) {
-        List<Future> futures = new ArrayList<>();
+        List<Future<Record>> futures = new ArrayList<>();
         entity.getRawRecords().stream()
           .map(rawRecord -> {
             Record record = new Record()
@@ -73,7 +72,7 @@ public class SourceStoragePopulateTestMarcRecordsImpl implements SourceStoragePo
           })
           .forEach(marcRecord -> futures.add(recordService.saveRecord(marcRecord, okapiHeaders)));
 
-        GenericCompositeFuture.all(futures).onComplete(result -> {
+        Future.all(futures).onComplete(result -> {
           if (result.succeeded()) {
             asyncResultHandler.handle(Future.succeededFuture(PostSourceStoragePopulateTestMarcRecordsResponse.respond204()));
           } else {

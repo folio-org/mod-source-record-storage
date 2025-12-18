@@ -52,7 +52,6 @@ import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.exception.DuplicateEventException;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.Conditions;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -1748,7 +1747,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     List<Future<RecordsBatchResponse>> futures = List.of(recordService.saveRecords(recordCollection, okapiHeaders),
       recordService.saveRecords(recordCollection, okapiHeaders));
 
-    GenericCompositeFuture.all(futures).onComplete(ar -> {
+    Future.all(futures).onComplete(ar -> {
       context.assertTrue(ar.failed());
       assertThrows(DuplicateEventException.class, () -> {throw ar.cause();});
       async.complete();
@@ -2443,7 +2442,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.assertEquals(0, update.result().getErrorMessages().size());
         context.assertEquals(expected.size(), update.result().getTotalRecords());
         compareParsedRecords(context, expected, update.result().getParsedRecords());
-        GenericCompositeFuture.all(updated.stream().map(record -> recordDao
+        Future.all(updated.stream().map(record -> recordDao
           .getRecordByMatchedId(record.getMatchedId(), TENANT_ID)
           .onComplete(get -> {
             if (get.failed()) {
@@ -2581,7 +2580,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   private CompositeFuture saveRecords(List<Record> records) {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    return GenericCompositeFuture.all(records.stream()
+    return Future.all(records.stream()
       .map(record -> recordService.saveRecord(record, okapiHeaders))
       .collect(Collectors.toList())
     );

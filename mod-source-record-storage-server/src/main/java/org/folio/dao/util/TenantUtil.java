@@ -8,7 +8,6 @@ import io.vertx.sqlclient.RowSet;
 import org.folio.rest.persist.PostgresClient;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /* The util class helps to work with tenant's data */
@@ -22,12 +21,12 @@ public class TenantUtil {
     PostgresClient pgClient = PostgresClient.getInstance(vertx);
     Promise<RowSet<Row>> promise = Promise.promise();
     String tenantQuery = "select nspname from pg_catalog.pg_namespace where nspname LIKE '%_mod_source_record_storage';";
-    pgClient.selectRead(tenantQuery, 60000, promise);
-    return promise.future()
+//    pgClient.selectRead(tenantQuery, 60000, promise::handle);
+//    return promise.future()
+    return pgClient.select(tenantQuery)
       .map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
         .map(TenantUtil::mapToTenant)
-        .collect(Collectors.toList())
-      );
+        .toList());
   }
 
   private static String mapToTenant(Row row) {
@@ -38,7 +37,7 @@ public class TenantUtil {
   }
 
   public static double calculateDurationSeconds(long startTime) {
-    long endTime =  System.nanoTime();;
+    long endTime =  System.nanoTime();
     return (endTime - startTime) / 1_000_000.0 / 1_000;
   }
 }

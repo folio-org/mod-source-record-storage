@@ -67,7 +67,7 @@ public class CancelledJobExecutionConsumersVerticleTest {
 
   @AfterClass
   public static void afterAll(TestContext context) {
-    vertx.close(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
   }
 
   @Before

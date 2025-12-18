@@ -169,7 +169,7 @@ public class PostgresClientFactoryTest {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> async.complete()));
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> async.complete()));
   }
 
 }

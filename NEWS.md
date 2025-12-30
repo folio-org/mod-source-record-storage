@@ -1,5 +1,5 @@
 ## 2025-12-dd 5.9.18
-* [MODSOURCE-959](https://folio-org.atlassian.net/browse/MODSOURCE-959) Suppress verbose logging in RMB by upgrading to RMB 35.3.1, Vert.x 4.5.23
+* [MODSOURCE-959](https://folio-org.atlassian.net/browse/MODSOURCE-959) Suppress verbose logging in RMB by upgrading to RMB 35.3.2, Vert.x 4.5.23 (fixing CVE-2025-67735 Netty CRLF injection)
 
 ## 2025-07-04 5.9.17
 * [MODSOURCE-924](https://folio-org.atlassian.net/browse/MODSOURCE-924) Extend matching records endpoint to support multiple marc-bib match results processing (MODINV-1114)

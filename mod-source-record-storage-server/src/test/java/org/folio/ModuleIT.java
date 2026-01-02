@@ -80,6 +80,7 @@ class ModuleIT {
   private static final GenericContainer<?> mod =
       new GenericContainer<>(
           new ImageFromDockerfile("mod-source-record-storage").withDockerfile(Path.of("../Dockerfile")))
+      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG")
       .dependsOn(kafka, postgres)
       .withNetwork(network)
       .withNetworkAliases("mod-source-record-storage")
@@ -137,6 +138,8 @@ class ModuleIT {
     then().
       statusCode(greaterThanOrEqualTo(400));
 
+    // The test requires to set the module logging level to DEBUG because since RMB v35.3.2
+    // the expected message is logged at DEBUG level
     assertThat(mod.getLogs(), containsString("GET " + path));
   }
 

@@ -80,7 +80,6 @@ class ModuleIT {
   private static final GenericContainer<?> mod =
       new GenericContainer<>(
           new ImageFromDockerfile("mod-source-record-storage").withDockerfile(Path.of("../Dockerfile")))
-      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG")
       .dependsOn(kafka, postgres)
       .withNetwork(network)
       .withNetworkAliases("mod-source-record-storage")
@@ -92,7 +91,8 @@ class ModuleIT {
       .withEnv("DB_DATABASE", "postgres")
       .withEnv("DB_SERVER_PEM", SERVER_PEM)
       .withEnv("KAFKA_HOST", "ourkafka")
-      .withEnv("KAFKA_PORT", "9092");
+      .withEnv("KAFKA_PORT", "9092")
+      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG");
 
   @BeforeAll
   static void beforeAll() {

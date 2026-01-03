@@ -92,7 +92,8 @@ class ModuleIT {
       .withEnv("DB_DATABASE", "postgres")
       .withEnv("DB_SERVER_PEM", SERVER_PEM)
       .withEnv("KAFKA_HOST", "ourkafka")
-      .withEnv("KAFKA_PORT", "9092");
+      .withEnv("KAFKA_PORT", "9092")
+      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG");
 
   @BeforeAll
   static void beforeAll() {
@@ -138,6 +139,8 @@ class ModuleIT {
     then().
       statusCode(greaterThanOrEqualTo(400));
 
+    // The test requires setting the module logging level to DEBUG because since RMB v35.4.2
+    // the expected message is logged at DEBUG level
     assertThat(mod.getLogs(), containsString("GET " + path));
   }
 

@@ -232,7 +232,9 @@ public class MarcUtil {
     var remainingFields = new ArrayList<String>();
     var has001 = false;
     try {
+      LOGGER.info("Reordering MARC fields based on source record content. source: {}", source);
       var sourceJson = objectMapper.readTree(source);
+      LOGGER.info("Source JSON parsed {}", sourceJson);
       var fieldsNode = sourceJson.get(FIELDS);
 
       for (JsonNode fieldNode : fieldsNode) {

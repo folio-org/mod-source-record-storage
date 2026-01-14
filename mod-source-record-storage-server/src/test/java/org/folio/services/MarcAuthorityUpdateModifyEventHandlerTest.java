@@ -79,7 +79,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
-  private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_AUTHORITY";
+  private static final String MATCHED_MARC_AUTHORITY_KEY = "MATCHED_MARC_AUTHORITY";
   private static final int CACHE_EXPIRATION_TIME = 3600;
 
   private static String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
@@ -96,12 +96,12 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
-    .withName("Update MARC Bibs")
+    .withName("Update MARC Authority")
     .withDataType(JobProfile.DataType.MARC);
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
-    .withName("Update MARC Bibs")
+    .withName("Update MARC Authority")
     .withAction(ActionProfile.Action.UPDATE)
     .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY);
 
@@ -120,7 +120,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
   private MappingProfile mappingProfile = new MappingProfile()
     .withId(UUID.randomUUID().toString())
-    .withName("Modify MARC Bibs")
+    .withName("Update MARC Authority")
     .withIncomingRecordType(MARC_AUTHORITY)
     .withExistingRecordType(MARC_AUTHORITY)
     .withMappingDetails(new MappingDetail()
@@ -218,7 +218,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_AUTHORITY.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+    payloadContext.put(MATCHED_MARC_AUTHORITY_KEY, Json.encode(record));
     payloadContext.put(PERMISSIONS, StringUtils.EMPTY);
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
@@ -246,7 +246,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       context.assertNull(throwable);
       context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(EntityType.MARC_AUTHORITY.value()), Record.class);
+      Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_AUTHORITY.value()), Record.class);
       context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
         getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
@@ -266,7 +266,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+    payloadContext.put(MATCHED_MARC_AUTHORITY_KEY, Json.encode(record));
     payloadContext.put(PERMISSIONS, StringUtils.EMPTY);
 
     mappingProfile.withMappingDetails(new MappingDetail().withMarcMappingOption(UPDATE));
@@ -342,7 +342,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     // given
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
-      .withName("Update marc bib")
+      .withName("Update marc authority")
       .withAction(ActionProfile.Action.UPDATE)
       .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY);
 

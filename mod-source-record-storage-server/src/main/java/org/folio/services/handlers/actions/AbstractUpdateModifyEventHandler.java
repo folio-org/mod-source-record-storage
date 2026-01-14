@@ -123,7 +123,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
               LOG.debug("handle:: Start removing 035 field with actual HRID for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               remove035WithActualHrId(changedRecord, hrId);
-              remove003FieldIfNeeded(changedRecord, hrId);
+
+              if (is003FieldRemovalNeeded()) {
+                remove003FieldIfNeeded(changedRecord, hrId);
+              }
             }
             LOG.debug("handle:: Start increasing generation record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             increaseGeneration(changedRecord);
@@ -188,6 +191,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   protected abstract EntityType modifiedEntityType();
 
+  protected abstract boolean is003FieldRemovalNeeded();
+
   protected MappingDetail.MarcMappingOption getMarcMappingOption(MappingProfile mappingProfile) {
     return mappingProfile.getMappingDetails().getMarcMappingOption();
   }
@@ -240,16 +245,20 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       if (isUpdateOption(marcMappingOption)) {
         changedRecord = Json.decodeValue(context.remove(getMatchedMarcKey()), Record.class);
         String originalRecordId = changedRecord.getId();
-        LOG.debug("prepareModificationResult:: Preparing modification result for jobExecutionId: '{}' and recordId: '{}'. Original record: '{}'",
-          payload.getJobExecutionId(), originalRecordId, Json.encodePrettily(changedRecord));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("prepareModificationResult:: Preparing modification result for jobExecutionId: '{}' and recordId: '{}'. Original record: '{}'",
+            payload.getJobExecutionId(), originalRecordId, Json.encodePrettily(changedRecord));
+        }
         changedRecord.setSnapshotId(payload.getJobExecutionId());
         changedRecord.setGeneration(null);
         changedRecord.setId(UUID.randomUUID().toString());
         Record incomingRecord = Json.decodeValue(context.get(modifiedEntityType().value()), Record.class);
         changedRecord.setOrder(incomingRecord.getOrder());
         context.put(modifiedEntityType().value(), Json.encode(changedRecord));
-        LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'. Modified record: '{}'",
-          payload.getJobExecutionId(), originalRecordId, changedRecord.getId(), Json.encodePrettily(changedRecord));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}'. Modified record: '{}'",
+            payload.getJobExecutionId(), originalRecordId, changedRecord.getId(), Json.encodePrettily(changedRecord));
+        }
       }
       if (changedRecord != null) {
         LOG.debug("prepareModificationResult:: Modification result has been prepared for jobExecutionId: '{}' and recordId: '{}'",
@@ -267,13 +276,13 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   }
 
   protected MappingProfile retrieveMappingProfile(DataImportEventPayload dataImportEventPayload) {
-    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0);
+    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().getFirst();
     return new JsonObject((Map) mappingProfileWrapper.getContent()).mapTo(MappingProfile.class);
   }
 
   private void preparePayload(DataImportEventPayload dataImportEventPayload) {
     dataImportEventPayload.getEventsChain().add(dataImportEventPayload.getEventType());
-    dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0));
+    dataImportEventPayload.setCurrentNode(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().getFirst());
   }
 
   private void increaseGeneration(Record changedRecord) {

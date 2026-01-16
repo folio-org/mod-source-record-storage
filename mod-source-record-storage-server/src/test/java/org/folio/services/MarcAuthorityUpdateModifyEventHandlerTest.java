@@ -5,6 +5,7 @@ import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
+import static org.folio.rest.jaxrs.model.MarcFieldProtectionSetting.Source.SYSTEM;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
@@ -48,6 +49,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.MappingDetail;
@@ -140,6 +142,16 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
             .withContentType(MAPPING_PROFILE)
             .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
 
+  private final MappingParameters mappingParameters = new MappingParameters()
+    .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
+      .withField("999")
+      .withIndicator1("f")
+      .withIndicator2("f")
+      .withSubfield("*")
+      .withData("*")
+      .withSource(SYSTEM)
+      .withOverride(false)));
+
   @Rule
   public WireMockRule mockServer = new WireMockRule(
     WireMockConfiguration.wireMockConfig()
@@ -162,7 +174,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
     MockitoAnnotations.openMocks(this);
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
-        .withMappingParams(Json.encode(new MappingParameters()))))));
+        .withMappingParams(Json.encode(mappingParameters))))));
 
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);

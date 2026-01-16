@@ -1,5 +1,5 @@
 ## 2026-01-16 5.10.15
-* [MODSOURCE-964](https://folio-org.atlassian.net/browse/MODSOURCE-964) 003 is being deleted when overlaying a MARC authority record with Data Import
+* [MODSOURCE-970](https://folio-org.atlassian.net/browse/MODSOURCE-970) 003 is being deleted when overlaying a MARC authority record with Data Import (MODSOURCE-964)
 
 ## 2026-01-05 5.10.14
 * [MODSOURCE-960](https://folio-org.atlassian.net/browse/MODSOURCE-960) Upgrade RMB v35.4.2 (suppress verbose logging in RMB), and Vert.x 4.5.23 (CVE-2025-67735 Netty CRLF injection fix)

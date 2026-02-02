@@ -58,7 +58,9 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
+//      .onComplete(context.asyncAssertSuccess());
+      .onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -69,7 +71,7 @@ public class SnapshotServiceTest extends AbstractLBServiceTest {
   @Test
   public void shouldGetSnapshots(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), TestMocks.getSnapshots()).onComplete(batch -> {
       if (batch.failed()) {
         context.fail(batch.cause());
       }

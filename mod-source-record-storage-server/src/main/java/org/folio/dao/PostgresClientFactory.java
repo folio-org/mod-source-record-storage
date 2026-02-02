@@ -7,7 +7,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgBuilder;
-//import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlClient;
@@ -208,7 +207,7 @@ public class PostgresClientFactory {
   }
 
 //  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
-  private static Pool getCachedPool(Vertx vertx, String tenantId) {
+  public static Pool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
     if (POOL_CACHE.containsKey(tenantId)) {
       LOG.debug("getCachedPool:: Using existing database connection pool for tenant {}", tenantId);

@@ -45,14 +45,14 @@ public class TestMocks {
 
   static {
     List<SourceRecord> sourceRecords = readSourceRecords();
-    parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).collect(Collectors.toList());
+    parsedRecords = sourceRecords.stream().map(TestMocks::toParsedRecord).toList();
     errorRecords = readErrorRecords(sourceRecords);
     records = readRecords(sourceRecords);
     snapshots = readSnapshots(sourceRecords);
   }
 
   public static List<Snapshot> getSnapshots() {
-    return new ArrayList<>(snapshots.stream().map(TestMocks::clone).collect(Collectors.toList()));
+    return new ArrayList<>(snapshots.stream().map(TestMocks::clone).toList());
   }
 
   public static Snapshot getSnapshot(int index) {
@@ -60,7 +60,7 @@ public class TestMocks {
   }
 
   public static List<Record> getRecords() {
-    return new ArrayList<>(records.stream().map(TestMocks::clone).collect(Collectors.toList()));
+    return new ArrayList<>(records.stream().map(TestMocks::clone).toList());
   }
 
   public static Record getRecord(int index) {
@@ -92,7 +92,7 @@ public class TestMocks {
   }
 
   public static List<ErrorRecord> getErrorRecords() {
-    return new ArrayList<>(errorRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
+    return new ArrayList<>(errorRecords.stream().map(TestMocks::clone).toList());
   }
 
   public static ErrorRecord getErrorRecord(int index) {
@@ -100,7 +100,7 @@ public class TestMocks {
   }
 
   public static List<ParsedRecord> getParsedRecords() {
-    return new ArrayList<>(parsedRecords.stream().map(TestMocks::clone).collect(Collectors.toList()));
+    return new ArrayList<>(parsedRecords.stream().map(TestMocks::clone).toList());
   }
 
   public static ParsedRecord getParsedRecord(int index) {
@@ -140,7 +140,7 @@ public class TestMocks {
       .map(TestMocks::readSourceRecord)
       .filter(sr -> sr.isPresent())
       .map(sr -> sr.get())
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Optional<SourceRecord> readSourceRecord(File file) {
@@ -159,7 +159,7 @@ public class TestMocks {
       .filter(s -> s.isPresent())
       .map(s -> s.get())
       .distinct()
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Optional<Snapshot> readSnapshot(SourceRecord sourceRecord) {
@@ -181,7 +181,7 @@ public class TestMocks {
       .filter(r -> r.isPresent())
       .map(r -> r.get())
       .distinct()
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Optional<Record> readRecord(SourceRecord sourceRecord) {
@@ -216,7 +216,7 @@ public class TestMocks {
       .filter(er -> er.isPresent())
       .map(er -> er.get())
       .distinct()
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Optional<ErrorRecord> readErrorRecord(SourceRecord sourceRecord) {

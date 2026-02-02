@@ -139,7 +139,8 @@ public class RecordServiceImpl implements RecordService {
       LOG.error("saveRecord:: Record '{}' has invalid externalIdHolder or missing 001 field into parsed record", record.getId());
       return Future.failedFuture(new BadRequestException(EXTERNAL_IDS_MISSING_ERROR));
     }
-    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+//    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, record.getSnapshotId())
+    return recordDao.executeInTransaction2(connection -> SnapshotDaoUtil.findById(connection, record.getSnapshotId())
         .map(optionalSnapshot -> optionalSnapshot
           .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, record.getSnapshotId()))))
         .compose(snapshot -> {
@@ -151,19 +152,19 @@ public class RecordServiceImpl implements RecordService {
         .compose(v -> setMatchedIdForRecord(record, tenantId))
         .compose(r -> {
           if (Objects.isNull(r.getGeneration())) {
-            return recordDao.calculateGeneration(txQE, r);
+            return recordDao.calculateGeneration(connection, r);
           }
           return Future.succeededFuture(r.getGeneration());
         })
         .compose(generation -> {
           if (generation > 0) {
-            return recordDao.getRecordByMatchedId(txQE, record.getMatchedId())
+            return recordDao.getRecordByMatchedId(connection, record.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)),
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(connection, ensureRecordForeignKeys(record.withGeneration(generation)),
                   matchedRecord.withState(Record.State.OLD), okapiHeaders))
-                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders)));
+                .orElseGet(() -> recordDao.saveRecord(connection, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders)));
           } else {
-            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
+            return recordDao.saveRecord(connection, ensureRecordForeignKeys(record.withGeneration(generation)), okapiHeaders);
           }
         }), tenantId)
       .recover(throwable -> {
@@ -364,14 +365,14 @@ public class RecordServiceImpl implements RecordService {
   @Override
   public Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders) {
     String newRecordId = UUID.randomUUID().toString();
-    return recordDao.executeInTransaction(txQE -> recordDao.getRecordByMatchedId(txQE, parsedRecordDto.getId())
+    return recordDao.executeInTransaction2(connection -> recordDao.getRecordByMatchedId(connection, parsedRecordDto.getId())
       .compose(optionalRecord -> optionalRecord
         .map(existingRecord -> checkIfEditable(existingRecord)
-          .compose(sourceRecord -> SnapshotDaoUtil.save(txQE, new Snapshot()
+          .compose(sourceRecord -> SnapshotDaoUtil.save(connection, new Snapshot()
             .withJobExecutionId(snapshotId)
             .withProcessingStartedDate(new Date())
             .withStatus(Snapshot.Status.COMMITTED)))// no processing of the record is performed apart from the update itself
-          .compose(snapshot -> recordDao.saveUpdatedRecord(txQE, getNewRecord(parsedRecordDto, existingRecord, snapshot, newRecordId),
+          .compose(snapshot -> recordDao.saveUpdatedRecord(connection, getNewRecord(parsedRecordDto, existingRecord, snapshot, newRecordId),
             existingRecord.withState(Record.State.OLD), okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(
           format(RECORD_NOT_FOUND_TEMPLATE, parsedRecordDto.getId()))))), okapiHeaders.get(OKAPI_TENANT_HEADER));

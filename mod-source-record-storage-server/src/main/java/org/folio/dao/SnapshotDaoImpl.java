@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import io.vertx.reactivex.sqlclient.SqlConnection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -13,10 +14,7 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-
-import com.google.common.collect.Lists;
 
 import io.vertx.core.Future;
 
@@ -34,38 +32,38 @@ public class SnapshotDaoImpl implements SnapshotDao {
   @Override
   public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
+    return postgresClientFactory.getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> {
       SnapshotCollection snapshotCollection = new SnapshotCollection();
-      return Future.all(Lists.newArrayList(
-        SnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
+      return Future.all(
+        SnapshotDaoUtil.findByCondition(sqlConnection, condition, orderFields, offset, limit)
           .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
-        SnapshotDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> addTotalRecords(snapshotCollection,totalRecords))
-      )).map(res -> snapshotCollection);
+        SnapshotDaoUtil.countByCondition(sqlConnection, condition)
+          .map(totalRecords -> addTotalRecords(snapshotCollection, totalRecords))
+      ).map(res -> snapshotCollection);
     });
   }
 
   @Override
   public Future<Optional<Snapshot>> getSnapshotById(String id, String tenantId) {
-    return SnapshotDaoUtil.findById(getQueryExecutor(tenantId), id);
+    return SnapshotDaoUtil.findById(postgresClientFactory.getCachedPool(tenantId), id);
   }
 
   @Override
   public Future<Snapshot> saveSnapshot(Snapshot snapshot, String tenantId) {
     LOG.trace("saveSnapshot:: Saving snapshot with jobExecutionId {} for tenant {}", snapshot.getJobExecutionId(), tenantId);
-    return SnapshotDaoUtil.save(getQueryExecutor(tenantId), snapshot);
+    return SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(tenantId), snapshot);
   }
 
   @Override
   public Future<Snapshot> updateSnapshot(Snapshot snapshot, String tenantId) {
     LOG.trace("updateSnapshot:: Updating snapshot with jobExecutionId {} for tenant {}", snapshot.getJobExecutionId(), tenantId);
-    return SnapshotDaoUtil.update(getQueryExecutor(tenantId), snapshot);
+    return SnapshotDaoUtil.update(postgresClientFactory.getCachedPool(tenantId), snapshot);
   }
 
   @Override
   public Future<Boolean> deleteSnapshot(String id, String tenantId) {
     LOG.trace("deleteSnapshot:: Deleting snapshot {} for tenant {}", id, tenantId);
-    return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), id);
+    return SnapshotDaoUtil.delete(postgresClientFactory.getCachedPool(tenantId), id);
   }
 
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {

@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.math.RandomUtils;
@@ -146,7 +145,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID).withInstanceHrid(ERROR_HR_ID));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(secondRecord, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(errorRecord, okapiHeaders))
@@ -157,7 +156,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     var async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -218,7 +217,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
         }
       })
       .filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .toList();
 
     context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
   }
@@ -322,7 +321,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .map(instanceId -> new Link()
         .withInstanceId(instanceId)
         .withLinkId(LINK_ID))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private BibAuthorityLinksUpdate buildLinkEvent(List<UpdateTarget> updateTargets, BibAuthorityLinksUpdate.Type type) {

@@ -3,6 +3,7 @@ package org.folio.dao;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
+import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
@@ -176,6 +177,8 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
 
+  Future<Optional<Record>> getRecordByMatchedId(SqlConnection sqlConnection, String id);
+
   /**
    * Searches for {@link Record} by condition
    *
@@ -211,6 +214,8 @@ public interface RecordDao {
    * @return future with saved Record
    */
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
+
+  Future<Record> saveRecord(SqlConnection sqlConnection, Record recordDto, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db.
@@ -253,6 +258,8 @@ public interface RecordDao {
    * @return future with generation
    */
   Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
+
+  Future<Integer> calculateGeneration(SqlConnection sqlConnection, Record record);
 
   /**
    * Updates {@link ParsedRecord} in the db
@@ -399,6 +406,8 @@ public interface RecordDao {
    */
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
+  Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
+
   /**
    * Change suppress from discovery flag for record by external relation id
    *
@@ -419,6 +428,8 @@ public interface RecordDao {
    * @return future with generic type
    */
   <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
+
+  <T> Future<T> executeInTransaction2(Function<SqlConnection, Future<T>> action, String tenantId);
 
   /**
    * Search for non-existent mark bib ids in the system

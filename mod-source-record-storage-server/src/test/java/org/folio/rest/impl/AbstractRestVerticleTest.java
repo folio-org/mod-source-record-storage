@@ -154,6 +154,7 @@ public abstract class AbstractRestVerticleTest {
           .withKey(LOAD_SAMPLE_PARAMETER)
           .withValue("true")));
         tenantClient.postTenant(tenantAttributes, res2 -> {
+          context.assertTrue(res2.succeeded());
           if (res2.result().statusCode() == 204) {
             async.complete();
             return;

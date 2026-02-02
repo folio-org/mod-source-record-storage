@@ -113,7 +113,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getCachedPool(vertx, TENANT_ID))
       .onSuccess(v -> async.complete())
       .onFailure(context::fail);
   }

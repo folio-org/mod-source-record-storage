@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.vertx.reactivex.sqlclient.Tuple;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
@@ -17,7 +18,14 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import org.jooq.DSLContext;
+import org.jooq.InsertResultStep;
 import org.jooq.Record;
+import org.jooq.SQLDialect;
+import org.jooq.SelectConditionStep;
+import org.jooq.conf.ParamType;
+import org.jooq.conf.Settings;
+import org.jooq.impl.DSL;
 
 /**
  * Utility class for managing {@link ErrorRecord}
@@ -28,6 +36,10 @@ public final class ErrorRecordDaoUtil {
   private static final String DESCRIPTION = "description";
 
   public static final String ERROR_RECORD_CONTENT = "error_record_content";
+
+  private static final DSLContext dslContext = DSL.using(SQLDialect.POSTGRES, new Settings()
+    .withParamType(ParamType.NAMED)
+    .withRenderNamedParamPrefix("$"));
 
   private ErrorRecordDaoUtil() { }
 
@@ -45,6 +57,22 @@ public final class ErrorRecordDaoUtil {
   }
 
   /**
+   * Searches for {@link ErrorRecord} by id using {@link io.vertx.reactivex.sqlclient.SqlConnection}
+   *
+   * @param sqlConnection sql connection
+   * @param id            id
+   * @return future with optional ErrorRecord
+   */
+  public static Future<Optional<ErrorRecord>> findById(io.vertx.reactivex.sqlclient.SqlConnection sqlConnection, String id) {
+    SelectConditionStep<ErrorRecordsLbRecord> query = dslContext.selectFrom(ERROR_RECORDS_LB)
+      .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id)));
+    return sqlConnection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
+      .map(iterator -> iterator.hasNext() ? Optional.of(toErrorRecord(iterator.next().getDelegate())) : Optional.empty());
+  }
+
+  /**
    * Saves {@link ErrorRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
    *
    * @param queryExecutor query executor
@@ -59,6 +87,26 @@ public final class ErrorRecordDaoUtil {
       .set(dbRecord)
       .returning())
         .map(ErrorRecordDaoUtil::toSingleErrorRecord);
+  }
+
+  /**
+   * Saves {@link ErrorRecord} to the db
+   *
+   * @param errorRecord {@link ErrorRecord} to save
+   * @return future with saved {@link ErrorRecord}
+   */
+  public static Future<ErrorRecord> save(io.vertx.reactivex.sqlclient.SqlConnection connection, ErrorRecord errorRecord) {
+    ErrorRecordsLbRecord dbRecord = toDatabaseErrorRecord(errorRecord);
+    InsertResultStep<ErrorRecordsLbRecord> query = dslContext.insertInto(ERROR_RECORDS_LB)
+      .set(dbRecord)
+      .onDuplicateKeyUpdate()
+      .set(dbRecord)
+      .returning();
+
+    return connection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
+      .map(ErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
   /**

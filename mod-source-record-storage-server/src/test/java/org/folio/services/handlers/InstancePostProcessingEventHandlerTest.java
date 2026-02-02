@@ -244,7 +244,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
-  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
+  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) {
     Async async = context.async();
 
     String recordId = UUID.randomUUID().toString();
@@ -304,7 +304,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
-  public void shouldReturnExceptionForDuplicateRecord(TestContext context) throws IOException {
+  public void shouldReturnExceptionForDuplicateRecord(TestContext context) {
     Async async = context.async();
 
     String recordId = UUID.randomUUID().toString();
@@ -389,7 +389,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
-  public void shouldSaveIncomingRecordAndMarkExistingAsOldWhenIncomingRecordHasSameMatchedId(TestContext context) throws IOException {
+  public void shouldSaveIncomingRecordAndMarkExistingAsOldWhenIncomingRecordHasSameMatchedId(TestContext context) {
     Async async = context.async();
     Record existingRecord = TestMocks.getRecord(0);
     existingRecord.setSnapshotId(snapshotId1);
@@ -503,7 +503,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     var expectedHrid = "in0002";
 
     record.withParsedRecord(new ParsedRecord()
-        .withId(recordId)
+        .withId(RECORD_ID)
         .withContent(PARSED_CONTENT_WITH_999_FIELD))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceHrid("in0001").withInstanceId(expectedInstanceId));
 
@@ -613,7 +613,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
         .withField(TAG_005)
         .withData("*")));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(mappingParameters))))));
 
@@ -672,7 +672,7 @@ public class InstancePostProcessingEventHandlerTest extends AbstractPostProcessi
     Async async = context.async();
 
     record.withParsedRecord(new ParsedRecord()
-      .withId(recordId)
+      .withId(RECORD_ID)
       .withContent(PARSED_CONTENT_WITHOUT_001_FIELD));
 
     String expectedInstanceId = UUID.randomUUID().toString();

@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import io.vertx.reactivex.sqlclient.SqlConnection;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
@@ -112,7 +113,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao);
     Async async = context.async();
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -122,13 +123,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
   @After
   public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -139,17 +135,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRecords(records)
       .withTotalRecords(records.size());
     saveRecords(recordCollection.getRecords()).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
+      context.assertTrue(batch.succeeded());
       String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
       Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
       List<OrderField<?>> orderFields = new ArrayList<>();
       orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
       recordService.getRecords(condition, RecordType.MARC_BIB, orderFields, 1, 2, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
+        context.assertTrue(get.succeeded());
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getSnapshotId().equals(snapshotId))
@@ -171,10 +163,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRecords(records)
       .withTotalRecords(records.size());
     saveRecords(recordCollection.getRecords()).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
-
+      context.assertTrue(batch.succeeded());
       String externalId = "3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc";
       List<FieldRange> data = List.of(new FieldRange().withFrom("001").withTo("999"));
 
@@ -187,13 +176,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withData(data);
 
       recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
+        context.assertTrue(get.succeeded());
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.getFirst(), get.result().getRecords().getFirst());
         async.complete();
@@ -209,9 +196,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withRecords(records)
       .withTotalRecords(records.size());
     saveRecords(recordCollection.getRecords()).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
+      context.assertTrue(batch.succeeded());
 
       String externalId = "3c4ae3f3-b460-4a89-a2f9-78ce3145e4fc";
       List<FieldRange> data = List.of(
@@ -231,14 +216,12 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withData(data);
 
       recordService.fetchStrippedParsedRecords(batchRequest, TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
+        context.assertTrue(get.succeeded());
         List<Record> expected = records.stream()
           .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
           .filter(r -> r.getExternalIdsHolder().getInstanceId().equals(externalId))
           .peek(r -> r.getParsedRecord().setContent(expectedContent))
-          .collect(Collectors.toList());
+          .toList();
         context.assertEquals(expected.size(), get.result().getTotalRecords());
         compareRecords(context, expected.getFirst(), get.result().getRecords().getFirst());
         async.complete();
@@ -668,7 +651,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertEquals(record1Saved.result().getState(), State.ACTUAL);
       compareRecords(context, record1, record1Saved.result());
 
-      SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
+      SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
         if (snapshotSaved.failed()) {
           context.fail(snapshotSaved.cause());
         }
@@ -732,7 +715,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertEquals(record1Saved.result().getState(), State.ACTUAL);
       compareRecords(context, record1, record1Saved.result());
 
-      SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
+      SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
         if (snapshotSaved.failed()) {
           context.fail(snapshotSaved.cause());
         }
@@ -816,7 +799,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
         .withMetadata(mock.getMetadata());
 
-      SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
+      SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
         if (snapshotSaved.failed()) {
           context.fail(snapshotSaved.cause());
         }
@@ -1564,7 +1547,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           context.fail(update.cause());
         }
         verify(recordDomainEventPublisher, times(1)).publishRecordUpdated(eq(save.result()), eq(update.result()), any());
-        SnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
+        SnapshotDaoUtil.findById(postgresClientFactory.getCachedPool(TENANT_ID), snapshotId).onComplete(getSnapshot -> {
           if (getSnapshot.failed()) {
             context.fail(getSnapshot.cause());
           }
@@ -2055,9 +2038,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         context.fail(save.cause());
       }
       recordService.getRecordById(expected.getMatchedId(), TENANT_ID).onComplete(get -> {
-        if (get.failed()) {
-          context.fail(get.cause());
-        }
+        context.assertTrue(get.succeeded());
         context.assertTrue(get.result().isPresent());
         context.assertNotNull(get.result().get().getRawRecord());
         context.assertNotNull(get.result().get().getParsedRecord());
@@ -2125,15 +2106,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(marcBib))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordService.saveRecords(recordCollection, okapiHeaders).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
+      context.assertTrue(batch.succeeded());
 
       ArgumentCaptor<Record> captureOldRecord = ArgumentCaptor.forClass(Record.class);
       verify(recordDomainEventPublisher, times(batch.result().getTotalRecords())).publishRecordCreated(captureOldRecord.capture(), any());
@@ -2141,11 +2120,10 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
       compareRecords(context, expected, batch.result().getRecords());
-      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
+      postgresClientFactory.getCachedPool(TENANT_ID)
+        .withConnection((SqlConnection connection) -> RecordDaoUtil.countByCondition(connection, DSL.trueCondition()))
         .onComplete(count -> {
-          if (count.failed()) {
-            context.fail(count.cause());
-          }
+          context.assertTrue(count.succeeded());
           context.assertEquals(expected.size(), count.result());
           async.complete();
         });
@@ -2164,19 +2142,16 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withTotalRecords(expected.size());
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordService.saveRecords(recordCollection, okapiHeaders).onComplete(batch -> {
-      if (batch.failed()) {
-        context.fail(batch.cause());
-      }
+      context.assertTrue(batch.succeeded());
       context.assertEquals(0, batch.result().getErrorMessages().size());
       context.assertEquals(expected.size(), batch.result().getTotalRecords());
       compareRecords(context, expected, batch.result().getRecords());
       checkRecordErrorRecords(context, batch.result().getRecords(), TestMocks.getErrorRecord(0).getContent().toString(),
         TestMocks.getErrorRecord(0).getDescription());
-      RecordDaoUtil.countByCondition(postgresClientFactory.getQueryExecutor(TENANT_ID), DSL.trueCondition())
+      postgresClientFactory.getCachedPool(TENANT_ID)
+        .withConnection((SqlConnection connection) -> RecordDaoUtil.countByCondition(connection, DSL.trueCondition()))
         .onComplete(count -> {
-          if (count.failed()) {
-            context.fail(count.cause());
-          }
+          context.assertTrue(count.succeeded());
           context.assertEquals(expected.size(), count.result());
           async.complete();
         });
@@ -2564,7 +2539,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
               context.fail(getAfter.cause());
             }
             context.assertEquals(0, getAfter.result().getTotalRecords());
-            SnapshotDaoUtil.findById(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotId)
+            SnapshotDaoUtil.findById(postgresClientFactory.getCachedPool(TENANT_ID), snapshotId)
               .onComplete(getSnapshot -> {
                 if (getSnapshot.failed()) {
                   context.fail(getSnapshot.cause());

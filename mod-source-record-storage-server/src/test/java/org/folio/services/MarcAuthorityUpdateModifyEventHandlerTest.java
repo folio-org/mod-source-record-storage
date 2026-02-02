@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import io.vertx.reactivex.sqlclient.Pool;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -191,17 +192,17 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid("hrid00123"));
 
-    ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    Pool pgPool = postgresClientFactory.getCachedPool(TENANT_ID);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(queryExecutor, snapshot)
+    SnapshotDaoUtil.save(pgPool, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(pgPool, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 
   @After
   public void tearDown(TestContext context) {
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
 

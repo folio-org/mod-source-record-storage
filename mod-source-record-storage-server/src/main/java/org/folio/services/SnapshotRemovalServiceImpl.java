@@ -7,7 +7,6 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.RecordDaoUtil;
@@ -52,7 +51,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
   private Future<Void> deleteInstancesBySnapshotId(String snapshotId, OkapiConnectionParams params) {
     Condition condition = filterRecordBySnapshotId(snapshotId);
-    return recordDao.executeInTransaction(txQE -> RecordDaoUtil.countByCondition(txQE, condition), params.getTenantId())
+    return recordDao.executeInTransaction2(connection -> RecordDaoUtil.countByCondition(connection, condition), params.getTenantId())
       .compose(totalRecords -> {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();
@@ -71,7 +70,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
     List<String> instanceIds = records.stream()
       .filter(record -> record.getExternalIdsHolder() != null)
       .map(record -> record.getExternalIdsHolder().getInstanceId())
-      .collect(Collectors.toList());
+      .toList();
 
     Promise<Void> promise = Promise.promise();
     List<Future<Boolean>> deleteInstancesFutures = new ArrayList<>();

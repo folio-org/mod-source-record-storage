@@ -96,7 +96,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       if (e != null) {
         context.fail(e);
       }
-      recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
+      recordDao.getRecordByMatchedId(RECORD_ID, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
           context.fail(getAr.cause());
         }
@@ -145,7 +145,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
           if (ex != null) {
             context.fail(ex);
           }
-          recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(recordAr -> {
+          recordDao.getRecordByMatchedId(RECORD_ID, TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
               context.fail(recordAr.cause());
             }
@@ -231,7 +231,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     String expectedAuthorityId = UUID.randomUUID().toString();
 
     record.withParsedRecord(new ParsedRecord()
-        .withId(recordId)
+        .withId(RECORD_ID)
         .withContent(PARSED_CONTENT_WITH_999_FIELD))
       .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(expectedAuthorityId));
 
@@ -338,7 +338,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         .withField(TAG_005)
         .withData("*")));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(mappingParameters))))));
 

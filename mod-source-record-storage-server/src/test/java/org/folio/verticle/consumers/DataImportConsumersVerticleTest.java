@@ -30,7 +30,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -41,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import io.vertx.reactivex.sqlclient.Pool;
 import org.folio.ActionProfile;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
@@ -165,14 +166,14 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid("incorrectHrid"));
 
-    ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    Pool pgPool = postgresClientFactory.getCachedPool(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(queryExecutor, snapshot)
+    SnapshotDaoUtil.save(pgPool, snapshot)
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(pgPool, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 

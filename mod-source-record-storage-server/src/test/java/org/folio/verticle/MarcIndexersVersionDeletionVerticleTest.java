@@ -30,6 +30,8 @@ import org.folio.services.TenantDataProviderImpl;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Field;
 import org.jooq.Table;
+import org.jooq.conf.ParamType;
+import org.jooq.impl.DSL;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,7 +78,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onComplete(save -> {
         if (save.failed()) {
@@ -89,7 +91,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -140,12 +142,14 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
     Field<Integer> indexersVersionField = field(name(MARC_INDEXERS_TABLE, VERSION_FIELD), Integer.class);
 
-    return postgresClientFactory.getQueryExecutor(TENANT_ID).executeAny(dslContext -> dslContext
+    return postgresClientFactory.getCachedPool(TENANT_ID).query(DSL
         .select()
         .from(marcIndexers)
         .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(indexersIdField))
         .and(indexersVersionField.lessThan(MARC_RECORDS_TRACKING.VERSION))
-        .limit(1))
+        .limit(1)
+        .getSQL(ParamType.INLINED))
+      .execute()
       .map(rows -> rows.size() != 0);
   }
 
@@ -153,11 +157,13 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_TABLE));
     Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
 
-    return postgresClientFactory.getQueryExecutor(TENANT_ID).executeAny(dslContext -> dslContext
+    return postgresClientFactory.getCachedPool(TENANT_ID).query(DSL
         .select()
         .from(marcIndexers)
         .where(indexersIdField.eq(UUID.fromString(recordId)))
-        .limit(1))
+        .limit(1)
+        .getSQL(ParamType.INLINED))
+      .execute()
       .map(rows -> rows.size() != 0);
   }
 

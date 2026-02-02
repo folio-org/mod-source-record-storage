@@ -7,7 +7,7 @@ import io.vertx.reactivex.core.Vertx;
 import org.folio.TestUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
-import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,9 +99,11 @@ class PostgresClientFactorySslTest {
   void reactiveSsl(Vertx vertx, VertxTestContext vtc) throws IOException {
     config(SERVER_PEM);
     Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(DSLContext::selectOne)
-      .onComplete(vtc.succeeding(count -> {
-        assertThat(count, is(1));
+    PostgresClientFactory.getCachedPool(vertx, "reactivessl")
+      .query(DSL.selectOne().getSQL())
+      .execute()
+      .onComplete(vtc.succeeding(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
         vtc.completeNow();
       }));
   }
@@ -111,7 +113,9 @@ class PostgresClientFactorySslTest {
     // client without SERVER_PEM must not connect to server
     config(null);
     Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivenossl").execute(DSLContext::selectOne)
+    PostgresClientFactory.getCachedPool(vertx, "reactivenossl")
+      .query(DSL.selectOne().getSQL())
+      .execute()
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("no encryption"));
         vtc.completeNow();
@@ -123,7 +127,9 @@ class PostgresClientFactorySslTest {
     // client must reject if SERVER_PEM doesn't match the server key
     config(SERVER_WRONG_PEM);
     Files.writeString(certFilePath, SERVER_WRONG_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivewrongcert").execute(DSLContext::selectOne)
+    PostgresClientFactory.getCachedPool(vertx, "reactivewrongcert")
+      .query(DSL.selectOne().getSQL())
+      .execute()
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("SSL handshake failed"));
         vtc.completeNow();

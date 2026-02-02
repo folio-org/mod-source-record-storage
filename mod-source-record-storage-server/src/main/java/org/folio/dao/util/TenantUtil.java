@@ -21,9 +21,8 @@ public class TenantUtil {
     PostgresClient pgClient = PostgresClient.getInstance(vertx);
     Promise<RowSet<Row>> promise = Promise.promise();
     String tenantQuery = "select nspname from pg_catalog.pg_namespace where nspname LIKE '%_mod_source_record_storage';";
-//    pgClient.selectRead(tenantQuery, 60000, promise::handle);
-//    return promise.future()
-    return pgClient.select(tenantQuery)
+    pgClient.selectRead(tenantQuery, 60000, promise::handle);
+    return promise.future()
       .map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
         .map(TenantUtil::mapToTenant)
         .toList());

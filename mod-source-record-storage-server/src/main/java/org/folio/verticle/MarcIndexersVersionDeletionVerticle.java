@@ -115,7 +115,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
 
   private long calculateDelayToNextTask() {
     ZonedDateTime now = ZonedDateTime.now(ZONE_ID);
-    ZonedDateTime nextRun = now.with(scheduleTimes.get(0));
+    ZonedDateTime nextRun = now.with(scheduleTimes.getFirst());
     for (LocalTime time : scheduleTimes) {
       ZonedDateTime potentialNextRun = now.with(time);
       if (now.compareTo(potentialNextRun) <= 0) {
@@ -124,7 +124,7 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
       }
     }
     if (now.compareTo(nextRun) > 0) {
-      nextRun = nextRun.plusDays(1).with(scheduleTimes.get(0));
+      nextRun = nextRun.plusDays(1).with(scheduleTimes.getFirst());
     }
     return ChronoUnit.MILLIS.between(now, nextRun);
   }

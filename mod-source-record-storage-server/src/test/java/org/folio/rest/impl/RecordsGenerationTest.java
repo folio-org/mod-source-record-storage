@@ -35,8 +35,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
-  private final static String HR_ID01 = "hrid00001";
-  private final static String HR_ID02 = "hrid00002";
+  private static final String HR_ID01 = "hrid00001";
+  private static final String HR_ID02 = "hrid00002";
   private static RawRecord rawRecord;
   private static ParsedRecord marcRecord;
 
@@ -68,7 +68,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getCachedPool(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

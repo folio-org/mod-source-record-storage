@@ -29,7 +29,6 @@ import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -50,6 +49,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import io.vertx.reactivex.sqlclient.Pool;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -82,6 +82,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
@@ -220,7 +221,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     Async async = context.async();
     TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
     try {
-      tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
+      String moduleVersion = "%s-%s".formatted(ModuleName.getModuleName(), ModuleName.getModuleVersion());
+      tenantClient.postTenant(new TenantAttributes().withModuleTo(moduleVersion), res2 -> {
+        context.assertTrue(res2.succeeded());
         if (res2.result().statusCode() == 204) {
           async.complete();
           return;
@@ -297,8 +300,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
       .withMetadata(new Metadata());
 
-    ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    ReactiveClassicGenericQueryExecutor queryExecutorCentralTenant = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
+    Pool queryExecutorLocalTenant = postgresClientFactory.getCachedPool(TENANT_ID);
+    Pool queryExecutorCentralTenant = postgresClientFactory.getCachedPool(CENTRAL_TENANT_ID);
 
     SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
       .compose(v -> recordService.saveRecord(record, Map.of(OKAPI_TENANT_HEADER, TENANT_ID)))
@@ -311,12 +314,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @After
   public void tearDown(TestContext context) {
     wireMockServer.resetRequests();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
       .onComplete(ar -> {
         if (ar.failed()) {
           context.asyncAssertFailure();
         } else {
-          SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID))
+          SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(CENTRAL_TENANT_ID))
             .onComplete(arCentral -> {
               if (arCentral.failed()) {
                 context.asyncAssertFailure();
@@ -764,9 +767,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), secondSnapshot)
       .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
@@ -943,9 +946,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), secondSnapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), secondSnapshot)
       .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())

@@ -11,15 +11,28 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
+import io.vertx.reactivex.sqlclient.RowSet;
+import io.vertx.reactivex.sqlclient.SqlConnection;
+import io.vertx.reactivex.sqlclient.Tuple;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jooq.tables.records.EdifactRecordsLbRecord;
 import org.folio.rest.jooq.tables.records.MarcRecordsLbRecord;
+import org.jooq.AttachableQueryPart;
+import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.Record2;
+import org.jooq.SQLDialect;
+import org.jooq.SelectConditionStep;
+import org.jooq.conf.ParamType;
+import org.jooq.conf.Settings;
 import org.jooq.impl.SQLDataType;
+import org.jooq.impl.DSL;
+
+import static org.jooq.impl.DSL.using;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter;
@@ -44,6 +57,10 @@ public final class ParsedRecordDaoUtil {
 
   public static final String PARSED_RECORD_CONTENT = "parsed_record_content";
 
+  private static final DSLContext dslContext = DSL.using(SQLDialect.POSTGRES, new Settings()
+    .withParamType(ParamType.NAMED)
+    .withRenderNamedParamPrefix("$"));
+
   private ParsedRecordDaoUtil() { }
 
   /**
@@ -60,6 +77,25 @@ public final class ParsedRecordDaoUtil {
       .from(table(name(recordType.getTableName())))
       .where(ID_FIELD.eq(UUID.fromString(id))))
       .map(ParsedRecordDaoUtil::toOptionalParsedRecord);
+  }
+
+  /**
+   * Finds {@link ParsedRecord} by id
+   *
+   * @param sqlConnection sql connection
+   * @param id            ParsedRecord id
+   * @param recordType    record type
+   * @return future with optional ParsedRecord
+   */
+  public static Future<Optional<ParsedRecord>> findById(SqlConnection sqlConnection, String id, RecordType recordType) {
+    SelectConditionStep<Record2<UUID, JsonObject>> query = dslContext.select(ID_FIELD, CONTENT_FIELD)
+      .from(table(name(recordType.getTableName())))
+      .where(ID_FIELD.eq(UUID.fromString(id)));
+
+    return sqlConnection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(RowSet::iterator)
+      .map(iterator -> iterator.hasNext() ? Optional.of(toParsedRecord(iterator.next().getDelegate())) : Optional.empty());
   }
 
   /**
@@ -87,6 +123,32 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
+   * * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using
+   * {@link SqlConnection}
+   *
+   * @param parsedRecord {@link ParsedRecord} to save
+   * @param recordType   record type
+   * @return future with saved {@link ParsedRecord}
+   */
+  public static Future<ParsedRecord> save(io.vertx.reactivex.sqlclient.SqlConnection connection, ParsedRecord parsedRecord, RecordType recordType) {
+    UUID id = UUID.fromString(parsedRecord.getId());
+    JsonObject content = normalize(parsedRecord.getContent());
+    AttachableQueryPart query = dslContext.insertInto(table(name(recordType.getTableName())))
+      .set(ID_FIELD, id)
+      .set(CONTENT_FIELD, content)
+      .onConflict(ID_FIELD)
+      .doUpdate()
+      .set(CONTENT_FIELD, content)
+      .returning();
+
+    return connection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
+      .map(res -> parsedRecord
+        .withContent(content.getMap()));
+  }
+
+  /**
    * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
    * {@link ReactiveClassicGenericQueryExecutor}
    *
@@ -104,6 +166,36 @@ public final class ParsedRecordDaoUtil {
       .where(ID_FIELD.eq(id)))
       .map(update -> {
         if (update.rowCount() > 0) {
+          return parsedRecord
+            .withContent(content.getMap());
+        }
+        String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
+        throw new NotFoundException(message);
+      });
+  }
+
+  /**
+   * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
+   * {@link SqlConnection}
+   *
+   * @param sqlConnection sql connection
+   * @param parsedRecord  parsed record to update
+   * @param recordType    record type to update
+   * @return future of updated ParsedRecord
+   */
+  public static Future<ParsedRecord> update(SqlConnection sqlConnection,
+      ParsedRecord parsedRecord, RecordType recordType) {
+    UUID id = UUID.fromString(parsedRecord.getId());
+    JsonObject content = normalize(parsedRecord.getContent());
+    var query = dslContext.update(table(name(recordType.getTableName())))
+      .set(CONTENT_FIELD, content)
+      .where(ID_FIELD.eq(id));
+
+    return sqlConnection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(RowSet::getDelegate)
+      .map(rowSet -> {
+        if (rowSet.rowCount() > 0) {
           return parsedRecord
             .withContent(content.getMap());
         }

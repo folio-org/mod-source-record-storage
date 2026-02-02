@@ -48,8 +48,10 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-//import io.vertx.reactivex.pgclient.PgPool;
 import io.vertx.reactivex.sqlclient.Pool;
+import io.vertx.reactivex.sqlclient.RowSet;
+import io.vertx.reactivex.sqlclient.SqlConnection;
+import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.Row;
 
 import java.io.IOException;
@@ -69,6 +71,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -143,8 +146,11 @@ import org.jooq.OrderField;
 import org.jooq.Record1;
 import org.jooq.Record2;
 import org.jooq.ResultQuery;
+import org.jooq.SQLDialect;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
+import org.jooq.SelectLimitPercentAfterOffsetStep;
+import org.jooq.SelectLimitPercentStep;
 import org.jooq.SelectOnConditionStep;
 import org.jooq.SortOrder;
 import org.jooq.Table;
@@ -153,6 +159,7 @@ import org.jooq.UpdateConditionStep;
 import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.ParamType;
+import org.jooq.conf.Settings;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -225,6 +232,10 @@ public class RecordDaoImpl implements RecordDao {
     RECORDS_LB.EXTERNAL_HRID
   };
 
+  private static final DSLContext dslContext = DSL.using(SQLDialect.POSTGRES, new Settings()
+    .withParamType(ParamType.NAMED)
+    .withRenderNamedParamPrefix("$"));
+
   private final PostgresClientFactory postgresClientFactory;
   private final RecordDomainEventPublisher recordDomainEventPublisher;
 
@@ -241,6 +252,11 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public <T> Future<T> executeInTransaction2(Function<SqlConnection, Future<T>> action, String tenantId) {
+    return getCachedPool(tenantId).withTransaction(action);
+  }
+
+  @Override
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     return getRecords(condition, recordType, orderFields, offset, limit, true, tenantId);
   }
@@ -248,9 +264,13 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<RecordCollection> getRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields,
                                              int offset, int limit, boolean returnTotalCount, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
-      readRecords(dsl, condition, recordType, offset, limit, returnTotalCount, orderFields)
-    )).map(queryResult -> toRecordCollectionWithLimitCheck(queryResult, limit));
+    ResultQuery<org.jooq.Record> query =
+      readRecords(dslContext, condition, recordType, offset, limit, returnTotalCount, orderFields);
+
+    return getCachedPool(tenantId)
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(rowSet -> toRecordCollectionWithLimitCheck(rowSet, limit));
   }
 
   @Override
@@ -265,16 +285,21 @@ public class RecordDaoImpl implements RecordDao {
       condition = RecordDaoUtil.getExternalIdsCondition(externalIds, idType)
         .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL));
     }
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
+
+    SelectConditionStep<org.jooq.Record> query = dslContext
+      .with(cte.as(dslContext.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(recordType.getRecordImplicitCondition()))))
       .select(getStrippedParsedRecordWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(recordType.getRecordImplicitCondition()))
-    )).map(this::toStrippedParsedRecordCollection);
+      .rightJoin(dslContext.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(recordType.getRecordImplicitCondition()));
+
+    return getCachedPool(tenantId)
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+    .map(this::toStrippedParsedRecordCollection);
   }
 
   @Override
@@ -282,42 +307,46 @@ public class RecordDaoImpl implements RecordDao {
                                                 List<String> matchedRecordIds, TypeConnection typeConnection,
                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
-    Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    Table<org.jooq.Record> marcIndexersPartitionTable =
+      table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+
     if (matchedField.getValue() instanceof MissingValue)
       return Future.succeededFuture(emptyList());
 
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
-      {
-        SelectOnConditionStep<org.jooq.Record> query = dsl
-          .select(getAllRecordFields(prt))
-          .distinctOn(RECORDS_LB.ID)
-          .from(RECORDS_LB)
-          .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-          .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-          .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-          .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))));
-        if (typeConnection.getDbType()
-          .getTableName().equalsIgnoreCase(MARC_RECORDS_LB.getName())) {
-          query = query.innerJoin(MARC_RECORDS_TRACKING)
-            .on(MARC_RECORDS_TRACKING.MARC_ID
-              .eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
-              .and(MARC_RECORDS_TRACKING.VERSION
-                .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
-        }
-        return query.where(
-            filterRecordByType(typeConnection.getRecordType().value())
-              .and(filterRecordByMultipleIds(matchedRecordIds))
-              .and(filterRecordByState(Record.State.ACTUAL.value()))
-              .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-              .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
-          )
-          .offset(offset)
-          .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
-      }
-    )).map(queryResult -> queryResult.stream()
-      .map(res -> asRow(res.unwrap()))
-      .map(this::toRecord)
-      .toList());
+    SelectOnConditionStep<org.jooq.Record> query = dslContext
+      .select(getAllRecordFields(prt))
+      .distinctOn(RECORDS_LB.ID)
+      .from(RECORDS_LB)
+      .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
+      .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
+      .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
+      .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))));
+    if (typeConnection.getDbType()
+      .getTableName().equalsIgnoreCase(MARC_RECORDS_LB.getName())) {
+      query = query.innerJoin(MARC_RECORDS_TRACKING)
+        .on(MARC_RECORDS_TRACKING.MARC_ID
+          .eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
+          .and(MARC_RECORDS_TRACKING.VERSION
+            .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+    }
+
+    SelectLimitPercentAfterOffsetStep<org.jooq.Record> completedQuery = query.where(
+        filterRecordByType(typeConnection.getRecordType().value())
+          .and(filterRecordByMultipleIds(matchedRecordIds))
+          .and(filterRecordByState(Record.State.ACTUAL.value()))
+          .and(externalIdRequired ? filterRecordByExternalIdNonNull() : noCondition())
+          .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
+      )
+      .offset(offset)
+      .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+
+    return getCachedPool(tenantId)
+      .preparedQuery(completedQuery.getSQL())
+      .execute(Tuple.from(completedQuery.getBindValues()))
+      .map(queryResult -> StreamSupport.stream(queryResult.spliterator(), false)
+        .map(this::toRow)
+        .map(this::toRecord)
+        .toList());
   }
 
   private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {
@@ -573,39 +602,43 @@ public class RecordDaoImpl implements RecordDao {
   public Future<RecordsIdentifiersCollection> getMatchedRecordsIdentifiers(CompositeMatchField matchedField, boolean returnTotalRecords,
                                                                            TypeConnection typeConnection, boolean externalIdRequired,
                                                                            int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> {
-      TableLike<Record1<Integer>> countQuery;
-      if (returnTotalRecords) {
-        SelectJoinStep<Record1<Integer>> baseCountQuery = select(countDistinct(RECORDS_LB.ID)).from(RECORDS_LB);
-        joinOnTablesForSearchByMarcFields(baseCountQuery, matchedField);
-        countQuery = baseCountQuery
-          .where(filterRecordByType(typeConnection.getRecordType().value())
-            .and(RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED))
-            .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-            .and(getCompositeMatchedFieldCondition(matchedField)));
-      } else {
-        countQuery = select(inline(null, Integer.class).as(COUNT));
-      }
-
-      SelectJoinStep<org.jooq.Record> baseSearchQuery = dsl
-        .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
-        .distinctOn(RECORDS_LB.ID)
-        .from(RECORDS_LB);
-
-      joinOnTablesForSearchByMarcFields(baseSearchQuery, matchedField);
-      SelectConditionStep<org.jooq.Record> searchQuery = baseSearchQuery
+    TableLike<Record1<Integer>> countQuery;
+    if (returnTotalRecords) {
+      SelectJoinStep<Record1<Integer>> baseCountQuery = dslContext.select(countDistinct(RECORDS_LB.ID)).from(RECORDS_LB);
+      joinOnTablesForSearchByMarcFields(baseCountQuery, matchedField);
+      countQuery = baseCountQuery
         .where(filterRecordByType(typeConnection.getRecordType().value())
           .and(RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED))
           .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
           .and(getCompositeMatchedFieldCondition(matchedField)));
+    } else {
+      countQuery = select(inline(null, Integer.class).as(COUNT));
+    }
 
-      return dsl.select()
-        .from(searchQuery)
-        .rightJoin(countQuery).on(DSL.trueCondition())
-        .orderBy(searchQuery.field(ID).asc())
-        .offset(offset)
-        .limit(limit);
-    })).map(result -> toRecordsIdentifiersCollection(result, returnTotalRecords));
+    SelectJoinStep<org.jooq.Record> baseSearchQuery = dslContext
+      .select(List.of(RECORDS_LB.ID, RECORDS_LB.EXTERNAL_ID))
+      .distinctOn(RECORDS_LB.ID)
+      .from(RECORDS_LB);
+
+    joinOnTablesForSearchByMarcFields(baseSearchQuery, matchedField);
+    SelectConditionStep<org.jooq.Record> searchQuery = baseSearchQuery
+      .where(filterRecordByType(typeConnection.getRecordType().value())
+        .and(RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED))
+        .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
+        .and(getCompositeMatchedFieldCondition(matchedField)));
+
+    SelectLimitPercentAfterOffsetStep<org.jooq.Record> query = dslContext
+      .select()
+      .from(searchQuery)
+      .rightJoin(countQuery).on(trueCondition())
+      .orderBy(searchQuery.field(ID).asc())
+      .offset(offset)
+      .limit(limit);
+
+    return getCachedPool(tenantId)
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(result -> toRecordsIdentifiersCollection(result, returnTotalRecords));
   }
 
   private void joinOnTablesForSearchByMarcFields(SelectJoinStep<?> selectJoinStep, CompositeMatchField compositeMatchField) {
@@ -677,9 +710,27 @@ public class RecordDaoImpl implements RecordDao {
       .withTotalRecords(countResult);
   }
 
+  private RecordsIdentifiersCollection toRecordsIdentifiersCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet, boolean returnTotalRecords) {
+//    Integer countResult = returnTotalRecords ? rowSet.iterator().next().getInteger(COUNT) : 0;
+    Integer countResult = rowSet.size() == 0 ? Integer.valueOf(0) : rowSet.iterator().next().getInteger(COUNT);
+    if (returnTotalRecords && (countResult == null || countResult == 0)) {
+      return new RecordsIdentifiersCollection().withTotalRecords(0);
+    }
+
+    List<RecordIdentifiersDto> identifiers = StreamSupport.stream(rowSet.spliterator(), false)
+      .map(row -> new RecordIdentifiersDto()
+        .withRecordId(row.getUUID(ID).toString())
+        .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
+      .toList();
+
+    return new RecordsIdentifiersCollection()
+      .withIdentifiers(identifiers)
+      .withTotalRecords(countResult);
+  }
+
   @Override
   public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, id));
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> getRecordById(sqlConnection, id));
   }
 
   @Override
@@ -688,9 +739,15 @@ public class RecordDaoImpl implements RecordDao {
     return getRecordByCondition(txQE, condition);
   }
 
+//  @Override
+  public Future<Optional<Record>> getRecordById(SqlConnection sqlConnection, String id) {
+    Condition condition = RECORDS_LB.ID.eq(UUID.fromString(id));
+    return getRecordByCondition(sqlConnection, condition);
+  }
+
   @Override
   public Future<Optional<Record>> getRecordByMatchedId(String matchedId, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByMatchedId(txQE, matchedId));
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> getRecordByMatchedId(sqlConnection, matchedId));
   }
 
   @Override
@@ -702,8 +759,17 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Optional<Record>> getRecordByMatchedId(SqlConnection sqlConnection, String id) {
+    Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(id))
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+    return getRecordByCondition(sqlConnection, condition);
+  }
+
+  @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByCondition(txQE, condition));
+    return getCachedPool(tenantId)
+      .withTransaction((SqlConnection sqlConnection) -> getRecordByCondition(sqlConnection, condition));
   }
 
   @Override
@@ -712,11 +778,17 @@ public class RecordDaoImpl implements RecordDao {
       .compose(record -> lookupAssociatedRecords(txQE, record, true));
   }
 
+//  @Override
+  public Future<Optional<Record>> getRecordByCondition(SqlConnection sqlConnection, Condition condition) {
+    return RecordDaoUtil.findByCondition(sqlConnection, condition)
+      .compose(record -> lookupAssociatedRecords(sqlConnection, record, true));
+  }
+
   @Override
   public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> saveRecord(txQE, record, okapiHeaders));
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> saveRecord(sqlConnection, record, okapiHeaders));
   }
 
   @Override
@@ -728,13 +800,20 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Record> saveRecord(SqlConnection sqlConnection, Record recordDto,
+                                   Map<String, String> okapiHeaders) {
+    LOG.trace("saveRecord:: Saving {} record {}", recordDto.getRecordType(), recordDto.getId());
+    return insertOrUpdateRecord(sqlConnection, recordDto)
+      .onSuccess(created -> recordDomainEventPublisher.publishRecordCreated(created, okapiHeaders));
+  }
+
+  @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
-    var firstRecord = recordCollection.getRecords().iterator().next();
+    var firstRecord = recordCollection.getRecords().getFirst();
     var snapshotId = firstRecord.getSnapshotId();
     var recordType = RecordType.valueOf(firstRecord.getRecordType().name());
-    Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
 
     if(context == null) {
@@ -749,12 +828,6 @@ public class RecordDaoImpl implements RecordDao {
         return recordsBatchResponse;
       })
       .onFailure(e -> LOG.warn("saveRecords:: Error during batch record save", e));
-
-
-//    return finalPromise.future()
-//      .onSuccess(response -> response.getRecords()
-//        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
-//      );
   }
 
   @Override
@@ -767,10 +840,9 @@ public class RecordDaoImpl implements RecordDao {
       .and(RecordDaoUtil.filterRecordByDeleted(false));
 
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
-    Promise<RecordsBatchResponse> finalPromise = Promise.promise();
     Context context = Vertx.currentContext();
     if(context == null) {
-      return Future.failedFuture("saveRecordsByExternalIds :: operation must be executed by a Vertx thread");
+      return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
     }
 
     return context.owner().executeBlocking(
@@ -782,14 +854,14 @@ public class RecordDaoImpl implements RecordDao {
             var records = queryResult.fetch(this::toRecord);
 
             if (CollectionUtils.isEmpty(records)) {
-              LOG.warn("saveRecordsByExternalIds :: No records returned from the fetch query");
+              LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
               return new RecordsBatchResponse().withTotalRecords(0);
             }
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
             var modifiedRecords = recordsModifier.apply(existingRecordsCollection);
 
             // validate snapshot
-            var snapshotId = modifiedRecords.getRecords().iterator().next().getSnapshotId();
+            var snapshotId = modifiedRecords.getRecords().getFirst().getSnapshotId();
             var snapshotIdsAreDifferent = records.stream().anyMatch(r -> !Objects.equals(snapshotId, r.getSnapshotId()));
             if (snapshotIdsAreDifferent) {
               throw new BadRequestException("Batch record collection only supports single snapshot");
@@ -807,7 +879,7 @@ public class RecordDaoImpl implements RecordDao {
               matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // save records
-            LOG.info("saveRecordsByExternalIds :: recordCollection: {}", modifiedRecords.getTotalRecords());
+            LOG.info("saveRecordsByExternalIds:: recordCollection: {}", modifiedRecords.getTotalRecords());
             persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
             // return result
@@ -819,10 +891,10 @@ public class RecordDaoImpl implements RecordDao {
               .withErrorMessages(errorMessages);
           });
         } catch (DuplicateEventException e) {
-          LOG.info("saveRecordsByExternalIds :: Skipped saving records due to duplicate event: {}", e.getMessage());
+          LOG.info("saveRecordsByExternalIds:: Skipped saving records due to duplicate event: {}", e.getMessage());
           throw e;
         } catch (SQLException | DataAccessException e) {
-          LOG.warn("saveRecordsByExternalIds :: Failed to read and save modified records", e);
+          LOG.warn("saveRecordsByExternalIds:: Failed to read and save modified records", e);
           throw e;
         }
       }
@@ -834,11 +906,6 @@ public class RecordDaoImpl implements RecordDao {
         return response;
       })
       .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));
-
-//    return finalPromise.future()
-//      .onSuccess(response -> response.getRecords()
-//        .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders))
-//      );
   }
 
   private ResultQuery<org.jooq.Record> readRecords(DSLContext dsl, Condition condition, RecordType recordType, int offset, int limit,
@@ -876,7 +943,7 @@ public class RecordDaoImpl implements RecordDao {
                                       List<RawRecordsLbRecord> dbRawRecords,
                                       List<Record2<UUID, JSONB>> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
-    LOG.info("persistDatabaseRecords :: dbRecords: {}", dbRecords.size());
+    LOG.info("persistDatabaseRecords:: dbRecords: {}", dbRecords.size());
     List<UUID> ids = new ArrayList<>();
 
     // lookup the latest generation by matched id and committed snapshot updated before current snapshot
@@ -894,13 +961,13 @@ public class RecordDaoImpl implements RecordDao {
       var generation = Optional.ofNullable(dbRecord.getGeneration())
         .map(g -> ++g)
         .orElse(0);
-      LOG.debug("persistDatabaseRecords :: matchedId: {}, set new generation: {}", dbRecord.getMatchedId(), generation);
+      LOG.debug("persistDatabaseRecords:: matchedId: {}, set new generation: {}", dbRecord.getMatchedId(), generation);
       dbRecord.setGeneration(generation);
     });
 
     // update matching records state
     if(CollectionUtils.isNotEmpty(ids)) {
-      LOG.debug("persistDatabaseRecords :: set ids: {} state to OLD", ids.size());
+      LOG.debug("persistDatabaseRecords:: set ids: {} state to OLD", ids.size());
       dsl.update(RECORDS_LB)
         .set(RECORDS_LB.STATE, RecordState.OLD)
         .where(RECORDS_LB.ID.in(ids))
@@ -989,7 +1056,7 @@ public class RecordDaoImpl implements RecordDao {
             matchedGenerations.put(matchedId, generation);
           });
 
-        LOG.info("saveRecords :: recordCollection: {}, dbRecords: {}, matchedGenerations: {}",
+        LOG.info("saveRecords:: recordCollection: {}, dbRecords: {}, matchedGenerations: {}",
           recordCollection.getTotalRecords(), dbRecords.size(), matchedGenerations.size());
 
         // update matching records state
@@ -1128,8 +1195,8 @@ public class RecordDaoImpl implements RecordDao {
       if (error.exception().sqlState().equals(UNIQUE_VIOLATION_SQL_STATE)) {
         throw new DuplicateEventException("SQL Unique constraint violation prevented repeatedly saving the record");
       }
-      LOG.warn("validateRecordsPersist :: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
-      LOG.debug("validateRecordsPersist :: Failed to execute statement from batch: {}", error.query());
+      LOG.warn("validateRecordsPersist:: Error occurred on batch execution: {}", error.exception().getCause().getMessage());
+      LOG.debug("validateRecordsPersist:: Failed to execute statement from batch: {}", error.query());
     });
   }
 
@@ -1160,9 +1227,9 @@ public class RecordDaoImpl implements RecordDao {
   public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> getRecordById(sqlConnection, record.getId())
       .compose(optionalRecord -> optionalRecord
-        .map(oldRecord -> insertOrUpdateRecord(txQE, record)
+        .map(oldRecord -> insertOrUpdateRecord(sqlConnection, record)
           .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordUpdated(oldRecord, updatedRecord, okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()))))));
   }
@@ -1171,19 +1238,23 @@ public class RecordDaoImpl implements RecordDao {
   public Future<SourceRecordCollection> getSourceRecords(Condition condition, RecordType recordType, Collection<OrderField<?>> orderFields, int offset, int limit, String tenantId) {
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
+    SelectLimitPercentAfterOffsetStep<org.jooq.Record> query = dslContext
+      .with(cte.as(dslContext.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(recordType.getSourceRecordImplicitCondition()))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
+      .rightJoin(dslContext.select().from(table(cte))).on(trueCondition())
       .where(condition.and(recordType.getSourceRecordImplicitCondition()))
       .orderBy(orderFields)
       .offset(offset)
-      .limit(limit)
-    )).map(this::toSourceRecordCollection);
+      .limit(limit);
+
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> sqlConnection
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+    ).map(this::toSourceRecordCollection);
   }
 
   @Override
@@ -1220,16 +1291,20 @@ public class RecordDaoImpl implements RecordDao {
       .and(RecordDaoUtil.filterRecordByDeleted(deleted));
     Name cte = name(CTE);
     Name prt = name(recordType.getTableName());
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl -> dsl
-      .with(cte.as(dsl.selectCount()
+    SelectConditionStep<org.jooq.Record> query = dslContext
+      .with(cte.as(dslContext.selectCount()
         .from(RECORDS_LB)
         .where(condition.and(recordType.getRecordImplicitCondition()))))
       .select(getRecordFieldsWithCount(prt))
       .from(RECORDS_LB)
       .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
-      .rightJoin(dsl.select().from(table(cte))).on(trueCondition())
-      .where(condition.and(recordType.getSourceRecordImplicitCondition()))
-    )).map(this::toSourceRecordCollection);
+      .rightJoin(dslContext.select().from(table(cte))).on(trueCondition())
+      .where(condition.and(recordType.getSourceRecordImplicitCondition()));
+
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> sqlConnection
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+    ).map(this::toSourceRecordCollection);
   }
 
   @Override
@@ -1240,13 +1315,11 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
-    return getQueryExecutor(tenantId)
-      .transaction(txQE -> txQE.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-          .where(condition))
-        .map(RecordDaoUtil::toOptionalRecord)
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) ->
+      RecordDaoUtil.findByCondition(sqlConnection, condition)
         .compose(optionalRecord -> {
           if (optionalRecord.isPresent()) {
-            return lookupAssociatedRecords(txQE, optionalRecord.get(), false)
+            return lookupAssociatedRecords(sqlConnection, optionalRecord.get(), false)
               .map(RecordDaoUtil::toSourceRecord)
               .map(sourceRecord -> {
                 if (Objects.nonNull(sourceRecord.getParsedRecord())) {
@@ -1274,14 +1347,32 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Integer> calculateGeneration(SqlConnection sqlConnection, Record record) {
+    SelectConditionStep<Record1<Integer>> query = dslContext.select(max(RECORDS_LB.GENERATION).as(RECORDS_LB.GENERATION))
+      .from(RECORDS_LB.innerJoin(SNAPSHOTS_LB).on(RECORDS_LB.SNAPSHOT_ID.eq(SNAPSHOTS_LB.ID)))
+      .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(record.getMatchedId()))
+        .and(SNAPSHOTS_LB.UPDATED_DATE.lessThan(dslContext.select(SNAPSHOTS_LB.PROCESSING_STARTED_DATE)
+          .from(SNAPSHOTS_LB)
+          .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(record.getSnapshotId()))))));
+
+    return sqlConnection.preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(rowSet -> {
+        Integer generation = rowSet.iterator().next().getInteger(RECORDS_LB.GENERATION.getName());
+        return Objects.nonNull(generation) ? ++generation : 0;
+      });
+  }
+
+  @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
       record.getId(), tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordById(txQE, record.getId())
+    return getCachedPool(tenantId)
+      .withTransaction((SqlConnection sqlConnection) -> getRecordById(sqlConnection, record.getId())
       .compose(optionalRecord -> optionalRecord.map(oldRecord ->
-          updateExternalIdsForRecord(txQE, record).compose(updatedRecord ->
-            ParsedRecordDaoUtil.update(txQE, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+          updateExternalIdsForRecord(sqlConnection, record).compose(updatedRecord ->
+            ParsedRecordDaoUtil.update(sqlConnection, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
               .onSuccess(v -> recordDomainEventPublisher
                 .publishRecordUpdated(oldRecord, updatedRecord.withParsedRecord(record.getParsedRecord()), okapiHeaders))
               .map(v -> record.getParsedRecord()))
@@ -1319,8 +1410,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<ParsedRecordsBatchResponse> updateParsedRecordsInBatch(RecordCollection recordCollection, Context context,
                                                                         String tenantId, ArrayList<Record> recordsUpdated) {
-    Promise<ParsedRecordsBatchResponse> promise = Promise.promise();
-    context.owner().<ParsedRecordsBatchResponse>executeBlocking(() ->
+    return context.owner().executeBlocking(() ->
       {
         List<Record> records = new ArrayList<>();
         List<String> errorMessages = new ArrayList<>();
@@ -1337,7 +1427,6 @@ public class RecordDaoImpl implements RecordDao {
         List<Record> processedRecords = recordCollection.getRecords();
 
         try (Connection connection = getConnection(tenantId)) {
-//          DSL.using(connection).transaction(ctx -> {
           return DSL.using(connection).transactionResult(ctx -> {
             DSLContext dsl = DSL.using(ctx);
 
@@ -1372,26 +1461,11 @@ public class RecordDaoImpl implements RecordDao {
               .withParsedRecords(recordsUpdated.stream().map(Record::getParsedRecord).toList())
               .withTotalRecords(recordsUpdated.size());
           });
-        } catch (SQLException e) {
-          LOG.warn("updateParsedRecords:: Failed to update records", e);
-//          blockingPromise.fail(e);
-          throw e;
         }
       },
       false)
-      .onComplete(
-        result -> {
-          if (result.failed()) {
-            LOG.warn("updateParsedRecords:: Error during update of parsed records", result.cause());
-            promise.fail(result.cause());
-          } else {
-            LOG.debug("updateParsedRecords:: Parsed records update was successful");
-            promise.complete(result.result());
-          }
-        }
-      );
-
-    return promise.future();
+      .onSuccess(v -> LOG.debug("updateParsedRecords:: Parsed records update was successful"))
+      .onFailure(e -> LOG.warn("updateParsedRecords:: Error during update of parsed records", e));
   }
 
   private static void formUpdateConditions(Record aRecord, List<Record> records, List<UpdateConditionStep<RecordsLbRecord>> recordUpdates,
@@ -1470,8 +1544,8 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Optional<Record>> getRecordByExternalId(String externalId, IdType idType,
                                                         String tenantId) {
-    return getQueryExecutor(tenantId)
-      .transaction(txQE -> getRecordByExternalId(txQE, externalId, idType));
+    return getCachedPool(tenantId)
+      .withConnection((SqlConnection sqlConnection) -> getRecordByExternalId(sqlConnection, externalId, idType));
   }
 
   @Override
@@ -1491,6 +1565,30 @@ public class RecordDaoImpl implements RecordDao {
       .onFailure(v -> txQE.rollback());
   }
 
+  public Future<Optional<Record>> getRecordByExternalId(SqlConnection sqlConnection, String externalId, IdType idType) {
+    Condition condition = RecordDaoUtil.getExternalIdCondition(externalId, idType)
+      .and(RECORDS_LB.STATE.eq(RecordState.ACTUAL)
+        .or(RECORDS_LB.STATE.eq(RecordState.DELETED)));
+
+    SelectLimitPercentStep<RecordsLbRecord> query = dslContext.selectFrom(RECORDS_LB)
+      .where(condition)
+      .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
+      .limit(1);
+
+    return sqlConnection
+      .preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
+      .map(rowSet -> {
+        if (rowSet.size() == 0) { // todo: should we check if rows number > 1
+          return Optional.<Record>empty();
+        }
+        return Optional.of(RecordDaoUtil.toRecord(rowSet.iterator().next().getDelegate()));
+      })
+      .compose(optionalRecord -> optionalRecord
+        .map(record -> lookupAssociatedRecords(sqlConnection, record, false).map(Optional::of))
+        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))));
+  }
+
   @Override
   public Future<MarcBibCollection> verifyMarcBibRecords(List<String> marcBibIds, String tenantId) {
     if (marcBibIds.isEmpty()) {
@@ -1498,14 +1596,16 @@ public class RecordDaoImpl implements RecordDao {
     }
     var marcHrid = DSL.field("marc.hrid");
 
-    return getQueryExecutor(tenantId).transaction(txQE -> txQE.query(dsl ->
-      dsl.selectDistinct(marcHrid)
-        .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
-        .leftJoin(RECORDS_LB)
-        .on(RECORDS_LB.EXTERNAL_HRID.eq(marcHrid.cast(String.class))
-          .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
-        .where(RECORDS_LB.EXTERNAL_HRID.isNull())
-    )).map(this::toMarcBibCollection);
+    SelectConditionStep<Record1<Object>> query = dslContext.selectDistinct(marcHrid)
+//      .from(dslContext.select(DSL.unnest(marcBibIds.toArray()).as("hrid")))
+      .from("(SELECT unnest(" + DSL.array(marcBibIds.toArray()) + ") as hrid) as marc")
+      .leftJoin(RECORDS_LB)
+      .on(RECORDS_LB.EXTERNAL_HRID.eq(marcHrid.cast(String.class))
+        .and(RECORDS_LB.RECORD_TYPE.equal(MARC_BIB)))
+      .where(RECORDS_LB.EXTERNAL_HRID.isNull());
+    return getCachedPool(tenantId).preparedQuery(query.getSQL()) // todo: check how we can parameterize marcBibIds to avoid SQL injection
+      .execute(Tuple.from(query.getBindValues()))
+      .map(this::toMarcBibCollection);
   }
 
   private MarcBibCollection toMarcBibCollection(QueryResult result) {
@@ -1514,6 +1614,19 @@ public class RecordDaoImpl implements RecordDao {
     result.stream()
       .map(res -> asRow(res.unwrap()))
       .forEach(row -> ids.add(row.getString(HRID)));
+    if (!ids.isEmpty()) {
+      marcBibCollection.withInvalidMarcBibIds(ids);
+    }
+    return marcBibCollection;
+  }
+
+  private MarcBibCollection toMarcBibCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+    MarcBibCollection marcBibCollection = new MarcBibCollection();
+    List<String> ids = StreamSupport.stream(rowSet.spliterator(), false)
+      .map(this::toRow)
+      .map(row -> row.getString(HRID))
+      .toList();
+
     if (!ids.isEmpty()) {
       marcBibCollection.withInvalidMarcBibIds(ids);
     }
@@ -1531,11 +1644,24 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders) {
+    LOG.trace("saveUpdatedRecord:: Saving updated record {}", newRecord.getId());
+    return getRecordById(connection, oldRecord.getId())
+      .compose(optionalRecord -> optionalRecord
+        .map(existingRecord -> insertOrUpdateRecord(connection, oldRecord)
+          .compose(r -> insertOrUpdateRecord(connection, newRecord))
+          .onSuccess(updatedRecord ->
+            recordDomainEventPublisher.publishRecordUpdated(existingRecord, updatedRecord, okapiHeaders)))
+        .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, oldRecord.getId())))));
+  }
+
+  @Override
   public Future<Boolean> updateSuppressFromDiscoveryForRecord(String id, IdType idType, Boolean suppress, String tenantId) {
     LOG.trace("updateSuppressFromDiscoveryForRecord:: Updating suppress from discovery with value {} for record with {} {} for tenant {}", suppress, idType, id, tenantId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, id, idType)
+    return getCachedPool(tenantId)
+      .withTransaction((SqlConnection sqlConnection) -> getRecordByExternalId(sqlConnection, id, idType)
         .compose(optionalRecord -> optionalRecord
-          .map(record -> RecordDaoUtil.update(txQE, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
+          .map(record -> RecordDaoUtil.update(sqlConnection, record.withAdditionalInfo(record.getAdditionalInfo().withSuppressDiscovery(suppress))))
           .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, id))))))
       .map(u -> true);
   }
@@ -1543,7 +1669,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> deleteRecordsBySnapshotId(String snapshotId, String tenantId) {
     LOG.trace("deleteRecordsBySnapshotId:: Deleting records by snapshotId {} for tenant {}", snapshotId, tenantId);
-    return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), snapshotId);
+    return SnapshotDaoUtil.delete(getCachedPool(tenantId), snapshotId);
   }
 
   @Override
@@ -1552,17 +1678,20 @@ public class RecordDaoImpl implements RecordDao {
     var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
     var externalUuid = UUID.fromString(externalId);
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecordByExternalId(txQE, externalId, idType)
-      .compose(optionalRecord -> optionalRecord.map(aRecord -> txQE
-        .execute(dsl -> dsl.deleteFrom(MARC_RECORDS_LB)
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> getRecordByExternalId(sqlConnection, externalId, idType)
+      .compose(optionalRecord -> optionalRecord.map(aRecord ->
+        sqlConnection.preparedQuery(dslContext.deleteFrom(MARC_RECORDS_LB)
           .using(RECORDS_LB)
           .where(MARC_RECORDS_LB.ID.eq(RECORDS_LB.ID))
-          .and(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)))
-        .compose(u ->
-          txQE.execute(dsl -> dsl.deleteFrom(RECORDS_LB)
-              .where(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)))
-            .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordDeleted(aRecord, okapiHeaders))
-        )).orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId))))).map(v -> true));
+          .and(RECORDS_LB.EXTERNAL_ID.eq(externalUuid)).getSQL())
+        .execute(Tuple.of(externalUuid))
+        .compose(u -> sqlConnection.preparedQuery(dslContext
+          .deleteFrom(RECORDS_LB)
+          .where(RECORDS_LB.EXTERNAL_ID.eq(externalUuid))
+          .getSQL()
+        ).execute(Tuple.of(externalUuid))
+          .onSuccess(updatedRecord -> recordDomainEventPublisher.publishRecordDeleted(aRecord, okapiHeaders)))
+      ).orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId))))).map(v -> true));
   }
 
   @Override
@@ -1576,7 +1705,9 @@ public class RecordDaoImpl implements RecordDao {
     if (limit > 0) {
       selectIdsForDeleteQuery.limit(limit);
     }
-    getQueryExecutor(tenantId).execute(dsl -> dsl.deleteFrom(RECORDS_LB).where(RECORDS_LB.ID.in(selectIdsForDeleteQuery)))
+    getCachedPool(tenantId)
+      .preparedQuery(dslContext.deleteFrom(RECORDS_LB).where(RECORDS_LB.ID.in(selectIdsForDeleteQuery)).getSQL())
+      .execute()
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
@@ -1591,14 +1722,16 @@ public class RecordDaoImpl implements RecordDao {
    */
   @Override
   public Future<Boolean> deleteMarcIndexersOldVersions(String tenantId, Integer oneTimeLimit) {
-    return executeInTransaction(txQE -> acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, tenantId.hashCode())
-      .compose(isLockAcquired -> {
-        if (Boolean.FALSE.equals(isLockAcquired)) {
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) ->
+      acquireLock(sqlConnection, INDEXERS_DELETION_LOCK_NAMESPACE_ID, tenantId.hashCode())
+        .compose(isLockAcquired -> {
+          if (Boolean.FALSE.equals(isLockAcquired)) {
           LOG.info("deleteMarcIndexersOldVersions:: Previous marc_indexers old version deletion still ongoing, tenantId: '{}'", tenantId);
           return Future.succeededFuture(false);
         }
-        return deleteMarcIndexersOldVersions(txQE, tenantId, oneTimeLimit);
-      }), tenantId);
+        return deleteMarcIndexersOldVersions(sqlConnection, tenantId, oneTimeLimit);
+      })
+    );
   }
 
   private Future<Boolean> deleteMarcIndexersOldVersions(ReactiveClassicGenericQueryExecutor txQE, String tenantId, Integer oneTimeLimit) {
@@ -1606,6 +1739,26 @@ public class RecordDaoImpl implements RecordDao {
     long startTime = System.nanoTime();
 
     return txQE.execute(dsl -> dsl.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE, oneTimeLimit))
+      .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
+      .map(res -> {
+        double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
+        LOG.info("deleteMarcIndexersOldVersions:: Completed successfully for tenantId={}. Duration= {}s", tenantId, durationSeconds);
+        return true;
+      })
+      .recover(th -> {
+        double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
+        LOG.error("deleteMarcIndexersOldVersions:: Failed for tenantId={}. Duration= {}s", tenantId, durationSeconds, th);
+        return Future.succeededFuture(false);
+      });
+  }
+
+  private Future<Boolean> deleteMarcIndexersOldVersions(SqlConnection sqlConnection, String tenantId, Integer oneTimeLimit) {
+    LOG.trace("deleteMarcIndexersOldVersions:: Deleting old marc indexers versions tenantId={}", tenantId);
+    long startTime = System.nanoTime();
+
+    return sqlConnection
+      .preparedQuery(dslContext.query(CALL_DELETE_OLD_MARC_INDEXERS_VERSIONS_PROCEDURE, oneTimeLimit).getSQL())
+      .execute(Tuple.of(oneTimeLimit))
       .onFailure(th -> LOG.error("Something happened while deleting old marc_indexers versions tenantId={}", tenantId, th))
       .map(res -> {
         double durationSeconds = TenantUtil.calculateDurationSeconds(startTime);
@@ -1627,10 +1780,12 @@ public class RecordDaoImpl implements RecordDao {
     }
 
     Promise<Void> promise = Promise.promise();
-    getQueryExecutor(tenantId).execute(dsl -> dsl.update(RECORDS_LB)
-        .set(RECORDS_LB.STATE, state)
-        .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId)))
-      )
+    UpdateConditionStep<RecordsLbRecord> query = dslContext.update(RECORDS_LB)
+      .set(RECORDS_LB.STATE, state)
+      .where(RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId)));
+
+    getCachedPool(tenantId).preparedQuery(query.getSQL())
+      .execute(Tuple.from(query.getBindValues()))
       .onSuccess(succeededAr -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();
@@ -1638,10 +1793,11 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<Void> updateMarcAuthorityRecordsStateAsDeleted(String matchedId, String tenantId) {
     Condition condition = RECORDS_LB.MATCHED_ID.eq(UUID.fromString(matchedId));
-    return getQueryExecutor(tenantId).transaction(txQE -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
+//    return getQueryExecutor(tenantId).transaction(txQE -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
+    return getCachedPool(tenantId).withTransaction((SqlConnection sqlConnection) -> getRecords(condition, RecordType.MARC_AUTHORITY, new ArrayList<>(), 0, RECORDS_LIMIT, tenantId)
       .compose(recordCollection -> {
         List<Future<Record>> futures = recordCollection.getRecords().stream()
-          .map(recordToUpdate -> updateMarcAuthorityRecordWithDeletedState(txQE, ensureRecordForeignKeys(recordToUpdate)))
+          .map(recordToUpdate -> updateMarcAuthorityRecordWithDeletedState(sqlConnection, ensureRecordForeignKeys(recordToUpdate)))
           .toList();
 
         Promise<Void> result = Promise.promise();
@@ -1672,11 +1828,24 @@ public class RecordDaoImpl implements RecordDao {
 
   }
 
+  private Future<Record> updateMarcAuthorityRecordWithDeletedState(SqlConnection sqlConnection, Record record) {
+    record.withState(Record.State.DELETED);
+    if (Objects.nonNull(record.getParsedRecord())) {
+      record.getParsedRecord().setId(record.getId());
+      ParsedRecordDaoUtil.updateLeaderStatus(record.getParsedRecord(), 'd');
+      return ParsedRecordDaoUtil.update(sqlConnection, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+        .compose(parsedRecord -> {
+          record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
+          return RecordDaoUtil.update(sqlConnection, record);
+        });
+    }
+    return RecordDaoUtil.update(sqlConnection, record);
+  }
+
   private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 
-//  private PgPool getCachedPool(String tenantId) {
   private Pool getCachedPool(String tenantId) {
     return postgresClientFactory.getCachedPool(tenantId);
   }
@@ -1700,6 +1869,13 @@ public class RecordDaoImpl implements RecordDao {
     return Future.succeededFuture(record);
   }
 
+  private Future<Optional<Record>> lookupAssociatedRecords(SqlConnection sqlConnection, Optional<Record> record, boolean includeErrorRecord) {
+    if (record.isPresent()) {
+      return lookupAssociatedRecords(sqlConnection, record.get(), includeErrorRecord).map(Optional::of);
+    }
+    return Future.succeededFuture(record);
+  }
+
   private Future<Record> lookupAssociatedRecords(ReactiveClassicGenericQueryExecutor txQE, Record record, boolean includeErrorRecord) {
     List<Future<Record>> futures = new ArrayList<>();
     futures.add(RawRecordDaoUtil.findById(txQE, record.getId()).map(rr -> {
@@ -1713,6 +1889,25 @@ public class RecordDaoImpl implements RecordDao {
     if (includeErrorRecord) {
       futures.add(ErrorRecordDaoUtil.findById(txQE, record.getId()).map(er -> {
         er.ifPresent(record::withErrorRecord);
+        return record;
+      }));
+    }
+    return Future.all(futures).map(res -> record);
+  }
+
+  private Future<Record> lookupAssociatedRecords(SqlConnection sqlConnection, Record record, boolean includeErrorRecord) {
+    List<Future<Record>> futures = new ArrayList<>();
+    futures.add(RawRecordDaoUtil.findById(sqlConnection, record.getId()).map(rr -> {
+      rr.ifPresent(record::setRawRecord);
+      return record;
+    }));
+    futures.add(ParsedRecordDaoUtil.findById(sqlConnection, record.getId(), ParsedRecordDaoUtil.toRecordType(record)).map(pr -> {
+      pr.ifPresent(record::setParsedRecord);
+      return record;
+    }));
+    if (includeErrorRecord) {
+      futures.add(ErrorRecordDaoUtil.findById(sqlConnection, record.getId()).map(er -> {
+        er.ifPresent(record::setErrorRecord);
         return record;
       }));
     }
@@ -1747,6 +1942,57 @@ public class RecordDaoImpl implements RecordDao {
       });
   }
 
+  private Future<Record> insertOrUpdateRecord(SqlConnection sqlConnection, Record record) {
+    return RawRecordDaoUtil.save(sqlConnection, record.getRawRecord())
+      .compose(rawRecord -> {
+        if (Objects.nonNull(record.getParsedRecord())) {
+          return insertOrUpdateParsedRecord(sqlConnection, record);
+        }
+        return Future.succeededFuture(null);
+      })
+      .compose(parsedRecord -> {
+        if (Objects.nonNull(record.getErrorRecord())) {
+          return ErrorRecordDaoUtil.save(sqlConnection, record.getErrorRecord());
+        }
+        return Future.succeededFuture(null);
+      })
+      .compose(errorRecord -> RecordDaoUtil.save(sqlConnection, record)).map(savedRecord -> {
+        if (Objects.nonNull(record.getRawRecord())) {
+          savedRecord.withRawRecord(record.getRawRecord());
+        }
+        if (Objects.nonNull(record.getParsedRecord())) {
+          savedRecord.withParsedRecord(record.getParsedRecord());
+        }
+        if (Objects.nonNull(record.getErrorRecord())) {
+          savedRecord.withErrorRecord(record.getErrorRecord());
+        }
+        return savedRecord;
+      });
+  }
+
+  private Future<ParsedRecord> insertOrUpdateParsedRecord(SqlConnection sqlConnection, Record record) {
+    try {
+      LOG.trace("insertOrUpdateParsedRecord:: Inserting or updating {} parsed record", record.getRecordType());
+      // attempt to format record to validate
+      RecordType recordType = toRecordType(record.getRecordType().name());
+      recordType.formatRecord(record);
+      return ParsedRecordDaoUtil.save(sqlConnection, record.getParsedRecord(), ParsedRecordDaoUtil.toRecordType(record))
+        .map(parsedRecord -> {
+          record.withLeaderRecordStatus(ParsedRecordDaoUtil.getLeaderStatus(record.getParsedRecord()));
+          return parsedRecord;
+        });
+    } catch (Exception e) {
+      LOG.warn("insertOrUpdateParsedRecord:: Couldn't format {} record", record.getRecordType(), e);
+      record.withErrorRecord(new ErrorRecord()
+        .withId(record.getId())
+        .withDescription(e.getMessage())
+        .withContent(record.getParsedRecord().getContent()));
+      record.withParsedRecord(null)
+        .withLeaderRecordStatus(null);
+      return Future.succeededFuture(null);
+    }
+  }
+
   private Future<ParsedRecord> insertOrUpdateParsedRecord(ReactiveClassicGenericQueryExecutor txQE, Record record) {
     try {
       LOG.trace("insertOrUpdateParsedRecord:: Inserting or updating {} parsed record", record.getRecordType());
@@ -1772,7 +2018,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private Future<RecordCollection> getRecordsByIds(RecordCollection recordCollection, String tenantId) {
     Condition condition = RECORDS_LB.ID.in(recordCollection.getRecords().stream().map(Record::getId).toList());
-    var recordType = ParsedRecordDaoUtil.toRecordType(recordCollection.getRecords().get(0));
+    var recordType = ParsedRecordDaoUtil.toRecordType(recordCollection.getRecords().getFirst());
     return getRecords(condition, recordType, new ArrayList<>(), 0, recordCollection.getTotalRecords(), tenantId);
   }
 
@@ -1792,6 +2038,25 @@ public class RecordDaoImpl implements RecordDao {
           .withAdditionalInfo(aRecord.getAdditionalInfo())
           .withMetadata(aRecord.getMetadata());
         return RecordDaoUtil.update(txQE, persistedRecord);
+      });
+  }
+
+  private Future<Record> updateExternalIdsForRecord(SqlConnection sqlConnection, Record aRecord) {
+    LOG.trace("updateExternalIdsForRecord:: Updating external ids for {} record", aRecord.getRecordType());
+    return RecordDaoUtil.findById(sqlConnection, aRecord.getId())
+      .map(optionalRecord -> {
+        if (optionalRecord.isPresent()) {
+          return optionalRecord;
+        }
+        String rollBackMessage = format(RECORD_NOT_FOUND_TEMPLATE, aRecord.getId());
+        throw new NotFoundException(rollBackMessage);
+      })
+      .map(Optional::get)
+      .compose(persistedRecord -> {
+        persistedRecord.withExternalIdsHolder(aRecord.getExternalIdsHolder())
+          .withAdditionalInfo(aRecord.getAdditionalInfo())
+          .withMetadata(aRecord.getMetadata());
+        return RecordDaoUtil.update(sqlConnection, persistedRecord);
       });
   }
 
@@ -1856,20 +2121,34 @@ public class RecordDaoImpl implements RecordDao {
       return toRecord(row);
     })
       .toList();
-    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
+    if (!records.isEmpty() && Objects.nonNull(records.getFirst().getId())) {
       recordCollection.withRecords(records);
     }
     return recordCollection;
   }
 
-  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(QueryResult result) {
-    StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
-    List<StrippedParsedRecord> records = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
+  private RecordCollection toRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+    RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
+    List<Record> records = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
-      return toStrippedParsedRecord(row);
-    })
+      return toRecord(row.getDelegate());
+    }).toList();
+
+    if (!records.isEmpty() && Objects.nonNull(records.getFirst().getId())) {
+      recordCollection.withRecords(records);
+    }
+    return recordCollection;
+  }
+
+  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+    StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
+    List<StrippedParsedRecord> records = StreamSupport.stream(rowSet.spliterator(), false)
+      .map(row -> {
+        recordCollection.setTotalRecords(row.getInteger(COUNT));
+        return toStrippedParsedRecord(row.getDelegate());
+      })
       .toList();
-    if (!records.isEmpty() && Objects.nonNull(records.get(0).getId())) {
+    if (!records.isEmpty() && Objects.nonNull(records.getFirst().getId())) {
       recordCollection.withRecords(records);
     }
     return recordCollection;
@@ -1878,24 +2157,25 @@ public class RecordDaoImpl implements RecordDao {
   /*
    * Code to avoid the occurrence of records when limit equals to zero
    */
-  private RecordCollection toRecordCollectionWithLimitCheck(QueryResult result, int limit) {
+  private RecordCollection toRecordCollectionWithLimitCheck(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet, int limit) {
     // Validation to ignore records insertion to the returned recordCollection when limit equals zero
+    int recordsCount = rowSet.size() > 0 ? rowSet.iterator().next().getInteger(COUNT) : 0;
     if (limit == 0) {
-      return new RecordCollection().withTotalRecords(asRow(result.unwrap()).getInteger(COUNT));
+      return new RecordCollection().withTotalRecords(recordsCount);
     } else {
-      return toRecordCollection(result);
+      return toRecordCollection(rowSet);
     }
   }
 
-  private SourceRecordCollection toSourceRecordCollection(QueryResult result) {
+  private SourceRecordCollection toSourceRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
     SourceRecordCollection sourceRecordCollection = new SourceRecordCollection().withTotalRecords(0);
-    List<SourceRecord> sourceRecords = result.stream().map(res -> asRow(res.unwrap())).map(row -> {
-      sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
-      return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
-        .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
-    })
+    List<SourceRecord> sourceRecords = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
+        sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
+        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row.getDelegate()))
+          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row.getDelegate()));
+      })
       .toList();
-    if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.get(0).getRecordId())) {
+    if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.getFirst().getRecordId())) {
       sourceRecordCollection.withSourceRecords(sourceRecords);
     }
     return sourceRecordCollection;

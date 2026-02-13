@@ -51,7 +51,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
   private Future<Void> deleteInstancesBySnapshotId(String snapshotId, OkapiConnectionParams params) {
     Condition condition = filterRecordBySnapshotId(snapshotId);
-    return recordDao.executeInTransaction2(connection -> RecordDaoUtil.countByCondition(connection, condition), params.getTenantId())
+    return recordDao.executeInTransaction(queryExecutor -> RecordDaoUtil.countByCondition(queryExecutor, condition), params.getTenantId())
       .compose(totalRecords -> {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();

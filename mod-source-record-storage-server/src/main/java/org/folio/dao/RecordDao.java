@@ -3,7 +3,6 @@ package org.folio.dao;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
-import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
@@ -12,9 +11,11 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import net.sf.jsqlparser.JSQLParserException;
+import org.folio.dao.util.CommonQueryExecutor;
 import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
+import org.folio.dao.util.QueryExecutor;
 import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
@@ -40,6 +41,7 @@ import org.jooq.OrderField;
  * Data access object for {@link Record}
  */
 public interface RecordDao {
+
 
   /**
    * Searches for {@link Record} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
@@ -159,6 +161,8 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id);
 
+  Future<Optional<Record>> getRecordById(CommonQueryExecutor queryExecutor, String id);
+
   /**
    * Searches for {@link Record} by matchedId
    *
@@ -177,7 +181,7 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
 
-  Future<Optional<Record>> getRecordByMatchedId(SqlConnection sqlConnection, String id);
+  Future<Optional<Record>> getRecordByMatchedId(CommonQueryExecutor queryExecutor, String id);
 
   /**
    * Searches for {@link Record} by condition
@@ -197,6 +201,8 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition);
 
+  Future<Optional<Record>> getRecordByCondition(CommonQueryExecutor queryExecutor, Condition condition);
+
   /**
    * Saves {@link Record} to the db
    *
@@ -215,7 +221,7 @@ public interface RecordDao {
    */
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
-  Future<Record> saveRecord(SqlConnection sqlConnection, Record recordDto, Map<String, String> okapiHeaders);
+  Future<Record> saveRecord(CommonQueryExecutor queryExecutor, Record recordDto, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db.
@@ -259,7 +265,7 @@ public interface RecordDao {
    */
   Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
-  Future<Integer> calculateGeneration(SqlConnection sqlConnection, Record record);
+  Future<Integer> calculateGeneration(CommonQueryExecutor queryExecutor, Record record);
 
   /**
    * Updates {@link ParsedRecord} in the db
@@ -406,7 +412,7 @@ public interface RecordDao {
    */
   Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
-  Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
+  Future<Record> saveUpdatedRecord(CommonQueryExecutor queryExecutor, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
   /**
    * Change suppress from discovery flag for record by external relation id
@@ -427,9 +433,7 @@ public interface RecordDao {
    * @param tenantId tenant id
    * @return future with generic type
    */
-  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
-
-  <T> Future<T> executeInTransaction2(Function<SqlConnection, Future<T>> action, String tenantId);
+  <T> Future<T> executeInTransaction(Function<QueryExecutor.TransactionQueryExecutor, Future<T>> action, String tenantId);
 
   /**
    * Search for non-existent mark bib ids in the system

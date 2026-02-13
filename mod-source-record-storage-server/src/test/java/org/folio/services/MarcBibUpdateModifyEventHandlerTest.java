@@ -64,6 +64,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
+import org.folio.dao.util.QueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.client.TenantClient;
@@ -300,13 +301,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
       .withMetadata(new Metadata());
 
-    Pool queryExecutorLocalTenant = postgresClientFactory.getCachedPool(TENANT_ID);
-    Pool queryExecutorCentralTenant = postgresClientFactory.getCachedPool(CENTRAL_TENANT_ID);
+    QueryExecutor localTenantQueryExecutor = postgresClientFactory.getQueryExecutor2(TENANT_ID);
+    QueryExecutor centralTenantQueryExecutor = postgresClientFactory.getQueryExecutor2(CENTRAL_TENANT_ID);
 
-    SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
+    SnapshotDaoUtil.save(localTenantQueryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, Map.of(OKAPI_TENANT_HEADER, TENANT_ID)))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshotForRecordUpdate))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot_2))
+      .compose(v -> SnapshotDaoUtil.save(localTenantQueryExecutor, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(centralTenantQueryExecutor, snapshot_2))
       .compose(v -> recordService.saveRecord(record_2, Map.of(OKAPI_TENANT_HEADER, CENTRAL_TENANT_ID)))
       .onComplete(context.asyncAssertSuccess());
   }
@@ -314,12 +315,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @After
   public void tearDown(TestContext context) {
     wireMockServer.resetRequests();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor2(TENANT_ID))
       .onComplete(ar -> {
         if (ar.failed()) {
           context.asyncAssertFailure();
         } else {
-          SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(CENTRAL_TENANT_ID))
+          SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor2(CENTRAL_TENANT_ID))
             .onComplete(arCentral -> {
               if (arCentral.failed()) {
                 context.asyncAssertFailure();
@@ -767,9 +768,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), secondSnapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor2(TENANT_ID), secondSnapshot)
       .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor2(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())
@@ -946,9 +947,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withMetadata(new Metadata());
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), secondSnapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor2(TENANT_ID), secondSnapshot)
       .compose(v -> recordService.saveRecord(secondRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor2(TENANT_ID), snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(result -> {
         Record incomingRecord = new Record().withId(secondRecord.getId())

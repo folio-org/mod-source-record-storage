@@ -47,6 +47,7 @@ import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.QueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
@@ -166,14 +167,14 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid("incorrectHrid"));
 
-    Pool pgPool = postgresClientFactory.getCachedPool(TENANT_ID);
+    QueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor2(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(pgPool, snapshot)
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(pgPool, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 

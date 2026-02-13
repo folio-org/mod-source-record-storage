@@ -13,6 +13,7 @@ import io.vertx.sqlclient.SqlClient;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.QueryExecutor;
 import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PgConnectOptionsHelper;
 import org.folio.rest.persist.PostgresClient;
@@ -76,10 +77,10 @@ public class PostgresClientFactory {
   private static Class<? extends ReactiveClassicGenericQueryExecutor> reactiveClassicGenericQueryExecutorProxyClass;
 
   @Value("${srs.db.reactive.numRetries:3}")
-  private Integer numOfRetries;
+  private Integer numOfRetries = 3;
 
   @Value("${srs.db.reactive.retryDelay.ms:1000}")
-  private Long retryDelay;
+  private Long retryDelay = 1000L;
 
   @Autowired
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
@@ -138,6 +139,13 @@ public class PostgresClientFactory {
     return queryExecutorProxy;
   }
 
+  public QueryExecutor getQueryExecutor2(String tenantId) {
+    if (retryDelay == null) {
+      return new QueryExecutor(getCachedPool(this.vertx, tenantId), numOfRetries);
+    }
+    return new QueryExecutor(getCachedPool(this.vertx, tenantId), numOfRetries, retryDelay);
+  }
+
   /**
    * Get {@link Pool}
    *
@@ -177,6 +185,10 @@ public class PostgresClientFactory {
    */
   public static ReactiveClassicGenericQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
     return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId).getDelegate());
+  }
+
+  public static QueryExecutor getQueryExecutor2(Vertx vertx, String tenantId) {
+    return new QueryExecutor(getCachedPool(vertx, tenantId), 3, 1000L);
   }
 
   /**

@@ -45,6 +45,7 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.QueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
@@ -188,17 +189,17 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"));
 
-    Pool pgPool = postgresClientFactory.getCachedPool(TENANT_ID);
+    QueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor2(TENANT_ID);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(pgPool, snapshot)
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(pgPool, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 
   @After
   public void tearDown(TestContext context) {
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor2(TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
 

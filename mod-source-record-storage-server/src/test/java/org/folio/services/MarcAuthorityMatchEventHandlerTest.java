@@ -154,7 +154,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(new ParsedRecord().withId(incomingRecord2Id).withContent(PARSED_CONTENT2))
       .withExternalIdsHolder(new ExternalIdsHolder());
 
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshots).onComplete(save -> {
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -165,7 +165,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

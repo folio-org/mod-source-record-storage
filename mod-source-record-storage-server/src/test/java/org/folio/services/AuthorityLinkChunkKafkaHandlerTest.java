@@ -145,7 +145,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID).withInstanceHrid(ERROR_HR_ID));
 
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(secondRecord, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(errorRecord, okapiHeaders))
@@ -156,7 +156,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     var async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

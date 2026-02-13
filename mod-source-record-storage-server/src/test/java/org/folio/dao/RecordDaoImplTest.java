@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import io.vertx.reactivex.sqlclient.SqlConnection;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -93,7 +92,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
         .withInstanceId(UUID.randomUUID().toString()));
 
     okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))
       .onComplete(save -> {
@@ -107,7 +106,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }
@@ -135,7 +134,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
-    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), copyRecordSnapshot)
+    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
       .compose(v -> recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
@@ -169,7 +168,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
-    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), copyRecordSnapshot)
+    Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
       .compose(v -> recordDao.getMatchedRecords(matchField, null, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
@@ -214,9 +213,9 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   public void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(TestContext context) {
     Async async = context.async();
 
-    Future<Boolean> future = postgresClientFactory.getCachedPool(TENANT_ID)
+    Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
     // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
-      .withTransaction((SqlConnection connection) -> AdvisoryLockUtil.acquireLock(connection, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
+      .transaction(queryExecutor -> AdvisoryLockUtil.acquireLock(queryExecutor, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
         .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID, 2)));
 
     future.onComplete(ar -> {

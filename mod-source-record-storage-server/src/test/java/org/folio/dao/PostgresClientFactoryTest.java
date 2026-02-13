@@ -4,13 +4,14 @@ import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import eu.rekawek.toxiproxy.model.toxic.ResetPeer;
-import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.reactivex.sqlclient.Row;
+import io.vertx.reactivex.sqlclient.RowSet;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.jooq.impl.DSL;
@@ -36,7 +37,7 @@ public class PostgresClientFactoryTest {
   static Vertx vertx;
 
   @BeforeClass
-  public static void setUpClass(TestContext context) throws Exception {
+  public static void setUpClass(TestContext context) {
     vertx = Vertx.vertx();
   }
 
@@ -87,23 +88,15 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException, InterruptedException {
-    Function<PostgresClientFactory, Future<QueryResult>> exec =
-      (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
-              .transaction(qe -> qe.query(dsl -> dsl.select(DSL.inline(1))));
+  public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException {
+    Function<PostgresClientFactory, Future<RowSet<Row>>> exec =
+      postgresClientFactory -> postgresClientFactory.getQueryExecutor("diku")
+        .transaction(qe -> qe.execute(dsl -> dsl.select(DSL.inline(1))));
     queryExecutorShouldRetryInternal(context, exec);
   }
 
-  @Test
-  public void queryExecutorQueryShouldRetry(TestContext context) throws IOException, InterruptedException {
-    Function<PostgresClientFactory, Future<QueryResult>> exec =
-      (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
-        .query(dsl -> dsl.select(DSL.inline(1)));
-    queryExecutorShouldRetryInternal(context, exec);
-  }
-
-  private void queryExecutorShouldRetryInternal(TestContext context, Function<PostgresClientFactory, Future<QueryResult>> exec)
-    throws IOException, InterruptedException {
+  private void queryExecutorShouldRetryInternal(TestContext context, Function<PostgresClientFactory, Future<RowSet<Row>>> exec)
+    throws IOException {
     Async async = context.async();
     // Arrange
     Network network = Network.newNetwork();
@@ -130,17 +123,14 @@ public class PostgresClientFactoryTest {
     // Act
     Envs.setEnv(dbHost, dbPort, "test", "test", "test");
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
-    postgresClientFactory.setRetryPolicy(0, null);
+    postgresClientFactory.setRetryPolicy(0, 1000L);
     exec.apply(postgresClientFactory)
       .onComplete(ar1 -> {
         // expect failure
-        if (!ar1.failed()) {
-          closeResources.run();
-          context.fail("database execution should fail");
-        }
+        context.assertTrue(ar1.failed(), "database execution should fail");
 
         // set multiple retries.
-        postgresClientFactory.setRetryPolicy(5, null);
+        postgresClientFactory.setRetryPolicy(5, 1000L);
         exec.apply(postgresClientFactory).onComplete(ar2 -> {
           // expect success
           context.assertTrue(ar2.succeeded());

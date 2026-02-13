@@ -1,15 +1,14 @@
 package org.folio.dao.util;
 
 import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
-import static org.jooq.impl.DSL.using;
 
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.RawRecordsLb;
@@ -18,20 +17,7 @@ import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
-import io.vertx.reactivex.sqlclient.SqlConnection;
-import org.jooq.DSLContext;
-import org.jooq.AttachableQueryPart;
-import org.jooq.InsertResultStep;
-import org.jooq.SQLDialect;
-import org.jooq.conf.ParamType;
-import org.jooq.conf.Settings;
-import org.jooq.impl.DSL;
-import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.jooq.SQLDialect;
-import org.jooq.conf.ParamType;
-import org.jooq.conf.Settings;
-import org.jooq.impl.DSL;
 
 /**
  * Utility class for managing {@link RawRecord}
@@ -41,10 +27,6 @@ public final class RawRecordDaoUtil {
   private static final String ID = "id";
 
   public static final String RAW_RECORD_CONTENT = "raw_record_content";
-
-  private static final DSLContext dslContext = DSL.using(SQLDialect.POSTGRES, new Settings()
-    .withParamType(ParamType.NAMED)
-    .withRenderNamedParamPrefix("$"));
 
   private RawRecordDaoUtil() { }
 
@@ -62,19 +44,18 @@ public final class RawRecordDaoUtil {
   }
 
   /**
-   * Searches for {@link RawRecord} by id using {@link SqlConnection}
+   * Searches for {@link RawRecord} by id using {@link QueryExecutor}
    *
-   * @param sqlConnection sql connection
+   * @param queryExecutor query executor
    * @param id            id
    * @return future with optional RawRecord
    */
-  public static Future<Optional<RawRecord>> findById(SqlConnection sqlConnection, String id) {
-    AttachableQueryPart query = dslContext.selectFrom(RAW_RECORDS_LB)
-      .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id)));
-    return sqlConnection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
+  public static Future<Optional<RawRecord>> findById(QueryExecutor queryExecutor, String id) {
+    return queryExecutor.execute(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
+        .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
       .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
-      .map(iterator -> iterator.hasNext() ? Optional.of(toRawRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(iterator -> iterator.hasNext()
+        ? Optional.of(toRawRecord(iterator.next().getDelegate())) : Optional.empty());
   }
 
   /**
@@ -95,21 +76,19 @@ public final class RawRecordDaoUtil {
   }
 
   /**
-   * Saves {@link RawRecord} to the db
+   * Saves {@link RawRecord} to the db using {@link QueryExecutor}
    *
-   * @param rawRecord {@link RawRecord} to save
-   * @return future with saved {@link RawRecord}
+   * @param queryExecutor query executor
+   * @param rawRecord     raw record
+   * @return future with updated RawRecord
    */
-  public static Future<RawRecord> save(io.vertx.reactivex.sqlclient.SqlConnection connection, RawRecord rawRecord) {
+  public static Future<RawRecord> save(QueryExecutor queryExecutor, RawRecord rawRecord) {
     RawRecordsLbRecord dbRecord = toDatabaseRawRecord(rawRecord);
-    InsertResultStep<RawRecordsLbRecord> query = dslContext.insertInto(RAW_RECORDS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning();
-
-    return connection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
+    return queryExecutor.execute(dsl -> dsl.insertInto(RAW_RECORDS_LB)
+        .set(dbRecord)
+        .onDuplicateKeyUpdate()
+        .set(dbRecord)
+        .returning())
       .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(RawRecordDaoUtil::toSingleRawRecord);
   }

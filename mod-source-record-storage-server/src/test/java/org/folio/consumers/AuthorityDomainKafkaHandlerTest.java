@@ -95,7 +95,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onSuccess(ar -> async.complete())
       .onFailure(context::fail);
@@ -104,7 +104,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

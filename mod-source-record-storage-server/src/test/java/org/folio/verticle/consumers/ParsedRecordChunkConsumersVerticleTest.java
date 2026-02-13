@@ -95,7 +95,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
 
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot).onComplete(save -> {
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(save -> {
       if (save.failed()) {
         context.fail(save.cause());
       }
@@ -106,7 +106,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         context.fail(delete.cause());
       }

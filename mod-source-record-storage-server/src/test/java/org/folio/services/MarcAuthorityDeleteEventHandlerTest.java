@@ -77,7 +77,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withAuthorityId(UUID.randomUUID().toString()));
-    SnapshotDaoUtil.save(postgresClientFactory.getCachedPool(TENANT_ID), snapshot)
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .onComplete(testContext.asyncAssertSuccess());
   }
 

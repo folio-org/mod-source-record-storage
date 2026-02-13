@@ -20,25 +20,16 @@ import javax.ws.rs.NotFoundException;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
-import io.vertx.reactivex.sqlclient.SqlConnection;
-import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.jooq.Condition;
-import org.jooq.DSLContext;
 import org.jooq.Field;
-import org.jooq.InsertResultStep;
 import org.jooq.OrderField;
-import org.jooq.Record1;
-import org.jooq.SQLDialect;
-import org.jooq.SelectConditionStep;
-import org.jooq.SelectLimitPercentStep;
 import org.jooq.SortOrder;
-import org.jooq.conf.ParamType;
-import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -63,10 +54,6 @@ public final class RecordDaoUtil {
   private static final String COMMA = ",";
   private static final String LIKE_OPERATOR = "%";
   private static final List<String> DELETED_LEADER_RECORD_STATUS = Arrays.asList("d", "s", "x");
-
-  private static final DSLContext dslContext = DSL.using(SQLDialect.POSTGRES, new Settings()
-    .withParamType(ParamType.NAMED)
-    .withRenderNamedParamPrefix("$"));
 
   private RecordDaoUtil() {}
 
@@ -111,21 +98,11 @@ public final class RecordDaoUtil {
    * @param condition     condition
    * @return future with count
    */
-  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
+  public static Future<Integer> countByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.execute(dsl -> dsl
+        .selectCount()
         .from(RECORDS_LB)
         .where(condition))
-      .map(row -> row.getInteger(0));
-  }
-
-  public static Future<Integer> countByCondition(SqlConnection connection, Condition condition) {
-    SelectConditionStep<Record1<Integer>> query = dslContext
-      .selectCount()
-      .from(RECORDS_LB)
-      .where(condition);
-
-    return connection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
       .map(rowSet -> rowSet.iterator().next().getInteger(0));
   }
 
@@ -148,19 +125,16 @@ public final class RecordDaoUtil {
   /**
    * Finds {@link Record} by {@link Condition}
    *
-   * @param sqlConnection sql connection
+   * @param queryExecutor query executor
    * @param condition     condition
    * @return future with optional Record
    */
-  public static Future<Optional<Record>> findByCondition(SqlConnection sqlConnection, Condition condition) {
-    SelectLimitPercentStep<RecordsLbRecord> query = dslContext.selectFrom(RECORDS_LB)
-      .where(condition)
-      .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
-      .limit(1);
-
-    return sqlConnection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
-      .map((io.vertx.reactivex.sqlclient.RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) -> rowSet.iterator())
+  public static Future<Optional<Record>> findByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.execute(dsl -> dsl.selectFrom(RECORDS_LB)
+        .where(condition)
+        .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
+        .limit(1))
+      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
       .map(iterator -> iterator.hasNext() ? Optional.of(toRecord(iterator.next().getDelegate())) : Optional.empty());
   }
 
@@ -178,14 +152,14 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Searches for {@link Record} by id using {@link SqlConnection}
+   * Searches for {@link Record} by id using {@link QueryExecutor}
    *
-   * @param sqlConnection sql connection
+   * @param queryExecutor query executor
    * @param id            id
    * @return future with optional Record
    */
-  public static Future<Optional<Record>> findById(SqlConnection sqlConnection, String id) {
-    return findByCondition(sqlConnection, RECORDS_LB.ID.eq(toUUID(id)));
+  public static Future<Optional<Record>> findById(QueryExecutor queryExecutor, String id) {
+    return findByCondition(queryExecutor, RECORDS_LB.ID.eq(toUUID(id)));
   }
 
   /**
@@ -206,22 +180,19 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Saves {@link Record} to the db using {@link SqlConnection}
+   * Saves {@link Record} to the db using {@link QueryExecutor}
    *
-   * @param connection    query executor
+   * @param queryExecutor query executor
    * @param record        record
    * @return future with updated Record
    */
-  public static Future<Record> save(SqlConnection connection, Record record) {
+  public static Future<Record> save(QueryExecutor queryExecutor, Record record) {
     RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    InsertResultStep<RecordsLbRecord> query = dslContext.insertInto(RECORDS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning();
-
-    return connection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
+    return queryExecutor.execute(dsl -> dsl.insertInto(RECORDS_LB)
+        .set(dbRecord)
+        .onDuplicateKeyUpdate()
+        .set(dbRecord)
+        .returning())
       .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(RecordDaoUtil::toSingleRecord);
   }
@@ -249,21 +220,18 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Updates {@link Record} to the db using {@link SqlConnection}
+   * Updates {@link Record} to the db using {@link QueryExecutor}
    *
-   * @param sqlConnection sql connection
+   * @param queryExecutor query executor
    * @param record        record to update
    * @return future of updated Record
    */
-  public static Future<Record> update(SqlConnection sqlConnection, Record record) {
+  public static Future<Record> update(QueryExecutor queryExecutor, Record record) {
     RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    var query = dslContext.update(RECORDS_LB)
-      .set(dbRecord)
-      .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
-      .returning();
-
-    return sqlConnection.preparedQuery(query.getSQL())
-      .execute(Tuple.from(query.getBindValues()))
+    return queryExecutor.execute(dsl -> dsl.update(RECORDS_LB)
+        .set(dbRecord)
+        .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
+        .returning())
       .map(rowSet -> (RowSet<Row>) rowSet.getDelegate())
       .map(RecordDaoUtil::toSingleOptionalRecord)
       .map(optionalRecord -> {

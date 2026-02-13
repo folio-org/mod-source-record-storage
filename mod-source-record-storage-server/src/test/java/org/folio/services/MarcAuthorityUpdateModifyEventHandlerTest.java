@@ -20,7 +20,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -38,7 +37,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import io.vertx.reactivex.sqlclient.Pool;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
@@ -47,6 +45,7 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
@@ -192,17 +191,17 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid("hrid00123"));
 
-    Pool pgPool = postgresClientFactory.getCachedPool(TENANT_ID);
+    PgPoolQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
-    SnapshotDaoUtil.save(pgPool, snapshot)
+    SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))
-      .compose(v -> SnapshotDaoUtil.save(pgPool, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(context.asyncAssertSuccess());
   }
 
   @After
   public void tearDown(TestContext context) {
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getCachedPool(TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
       .onComplete(context.asyncAssertSuccess());
   }
 

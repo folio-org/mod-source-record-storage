@@ -3,7 +3,6 @@ package org.folio.dao;
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
-import io.vertx.reactivex.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Row;
 import java.util.Collection;
 import java.util.List;
@@ -12,6 +11,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import net.sf.jsqlparser.JSQLParserException;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -159,6 +159,8 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id);
 
+  Future<Optional<Record>> getRecordById(QueryExecutor queryExecutor, String id);
+
   /**
    * Searches for {@link Record} by matchedId
    *
@@ -177,7 +179,7 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
 
-  Future<Optional<Record>> getRecordByMatchedId(SqlConnection sqlConnection, String id);
+  Future<Optional<Record>> getRecordByMatchedId(QueryExecutor queryExecutor, String id);
 
   /**
    * Searches for {@link Record} by condition
@@ -197,6 +199,8 @@ public interface RecordDao {
    */
   Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition);
 
+  Future<Optional<Record>> getRecordByCondition(QueryExecutor queryExecutor, Condition condition);
+
   /**
    * Saves {@link Record} to the db
    *
@@ -215,7 +219,7 @@ public interface RecordDao {
    */
   Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
 
-  Future<Record> saveRecord(SqlConnection sqlConnection, Record recordDto, Map<String, String> okapiHeaders);
+  Future<Record> saveRecord(QueryExecutor queryExecutor, Record recordDto, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db.
@@ -259,7 +263,7 @@ public interface RecordDao {
    */
   Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
 
-  Future<Integer> calculateGeneration(SqlConnection sqlConnection, Record record);
+  Future<Integer> calculateGeneration(QueryExecutor queryExecutor, Record record);
 
   /**
    * Updates {@link ParsedRecord} in the db
@@ -398,15 +402,13 @@ public interface RecordDao {
    * no data is overwritten as a result of update. Creates
    * new snapshot.
    *
-   * @param txQE      query execution
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param okapiHeaders okapi headers
+   * @param queryExecutor query execution
+   * @param newRecord     new Record to create
+   * @param oldRecord     old Record that has to be marked as "old"
+   * @param okapiHeaders  okapi headers
    * @return future with new "updated" Record
    */
-  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
-
-  Future<Record> saveUpdatedRecord(SqlConnection connection, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
+  Future<Record> saveUpdatedRecord(QueryExecutor queryExecutor, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
   /**
    * Change suppress from discovery flag for record by external relation id
@@ -427,9 +429,7 @@ public interface RecordDao {
    * @param tenantId tenant id
    * @return future with generic type
    */
-  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
-
-  <T> Future<T> executeInTransaction2(Function<SqlConnection, Future<T>> action, String tenantId);
+  <T> Future<T> executeInTransaction(Function<QueryExecutor, Future<T>> action, String tenantId);
 
   /**
    * Search for non-existent mark bib ids in the system

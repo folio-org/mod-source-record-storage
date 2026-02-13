@@ -165,8 +165,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getCachedPool(vertx, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.save(PostgresClientFactory.getCachedPool(vertx, TENANT_ID), TestMocks.getSnapshots()))
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()))
       .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());

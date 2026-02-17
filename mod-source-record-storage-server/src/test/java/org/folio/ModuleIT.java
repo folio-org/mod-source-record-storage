@@ -16,8 +16,11 @@ import io.vertx.core.json.JsonObject;
 import java.nio.file.Path;
 
 import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.tools.utils.ModuleName;
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

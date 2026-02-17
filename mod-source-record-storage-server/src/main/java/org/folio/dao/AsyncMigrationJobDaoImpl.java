@@ -7,8 +7,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.rest.jaxrs.model.AsyncMigrationJob;
 import org.folio.rest.jooq.enums.MigrationJobStatus;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.AsyncMigrationJobs;
 import org.folio.rest.jooq.tables.records.AsyncMigrationJobsRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -29,7 +27,7 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
   private static final Logger LOG = LogManager.getLogger();
   private static final String JOB_NOT_FOUND_MSG = "Async migration job was not found by id: '%s'";
 
-  private PostgresClientFactory postgresClientFactory;
+  private final PostgresClientFactory postgresClientFactory;
 
   @Autowired
   public AsyncMigrationJobDaoImpl(PostgresClientFactory postgresClientFactory) {
@@ -105,18 +103,22 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
   }
 
   private AsyncMigrationJob mapRowToAsyncMigrationJob(Row row) {
-    AsyncMigrationJobs pojo = RowMappers.getAsyncMigrationJobsMapper().apply(row);
     AsyncMigrationJob asyncMigrationJob = new AsyncMigrationJob()
-      .withId(pojo.getId().toString())
+      .withId(row.getUUID(ASYNC_MIGRATION_JOBS.ID.getName()).toString())
       .withMigrations(Arrays.asList(row.getArrayOfStrings(ASYNC_MIGRATION_JOBS.MIGRATIONS.getName())))
-      .withStatus(AsyncMigrationJob.Status.fromValue(pojo.getStatus().toString()))
-      .withErrorMessage(pojo.getError());
+      .withErrorMessage(row.getString(ASYNC_MIGRATION_JOBS.ERROR.getName()))
+      .withStatus(Arrays.stream(AsyncMigrationJob.Status.values())
+        .filter(s -> s.value().equals(row.getString(ASYNC_MIGRATION_JOBS.STATUS.getName())))
+        .findFirst()
+        .orElse(null));
 
-    if (pojo.getStartedDate() != null) {
-      asyncMigrationJob.withStartedDate(Date.from(pojo.getStartedDate().toInstant()));
+    if (row.getOffsetDateTime(ASYNC_MIGRATION_JOBS.STARTED_DATE.getName()) != null) {
+      asyncMigrationJob.withStartedDate(
+        Date.from(row.getOffsetDateTime(ASYNC_MIGRATION_JOBS.STARTED_DATE.getName()).toInstant()));
     }
-    if (pojo.getCompletedDate() != null) {
-      asyncMigrationJob.withCompletedDate(Date.from(pojo.getCompletedDate().toInstant()));
+    if (row.getOffsetDateTime(ASYNC_MIGRATION_JOBS.COMPLETED_DATE.getName()) != null) {
+      asyncMigrationJob.withCompletedDate(
+        Date.from(row.getOffsetDateTime(ASYNC_MIGRATION_JOBS.COMPLETED_DATE.getName()).toInstant()));
     }
     return asyncMigrationJob;
   }

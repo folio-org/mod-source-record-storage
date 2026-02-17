@@ -239,7 +239,7 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
-   * Normalize parsed record content content of {@link ParsedRecord} is type {@link String}
+   * Normalize parsed record content of {@link ParsedRecord} is type {@link String}
    *
    * @param parsedRecord parsed record
    * @return parsed record normalized content
@@ -332,8 +332,8 @@ public final class ParsedRecordDaoUtil {
   }
 
   public static JsonObject normalize(Object content) {
-    return (content instanceof String)
-      ? new JsonObject((String) content)
+    return (content instanceof String contentAsString)
+      ? new JsonObject(contentAsString)
       : JsonObject.mapFrom(content);
   }
 

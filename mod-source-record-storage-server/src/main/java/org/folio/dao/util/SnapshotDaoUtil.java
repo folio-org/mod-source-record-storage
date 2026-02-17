@@ -26,8 +26,6 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.SnapshotsLb;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.jooq.Condition;
 import org.jooq.InsertSetStep;
@@ -311,25 +309,27 @@ public final class SnapshotDaoUtil {
    * @return Snapshot
    */
   public static Snapshot toSnapshot(Row row) {
-    SnapshotsLb pojo = RowMappers.getSnapshotsLbMapper().apply(row);
     Snapshot snapshot = new Snapshot()
-      .withJobExecutionId(pojo.getId().toString())
-      .withStatus(Status.fromValue(pojo.getStatus().toString()));
-    if (Objects.nonNull(pojo.getProcessingStartedDate())) {
-      snapshot.withProcessingStartedDate(Date.from(pojo.getProcessingStartedDate().toInstant()));
+      .withJobExecutionId(row.getValue(SNAPSHOTS_LB.ID.getName()).toString())
+      .withStatus(Arrays.stream(Status.values())
+        .filter(s -> s.value().equals(row.getString(SNAPSHOTS_LB.STATUS.getName())))
+        .findFirst().orElse(null));
+
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.PROCESSING_STARTED_DATE.getName()))) {
+      snapshot.withProcessingStartedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.PROCESSING_STARTED_DATE.getName()).toInstant()));
     }
     Metadata metadata = new Metadata();
-    if (Objects.nonNull(pojo.getCreatedByUserId())) {
-      metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
+    if (Objects.nonNull(row.getValue(SNAPSHOTS_LB.CREATED_BY_USER_ID.getName()))) {
+      metadata.withCreatedByUserId(row.getValue(SNAPSHOTS_LB.CREATED_BY_USER_ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getCreatedDate())) {
-      metadata.withCreatedDate(Date.from(pojo.getCreatedDate().toInstant()));
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.CREATED_DATE.getName()))) {
+      metadata.withCreatedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.CREATED_DATE.getName()).toInstant()));
     }
-    if (Objects.nonNull(pojo.getUpdatedByUserId())) {
-      metadata.withUpdatedByUserId(pojo.getUpdatedByUserId().toString());
+    if (Objects.nonNull(row.getValue(SNAPSHOTS_LB.UPDATED_BY_USER_ID.getName()))) {
+      metadata.withUpdatedByUserId(row.getValue(SNAPSHOTS_LB.UPDATED_BY_USER_ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getUpdatedDate())) {
-      metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.UPDATED_DATE.getName()))) {
+      metadata.withUpdatedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.UPDATED_DATE.getName()).toInstant()));
     }
     return snapshot.withMetadata(metadata);
   }
@@ -406,9 +406,9 @@ public final class SnapshotDaoUtil {
    * @return list of order fields
    */
   @SuppressWarnings("squid:S1452")
-  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy, Boolean forOffset) {
+  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy, boolean forOffset) {
     if (forOffset && orderBy.isEmpty()) {
-      return Arrays.asList(new OrderField<?>[] { SNAPSHOTS_LB.ID.asc() });
+      return List.of(SNAPSHOTS_LB.ID.asc());
     }
     return orderBy.stream()
       .map(order -> order.split(COMMA))

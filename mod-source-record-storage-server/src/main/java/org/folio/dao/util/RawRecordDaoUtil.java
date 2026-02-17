@@ -10,8 +10,6 @@ import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.RawRecordsLb;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -100,10 +98,9 @@ public final class RawRecordDaoUtil {
    * @return RawRecord
    */
   public static RawRecord toRawRecord(Row row) {
-    RawRecordsLb pojo = RowMappers.getRawRecordsLbMapper().apply(row);
     return new RawRecord()
-      .withId(pojo.getId().toString())
-      .withContent(pojo.getContent());
+      .withId(row.getUUID(RAW_RECORDS_LB.ID.getName()).toString())
+      .withContent(row.getString(RAW_RECORDS_LB.CONTENT.getName()));
   }
 
   /**

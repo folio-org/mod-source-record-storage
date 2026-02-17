@@ -419,11 +419,6 @@
             <version>${postgres.version}</version>
           </dependency>
           <dependency>
-            <groupId>io.github.jklingsporn</groupId>
-            <artifactId>vertx-jooq-generate</artifactId>
-            <version>${vertx-jooq.version}</version>
-          </dependency>
-          <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
             <version>3.8.1</version>
@@ -437,7 +432,7 @@
             <password>postgres</password>
           </jdbc>
           <generator>
-            <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>
+            <name>org.jooq.codegen.JavaGenerator</name>
             <database>
               <name>org.jooq.meta.postgres.PostgresDatabase</name>
               <includes>.*</includes>
@@ -456,9 +451,6 @@
             <target>
               <packageName>org.folio.rest.jooq</packageName>
             </target>
-            <strategy>
-              <name>io.github.jklingsporn.vertx.jooq.generate.VertxGeneratorStrategy</name>
-            </strategy>
           </generator>
         </configuration>
       </plugin>

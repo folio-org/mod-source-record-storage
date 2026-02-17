@@ -18,7 +18,7 @@ public class AdvisoryLockUtil {
    * Obtains a transactional level lock in the database by specified {@code key1} and {@code key2} keys
    * using the passed transactional {@code queryExecutor}.
    *
-   * @param queryExecutor queryExecutor
+   * @param queryExecutor query executor
    * @param key1          first key for lock identification
    * @param key2          second key for lock identification
    * @return future with {@code true} if lock successfully obtained, otherwise {@code false}

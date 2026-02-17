@@ -9,8 +9,6 @@ import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.ErrorRecord;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.ErrorRecordsLb;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
@@ -102,11 +100,10 @@ public final class ErrorRecordDaoUtil {
    * @return ErrorRecord
    */
   public static ErrorRecord toErrorRecord(Row row) {
-    ErrorRecordsLb pojo = RowMappers.getErrorRecordsLbMapper().apply(row);
     return new ErrorRecord()
-      .withId(pojo.getId().toString())
-      .withContent(pojo.getContent())
-      .withDescription(pojo.getDescription());
+      .withId(row.getUUID(ERROR_RECORDS_LB.ID.getName()).toString())
+      .withContent(row.getString(ERROR_RECORDS_LB.CONTENT.getName()))
+      .withDescription(row.getString(ERROR_RECORDS_LB.DESCRIPTION.getName()));
   }
 
   /**
@@ -134,13 +131,13 @@ public final class ErrorRecordDaoUtil {
    */
   public static ErrorRecord toJoinedErrorRecord(Record dbRecord) {
     ErrorRecord errorRecord = new ErrorRecord();
-    UUID id = dbRecord.get(org.folio.rest.jooq.tables.ErrorRecordsLb.ERROR_RECORDS_LB.ID);
+    UUID id = dbRecord.get(ERROR_RECORDS_LB.ID);
     if (Objects.nonNull(id)) {
       errorRecord.withId(id.toString());
     }
     return errorRecord
       .withContent(dbRecord.get(ERROR_RECORD_CONTENT, String.class))
-      .withDescription(dbRecord.get(org.folio.rest.jooq.tables.ErrorRecordsLb.ERROR_RECORDS_LB.DESCRIPTION));
+      .withDescription(dbRecord.get(ERROR_RECORDS_LB.DESCRIPTION));
   }
 
   /**
@@ -165,8 +162,8 @@ public final class ErrorRecordDaoUtil {
       dbRecord.setId(UUID.fromString(errorRecord.getId()));
     }
     if (Objects.nonNull(errorRecord.getContent())) {
-      if (errorRecord.getContent() instanceof String) {
-        dbRecord.setContent((String) errorRecord.getContent());
+      if (errorRecord.getContent() instanceof String contentString) {
+        dbRecord.setContent(contentString);
       } else {
         dbRecord.setContent(JsonObject.mapFrom(errorRecord.getContent()).encode());
       }

@@ -24,7 +24,6 @@ import org.jooq.JSONB;
 import org.jooq.impl.SQLDataType;
 
 import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
@@ -40,7 +39,10 @@ public final class ParsedRecordDaoUtil {
   private static final int LEADER_STATUS_SUBFIELD_POSITION = 5;
 
   private static final Field<UUID> ID_FIELD = field(name(ID), UUID.class);
-  private static final Field<JsonObject> CONTENT_FIELD = field(name(CONTENT), SQLDataType.JSONB.asConvertedDataType(new JSONBToJsonObjectConverter()));
+  private static final Field<JsonObject> CONTENT_FIELD = field(
+    name(CONTENT),
+    SQLDataType.JSONB.asConvertedDataTypeTo(JsonObject.class, ParsedRecordDaoUtil::convertJsonObjectToJSONB)
+  );
 
   public static final String PARSED_RECORD_NOT_FOUND_TEMPLATE = "Parsed Record with id '%s' was not found";
 
@@ -346,5 +348,9 @@ public final class ParsedRecordDaoUtil {
       parsedRecord.withContent(normalize(content).getMap());
     }
     return parsedRecord;
+  }
+
+  private static JSONB convertJsonObjectToJSONB(JsonObject json) {
+    return JSONB.jsonb(json.encode());
   }
 }

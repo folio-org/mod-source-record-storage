@@ -152,11 +152,6 @@
       <version>${jooq.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.github.jklingsporn</groupId>
-      <artifactId>vertx-jooq-classic-reactive</artifactId>
-      <version>${vertx-jooq.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.tomakehurst</groupId>
       <artifactId>wiremock-jre8</artifactId>
       <version>3.0.1</version>
@@ -235,7 +230,6 @@
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
-    <vertx-jooq.version>6.5.5</vertx-jooq.version>
     <aspectj.version>1.9.21</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
     <postgres.image>postgres:16-alpine</postgres.image>

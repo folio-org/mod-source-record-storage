@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -106,23 +105,7 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Searches for {@link Record} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @return future with optional Record
-   */
-  public static Future<Optional<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                                         Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-        .where(condition)
-        .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
-        .limit(1))
-      .map(RecordDaoUtil::toOptionalRecord);
-  }
-
-  /**
-   * Finds {@link Record} by {@link Condition}
+   * Finds {@link Record} by {@link Condition} using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param condition     condition
@@ -138,19 +121,6 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param id            id
-   * @return future with optional Record
-   */
-  public static Future<Optional<Record>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
-        .where(RECORDS_LB.ID.eq(toUUID(id))))
-      .map(RecordDaoUtil::toOptionalRecord);
-  }
-
-  /**
    * Searches for {@link Record} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -159,23 +129,6 @@ public final class RecordDaoUtil {
    */
   public static Future<Optional<Record>> findById(QueryExecutor queryExecutor, String id) {
     return findByCondition(queryExecutor, RECORDS_LB.ID.eq(toUUID(id)));
-  }
-
-  /**
-   * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param record        record
-   * @return future with updated Record
-   */
-  public static Future<Record> save(ReactiveClassicGenericQueryExecutor queryExecutor, Record record) {
-    RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(RECORDS_LB)
-        .set(dbRecord)
-        .onDuplicateKeyUpdate()
-        .set(dbRecord)
-        .returning())
-      .map(RecordDaoUtil::toSingleRecord);
   }
 
   /**
@@ -194,28 +147,6 @@ public final class RecordDaoUtil {
         .returning())
       .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(RecordDaoUtil::toSingleRecord);
-  }
-
-  /**
-   * Updates {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param record        record to update
-   * @return future of updated Record
-   */
-  public static Future<Record> update(ReactiveClassicGenericQueryExecutor queryExecutor, Record record) {
-    RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    return queryExecutor.executeAny(dsl -> dsl.update(RECORDS_LB)
-        .set(dbRecord)
-        .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
-        .returning())
-      .map(RecordDaoUtil::toSingleOptionalRecord)
-      .map(optionalRecord -> {
-        if (optionalRecord.isPresent()) {
-          return optionalRecord.get();
-        }
-        throw new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, record.getId()));
-      });
   }
 
   /**

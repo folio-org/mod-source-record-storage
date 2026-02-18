@@ -26,6 +26,10 @@ import java.util.function.Supplier;
 
 /**
  * A query executor that uses {@link Pool} connection pool to execute queries.
+ * The executor provides built-in retry functionality for transactional operations
+ * based on a configurable number of retries ({@link #numRetries}) and delay ({@link #retryDelay}),
+ * specifically for exceptions like {@link NoStackTraceThrowable}, {@link ClosedChannelException}
+ * or {@link ClosedConnectionException}.
  */
 public class PgPoolQueryExecutor implements QueryExecutor {
 
@@ -37,7 +41,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
 
   private final Pool pool;
   private final int numRetries;
-  private long retryDelay = 1000;
+  private final long retryDelay;
 
   public PgPoolQueryExecutor(Pool pool, int numRetries, long retryDelay) {
     this.pool = pool;

@@ -11,7 +11,6 @@ import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jooq.tables.records.ErrorRecordsLbRecord;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
@@ -31,19 +30,6 @@ public final class ErrorRecordDaoUtil {
   private ErrorRecordDaoUtil() { }
 
   /**
-   * Searches for {@link ErrorRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param id            id
-   * @return future with optional ErrorRecord
-   */
-  public static Future<Optional<ErrorRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
-      .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(ErrorRecordDaoUtil::toOptionalErrorRecord);
-  }
-
-  /**
    * Searches for {@link ErrorRecord} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -56,23 +42,6 @@ public final class ErrorRecordDaoUtil {
       .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
       .map(iterator -> iterator.hasNext()
         ? Optional.of(toErrorRecord(iterator.next().getDelegate())) : Optional.empty());
-  }
-
-  /**
-   * Saves {@link ErrorRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param errorRecord   error record
-   * @return future with updated ErrorRecord
-   */
-  public static Future<ErrorRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, ErrorRecord errorRecord) {
-    ErrorRecordsLbRecord dbRecord = toDatabaseErrorRecord(errorRecord);
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(ERROR_RECORDS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning())
-        .map(ErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
   /**

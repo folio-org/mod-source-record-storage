@@ -23,7 +23,6 @@ import org.jooq.Field;
 import org.jooq.JSONB;
 import org.jooq.impl.SQLDataType;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
@@ -51,22 +50,6 @@ public final class ParsedRecordDaoUtil {
   private ParsedRecordDaoUtil() { }
 
   /**
-   * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param id            id
-   * @param recordType    record type to find
-   * @return future with optional ParsedRecord
-   */
-  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor,
-      String id, RecordType recordType) {
-    return queryExecutor.findOneRow(dsl -> dsl.select(ID_FIELD, CONTENT_FIELD)
-      .from(table(name(recordType.getTableName())))
-      .where(ID_FIELD.eq(UUID.fromString(id))))
-      .map(ParsedRecordDaoUtil::toOptionalParsedRecord);
-  }
-
-  /**
    * Searches for {@link ParsedRecord} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -83,30 +66,6 @@ public final class ParsedRecordDaoUtil {
       .map(RowSet::iterator)
       .map(iterator -> iterator.hasNext()
         ? Optional.of(toParsedRecord(iterator.next().getDelegate())) : Optional.empty());
-  }
-
-  /**
-   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using
-   * {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param parsedRecord  parsed record
-   * @param recordType    record type to save
-   * @return future with updated ParsedRecord
-   */
-  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
-      ParsedRecord parsedRecord, RecordType recordType) {
-    UUID id = UUID.fromString(parsedRecord.getId());
-    JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
-      .set(ID_FIELD, id)
-      .set(CONTENT_FIELD, content)
-      .onConflict(ID_FIELD)
-      .doUpdate()
-      .set(CONTENT_FIELD, content)
-      .returning())
-      .map(res -> parsedRecord
-        .withContent(content.getMap()));
   }
 
   /**
@@ -134,32 +93,6 @@ public final class ParsedRecordDaoUtil {
 
   /**
    * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
-   * {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param parsedRecord  parsed record to update
-   * @param recordType    record type to update
-   * @return future of updated ParsedRecord
-   */
-  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
-      ParsedRecord parsedRecord, RecordType recordType) {
-    UUID id = UUID.fromString(parsedRecord.getId());
-    JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.update(table(name(recordType.getTableName())))
-      .set(CONTENT_FIELD, content)
-      .where(ID_FIELD.eq(id)))
-      .map(update -> {
-        if (update.rowCount() > 0) {
-          return parsedRecord
-            .withContent(content.getMap());
-        }
-        String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
-        throw new NotFoundException(message);
-      });
-  }
-
-  /**
-   * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
    * {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -172,8 +105,8 @@ public final class ParsedRecordDaoUtil {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
     return queryExecutor.execute(dsl -> dsl.update(table(name(recordType.getTableName())))
-      .set(CONTENT_FIELD, content)
-      .where(ID_FIELD.eq(id)))
+        .set(CONTENT_FIELD, content)
+        .where(ID_FIELD.eq(id)))
       .map(RowSet::getDelegate)
       .map(rowSet -> {
         if (rowSet.rowCount() > 0) {

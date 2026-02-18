@@ -34,7 +34,6 @@ import org.jooq.OrderField;
 import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -50,27 +49,6 @@ public final class SnapshotDaoUtil {
   public static final String SNAPSHOT_NOT_FOUND_TEMPLATE = "Snapshot with id '%s' was not found";
 
   private SnapshotDaoUtil() { }
-
-  /**
-   * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
-   * using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @param orderFields   fields to order by
-   * @param offset        offset
-   * @param limit         limit
-   * @return future with {@link List} of {@link Snapshot}
-   */
-  public static Future<List<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.executeAny(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
-      .where(condition)
-      .orderBy(orderFields)
-      .offset(offset)
-      .limit(limit))
-        .map(SnapshotDaoUtil::toSnapshots);
-  }
 
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
@@ -100,38 +78,11 @@ public final class SnapshotDaoUtil {
    * @param condition     condition
    * @return future with count
    */
-  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
-      .from(SNAPSHOTS_LB)
-      .where(condition))
-        .map(row -> row.getInteger(0));
-  }
-
-  /**
-   * Count query by {@link Condition}
-   *
-   * @param queryExecutor query executor
-   * @param condition     condition
-   * @return future with count
-   */
   public static Future<Integer> countByCondition(QueryExecutor queryExecutor, Condition condition) {
     return queryExecutor.execute(dsl -> dsl.selectCount()
         .from(SNAPSHOTS_LB)
         .where(condition))
       .map(rows -> rows.iterator().next().getInteger(0));
-  }
-
-  /**
-   * Searches for {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param id            id
-   * @return future with optional Snapshot
-   */
-  public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
-      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
-        .map(SnapshotDaoUtil::toOptionalSnapshot);
   }
 
   /**
@@ -146,23 +97,6 @@ public final class SnapshotDaoUtil {
       .selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id)))
     ).map(rows -> rows.size() > 0 ? Optional.of(toSnapshot(rows.iterator().next().getDelegate())) : Optional.empty());
-  }
-
-  /**
-   * Saves {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param snapshot      snapshot
-   * @return future with updated Snapshot
-   */
-  public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning())
-        .map(SnapshotDaoUtil::toSingleSnapshot);
   }
 
   /**
@@ -182,25 +116,6 @@ public final class SnapshotDaoUtil {
         .returning())
       .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(SnapshotDaoUtil::toSingleSnapshot);
-  }
-
-  /**
-   * Saves {@link List} of {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param snapshots     list of snapshots
-   * @return future with updated List of Snapshot
-   */
-  public static Future<List<Snapshot>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Snapshot> snapshots) {
-    return queryExecutor.executeAny(dsl -> {
-      InsertSetStep<SnapshotsLbRecord> insertSetStep = dsl.insertInto(SNAPSHOTS_LB);
-      InsertValuesStepN<SnapshotsLbRecord> insertValuesStepN = null;
-      for (Snapshot snapshot : snapshots) {
-        SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-          insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
-      }
-      return insertValuesStepN;
-    }).map(SnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -246,28 +161,6 @@ public final class SnapshotDaoUtil {
   }
 
   /**
-   * Updates {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param snapshot      snapshot to update
-   * @return future of updated Snapshot
-   */
-  public static Future<Snapshot> update(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
-    SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-    return queryExecutor.executeAny(dsl -> dsl.update(SNAPSHOTS_LB)
-      .set(dbRecord)
-      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
-      .returning())
-        .map(SnapshotDaoUtil::toSingleOptionalSnapshot)
-        .map(optionalSnapshot -> {
-          if (optionalSnapshot.isPresent()) {
-            return optionalSnapshot.get();
-          }
-          throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshot.getJobExecutionId()));
-        });
-  }
-
-  /**
    * Deletes {@link Snapshot} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -279,16 +172,6 @@ public final class SnapshotDaoUtil {
         .deleteFrom(SNAPSHOTS_LB)
         .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
       .map(rowSet -> rowSet.rowCount() == 1);
-  }
-
-  /**
-   * Deletes all {@link Snapshot} using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @return future of number of Snapshot deleted
-   */
-  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB));
   }
 
   /**

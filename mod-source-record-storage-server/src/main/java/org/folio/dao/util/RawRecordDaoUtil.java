@@ -12,7 +12,6 @@ import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jooq.tables.records.RawRecordsLbRecord;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import org.jooq.Record;
@@ -29,19 +28,6 @@ public final class RawRecordDaoUtil {
   private RawRecordDaoUtil() { }
 
   /**
-   * Searches for {@link RawRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param id            id
-   * @return future with optional RawRecord
-   */
-  public static Future<Optional<RawRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
-      .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
-        .map(RawRecordDaoUtil::toOptionalRawRecord);
-  }
-
-  /**
    * Searches for {@link RawRecord} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
@@ -54,23 +40,6 @@ public final class RawRecordDaoUtil {
       .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
       .map(iterator -> iterator.hasNext()
         ? Optional.of(toRawRecord(iterator.next().getDelegate())) : Optional.empty());
-  }
-
-  /**
-   * Saves {@link RawRecord} to the db using {@link ReactiveClassicGenericQueryExecutor}
-   *
-   * @param queryExecutor query executor
-   * @param rawRecord     raw record
-   * @return future with updated RawRecord
-   */
-  public static Future<RawRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor, RawRecord rawRecord) {
-    RawRecordsLbRecord dbRecord = toDatabaseRawRecord(rawRecord);
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(RAW_RECORDS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning())
-        .map(RawRecordDaoUtil::toSingleRawRecord);
   }
 
   /**

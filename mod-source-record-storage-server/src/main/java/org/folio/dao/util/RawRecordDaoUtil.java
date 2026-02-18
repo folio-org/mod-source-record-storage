@@ -37,9 +37,7 @@ public final class RawRecordDaoUtil {
   public static Future<Optional<RawRecord>> findById(QueryExecutor queryExecutor, String id) {
     return queryExecutor.execute(dsl -> dsl.selectFrom(RAW_RECORDS_LB)
         .where(RAW_RECORDS_LB.ID.eq(UUID.fromString(id))))
-      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
-      .map(iterator -> iterator.hasNext()
-        ? Optional.of(toRawRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(RawRecordDaoUtil::toSingleOptionalRawRecord);
   }
 
   /**
@@ -105,13 +103,13 @@ public final class RawRecordDaoUtil {
   }
 
   /**
-   * Convert database query result {@link Row} to {@link Optional} {@link RawRecord}
+   * Convert database query result {@link RowSet} to {@link Optional} {@link RawRecord}
    *
-   * @param row query result row
+   * @param rowSet query row set
    * @return optional RawRecord
    */
-  public static Optional<RawRecord> toOptionalRawRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toRawRecord(row)) : Optional.empty();
+  public static Optional<RawRecord> toSingleOptionalRawRecord(io.vertx.reactivex.sqlclient.RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toRawRecord(rowSet.iterator().next().getDelegate()));
   }
 
   /**

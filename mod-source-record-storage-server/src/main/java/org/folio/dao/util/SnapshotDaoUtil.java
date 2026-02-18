@@ -96,7 +96,7 @@ public final class SnapshotDaoUtil {
     return queryExecutor.execute(dsl -> dsl
       .selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id)))
-    ).map(rows -> rows.size() > 0 ? Optional.of(toSnapshot(rows.iterator().next().getDelegate())) : Optional.empty());
+    ).map(rowSet -> toSingleOptionalSnapshot(rowSet.getDelegate()));
   }
 
   /**
@@ -151,9 +151,9 @@ public final class SnapshotDaoUtil {
         .set(dbRecord)
         .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
         .returning())
-      .<Optional<Snapshot>>map(rows -> (Optional<Snapshot>) toSingleOptionalSnapshot(rows.getDelegate()))
+      .map(rows -> (Optional<Snapshot>) toSingleOptionalSnapshot(rows.getDelegate()))
       .map(optionalSnapshot -> {
-        if (optionalSnapshot.isPresent()) { // todo maybe refactor fluently
+        if (optionalSnapshot.isPresent()) {
           return optionalSnapshot.get();
         }
         throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshot.getJobExecutionId()));

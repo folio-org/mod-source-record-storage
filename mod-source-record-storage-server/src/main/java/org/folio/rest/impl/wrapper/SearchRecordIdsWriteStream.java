@@ -80,7 +80,4 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     return this;
   }
 
-//  public void close() {
-//    this.delegate.close();
-//  }
 }

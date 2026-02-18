@@ -221,8 +221,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     Async async = context.async();
     TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
     try {
-      String moduleVersion = "%s-%s".formatted(ModuleName.getModuleName(), ModuleName.getModuleVersion());
-      tenantClient.postTenant(new TenantAttributes().withModuleTo(moduleVersion), res2 -> {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), res2 -> {
         context.assertTrue(res2.succeeded());
         if (res2.result().statusCode() == 204) {
           async.complete();

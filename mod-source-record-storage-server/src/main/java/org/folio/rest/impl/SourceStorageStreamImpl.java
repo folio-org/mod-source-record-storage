@@ -129,10 +129,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
                              Handler<Throwable> errorHandler) {
     FlowableHelper.toReadStream(flowable)
       .exceptionHandler(errorHandler)
-      .endHandler(end -> {
-        responseWrapper.end();
-//        responseWrapper.close();
-      })
+      .endHandler(end -> responseWrapper.end())
       .pipeTo(responseWrapper);
     flowable.doOnError(errorHandler::handle);
   }
@@ -140,10 +137,7 @@ public class SourceStorageStreamImpl implements SourceStorageStream {
   private void processStream(HttpServerResponse response, Flowable<Buffer> flowable, Handler<Throwable> errorHandler) {
     FlowableHelper.toReadStream(flowable)
       .exceptionHandler(errorHandler)
-      .endHandler(end -> {
-        response.end();
-//        response.close();
-      })
+      .endHandler(end -> response.end())
       .pipeTo(response);
     flowable.doOnError(errorHandler::handle);
   }

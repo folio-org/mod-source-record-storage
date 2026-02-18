@@ -12,6 +12,7 @@ import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.ArrayList;
@@ -58,8 +59,7 @@ public class RecordDomainEventPublisher {
       Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      var jsonContent = JsonObject.mapFrom(domainEventPayload); // todo: do we need that
-      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
+      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), Json.encode(domainEventPayload),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
       LOG.warn("Exception during Record domain event sending", e);

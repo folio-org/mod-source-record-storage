@@ -37,6 +37,7 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.util.AdditionalFieldsUtil;
+import org.jetbrains.annotations.NotNull;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.testcontainers.kafka.KafkaContainer;
@@ -44,6 +45,7 @@ import org.testcontainers.kafka.KafkaContainer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -133,7 +135,8 @@ public abstract class AbstractLBServiceTest {
 
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete( deployResponse -> {
       try {
-        tenantClient.postTenant(new TenantAttributes().withModuleTo("%s-%s".formatted(ModuleName.getModuleName(), ModuleName.getModuleVersion())), res2 -> {
+        String fullModuleName = getFullModuleName();
+        tenantClient.postTenant(new TenantAttributes().withModuleTo(fullModuleName), res2 -> {
           postgresClientFactory = new PostgresClientFactory(vertx);
           context.assertTrue(res2.succeeded());
           if (res2.result().statusCode() == 204) {
@@ -162,14 +165,16 @@ public abstract class AbstractLBServiceTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-//    Async async = context.async();
     PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
+    vertx.close().onComplete(context.asyncAssertSuccess(v -> {
       PostgresClient.stopPostgresTester();
       wireMockServer.stop();
       kafkaContainer.stop();
-//      async.complete();
     }));
+  }
+
+  public static String getFullModuleName() {
+    return ModuleName.getModuleName() + "-" + ModuleName.getModuleVersion();
   }
 
   void compareMetadata(TestContext context, Metadata expected, Metadata actual) {
@@ -186,12 +191,14 @@ public abstract class AbstractLBServiceTest {
 
   protected void validate005Field(TestContext testContext, String expectedDate, Record record) {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+    assertNotNull(actualDate);
     testContext.assertEquals(expectedDate.substring(0, 10),
       actualDate.substring(0, 10));
   }
 
   protected void validate005Field(String expectedDate, Record record) {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+    assertNotNull(actualDate);
     assertEquals(expectedDate.substring(0, 10),
       actualDate.substring(0, 10));
   }
@@ -212,7 +219,7 @@ public abstract class AbstractLBServiceTest {
   }
 
   protected ConsumerRecord<String, String> getKafkaEvent(String topic) {
-    return getKafkaEvents(topic).get(0);
+    return getKafkaEvents(topic).getFirst();
   }
 
   protected List<ConsumerRecord<String, String>> getKafkaEvents(String topic) {

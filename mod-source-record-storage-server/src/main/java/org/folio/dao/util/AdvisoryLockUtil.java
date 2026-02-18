@@ -26,8 +26,8 @@ public class AdvisoryLockUtil {
    */
   public static Future<Boolean> acquireLock(QueryExecutor queryExecutor, int key1, int key2) {
     return queryExecutor.execute(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
-        DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(key1), val(key2)))))
-      .map(rowSet -> rowSet.iterator().next().getBoolean(0));
+      DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(key1), val(key2))))
+    ).map(rowSet -> rowSet.iterator().next().getBoolean(0));
   }
 
 }

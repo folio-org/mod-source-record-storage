@@ -140,7 +140,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
     Field<Integer> indexersVersionField = field(name(MARC_INDEXERS_TABLE, VERSION_FIELD), Integer.class);
 
-    return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dsl -> dsl
+    return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dslContext -> dslContext
         .select()
         .from(marcIndexers)
         .join(MARC_RECORDS_TRACKING).on(MARC_RECORDS_TRACKING.MARC_ID.eq(indexersIdField))
@@ -153,7 +153,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Table<org.jooq.Record> marcIndexers = table(name(MARC_INDEXERS_TABLE));
     Field<UUID> indexersIdField = field(name(MARC_INDEXERS_TABLE, MARC_ID_FIELD), UUID.class);
 
-    return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dsl -> dsl
+    return postgresClientFactory.getQueryExecutor(TENANT_ID).execute(dslContext -> dslContext
         .select()
         .from(marcIndexers)
         .where(indexersIdField.eq(UUID.fromString(recordId)))

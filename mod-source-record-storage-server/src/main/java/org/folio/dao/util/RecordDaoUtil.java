@@ -105,7 +105,7 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Finds {@link Record} by {@link Condition} using {@link QueryExecutor}
+   * Searches for {@link Record} by {@link Condition} using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param condition     condition
@@ -128,7 +128,12 @@ public final class RecordDaoUtil {
    * @return future with optional Record
    */
   public static Future<Optional<Record>> findById(QueryExecutor queryExecutor, String id) {
-    return findByCondition(queryExecutor, RECORDS_LB.ID.eq(toUUID(id)));
+    return queryExecutor.execute(dsl -> dsl
+        .selectFrom(RECORDS_LB)
+        .where(RECORDS_LB.ID.eq(toUUID(id))))
+      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
+      .map(iterator -> iterator.hasNext()
+        ? Optional.of(toRecord(iterator.next().getDelegate())) : Optional.empty());
   }
 
   /**

@@ -54,8 +54,8 @@ public class PostgresClientFactory {
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   public static final String SERVER_PEM = "server_pem";
   private static final String DISABLE_VALUE = "disable";
-  private static final int NUM_OF_RETRIES_DEFAULT = 3;
-  private static final long RETRY_DELAY_DEFAULT = 1000L;
+  private static final int DEFAULT_NUM_OF_RETRIES = 3;
+  private static final long DEFAULT_RETRY_DELAY = 1000L;
 
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
@@ -73,10 +73,10 @@ public class PostgresClientFactory {
 
   private final Vertx vertx;
 
-  @Value("${srs.db.reactive.numRetries:" + NUM_OF_RETRIES_DEFAULT + "}")
+  @Value("${srs.db.reactive.numRetries:" + DEFAULT_NUM_OF_RETRIES + "}")
   private int numOfRetries;
 
-  @Value("${srs.db.reactive.retryDelay.ms:" + RETRY_DELAY_DEFAULT + "}")
+  @Value("${srs.db.reactive.retryDelay.ms:" + DEFAULT_RETRY_DELAY + "}")
   private long retryDelay;
 
   @Autowired
@@ -115,7 +115,7 @@ public class PostgresClientFactory {
    * @return query executor
    */
   public PgPoolQueryExecutor getQueryExecutor(String tenantId) {
-    return new PgPoolQueryExecutor(getCachedPool(this.vertx, tenantId), numOfRetries, retryDelay);
+    return new PgPoolQueryExecutor(getCachedPool(this.vertx, tenantId).getDelegate(), numOfRetries, retryDelay);
   }
 
   /**
@@ -156,7 +156,8 @@ public class PostgresClientFactory {
    * @return query executor
    */
   public static PgPoolQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
-    return new PgPoolQueryExecutor(getCachedPool(vertx, tenantId), NUM_OF_RETRIES_DEFAULT, RETRY_DELAY_DEFAULT);
+    return new PgPoolQueryExecutor(
+      getCachedPool(vertx, tenantId).getDelegate(), DEFAULT_NUM_OF_RETRIES, DEFAULT_RETRY_DELAY);
   }
 
   /**

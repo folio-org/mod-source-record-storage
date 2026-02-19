@@ -116,8 +116,7 @@ public final class RecordDaoUtil {
         .where(condition)
         .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
         .limit(1))
-      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
-      .map(iterator -> iterator.hasNext() ? Optional.of(toRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(RecordDaoUtil::toSingleOptionalRecord);
   }
 
   /**
@@ -131,9 +130,7 @@ public final class RecordDaoUtil {
     return queryExecutor.execute(dsl -> dsl
         .selectFrom(RECORDS_LB)
         .where(RECORDS_LB.ID.eq(toUUID(id))))
-      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
-      .map(iterator -> iterator.hasNext()
-        ? Optional.of(toRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(RecordDaoUtil::toSingleOptionalRecord);
   }
 
   /**
@@ -150,7 +147,6 @@ public final class RecordDaoUtil {
         .onDuplicateKeyUpdate()
         .set(dbRecord)
         .returning())
-      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(RecordDaoUtil::toSingleRecord);
   }
 
@@ -167,7 +163,6 @@ public final class RecordDaoUtil {
         .set(dbRecord)
         .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
         .returning())
-      .map(rowSet -> (RowSet<Row>) rowSet.getDelegate())
       .map(RecordDaoUtil::toSingleOptionalRecord)
       .map(optionalRecord -> {
         if (optionalRecord.isPresent()) {
@@ -384,16 +379,6 @@ public final class RecordDaoUtil {
       .withRecordType(StrippedParsedRecord.RecordType.valueOf(pojo.getRecordType().toString()))
       .withRecordState(StrippedParsedRecord.RecordState.valueOf(pojo.getState().toString()))
       .withExternalIdsHolder(toExternalIdsHolder(pojo));
-  }
-
-  /**
-   * Convert database query result {@link Row} to {@link Optional} {@link Record}
-   *
-   * @param row query result row
-   * @return optional Record
-   */
-  public static Optional<Record> toOptionalRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toRecord(row)) : Optional.empty();
   }
 
   public static String getExternalId(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {

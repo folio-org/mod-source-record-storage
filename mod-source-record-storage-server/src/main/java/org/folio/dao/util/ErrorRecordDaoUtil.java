@@ -39,9 +39,7 @@ public final class ErrorRecordDaoUtil {
   public static Future<Optional<ErrorRecord>> findById(QueryExecutor queryExecutor, String id) {
     return queryExecutor.execute(dsl -> dsl.selectFrom(ERROR_RECORDS_LB)
         .where(ERROR_RECORDS_LB.ID.eq(UUID.fromString(id))))
-      .map(io.vertx.reactivex.sqlclient.RowSet::iterator)
-      .map(iterator -> iterator.hasNext()
-        ? Optional.of(toErrorRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(ErrorRecordDaoUtil::toSingleOptionalErrorRecord);
   }
 
   /**
@@ -58,7 +56,6 @@ public final class ErrorRecordDaoUtil {
         .onDuplicateKeyUpdate()
         .set(dbRecord)
         .returning())
-      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(ErrorRecordDaoUtil::toSingleErrorRecord);
   }
 
@@ -110,13 +107,13 @@ public final class ErrorRecordDaoUtil {
   }
 
   /**
-   * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
+   * Convert database query result {@link RowSet} to {@link Optional} {@link ErrorRecord}
    *
-   * @param row query result row
+   * @param rowSet query result row set
    * @return optional ErrorRecord
    */
-  public static Optional<ErrorRecord> toOptionalErrorRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toErrorRecord(row)) : Optional.empty();
+  public static Optional<ErrorRecord> toSingleOptionalErrorRecord(RowSet<Row> rowSet) {
+    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toErrorRecord(rowSet.iterator().next()));
   }
 
   /**

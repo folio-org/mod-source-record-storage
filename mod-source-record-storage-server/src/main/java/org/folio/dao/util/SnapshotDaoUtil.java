@@ -19,7 +19,7 @@ import java.util.stream.StreamSupport;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import io.vertx.reactivex.sqlclient.SqlResult;
+import io.vertx.sqlclient.SqlResult;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -68,7 +68,7 @@ public final class SnapshotDaoUtil {
       .orderBy(orderFields)
       .offset(offset)
       .limit(limit)
-    ).map(res -> toSnapshots(res.getDelegate()));
+    ).map(SnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -96,7 +96,7 @@ public final class SnapshotDaoUtil {
     return queryExecutor.execute(dsl -> dsl
       .selectFrom(SNAPSHOTS_LB)
       .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id)))
-    ).map(rowSet -> toSingleOptionalSnapshot(rowSet.getDelegate()));
+    ).map(SnapshotDaoUtil::toSingleOptionalSnapshot);
   }
 
   /**
@@ -114,7 +114,6 @@ public final class SnapshotDaoUtil {
         .onDuplicateKeyUpdate()
         .set(dbRecord)
         .returning())
-      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(SnapshotDaoUtil::toSingleSnapshot);
   }
 
@@ -134,8 +133,7 @@ public final class SnapshotDaoUtil {
         insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
       }
       return insertValuesStepN;
-    }).map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
-      .map(SnapshotDaoUtil::toSnapshots);
+    }).map(SnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -151,7 +149,7 @@ public final class SnapshotDaoUtil {
         .set(dbRecord)
         .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
         .returning())
-      .map(rows -> (Optional<Snapshot>) toSingleOptionalSnapshot(rows.getDelegate()))
+      .map(SnapshotDaoUtil::toSingleOptionalSnapshot)
       .map(optionalSnapshot -> {
         if (optionalSnapshot.isPresent()) {
           return optionalSnapshot.get();
@@ -215,16 +213,6 @@ public final class SnapshotDaoUtil {
       metadata.withUpdatedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.UPDATED_DATE.getName()).toInstant()));
     }
     return snapshot.withMetadata(metadata);
-  }
-
-  /**
-   * Convert database query result {@link Row} to {@link Optional} {@link Snapshot}
-   *
-   * @param row query result row
-   * @return optional Snapshot
-   */
-  public static Optional<Snapshot> toOptionalSnapshot(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toSnapshot(row)) : Optional.empty();
   }
 
   /**

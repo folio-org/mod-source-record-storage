@@ -54,7 +54,6 @@ public final class RawRecordDaoUtil {
         .onDuplicateKeyUpdate()
         .set(dbRecord)
         .returning())
-      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(RawRecordDaoUtil::toSingleRawRecord);
   }
 
@@ -108,8 +107,8 @@ public final class RawRecordDaoUtil {
    * @param rowSet query row set
    * @return optional RawRecord
    */
-  public static Optional<RawRecord> toSingleOptionalRawRecord(io.vertx.reactivex.sqlclient.RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
-    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toRawRecord(rowSet.iterator().next().getDelegate()));
+  public static Optional<RawRecord> toSingleOptionalRawRecord(RowSet<Row> rowSet) {
+    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toRawRecord(rowSet.iterator().next()));
   }
 
   /**

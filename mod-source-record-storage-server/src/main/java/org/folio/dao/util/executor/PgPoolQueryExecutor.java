@@ -5,12 +5,12 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
-import io.vertx.reactivex.sqlclient.Pool;
-import io.vertx.reactivex.sqlclient.Row;
-import io.vertx.reactivex.sqlclient.RowSet;
-import io.vertx.reactivex.sqlclient.SqlConnection;
-import io.vertx.reactivex.sqlclient.Tuple;
 import io.vertx.sqlclient.ClosedConnectionException;
+import io.vertx.sqlclient.Pool;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jooq.DSLContext;
@@ -65,7 +65,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
    */
   public <R> Future<R> transaction(Function<QueryExecutor, Future<R>> action) {
     return retryOf(
-      () -> pool.withTransaction((SqlConnection connection) -> action.apply(new TransactionBoundQueryExecutor(connection))),
+      () -> pool.withTransaction(connection -> action.apply(new TransactionBoundQueryExecutor(connection))),
       numRetries);
   }
 

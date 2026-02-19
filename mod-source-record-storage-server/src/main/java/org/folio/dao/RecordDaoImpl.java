@@ -47,7 +47,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.reactivex.sqlclient.Pool;
-import io.vertx.reactivex.sqlclient.RowSet;
 import io.vertx.sqlclient.Row;
 
 import java.io.IOException;
@@ -71,6 +70,7 @@ import java.util.stream.StreamSupport;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import io.vertx.sqlclient.RowSet;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
@@ -317,7 +317,6 @@ public class RecordDaoImpl implements RecordDao {
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
     }).map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
-      .map(this::toRow)
       .map(this::toRecord)
       .toList());
   }
@@ -661,7 +660,7 @@ public class RecordDaoImpl implements RecordDao {
     return DSL.noCondition();
   }
 
-  private RecordsIdentifiersCollection toRecordsIdentifiersCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet,
+  private RecordsIdentifiersCollection toRecordsIdentifiersCollection(RowSet<Row> rowSet,
                                                                       boolean returnTotalRecords) {
     Integer countResult = rowSet.size() == 0 ? Integer.valueOf(0) : rowSet.iterator().next().getInteger(COUNT);
     if (returnTotalRecords && (countResult == null || countResult == 0)) {
@@ -681,7 +680,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    return getRecordById(getQueryExecutor(tenantId), id);
+    return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordById(getQueryExecutor(tenantId), id));
   }
 
   @Override
@@ -705,7 +704,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId) {
-    return getRecordByCondition(getQueryExecutor(tenantId), condition);
+    return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordByCondition(queryExecutor, condition));
   }
 
   @Override
@@ -1459,10 +1458,10 @@ public class RecordDaoImpl implements RecordDao {
         if (rowSet.size() == 0) {
           return Optional.<Record>empty();
         }
-        return Optional.of(RecordDaoUtil.toRecord(rowSet.iterator().next().getDelegate()));
+        return Optional.of(RecordDaoUtil.toRecord(rowSet.iterator().next()));
       })
       .compose(optionalRecord -> optionalRecord
-        .map(record -> lookupAssociatedRecords(queryExecutor, record, false).map(Optional::of))
+        .map(aRecord -> lookupAssociatedRecords(queryExecutor, aRecord, false).map(Optional::of))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))));
   }
 
@@ -1483,10 +1482,9 @@ public class RecordDaoImpl implements RecordDao {
     )).map(this::toMarcBibCollection);
   }
 
-  private MarcBibCollection toMarcBibCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+  private MarcBibCollection toMarcBibCollection(RowSet<Row> rowSet) {
     MarcBibCollection marcBibCollection = new MarcBibCollection();
     List<String> ids = StreamSupport.stream(rowSet.spliterator(), false)
-      .map(this::toRow)
       .map(row -> row.getString(HRID))
       .toList();
 
@@ -1827,11 +1825,11 @@ public class RecordDaoImpl implements RecordDao {
     };
   }
 
-  private RecordCollection toRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+  private RecordCollection toRecordCollection(RowSet<Row> rowSet) {
     RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
     List<Record> records = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
-      return toRecord(row.getDelegate());
+      return toRecord(row);
     }).toList();
 
     if (!records.isEmpty() && Objects.nonNull(records.getFirst().getId())) {
@@ -1840,12 +1838,12 @@ public class RecordDaoImpl implements RecordDao {
     return recordCollection;
   }
 
-  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+  private StrippedParsedRecordCollection toStrippedParsedRecordCollection(io.vertx.sqlclient.RowSet<Row> rowSet) {
     StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
     List<StrippedParsedRecord> records = StreamSupport.stream(rowSet.spliterator(), false)
       .map(row -> {
         recordCollection.setTotalRecords(row.getInteger(COUNT));
-        return toStrippedParsedRecord(row.getDelegate());
+        return toStrippedParsedRecord(row);
       })
       .toList();
     if (!records.isEmpty() && Objects.nonNull(records.getFirst().getId())) {
@@ -1857,7 +1855,7 @@ public class RecordDaoImpl implements RecordDao {
   /*
    * Code to avoid the occurrence of records when limit equals to zero
    */
-  private RecordCollection toRecordCollectionWithLimitCheck(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet, int limit) {
+  private RecordCollection toRecordCollectionWithLimitCheck(RowSet<Row> rowSet, int limit) {
     // Validation to ignore records insertion to the returned recordCollection when limit equals zero
     int recordsCount = rowSet.size() > 0 ? rowSet.iterator().next().getInteger(COUNT) : 0;
     if (limit == 0) {
@@ -1867,12 +1865,12 @@ public class RecordDaoImpl implements RecordDao {
     }
   }
 
-  private SourceRecordCollection toSourceRecordCollection(RowSet<io.vertx.reactivex.sqlclient.Row> rowSet) {
+  private SourceRecordCollection toSourceRecordCollection(RowSet<Row> rowSet) {
     SourceRecordCollection sourceRecordCollection = new SourceRecordCollection().withTotalRecords(0);
     List<SourceRecord> sourceRecords = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
         sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
-        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row.getDelegate()))
-          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row.getDelegate()));
+        return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
+          .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));
       })
       .toList();
     if (!sourceRecords.isEmpty() && Objects.nonNull(sourceRecords.getFirst().getRecordId())) {

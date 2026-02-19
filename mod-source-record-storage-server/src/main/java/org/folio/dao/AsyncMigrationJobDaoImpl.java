@@ -51,7 +51,7 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
         .selectFrom(ASYNC_MIGRATION_JOBS)
         .where(ASYNC_MIGRATION_JOBS.ID.eq(UUID.fromString(id))))
       .map(rows -> rows.size() > 0
-        ? Optional.of(mapRowToAsyncMigrationJob(rows.iterator().next().getDelegate())) : Optional.empty());
+        ? Optional.of(mapRowToAsyncMigrationJob(rows.iterator().next())) : Optional.empty());
   }
 
   @Override
@@ -73,7 +73,7 @@ public class AsyncMigrationJobDaoImpl implements AsyncMigrationJobDao {
         .selectFrom(ASYNC_MIGRATION_JOBS)
         .where(ASYNC_MIGRATION_JOBS.STATUS.eq(MigrationJobStatus.IN_PROGRESS)))
       .map(rows -> rows.size() > 0
-        ? Optional.of(mapRowToAsyncMigrationJob(rows.iterator().next().getDelegate())) : Optional.empty());
+        ? Optional.of(mapRowToAsyncMigrationJob(rows.iterator().next())) : Optional.empty());
   }
 
   private PgPoolQueryExecutor getQueryExecutor(String tenantId) {

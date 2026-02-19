@@ -8,7 +8,6 @@ import static org.folio.services.util.EventHandlingUtil.createProducerRecord;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
@@ -102,7 +101,6 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
   private Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, QMEventTypes eventType,
                                            List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
-    Promise<Boolean> promise = Promise.promise();
     try {
       var producer = producerMap.get(eventType);
       var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);

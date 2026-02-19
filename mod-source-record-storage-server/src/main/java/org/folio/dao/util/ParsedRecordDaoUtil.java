@@ -11,7 +11,7 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
-import io.vertx.reactivex.sqlclient.RowSet;
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.ErrorRecord;
@@ -63,9 +63,7 @@ public final class ParsedRecordDaoUtil {
         .select(ID_FIELD, CONTENT_FIELD)
         .from(table(name(recordType.getTableName())))
         .where(ID_FIELD.eq(UUID.fromString(id))))
-      .map(RowSet::iterator)
-      .map(iterator -> iterator.hasNext()
-        ? Optional.of(toParsedRecord(iterator.next().getDelegate())) : Optional.empty());
+      .map(ParsedRecordDaoUtil::toSingleOptionalParsedRecord);
   }
 
   /**
@@ -86,7 +84,6 @@ public final class ParsedRecordDaoUtil {
         .doUpdate()
         .set(CONTENT_FIELD, content)
         .returning())
-      .map(io.vertx.reactivex.sqlclient.RowSet::getDelegate)
       .map(res -> parsedRecord
         .withContent(content.getMap()));
   }
@@ -107,11 +104,9 @@ public final class ParsedRecordDaoUtil {
     return queryExecutor.execute(dsl -> dsl.update(table(name(recordType.getTableName())))
         .set(CONTENT_FIELD, content)
         .where(ID_FIELD.eq(id)))
-      .map(RowSet::getDelegate)
       .map(rowSet -> {
         if (rowSet.rowCount() > 0) {
-          return parsedRecord
-            .withContent(content.getMap());
+          return parsedRecord.withContent(content.getMap());
         }
         String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
         throw new NotFoundException(message);
@@ -164,13 +159,13 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
-   * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
+   * Convert database query result {@link RowSet} to {@link Optional} {@link ErrorRecord}
    *
-   * @param row query result row
+   * @param rowSet query result row set
    * @return optional ParsedRecord
    */
-  public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
+  public static Optional<ParsedRecord> toSingleOptionalParsedRecord(RowSet<Row> rowSet) {
+    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toParsedRecord(rowSet.iterator().next()));
   }
 
   /**

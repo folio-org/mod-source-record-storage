@@ -1,8 +1,8 @@
 package org.folio.dao.util.executor;
 
 import io.vertx.core.Future;
-import io.vertx.reactivex.sqlclient.Row;
-import io.vertx.reactivex.sqlclient.RowSet;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.jooq.DSLContext;
 import org.jooq.Query;
 

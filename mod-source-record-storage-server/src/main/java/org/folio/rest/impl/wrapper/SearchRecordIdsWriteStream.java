@@ -1,7 +1,6 @@
 package org.folio.rest.impl.wrapper;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
@@ -12,10 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.UUID;
 
 import static java.lang.String.format;
-
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
-
-import org.folio.rest.jooq.tables.RecordsLb;
 
 /**
  * The stream needed to build HTTP response following the pre-defined schema:
@@ -44,7 +40,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     this.totalCount = row.getInteger("count");
     if (writeIndex == 0) {
       this.writeIndex++;
-      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE;
+      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID + DOUBLE_QUOTE;
       return this.delegate.write(format(responseBeginning, id));
     } else {
       this.writeIndex++;
@@ -53,20 +49,11 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   }
 
   @Override
-  public void write(Row row, Handler<AsyncResult<Void>> handler) {
-    throw new UnsupportedOperationException("The method is not supported");
-  }
-
-  @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
+  public Future<Void> end() {
     if (this.writeIndex == 0) {
-      this.delegate.write(emptyResponse).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
+      return this.delegate.end(emptyResponse);
     } else {
-      this.delegate.write(format(responseEnding, totalCount)).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
+      return this.delegate.end(format(responseEnding, totalCount));
     }
   }
 
@@ -93,7 +80,4 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     return this;
   }
 
-  public void close() {
-    this.delegate.close();
-  }
 }

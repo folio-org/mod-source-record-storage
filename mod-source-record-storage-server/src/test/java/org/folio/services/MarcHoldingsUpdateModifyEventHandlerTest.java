@@ -20,7 +20,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -37,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -44,6 +44,7 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
@@ -77,9 +78,9 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_HOLDINGS";
+  private static final String RECORD_ID = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static final int CACHE_EXPIRATION_TIME = 3600;
 
-  private static String recordId = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
 
@@ -150,9 +151,9 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
+    rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
+    parsedRecord = new ParsedRecord().withId(RECORD_ID)
       .withContent(PARSED_CONTENT);
   }
 
@@ -178,16 +179,16 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
     record = new Record()
-      .withId(recordId)
+      .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
-      .withMatchedId(recordId)
+      .withMatchedId(RECORD_ID)
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"));
 
-    ReactiveClassicGenericQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    PgPoolQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))

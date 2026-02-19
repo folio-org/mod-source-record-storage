@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
@@ -1006,7 +1005,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     List<String> ids = Arrays.stream(records)
       .map(Record::getId)
-      .collect(Collectors.toList());
+      .toList();
 
     Async async = testContext.async();
     RestAssured.given()
@@ -1035,7 +1034,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     List<String> externalIds = Arrays.stream(records)
       .map(record -> record.getExternalIdsHolder().getInstanceId())
-      .collect(Collectors.toList());
+      .toList();
 
     async = testContext.async();
     RestAssured.given()

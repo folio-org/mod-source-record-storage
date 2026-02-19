@@ -117,7 +117,7 @@ public class DataImportKafkaHandlerTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
   }
 
   @Before

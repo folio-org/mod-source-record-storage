@@ -305,7 +305,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
         assertTrue(error.contains(errorMessage));
       }
       assertFalse(eventPayload.getEventsChain().isEmpty());
-      assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().get(0));
+      assertEquals(DI_LOG_SRS_MARC_BIB_RECORD_CREATED.value(), eventPayload.getEventsChain().getFirst());
     }
   }
 }

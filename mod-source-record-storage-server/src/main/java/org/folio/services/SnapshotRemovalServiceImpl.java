@@ -7,7 +7,6 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordBySnapshotId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.RecordDaoUtil;
@@ -19,7 +18,6 @@ import org.jooq.Condition;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import org.folio.okapi.common.GenericCompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
@@ -53,7 +51,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
 
   private Future<Void> deleteInstancesBySnapshotId(String snapshotId, OkapiConnectionParams params) {
     Condition condition = filterRecordBySnapshotId(snapshotId);
-    return recordDao.executeInTransaction(txQE -> RecordDaoUtil.countByCondition(txQE, condition), params.getTenantId())
+    return recordDao.executeInTransaction(queryExecutor -> RecordDaoUtil.countByCondition(queryExecutor, condition), params.getTenantId())
       .compose(totalRecords -> {
         int totalRequestedRecords = 0;
         Future<Void> future = Future.succeededFuture();
@@ -72,7 +70,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
     List<String> instanceIds = records.stream()
       .filter(record -> record.getExternalIdsHolder() != null)
       .map(record -> record.getExternalIdsHolder().getInstanceId())
-      .collect(Collectors.toList());
+      .toList();
 
     Promise<Void> promise = Promise.promise();
     List<Future<Boolean>> deleteInstancesFutures = new ArrayList<>();
@@ -80,7 +78,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
       deleteInstancesFutures.add(deleteInstanceById(instanceId, params));
     }
 
-    GenericCompositeFuture.join(deleteInstancesFutures)
+    Future.join(deleteInstancesFutures)
       .onSuccess(ar -> promise.complete())
       .onFailure(promise::fail);
     return promise.future();

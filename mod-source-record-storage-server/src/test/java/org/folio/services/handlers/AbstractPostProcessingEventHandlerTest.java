@@ -60,9 +60,9 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
   protected static final String PARSED_CONTENT_WITHOUT_001_FIELD =
     "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
-  protected static final String MAPPING_METADATA__URL = "/mapping-metadata";
+  protected static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String USER_ID = "userId";
-  protected static final String recordId = UUID.randomUUID().toString();
+  protected static final String RECORD_ID = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
   protected final String snapshotId1 = UUID.randomUUID().toString();
@@ -88,10 +88,10 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
+    rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
+    parsedRecord = new ParsedRecord().withId(RECORD_ID)
       .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
   }
 
@@ -99,7 +99,7 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA__URL + "/.*"), true))
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
@@ -124,8 +124,8 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
     snapshots.add(snapshot2);
 
     this.record = new Record()
-      .withId(recordId)
-      .withMatchedId(recordId)
+      .withId(RECORD_ID)
+      .withMatchedId(RECORD_ID)
       .withSnapshotId(snapshotId1)
       .withGeneration(0)
       .withRecordType(getMarcType())

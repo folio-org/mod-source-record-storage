@@ -102,7 +102,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-utils</artifactId>
-      <version>1.15.0-SNAPSHOT</version>
+      <version>2.0.0-SNAPSHOT</version>
       <type>jar</type>
     </dependency>
     <dependency>
@@ -152,11 +152,6 @@
       <version>${jooq.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.github.jklingsporn</groupId>
-      <artifactId>vertx-jooq-classic-reactive</artifactId>
-      <version>${vertx-jooq.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.tomakehurst</groupId>
       <artifactId>wiremock-jre8</artifactId>
       <version>3.0.1</version>
@@ -182,7 +177,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.5.0-SNAPSHOT</version>
+      <version>5.0.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -191,7 +186,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>3.4.0-SNAPSHOT</version>
+      <version>4.0.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.github.jsqlparser</groupId>
@@ -235,7 +230,6 @@
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>
-    <vertx-jooq.version>6.5.5</vertx-jooq.version>
     <aspectj.version>1.9.21</aspectj.version>
     <postgres.version>42.7.2</postgres.version>
     <postgres.image>postgres:16-alpine</postgres.image>
@@ -419,11 +413,6 @@
             <version>${postgres.version}</version>
           </dependency>
           <dependency>
-            <groupId>io.github.jklingsporn</groupId>
-            <artifactId>vertx-jooq-generate</artifactId>
-            <version>${vertx-jooq.version}</version>
-          </dependency>
-          <dependency>
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-core</artifactId>
             <version>3.8.1</version>
@@ -437,7 +426,7 @@
             <password>postgres</password>
           </jdbc>
           <generator>
-            <name>io.github.jklingsporn.vertx.jooq.generate.classic.ClassicReactiveVertxGenerator</name>
+            <name>org.jooq.codegen.JavaGenerator</name>
             <database>
               <name>org.jooq.meta.postgres.PostgresDatabase</name>
               <includes>.*</includes>
@@ -456,9 +445,6 @@
             <target>
               <packageName>org.folio.rest.jooq</packageName>
             </target>
-            <strategy>
-              <name>io.github.jklingsporn.vertx.jooq.generate.VertxGeneratorStrategy</name>
-            </strategy>
           </generator>
         </configuration>
       </plugin>

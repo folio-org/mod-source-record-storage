@@ -1664,10 +1664,6 @@ public class RecordDaoImpl implements RecordDao {
     return row.getDelegate();
   }
 
-  private Row asRow(Row row) {
-    return row;
-  }
-
   private Future<Optional<Record>> lookupAssociatedRecords(QueryExecutor queryExecutor, Optional<Record> record,
                                                            boolean includeErrorRecord) {
     if (record.isPresent()) {

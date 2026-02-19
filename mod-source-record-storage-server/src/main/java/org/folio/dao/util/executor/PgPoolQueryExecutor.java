@@ -77,6 +77,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
    * @param times    the number of times to retry
    * @return the result of the operation
    */
+  @SuppressWarnings("squid:S5738")
   private <U> Future<U> retryOf(Supplier<Future<U>> supplier, int times) {
     if (times <= 0) {
       return supplier.get();

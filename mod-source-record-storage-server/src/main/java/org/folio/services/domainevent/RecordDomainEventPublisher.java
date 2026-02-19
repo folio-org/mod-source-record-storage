@@ -13,7 +13,6 @@ import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.ArrayList;
 import java.util.List;

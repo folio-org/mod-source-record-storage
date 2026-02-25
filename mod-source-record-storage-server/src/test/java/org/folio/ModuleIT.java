@@ -142,6 +142,8 @@ class ModuleIT {
       .then()
       .statusCode(greaterThanOrEqualTo(400));
 
+    // The test requires setting the module logging level to DEBUG because since RMB v36.0.0
+    // the expected message is logged at DEBUG level
     assertThat(mod.getLogs(), containsString("GET " + path));
   }
 

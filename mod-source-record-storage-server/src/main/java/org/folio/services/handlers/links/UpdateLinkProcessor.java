@@ -22,7 +22,7 @@ public class UpdateLinkProcessor implements LinkProcessor {
   public Collection<Subfield> process(String fieldCode, List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges,
                                       List<Subfield> oldSubfields) {
     if (isOnlyNaturalIdChanged(subfieldsChanges)) {
-      return processOnlyNaturalIdChange(oldSubfields, subfieldsChanges.get(0).getValue());
+      return processOnlyNaturalIdChange(oldSubfields, subfieldsChanges.getFirst().getValue());
     }
 
     var authorityIdSubfield = getAuthorityIdSubfield(oldSubfields);
@@ -88,7 +88,7 @@ public class UpdateLinkProcessor implements LinkProcessor {
 
   private boolean isOnlyNaturalIdChanged(List<org.folio.rest.jaxrs.model.Subfield> subfieldsChanges) {
     return subfieldsChanges.size() == 1
-      && subfieldsChanges.get(0).getCode().charAt(0) == AUTHORITY_NATURAL_ID_SUBFIELD;
+      && subfieldsChanges.getFirst().getCode().charAt(0) == AUTHORITY_NATURAL_ID_SUBFIELD;
   }
 
   private boolean isNotControllableSubfield(Subfield subfield, Set<Character> controllableSubfieldCodes) {

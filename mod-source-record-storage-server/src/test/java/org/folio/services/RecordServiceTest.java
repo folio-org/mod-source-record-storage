@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -1721,7 +1720,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(Record.RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -2238,7 +2237,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
         .map(Record::getMatchedId)
-        .collect(Collectors.toList());
+        .toList();
 
       recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
@@ -2311,7 +2310,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         }
         return deletedRecord;
       })
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
       .withTotalRecords(records.size());
@@ -2322,7 +2321,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       List<String> ids = records.stream()
         .filter(r -> r.getRecordType().equals(recordType))
         .map(Record::getMatchedId)
-        .collect(Collectors.toList());
+        .toList();
       recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, TENANT_ID).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
@@ -2377,7 +2376,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     Async async = context.async();
     List<Record> original = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(recordType))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
@@ -2389,13 +2388,13 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .map(aRecord -> clone(aRecord, Record.class))
         .map(aRecord -> aRecord
           .withExternalIdsHolder(aRecord.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
-        .collect(Collectors.toList());
+        .toList();
       recordCollection
         .withRecords(updated)
         .withTotalRecords(updated.size());
       List<ParsedRecord> expected = updated.stream()
         .map(Record::getParsedRecord)
-        .collect(Collectors.toList());
+        .toList();
       var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
       recordService.updateParsedRecords(recordCollection, okapiHeaders).onComplete(update -> {
         if (update.failed()) {
@@ -2421,7 +2420,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
               context.fail(get.cause());
             }
             context.assertTrue(get.result().isPresent());
-          })).collect(Collectors.toList())).onComplete(res -> {
+          })).toList()).onComplete(res -> {
           if (res.failed()) {
             context.fail(res.cause());
           }
@@ -2554,7 +2553,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     return Future.all(records.stream()
       .map(record -> recordService.saveRecord(record, okapiHeaders))
-      .collect(Collectors.toList())
+      .toList()
     );
   }
 

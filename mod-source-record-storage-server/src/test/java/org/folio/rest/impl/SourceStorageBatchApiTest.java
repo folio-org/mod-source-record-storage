@@ -68,7 +68,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
-  private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String VALID_HRID = "12345";
   private static final String MARC_RECORD_HRID = "393893";
   private static final String HRID = "hrid00020";
@@ -151,15 +150,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid(MARC_RECORD_HRID))
-    .withState(Record.State.ACTUAL);
-  private static Record record_5 = new Record()
-    .withId(FIFTH_UUID)
-    .withSnapshotId(snapshot_3.getJobExecutionId())
-    .withRecordType(RecordType.MARC_AUTHORITY)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(FIFTH_UUID)
-    .withOrder(0)
     .withState(Record.State.ACTUAL);
 
   @Before

@@ -81,10 +81,10 @@ public class MarcIndexersVersionDeletionVerticle extends AbstractVerticle {
     vertx.setPeriodic(intervalMillis, id -> executeDeletionTask(batchSize));
   }
 
-  void setupTimedDeletion(String _plannedTime, Integer batchSize) {
-    LOGGER.info("Setting up timed deletion based on planned times: {}", _plannedTime);
+  void setupTimedDeletion(String plannedTime, Integer batchSize) {
+    LOGGER.info("Setting up timed deletion based on planned times: {}", plannedTime);
     try {
-      scheduleTimes = Arrays.stream(_plannedTime.split(","))
+      scheduleTimes = Arrays.stream(plannedTime.split(","))
         .map(String::trim)
         .map(LocalTime::parse)
         .sorted().toList();

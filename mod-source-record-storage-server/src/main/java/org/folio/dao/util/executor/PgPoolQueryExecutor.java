@@ -50,6 +50,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
   }
 
   @Override
+  @SuppressWarnings("resource")
   public Future<RowSet<Row>> execute(Function<DSLContext, Query> queryFunction) {
     Query query = queryFunction.apply(dslContext);
     return pool.preparedQuery(query.getSQL())
@@ -109,7 +110,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
   /**
    * A query executor that is bound to a specific transaction.
    */
-  private class TransactionBoundQueryExecutor implements QueryExecutor {
+  private static class TransactionBoundQueryExecutor implements QueryExecutor {
 
     private final SqlConnection connection;
 
@@ -118,6 +119,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
     }
 
     @Override
+    @SuppressWarnings("resource")
     public Future<RowSet<Row>> execute(Function<DSLContext, Query> queryFunction) {
       Query query = queryFunction.apply(dslContext);
       return connection.preparedQuery(query.getSQL())

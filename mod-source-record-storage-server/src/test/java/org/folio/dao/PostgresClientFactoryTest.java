@@ -37,12 +37,12 @@ public class PostgresClientFactoryTest {
   static Vertx vertx;
 
   @BeforeClass
-  public static void setUpClass(TestContext context) {
+  public static void setUpClass() {
     vertx = Vertx.vertx();
   }
 
   @Test
-  public void shouldCreateFactoryWithDefaultConfigFilePath(TestContext context) {
+  public void shouldCreateFactoryWithDefaultConfigFilePath() {
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     assertEquals("/postgres-conf.json", PostgresClientFactory.getConfigFilePath());
     postgresClientFactory.close();
@@ -50,7 +50,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void shouldCreateFactoryWithTestConfig(TestContext context) {
+  public void shouldCreateFactoryWithTestConfig() {
     PostgresClientFactory.setConfigFilePath("/postgres-conf-test.json");
     assertEquals("/postgres-conf-test.json", PostgresClientFactory.getConfigFilePath());
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
@@ -66,7 +66,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void shouldCreateFactoryWithConfigFromSpecifiedEnvironment(TestContext context) {
+  public void shouldCreateFactoryWithConfigFromSpecifiedEnvironment() {
     Envs.setEnv("host", 15432, "username", "password", "database");
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     JsonObject config = PostgresClientFactory.getConfig();
@@ -139,7 +139,7 @@ public class PostgresClientFactoryTest {
         });
         // make db connections work eventually in 2 seconds
         // if executor is set to retry 5 times, then it will take at least 5 seconds for return of an error
-        vertx.setTimer(2000, (l) -> {
+        vertx.setTimer(2000, l -> {
           try {
             resetPeer.remove();
           } catch (IOException e) {
@@ -158,8 +158,7 @@ public class PostgresClientFactoryTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    Async async = context.async();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> async.complete()));
+    vertx.close().onComplete(context.asyncAssertSuccess());
   }
 
 }

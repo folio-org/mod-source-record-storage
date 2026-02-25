@@ -604,9 +604,7 @@ public class RecordServiceImpl implements RecordService {
       if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(marcRecord, TAG_001))) {
         return false;
       }
-      if (StringUtils.isEmpty(idsHolder.getInstanceId()) || StringUtils.isEmpty(idsHolder.getInstanceHrid())) {
-        return false;
-      }
+      return StringUtils.isNotEmpty(idsHolder.getInstanceId()) && StringUtils.isNotEmpty(idsHolder.getInstanceHrid());
     }
     return true;
   }

@@ -78,11 +78,7 @@ public class LinkingRulesCacheTest {
   }
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    Async async = context.async();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
-      mockServer.stop();
-      async.complete();
-    }));
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> mockServer.stop()));
   }
 
   @After

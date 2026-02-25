@@ -21,12 +21,13 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
  * }
  */
 public class SearchRecordIdsWriteStream implements WriteStream<Row> {
+  private static final String EMPTY_RESPONSE = "{\n  \"records\" : [ ],\n  \"totalCount\" : 0\n}";
+  private static final String RESPONSE_BEGINNING = "{\n  \"records\" : [%s";
+  private static final String RESPONSE_ENDING = "],\n  \"totalCount\" : %s\n}";
+  private static final String COMMA = ",";
+  private static final String DOUBLE_QUOTE = "\"";
+
   private final HttpServerResponse delegate;
-  private final String emptyResponse = "{\n  \"records\" : [ ],\n  \"totalCount\" : 0\n}";
-  private final String responseBeginning = "{\n  \"records\" : [%s";
-  private final String responseEnding = "],\n  \"totalCount\" : %s\n}";
-  private final String COMMA = ",";
-  private final String DOUBLE_QUOTE = "\"";
   private int writeIndex = 0;
   private int totalCount = 0;
 
@@ -41,7 +42,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     if (writeIndex == 0) {
       this.writeIndex++;
       String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID + DOUBLE_QUOTE;
-      return this.delegate.write(format(responseBeginning, id));
+      return this.delegate.write(format(RESPONSE_BEGINNING, id));
     } else {
       this.writeIndex++;
       return this.delegate.write(COMMA + DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE);
@@ -51,9 +52,9 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   @Override
   public Future<Void> end() {
     if (this.writeIndex == 0) {
-      return this.delegate.end(emptyResponse);
+      return this.delegate.end(EMPTY_RESPONSE);
     } else {
-      return this.delegate.end(format(responseEnding, totalCount));
+      return this.delegate.end(format(RESPONSE_ENDING, totalCount));
     }
   }
 

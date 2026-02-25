@@ -66,7 +66,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -316,7 +315,7 @@ public class RecordDaoImpl implements RecordDao {
         )
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
-    }).map(rowSet -> StreamSupport.stream(rowSet.spliterator(), false)
+    }).map(rowSet -> rowSet.stream()
       .map(this::toRecord)
       .toList());
   }
@@ -667,7 +666,7 @@ public class RecordDaoImpl implements RecordDao {
       return new RecordsIdentifiersCollection().withTotalRecords(0);
     }
 
-    List<RecordIdentifiersDto> identifiers = StreamSupport.stream(rowSet.spliterator(), false)
+    List<RecordIdentifiersDto> identifiers = rowSet.stream()
       .map(row -> new RecordIdentifiersDto()
         .withRecordId(row.getUUID(ID).toString())
         .withExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()).toString()))
@@ -1454,12 +1453,8 @@ public class RecordDaoImpl implements RecordDao {
       .where(condition)
       .orderBy(RECORDS_LB.GENERATION.sort(SortOrder.DESC))
       .limit(1))
-      .map(rowSet -> {
-        if (rowSet.size() == 0) {
-          return Optional.<Record>empty();
-        }
-        return Optional.of(RecordDaoUtil.toRecord(rowSet.iterator().next()));
-      })
+      .map(rowSet -> rowSet.size() == 0
+        ? Optional.<Record>empty() : Optional.of(RecordDaoUtil.toRecord(rowSet.iterator().next())))
       .compose(optionalRecord -> optionalRecord
         .map(aRecord -> lookupAssociatedRecords(queryExecutor, aRecord, false).map(Optional::of))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_BY_ID_TYPE, idType, externalId)))));
@@ -1484,7 +1479,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private MarcBibCollection toMarcBibCollection(RowSet<Row> rowSet) {
     MarcBibCollection marcBibCollection = new MarcBibCollection();
-    List<String> ids = StreamSupport.stream(rowSet.spliterator(), false)
+    List<String> ids = rowSet.stream()
       .map(row -> row.getString(HRID))
       .toList();
 
@@ -1823,7 +1818,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private RecordCollection toRecordCollection(RowSet<Row> rowSet) {
     RecordCollection recordCollection = new RecordCollection().withTotalRecords(0);
-    List<Record> records = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
+    List<Record> records = rowSet.stream().map(row -> {
       recordCollection.setTotalRecords(row.getInteger(COUNT));
       return toRecord(row);
     }).toList();
@@ -1836,7 +1831,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private StrippedParsedRecordCollection toStrippedParsedRecordCollection(io.vertx.sqlclient.RowSet<Row> rowSet) {
     StrippedParsedRecordCollection recordCollection = new StrippedParsedRecordCollection().withTotalRecords(0);
-    List<StrippedParsedRecord> records = StreamSupport.stream(rowSet.spliterator(), false)
+    List<StrippedParsedRecord> records = rowSet.stream()
       .map(row -> {
         recordCollection.setTotalRecords(row.getInteger(COUNT));
         return toStrippedParsedRecord(row);
@@ -1863,7 +1858,7 @@ public class RecordDaoImpl implements RecordDao {
 
   private SourceRecordCollection toSourceRecordCollection(RowSet<Row> rowSet) {
     SourceRecordCollection sourceRecordCollection = new SourceRecordCollection().withTotalRecords(0);
-    List<SourceRecord> sourceRecords = StreamSupport.stream(rowSet.spliterator(), false).map(row -> {
+    List<SourceRecord> sourceRecords = rowSet.stream().map(row -> {
         sourceRecordCollection.setTotalRecords(row.getInteger(COUNT));
         return RecordDaoUtil.toSourceRecord(RecordDaoUtil.toRecord(row))
           .withParsedRecord(ParsedRecordDaoUtil.toParsedRecord(row));

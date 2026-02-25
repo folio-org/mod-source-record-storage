@@ -60,7 +60,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   public static final String WRONG_LEADER_STATUS = "wrong leader status";
   public static final int EXPECTED_ERROR_EVENTS_NUMBER = 2;
 
-  private static String recordId = UUID.randomUUID().toString();
+  private static final String RECORD_ID = UUID.randomUUID().toString();
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -87,7 +87,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
   @Before
   public void setUp(TestContext context) {
-    MockitoAnnotations.initMocks(this);
+    MockitoAnnotations.openMocks(this);
     Async async = context.async();
 
     Snapshot snapshot = new Snapshot()
@@ -138,8 +138,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
-      .withId(recordId)
-      .withMatchedId(recordId)
+      .withId(RECORD_ID)
+      .withMatchedId(RECORD_ID)
       .withSnapshotId(snapshotId)
       .withGeneration(0)
       .withRecordType(recordType)
@@ -225,8 +225,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     List<Record> records = new ArrayList<>();
 
     records.add(new Record()
-      .withId(recordId)
-      .withMatchedId(recordId)
+      .withId(RECORD_ID)
+      .withMatchedId(RECORD_ID)
       .withSnapshotId(snapshotId)
       .withGeneration(0)
       .withRecordType(RecordType.MARC_AUTHORITY)

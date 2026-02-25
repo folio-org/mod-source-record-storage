@@ -14,7 +14,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -303,7 +302,7 @@ public final class SnapshotDaoUtil {
   }
 
   private static List<Snapshot> toSnapshots(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false)
+    return rows.stream()
       .map(SnapshotDaoUtil::toSnapshot)
       .toList();
   }

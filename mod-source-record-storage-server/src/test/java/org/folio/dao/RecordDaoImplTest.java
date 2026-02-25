@@ -175,7 +175,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
       context.assertEquals(1, ar.result().size());
-      context.assertEquals(record.getId(), ar.result().get(0).getId());
+      context.assertEquals(record.getId(), ar.result().getFirst().getId());
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
         .onComplete(v -> async.complete());
     });

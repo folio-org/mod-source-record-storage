@@ -10,7 +10,9 @@ import org.folio.rest.persist.PostgresClient;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
-/* The util class helps to work with tenant's data */
+/**
+ * The util class helps to work with tenant's data
+ */
 public class TenantUtil {
 
   private TenantUtil() {

@@ -74,8 +74,6 @@ import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Parenthesis;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -422,35 +420,6 @@ public class RecordDaoImpl implements RecordDao {
             conn.close();
           })
           .doFinally(conn::close)));
-  }
-
-  private static String buildCteDistinctCountCondition(Expression expression) {
-    StringBuilder combinedExpression = new StringBuilder();
-    if (expression instanceof Parenthesis parenthesis) {
-      Expression innerExpression = parenthesis.getExpression();
-      if (containsParenthesis(innerExpression)) {
-        combinedExpression.append(buildCteDistinctCountCondition(innerExpression));
-      } else {
-        combinedExpression.append(countDistinct(DSL.case_().when(DSL.condition(expression.toString()), 1)).eq(1));
-      }
-    } else if (expression instanceof BinaryExpression binaryExpression) {
-      Expression leftExpression = binaryExpression.getLeftExpression();
-      Expression rightExpression = binaryExpression.getRightExpression();
-      if (containsParenthesis(leftExpression)) {
-        combinedExpression.append("(");
-        combinedExpression.append(buildCteDistinctCountCondition(leftExpression));
-      }
-      if (expression instanceof AndExpression) {
-        combinedExpression.append(" and ");
-      } else if (expression instanceof OrExpression) {
-        combinedExpression.append(OR);
-      }
-      if (containsParenthesis(rightExpression)) {
-        combinedExpression.append(buildCteDistinctCountCondition(rightExpression));
-        combinedExpression.append(")");
-      }
-    }
-    return combinedExpression.toString();
   }
 
   private static void parseExpression(Expression expr, List<Expression> expressions) {

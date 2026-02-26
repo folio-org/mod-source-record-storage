@@ -29,7 +29,6 @@ import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -64,6 +63,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.client.TenantClient;
@@ -220,7 +220,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     Async async = context.async();
     TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
     try {
-      tenantClient.postTenant(new TenantAttributes().withModuleTo("3.2.0"), res2 -> {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), res2 -> {
+        context.assertTrue(res2.succeeded());
         if (res2.result().statusCode() == 204) {
           async.complete();
           return;
@@ -297,13 +298,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
       .withMetadata(new Metadata());
 
-    ReactiveClassicGenericQueryExecutor queryExecutorLocalTenant = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    ReactiveClassicGenericQueryExecutor queryExecutorCentralTenant = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
+    PgPoolQueryExecutor localTenantQueryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    PgPoolQueryExecutor centralTenantQueryExecutor = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
 
-    SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshot)
+    SnapshotDaoUtil.save(localTenantQueryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, Map.of(OKAPI_TENANT_HEADER, TENANT_ID)))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutorLocalTenant, snapshotForRecordUpdate))
-      .compose(v -> SnapshotDaoUtil.save(queryExecutorCentralTenant, snapshot_2))
+      .compose(v -> SnapshotDaoUtil.save(localTenantQueryExecutor, snapshotForRecordUpdate))
+      .compose(v -> SnapshotDaoUtil.save(centralTenantQueryExecutor, snapshot_2))
       .compose(v -> recordService.saveRecord(record_2, Map.of(OKAPI_TENANT_HEADER, CENTRAL_TENANT_ID)))
       .onComplete(context.asyncAssertSuccess());
   }

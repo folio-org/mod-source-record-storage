@@ -14,7 +14,6 @@ import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.ProcessRecordErrorHandler;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Event;
@@ -99,7 +98,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
       sendingFutures.add(EventHandlingUtil.sendEventToKafka(tenantId, Json.encode(dataImportEventPayload), DI_ERROR.value(), kafkaHeaders, kafkaConfig, null));
     }
 
-    GenericCompositeFuture.join(sendingFutures)
+    Future.join(sendingFutures)
       .onFailure(th -> LOGGER.warn("sendErrorRecordsSavingEvents:: Failed to send DI_ERROR events for failure processed parsed record chunks" , th));
   }
 }

@@ -14,18 +14,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
+import io.vertx.sqlclient.SqlResult;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Snapshot.Status;
 import org.folio.rest.jooq.enums.JobExecutionStatus;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
-import org.folio.rest.jooq.tables.pojos.SnapshotsLb;
 import org.folio.rest.jooq.tables.records.SnapshotsLbRecord;
 import org.jooq.Condition;
 import org.jooq.InsertSetStep;
@@ -34,7 +33,6 @@ import org.jooq.OrderField;
 import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -53,7 +51,7 @@ public final class SnapshotDaoUtil {
 
   /**
    * Searches for {@link Snapshot} by {@link Condition} and ordered by collection of {@link OrderField} with offset and limit
-   * using {@link ReactiveClassicGenericQueryExecutor}
+   * using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param condition     condition
@@ -62,14 +60,14 @@ public final class SnapshotDaoUtil {
    * @param limit         limit
    * @return future with {@link List} of {@link Snapshot}
    */
-  public static Future<List<Snapshot>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition,
-      Collection<OrderField<?>> orderFields, int offset, int limit) {
-    return queryExecutor.executeAny(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
+  public static Future<List<Snapshot>> findByCondition(QueryExecutor queryExecutor, Condition condition,
+                                                       Collection<OrderField<?>> orderFields, int offset, int limit) {
+    return queryExecutor.execute(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
       .where(condition)
       .orderBy(orderFields)
       .offset(offset)
-      .limit(limit))
-        .map(SnapshotDaoUtil::toSnapshots);
+      .limit(limit)
+    ).map(SnapshotDaoUtil::toSnapshots);
   }
 
   /**
@@ -79,105 +77,109 @@ public final class SnapshotDaoUtil {
    * @param condition     condition
    * @return future with count
    */
-  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
-      .from(SNAPSHOTS_LB)
-      .where(condition))
-        .map(row -> row.getInteger(0));
+  public static Future<Integer> countByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.execute(dsl -> dsl.selectCount()
+        .from(SNAPSHOTS_LB)
+        .where(condition))
+      .map(rows -> rows.iterator().next().getInteger(0));
   }
 
   /**
-   * Searches for {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Snapshot} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional Snapshot
    */
-  public static Future<Optional<Snapshot>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(SNAPSHOTS_LB)
-      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
-        .map(SnapshotDaoUtil::toOptionalSnapshot);
+  public static Future<Optional<Snapshot>> findById(QueryExecutor queryExecutor, String id) {
+    return queryExecutor.execute(dsl -> dsl
+      .selectFrom(SNAPSHOTS_LB)
+      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id)))
+    ).map(SnapshotDaoUtil::toSingleOptionalSnapshot);
   }
 
   /**
-   * Saves {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link Snapshot} to the db using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param snapshot      snapshot
    * @return future with updated Snapshot
    */
-  public static Future<Snapshot> save(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
+
+  public static Future<Snapshot> save(QueryExecutor queryExecutor, Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(SNAPSHOTS_LB)
-      .set(dbRecord)
-      .onDuplicateKeyUpdate()
-      .set(dbRecord)
-      .returning())
-        .map(SnapshotDaoUtil::toSingleSnapshot);
+    return queryExecutor.execute(dsl -> dsl.insertInto(SNAPSHOTS_LB)
+        .set(dbRecord)
+        .onDuplicateKeyUpdate()
+        .set(dbRecord)
+        .returning())
+      .map(SnapshotDaoUtil::toSingleSnapshot);
   }
 
   /**
-   * Saves {@link List} of {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link List} of {@link Snapshot} to the db using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param snapshots     list of snapshots
    * @return future with updated List of Snapshot
    */
-  public static Future<List<Snapshot>> save(ReactiveClassicGenericQueryExecutor queryExecutor, List<Snapshot> snapshots) {
-    return queryExecutor.executeAny(dsl -> {
+  public static Future<List<Snapshot>> save(QueryExecutor queryExecutor, List<Snapshot> snapshots) {
+    return queryExecutor.execute(dsl -> {
       InsertSetStep<SnapshotsLbRecord> insertSetStep = dsl.insertInto(SNAPSHOTS_LB);
       InsertValuesStepN<SnapshotsLbRecord> insertValuesStepN = null;
       for (Snapshot snapshot : snapshots) {
         SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-          insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
+        insertValuesStepN = insertSetStep.values(dbRecord.intoArray());
       }
       return insertValuesStepN;
     }).map(SnapshotDaoUtil::toSnapshots);
   }
 
   /**
-   * Updates {@link Snapshot} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Updates {@link Snapshot} in the db using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param snapshot      snapshot to update
    * @return future of updated Snapshot
    */
-  public static Future<Snapshot> update(ReactiveClassicGenericQueryExecutor queryExecutor, Snapshot snapshot) {
+  public static Future<Snapshot> update(QueryExecutor queryExecutor, Snapshot snapshot) {
     SnapshotsLbRecord dbRecord = toDatabaseRecord(setProcessingStartedDate(snapshot));
-    return queryExecutor.executeAny(dsl -> dsl.update(SNAPSHOTS_LB)
-      .set(dbRecord)
-      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
-      .returning())
-        .map(SnapshotDaoUtil::toSingleOptionalSnapshot)
-        .map(optionalSnapshot -> {
-          if (optionalSnapshot.isPresent()) {
-            return optionalSnapshot.get();
-          }
-          throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshot.getJobExecutionId()));
-        });
+    return queryExecutor.execute(dsl -> dsl.update(SNAPSHOTS_LB)
+        .set(dbRecord)
+        .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(snapshot.getJobExecutionId())))
+        .returning())
+      .map(SnapshotDaoUtil::toSingleOptionalSnapshot)
+      .map(optionalSnapshot -> {
+        if (optionalSnapshot.isPresent()) {
+          return optionalSnapshot.get();
+        }
+        throw new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, snapshot.getJobExecutionId()));
+      });
   }
 
   /**
-   * Deletes {@link Snapshot} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * Deletes {@link Snapshot} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with boolean whether Snapshot deleted
    */
-  public static Future<Boolean> delete(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB)
-      .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
-      .map(res -> res == 1);
+  public static Future<Boolean> delete(QueryExecutor queryExecutor, String id) {
+    return queryExecutor.execute(dsl -> dsl
+        .deleteFrom(SNAPSHOTS_LB)
+        .where(SNAPSHOTS_LB.ID.eq(UUID.fromString(id))))
+      .map(rowSet -> rowSet.rowCount() == 1);
   }
 
   /**
-   * Deletes all {@link Snapshot} using {@link ReactiveClassicGenericQueryExecutor}
+   * Deletes all {@link Snapshot} using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @return future of number of Snapshot deleted
    */
-  public static Future<Integer> deleteAll(ReactiveClassicGenericQueryExecutor queryExecutor) {
-    return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB));
+  public static Future<Integer> deleteAll(QueryExecutor queryExecutor) {
+    return queryExecutor.execute(dsl -> dsl.deleteFrom(SNAPSHOTS_LB))
+      .map(SqlResult::rowCount);
   }
 
   /**
@@ -187,37 +189,29 @@ public final class SnapshotDaoUtil {
    * @return Snapshot
    */
   public static Snapshot toSnapshot(Row row) {
-    SnapshotsLb pojo = RowMappers.getSnapshotsLbMapper().apply(row);
     Snapshot snapshot = new Snapshot()
-      .withJobExecutionId(pojo.getId().toString())
-      .withStatus(Status.fromValue(pojo.getStatus().toString()));
-    if (Objects.nonNull(pojo.getProcessingStartedDate())) {
-      snapshot.withProcessingStartedDate(Date.from(pojo.getProcessingStartedDate().toInstant()));
+      .withJobExecutionId(row.getValue(SNAPSHOTS_LB.ID.getName()).toString())
+      .withStatus(Arrays.stream(Status.values())
+        .filter(s -> s.value().equals(row.getString(SNAPSHOTS_LB.STATUS.getName())))
+        .findFirst().orElse(null));
+
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.PROCESSING_STARTED_DATE.getName()))) {
+      snapshot.withProcessingStartedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.PROCESSING_STARTED_DATE.getName()).toInstant()));
     }
     Metadata metadata = new Metadata();
-    if (Objects.nonNull(pojo.getCreatedByUserId())) {
-      metadata.withCreatedByUserId(pojo.getCreatedByUserId().toString());
+    if (Objects.nonNull(row.getValue(SNAPSHOTS_LB.CREATED_BY_USER_ID.getName()))) {
+      metadata.withCreatedByUserId(row.getValue(SNAPSHOTS_LB.CREATED_BY_USER_ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getCreatedDate())) {
-      metadata.withCreatedDate(Date.from(pojo.getCreatedDate().toInstant()));
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.CREATED_DATE.getName()))) {
+      metadata.withCreatedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.CREATED_DATE.getName()).toInstant()));
     }
-    if (Objects.nonNull(pojo.getUpdatedByUserId())) {
-      metadata.withUpdatedByUserId(pojo.getUpdatedByUserId().toString());
+    if (Objects.nonNull(row.getValue(SNAPSHOTS_LB.UPDATED_BY_USER_ID.getName()))) {
+      metadata.withUpdatedByUserId(row.getValue(SNAPSHOTS_LB.UPDATED_BY_USER_ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getUpdatedDate())) {
-      metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
+    if (Objects.nonNull(row.getOffsetDateTime(SNAPSHOTS_LB.UPDATED_DATE.getName()))) {
+      metadata.withUpdatedDate(Date.from(row.getOffsetDateTime(SNAPSHOTS_LB.UPDATED_DATE.getName()).toInstant()));
     }
     return snapshot.withMetadata(metadata);
-  }
-
-  /**
-   * Convert database query result {@link Row} to {@link Optional} {@link Snapshot}
-   *
-   * @param row query result row
-   * @return optional Snapshot
-   */
-  public static Optional<Snapshot> toOptionalSnapshot(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toSnapshot(row)) : Optional.empty();
   }
 
   /**
@@ -282,9 +276,9 @@ public final class SnapshotDaoUtil {
    * @return list of order fields
    */
   @SuppressWarnings("squid:S1452")
-  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy, Boolean forOffset) {
+  public static List<OrderField<?>> toSnapshotOrderFields(List<String> orderBy, boolean forOffset) {
     if (forOffset && orderBy.isEmpty()) {
-      return Arrays.asList(new OrderField<?>[] { SNAPSHOTS_LB.ID.asc() });
+      return List.of(SNAPSHOTS_LB.ID.asc());
     }
     return orderBy.stream()
       .map(order -> order.split(COMMA))
@@ -308,9 +302,9 @@ public final class SnapshotDaoUtil {
   }
 
   private static List<Snapshot> toSnapshots(RowSet<Row> rows) {
-    return StreamSupport.stream(rows.spliterator(), false)
+    return rows.stream()
       .map(SnapshotDaoUtil::toSnapshot)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Snapshot setProcessingStartedDate(Snapshot snapshot) {

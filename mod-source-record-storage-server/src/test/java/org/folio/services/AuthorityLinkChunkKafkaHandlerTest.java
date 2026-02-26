@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.apache.commons.lang.math.RandomUtils;
@@ -218,7 +217,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
         }
       })
       .filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .toList();
 
     context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
   }
@@ -322,7 +321,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .map(instanceId -> new Link()
         .withInstanceId(instanceId)
         .withLinkId(LINK_ID))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private BibAuthorityLinksUpdate buildLinkEvent(List<UpdateTarget> updateTargets, BibAuthorityLinksUpdate.Type type) {

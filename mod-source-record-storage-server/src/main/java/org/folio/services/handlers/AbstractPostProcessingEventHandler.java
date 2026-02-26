@@ -46,7 +46,6 @@ import org.folio.MappingProfile;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.KafkaConfig;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -272,7 +271,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
         List<Future<Record>> futures = new ArrayList<>();
         recordCollection.getRecords()
           .forEach(record -> futures.add(recordService.updateRecord(record.withState(Record.State.OLD), okapiHeaders)));
-        GenericCompositeFuture.all(futures).onComplete(ar -> {
+        Future.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
           } else {

@@ -2,16 +2,16 @@ package org.folio.dao;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.pgclient.PgPool;
+import io.vertx.reactivex.pgclient.PgBuilder;
+import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.SqlClient;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.rest.persist.LoadConfs;
 import org.folio.rest.persist.PgConnectOptionsHelper;
 import org.folio.rest.persist.PostgresClient;
@@ -25,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -55,6 +54,8 @@ public class PostgresClientFactory {
   private static final String IDLE_TIMEOUT = "connectionReleaseDelay";
   public static final String SERVER_PEM = "server_pem";
   private static final String DISABLE_VALUE = "disable";
+  private static final int DEFAULT_NUM_OF_RETRIES = 3;
+  private static final long DEFAULT_RETRY_DELAY = 1000L;
 
   private static final String MODULE_NAME = ModuleName.getModuleName();
 
@@ -62,7 +63,7 @@ public class PostgresClientFactory {
 
   private static final int DB_MAXPOOLSIZE_DEFAULT_VALUE = 15;
 
-  private static final Map<String, PgPool> POOL_CACHE = new HashMap<>();
+  private static final Map<String, Pool> POOL_CACHE = new HashMap<>();
 
   private static final Map<String, DataSource> DATA_SOURCE_CACHE = new HashMap<>();
 
@@ -72,13 +73,11 @@ public class PostgresClientFactory {
 
   private final Vertx vertx;
 
-  private static Class<? extends ReactiveClassicGenericQueryExecutor> reactiveClassicGenericQueryExecutorProxyClass;
+  @Value("${srs.db.reactive.numRetries:" + DEFAULT_NUM_OF_RETRIES + "}")
+  private int numOfRetries;
 
-  @Value("${srs.db.reactive.numRetries:3}")
-  private Integer numOfRetries;
-
-  @Value("${srs.db.reactive.retryDelay.ms:1000}")
-  private Long retryDelay;
+  @Value("${srs.db.reactive.retryDelay.ms:" + DEFAULT_RETRY_DELAY + "}")
+  private long retryDelay;
 
   @Autowired
   public PostgresClientFactory(io.vertx.core.Vertx vertx) {
@@ -98,18 +97,9 @@ public class PostgresClientFactory {
     }
   }
 
-  @PostConstruct
-  public void setupProxyExecutorClass() {
-    // setup proxy class of ReactiveClassicGenericQueryExecutor
-    if (numOfRetries != null) QueryExecutorInterceptor.setNumberOfRetries(numOfRetries);
-    if (retryDelay != null) QueryExecutorInterceptor.setRetryDelay(retryDelay);
-    reactiveClassicGenericQueryExecutorProxyClass = QueryExecutorInterceptor.generateClass();
-  }
-
-  protected void setRetryPolicy(Integer retries, Long retryDelay) {
+  protected void setRetryPolicy(int retries, long retryDelay) {
     this.numOfRetries = retries;
     this.retryDelay = retryDelay;
-    setupProxyExecutorClass();
   }
 
   @PreDestroy
@@ -118,32 +108,23 @@ public class PostgresClientFactory {
   }
 
   /**
-   * Get proxied {@link ReactiveClassicGenericQueryExecutor} that will attempt to retry an execution
-   * on some executions
+   * Get {@link PgPoolQueryExecutor} that will attempt to retry an execution
+   * on transactions execution in case of certain exceptions occurring.
    *
    * @param tenantId tenant id
-   * @return reactive query executor
+   * @return query executor
    */
-  public ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
-    if (reactiveClassicGenericQueryExecutorProxyClass == null) setupProxyExecutorClass();
-    ReactiveClassicGenericQueryExecutor queryExecutorProxy;
-    try {
-      queryExecutorProxy = reactiveClassicGenericQueryExecutorProxyClass
-        .getDeclaredConstructor(Configuration.class, SqlClient.class)
-        .newInstance(configuration, getCachedPool(this.vertx, tenantId).getDelegate());
-    } catch (Exception e) {
-      throw new RuntimeException("Something happened while creating proxied reactiveClassicGenericQueryExecutor", e);
-    }
-    return queryExecutorProxy;
+  public PgPoolQueryExecutor getQueryExecutor(String tenantId) {
+    return new PgPoolQueryExecutor(getCachedPool(this.vertx, tenantId).getDelegate(), numOfRetries, retryDelay);
   }
 
   /**
-   * Get {@link PgPool}
+   * Get {@link Pool}
    *
    * @param tenantId tenant id
    * @return pooled database client
    */
-  public PgPool getCachedPool(String tenantId) {
+  public Pool getCachedPool(String tenantId) {
     return getCachedPool(this.vertx, tenantId);
   }
 
@@ -168,14 +149,15 @@ public class PostgresClientFactory {
   }
 
   /**
-   * Get {@link ReactiveClassicGenericQueryExecutor} for unit testing.
+   * Get {@link PgPoolQueryExecutor} for unit testing.
    *
    * @param vertx    current Vertx
    * @param tenantId tenant id
-   * @return reactive query executor
+   * @return query executor
    */
-  public static ReactiveClassicGenericQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
-    return new ReactiveClassicGenericQueryExecutor(configuration, getCachedPool(vertx, tenantId).getDelegate());
+  public static PgPoolQueryExecutor getQueryExecutor(Vertx vertx, String tenantId) {
+    return new PgPoolQueryExecutor(
+      getCachedPool(vertx, tenantId).getDelegate(), DEFAULT_NUM_OF_RETRIES, DEFAULT_RETRY_DELAY);
   }
 
   /**
@@ -204,7 +186,7 @@ public class PostgresClientFactory {
     return postgresConfigFilePath;
   }
 
-  private static PgPool getCachedPool(Vertx vertx, String tenantId) {
+  public static Pool getCachedPool(Vertx vertx, String tenantId) {
     // assumes a single thread Vert.x model so no synchronized needed
     if (POOL_CACHE.containsKey(tenantId)) {
       LOG.debug("getCachedPool:: Using existing database connection pool for tenant {}", tenantId);
@@ -219,7 +201,12 @@ public class PostgresClientFactory {
       .setConnectionTimeout(connectionTimeout)
       .setConnectionTimeoutUnit(TimeUnit.SECONDS)
       .setMaxSize(maxPoolSize);
-    PgPool client = PgPool.pool(vertx, connectOptions, poolOptions);
+
+    Pool client = PgBuilder.pool()
+      .with(poolOptions)
+      .connectingTo(connectOptions)
+      .using(vertx)
+      .build();
     POOL_CACHE.put(tenantId, client);
     return client;
   }
@@ -274,7 +261,7 @@ public class PostgresClientFactory {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 
-  private static void close(PgPool client) {
+  private static void close(Pool client) {
     client.close();
   }
 

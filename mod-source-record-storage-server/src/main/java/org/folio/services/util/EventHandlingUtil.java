@@ -67,7 +67,7 @@ public final class EventHandlingUtil {
 
     producer.send(producerRecord)
       .<Void>mapEmpty()
-      .eventually(x -> producer.close())
+      .eventually(producer::close)
       .onSuccess(res -> {
         LOGGER.info("sendEventToKafka:: Event with type {} and recordId {}  with chunkId: {} was sent to kafka", eventType, recordId, chunkId);
         promise.complete(true);

@@ -11,7 +11,9 @@ import java.util.UUID;
 
 import javax.ws.rs.NotFoundException;
 
+import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -21,8 +23,6 @@ import org.jooq.Field;
 import org.jooq.JSONB;
 import org.jooq.impl.SQLDataType;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import io.github.jklingsporn.vertx.jooq.shared.postgres.JSONBToJsonObjectConverter;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
@@ -38,7 +38,10 @@ public final class ParsedRecordDaoUtil {
   private static final int LEADER_STATUS_SUBFIELD_POSITION = 5;
 
   private static final Field<UUID> ID_FIELD = field(name(ID), UUID.class);
-  private static final Field<JsonObject> CONTENT_FIELD = field(name(CONTENT), SQLDataType.JSONB.asConvertedDataType(new JSONBToJsonObjectConverter()));
+  private static final Field<JsonObject> CONTENT_FIELD = field(
+    name(CONTENT),
+    SQLDataType.JSONB.asConvertedDataTypeTo(JsonObject.class, ParsedRecordDaoUtil::convertJsonObjectToJSONB)
+  );
 
   public static final String PARSED_RECORD_NOT_FOUND_TEMPLATE = "Parsed Record with id '%s' was not found";
 
@@ -47,65 +50,63 @@ public final class ParsedRecordDaoUtil {
   private ParsedRecordDaoUtil() { }
 
   /**
-   * Searches for {@link ParsedRecord} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link ParsedRecord} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param id            id
    * @param recordType    record type to find
    * @return future with optional ParsedRecord
    */
-  public static Future<Optional<ParsedRecord>> findById(ReactiveClassicGenericQueryExecutor queryExecutor,
-      String id, RecordType recordType) {
-    return queryExecutor.findOneRow(dsl -> dsl.select(ID_FIELD, CONTENT_FIELD)
-      .from(table(name(recordType.getTableName())))
-      .where(ID_FIELD.eq(UUID.fromString(id))))
-      .map(ParsedRecordDaoUtil::toOptionalParsedRecord);
+  public static Future<Optional<ParsedRecord>> findById(QueryExecutor queryExecutor, String id,
+                                                        RecordType recordType) {
+    return queryExecutor.execute(dsl -> dsl
+        .select(ID_FIELD, CONTENT_FIELD)
+        .from(table(name(recordType.getTableName())))
+        .where(ID_FIELD.eq(UUID.fromString(id))))
+      .map(ParsedRecordDaoUtil::toSingleOptionalParsedRecord);
   }
 
   /**
-   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using
-   * {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link ParsedRecord} to the db table defined by {@link RecordType} using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record
    * @param recordType    record type to save
    * @return future with updated ParsedRecord
    */
-  public static Future<ParsedRecord> save(ReactiveClassicGenericQueryExecutor queryExecutor,
-      ParsedRecord parsedRecord, RecordType recordType) {
+  public static Future<ParsedRecord> save(QueryExecutor queryExecutor, ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
-      .set(ID_FIELD, id)
-      .set(CONTENT_FIELD, content)
-      .onConflict(ID_FIELD)
-      .doUpdate()
-      .set(CONTENT_FIELD, content)
-      .returning())
+    return queryExecutor.execute(dsl -> dsl.insertInto(table(name(recordType.getTableName())))
+        .set(ID_FIELD, id)
+        .set(CONTENT_FIELD, content)
+        .onConflict(ID_FIELD)
+        .doUpdate()
+        .set(CONTENT_FIELD, content)
+        .returning())
       .map(res -> parsedRecord
         .withContent(content.getMap()));
   }
 
   /**
    * Updates {@link ParsedRecord} to the db table defined by {@link RecordType} using
-   * {@link ReactiveClassicGenericQueryExecutor}
+   * {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param parsedRecord  parsed record to update
    * @param recordType    record type to update
    * @return future of updated ParsedRecord
    */
-  public static Future<ParsedRecord> update(ReactiveClassicGenericQueryExecutor queryExecutor,
-      ParsedRecord parsedRecord, RecordType recordType) {
+  public static Future<ParsedRecord> update(QueryExecutor queryExecutor,
+                                            ParsedRecord parsedRecord, RecordType recordType) {
     UUID id = UUID.fromString(parsedRecord.getId());
     JsonObject content = normalize(parsedRecord.getContent());
-    return queryExecutor.executeAny(dsl -> dsl.update(table(name(recordType.getTableName())))
-      .set(CONTENT_FIELD, content)
-      .where(ID_FIELD.eq(id)))
-      .map(update -> {
-        if (update.rowCount() > 0) {
-          return parsedRecord
-            .withContent(content.getMap());
+    return queryExecutor.execute(dsl -> dsl.update(table(name(recordType.getTableName())))
+        .set(CONTENT_FIELD, content)
+        .where(ID_FIELD.eq(id)))
+      .map(rowSet -> {
+        if (rowSet.rowCount() > 0) {
+          return parsedRecord.withContent(content.getMap());
         }
         String message = format(PARSED_RECORD_NOT_FOUND_TEMPLATE, parsedRecord.getId());
         throw new NotFoundException(message);
@@ -158,17 +159,17 @@ public final class ParsedRecordDaoUtil {
   }
 
   /**
-   * Convert database query result {@link Row} to {@link Optional} {@link ErrorRecord}
+   * Convert database query result {@link RowSet} to {@link Optional} {@link ErrorRecord}
    *
-   * @param row query result row
+   * @param rowSet query result row set
    * @return optional ParsedRecord
    */
-  public static Optional<ParsedRecord> toOptionalParsedRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toParsedRecord(row)) : Optional.empty();
+  public static Optional<ParsedRecord> toSingleOptionalParsedRecord(RowSet<Row> rowSet) {
+    return rowSet.size() == 0 ? Optional.empty() : Optional.of(toParsedRecord(rowSet.iterator().next()));
   }
 
   /**
-   * Normalize parsed record content content of {@link ParsedRecord} is type {@link String}
+   * Normalize parsed record content of {@link ParsedRecord} is type {@link String}
    *
    * @param parsedRecord parsed record
    * @return parsed record normalized content
@@ -261,8 +262,8 @@ public final class ParsedRecordDaoUtil {
   }
 
   public static JsonObject normalize(Object content) {
-    return (content instanceof String)
-      ? new JsonObject((String) content)
+    return (content instanceof String contentAsString)
+      ? new JsonObject(contentAsString)
       : JsonObject.mapFrom(content);
   }
 
@@ -275,5 +276,9 @@ public final class ParsedRecordDaoUtil {
       parsedRecord.withContent(normalize(content).getMap());
     }
     return parsedRecord;
+  }
+
+  private static JSONB convertJsonObjectToJSONB(JsonObject json) {
+    return JSONB.jsonb(json.encode());
   }
 }

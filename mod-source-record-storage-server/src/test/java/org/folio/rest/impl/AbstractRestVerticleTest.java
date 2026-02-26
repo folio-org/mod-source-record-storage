@@ -146,7 +146,7 @@ public abstract class AbstractRestVerticleTest {
     TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", okapiPort));
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
+    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(ModuleName.getModuleName() + "-1.0.0");
@@ -154,6 +154,7 @@ public abstract class AbstractRestVerticleTest {
           .withKey(LOAD_SAMPLE_PARAMETER)
           .withValue("true")));
         tenantClient.postTenant(tenantAttributes, res2 -> {
+          context.assertTrue(res2.succeeded());
           if (res2.result().statusCode() == 204) {
             async.complete();
             return;
@@ -201,7 +202,7 @@ public abstract class AbstractRestVerticleTest {
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
     PostgresClientFactory.closeAll();
-    vertx.close(context.asyncAssertSuccess(res -> {
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
       if (useExternalDatabase.equals("embedded")) {
         PostgresClient.stopPostgresTester();
       }

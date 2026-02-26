@@ -4,13 +4,14 @@ import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import eu.rekawek.toxiproxy.model.toxic.ResetPeer;
-import io.github.jklingsporn.vertx.jooq.shared.internal.QueryResult;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.jooq.impl.DSL;
@@ -36,12 +37,12 @@ public class PostgresClientFactoryTest {
   static Vertx vertx;
 
   @BeforeClass
-  public static void setUpClass(TestContext context) throws Exception {
+  public static void setUpClass() {
     vertx = Vertx.vertx();
   }
 
   @Test
-  public void shouldCreateFactoryWithDefaultConfigFilePath(TestContext context) {
+  public void shouldCreateFactoryWithDefaultConfigFilePath() {
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     assertEquals("/postgres-conf.json", PostgresClientFactory.getConfigFilePath());
     postgresClientFactory.close();
@@ -49,7 +50,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void shouldCreateFactoryWithTestConfig(TestContext context) {
+  public void shouldCreateFactoryWithTestConfig() {
     PostgresClientFactory.setConfigFilePath("/postgres-conf-test.json");
     assertEquals("/postgres-conf-test.json", PostgresClientFactory.getConfigFilePath());
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
@@ -65,7 +66,7 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void shouldCreateFactoryWithConfigFromSpecifiedEnvironment(TestContext context) {
+  public void shouldCreateFactoryWithConfigFromSpecifiedEnvironment() {
     Envs.setEnv("host", 15432, "username", "password", "database");
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
     JsonObject config = PostgresClientFactory.getConfig();
@@ -87,23 +88,15 @@ public class PostgresClientFactoryTest {
   }
 
   @Test
-  public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException, InterruptedException {
-    Function<PostgresClientFactory, Future<QueryResult>> exec =
-      (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
-              .transaction(qe -> qe.query(dsl -> dsl.select(DSL.inline(1))));
+  public void queryExecutorTransactionShouldRetry(TestContext context) throws IOException {
+    Function<PostgresClientFactory, Future<RowSet<Row>>> exec =
+      postgresClientFactory -> postgresClientFactory.getQueryExecutor("diku")
+        .transaction(qe -> qe.execute(dsl -> dsl.select(DSL.inline(1))));
     queryExecutorShouldRetryInternal(context, exec);
   }
 
-  @Test
-  public void queryExecutorQueryShouldRetry(TestContext context) throws IOException, InterruptedException {
-    Function<PostgresClientFactory, Future<QueryResult>> exec =
-      (postgresClientFactory) -> postgresClientFactory.getQueryExecutor("diku")
-        .query(dsl -> dsl.select(DSL.inline(1)));
-    queryExecutorShouldRetryInternal(context, exec);
-  }
-
-  private void queryExecutorShouldRetryInternal(TestContext context, Function<PostgresClientFactory, Future<QueryResult>> exec)
-    throws IOException, InterruptedException {
+  private void queryExecutorShouldRetryInternal(TestContext context, Function<PostgresClientFactory, Future<RowSet<Row>>> exec)
+    throws IOException {
     Async async = context.async();
     // Arrange
     Network network = Network.newNetwork();
@@ -130,17 +123,14 @@ public class PostgresClientFactoryTest {
     // Act
     Envs.setEnv(dbHost, dbPort, "test", "test", "test");
     PostgresClientFactory postgresClientFactory = new PostgresClientFactory(vertx);
-    postgresClientFactory.setRetryPolicy(0, null);
+    postgresClientFactory.setRetryPolicy(0, 1000L);
     exec.apply(postgresClientFactory)
       .onComplete(ar1 -> {
         // expect failure
-        if (!ar1.failed()) {
-          closeResources.run();
-          context.fail("database execution should fail");
-        }
+        context.assertTrue(ar1.failed(), "database execution should fail");
 
         // set multiple retries.
-        postgresClientFactory.setRetryPolicy(5, null);
+        postgresClientFactory.setRetryPolicy(5, 1000L);
         exec.apply(postgresClientFactory).onComplete(ar2 -> {
           // expect success
           context.assertTrue(ar2.succeeded());
@@ -149,7 +139,7 @@ public class PostgresClientFactoryTest {
         });
         // make db connections work eventually in 2 seconds
         // if executor is set to retry 5 times, then it will take at least 5 seconds for return of an error
-        vertx.setTimer(2000, (l) -> {
+        vertx.setTimer(2000, l -> {
           try {
             resetPeer.remove();
           } catch (IOException e) {
@@ -168,8 +158,7 @@ public class PostgresClientFactoryTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> async.complete()));
+    vertx.close().onComplete(context.asyncAssertSuccess());
   }
 
 }

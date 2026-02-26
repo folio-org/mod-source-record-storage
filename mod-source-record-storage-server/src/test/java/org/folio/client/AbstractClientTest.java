@@ -26,7 +26,7 @@ public abstract class AbstractClientTest {
   @AfterClass
   public static void tearDownClass(TestContext context) {
     Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
       wireMockServer.stop();
       async.complete();
     }));

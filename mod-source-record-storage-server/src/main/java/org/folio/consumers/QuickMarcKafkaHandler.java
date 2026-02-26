@@ -8,12 +8,13 @@ import static org.folio.services.util.EventHandlingUtil.createProducerRecord;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.KafkaProducer;
+
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,7 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
   private final RecordService recordService;
   private final KafkaConfig kafkaConfig;
 
-  private final Map<QMEventTypes, KafkaProducer<String, String>> producerMap = new HashMap<>();
+  private final Map<QMEventTypes, KafkaProducer<String, String>> producerMap = new EnumMap<>(QMEventTypes.class);
 
   @Value("${srs.kafka.QuickMarcKafkaHandler.maxDistributionNum:100}")
   private int maxDistributionNum;
@@ -100,25 +101,17 @@ public class QuickMarcKafkaHandler implements AsyncRecordHandler<String, String>
 
   private Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, QMEventTypes eventType,
                                            List<KafkaHeader> kafkaHeaders, KafkaConfig kafkaConfig, String key) {
-    Promise<Boolean> promise = Promise.promise();
     try {
       var producer = producerMap.get(eventType);
       var record = createProducerRecord(eventPayload, eventType.name(), key, tenantId, kafkaHeaders, kafkaConfig);
-      producer.write(record, war -> {
-        if (war.succeeded()) {
-          log.info("sendEventToKafka:: Event with type {} was sent to kafka", eventType);
-          promise.complete(true);
-        } else {
-          Throwable cause = war.cause();
-          log.warn("sendEventToKafka:: Failed to sent event {}, cause: {}", eventType, cause);
-          promise.fail(cause);
-        }
-      });
+      return producer.write(record)
+        .map(true)
+        .onSuccess(v -> log.info("sendEventToKafka:: Event with type {} was sent to kafka", eventType))
+        .onFailure(e -> log.warn("sendEventToKafka:: Failed to sent event {}, cause:", eventType, e));
     } catch (Exception e) {
-      log.warn("sendEventToKafka:: Failed to send an event for eventType {}, cause {}", eventType, e);
+      log.warn("sendEventToKafka:: Failed to send an event for eventType {}, cause:", eventType, e);
       return Future.failedFuture(e);
     }
-    return promise.future();
   }
 
   @SuppressWarnings("unchecked")

@@ -51,7 +51,8 @@ import org.mockito.MockitoAnnotations;
 @RunWith(VertxUnitRunner.class)
 public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
 
-  private static final String recordId = UUID.randomUUID().toString();
+  private static final String RECORD_ID = UUID.randomUUID().toString();
+  private static final String CURRENT_DATE = "20240718132044.6";
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
   @Mock
@@ -60,18 +61,17 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private RecordService recordService;
   private Record record;
   private AuthorityDomainKafkaHandler handler;
-  private static final String currentDate = "20240718132044.6";
 
   @BeforeClass
   public static void setUpClass() throws IOException {
-    rawRecord = new RawRecord().withId(recordId)
+    rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(recordId)
+    parsedRecord = new ParsedRecord().withId(RECORD_ID)
       .withContent(
         new JsonObject().put("leader", "01542ccm a2200361   4500")
         .put("fields", new JsonArray()
-          .add(new JsonObject().put("005", currentDate))));
+          .add(new JsonObject().put("005", CURRENT_DATE))));
   }
 
   @Before
@@ -86,11 +86,11 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
     record = new Record()
-      .withId(recordId)
+      .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
-      .withMatchedId(recordId)
-      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(recordId))
+      .withMatchedId(RECORD_ID)
+      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(RECORD_ID))
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
@@ -138,10 +138,10 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
 
             //Complex verifying "005" field is NOT empty inside parsed record.
             LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content = (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) updatedRecord.getParsedRecord().getContent();
-            LinkedHashMap<String, String> map = content.get("fields").get(0);
+            LinkedHashMap<String, String> map = content.get("fields").getFirst();
             String resulted005FieldValue = map.get("005");
             context.assertNotNull(resulted005FieldValue);
-            context.assertNotEquals(currentDate, resulted005FieldValue);
+            context.assertNotEquals(CURRENT_DATE, resulted005FieldValue);
 
             async.complete();
           });
@@ -174,7 +174,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
 
   @NotNull
   private ConsumerRecord<String, String> getConsumerRecord(HashMap<String, String> payload) {
-    ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, recordId, Json.encode(payload));
+    ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, RECORD_ID, Json.encode(payload));
     consumerRecord.headers().add(new RecordHeader("domain-event-type", "DELETE".getBytes(StandardCharsets.UTF_8)));
     consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL.getBytes(StandardCharsets.UTF_8)));
     consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID.getBytes(StandardCharsets.UTF_8)));

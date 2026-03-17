@@ -90,11 +90,12 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
   }
 
   @Override
-  public void postSourceStorageSourceRecords(String idType, String recordType, Boolean deleted, List<String> entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postSourceStorageSourceRecords(String idType, String recordType, Boolean deleted, Boolean includeShared,
+                                             List<String> entity, Map<String, String> okapiHeaders,
+                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(entity, toExternalIdType(idType), toRecordType(recordType), deleted, tenantId)
+        recordService.getSourceRecords(entity, toExternalIdType(idType), toRecordType(recordType), deleted, includeShared, tenantId, okapiHeaders)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

@@ -153,14 +153,16 @@ public interface RecordService {
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *
-   * @param ids            list of ids
-   * @param idType         id type
-   * @param recordType     record type
-   * @param deleted        filter by state DELETED or leader record status d, s, or x
-   * @param tenantId       tenant id
+   * @param ids           list of ids
+   * @param idType        id type
+   * @param recordType    record type
+   * @param deleted       filter by state DELETED or leader record status d, s, or x
+   * @param includeShared indicates whether to include records from central tenant
+   * @param tenantId      tenant id
+   * @param okapiHeaders  okapi headers
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, Boolean includeShared, String tenantId, Map<String, String> okapiHeaders);
 
   /**
    * Searches for source record by id via specific id type

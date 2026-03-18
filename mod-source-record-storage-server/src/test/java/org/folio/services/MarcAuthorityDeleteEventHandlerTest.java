@@ -35,6 +35,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
 import org.junit.Assert;
@@ -51,6 +52,8 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private RecordService recordService;
   private EventHandler eventHandler;
   private Record record;
@@ -58,7 +61,8 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
   @Before
   public void before(TestContext testContext) {
     MockitoAnnotations.openMocks(this);
-    recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher));
+    recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher),
+      consortiumConfigurationCache, vertx);
     eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

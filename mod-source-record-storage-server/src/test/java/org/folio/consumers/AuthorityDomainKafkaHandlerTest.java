@@ -38,6 +38,7 @@ import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -57,6 +58,8 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private static ParsedRecord parsedRecord;
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private RecordDao recordDao;
   private RecordService recordService;
   private Record record;
@@ -78,7 +81,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
     handler = new AuthorityDomainKafkaHandler(recordService);
     Async async = context.async();
     Snapshot snapshot = new Snapshot()

@@ -1,10 +1,15 @@
 package org.folio.rest.impl;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.services.AbstractLBServiceTest.getFullModuleName;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -16,8 +21,12 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
@@ -26,7 +35,12 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.dao.util.IdType;
+import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -60,6 +74,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String FIRST_HRID = "hridFirst";
   private static final String SECOND_HRID = "hridSecond";
   private static final String THIRD_HRID = "hridThird";
+
+  private static final String CENTRAL_TENANT_ID = "consortium";
+  private static final String CONSORTIUM_ID = "consortiumIds";
 
   private static final RawRecord rawRecord;
   private static final ParsedRecord marcRecord;
@@ -234,8 +251,48 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withHoldingsHrid("12345"));
   }
 
+  @BeforeClass
+  public static void setUpBeforeClass(TestContext context) {
+    Async async = context.async();
+    String okapiUrl = "http://localhost:" + PORT;
+    TenantClient tenantClient = new TenantClient(okapiUrl, CENTRAL_TENANT_ID, OKAPI_TOKEN);
+
+    try {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), ar -> {
+        context.assertTrue(ar.succeeded());
+        if (ar.result().statusCode() == 204) {
+          async.complete();
+          return;
+        }
+        if (ar.result().statusCode() == 201) {
+          tenantClient.getTenantByOperationId(ar.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(resp -> {
+            context.assertTrue(resp.bodyAsJson(TenantJob.class).getComplete());
+            String error = resp.bodyAsJson(TenantJob.class).getError();
+            if (error != null) {
+              context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            }
+          }));
+        } else {
+          context.assertEquals("Failed to make post tenant. Received status code 400", ar.result().bodyAsString());
+        }
+        async.complete();
+      });
+    } catch (Exception e) {
+      context.fail(e);
+    }
+  }
+
   @Before
   public void setUp(TestContext context) {
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
+      .willReturn(WireMock.ok()
+        .withBody(new JsonObject()
+          .put("userTenants", JsonArray.of(
+            new JsonObject()
+              .put("centralTenantId", CENTRAL_TENANT_ID)
+              .put("consortiumId", CONSORTIUM_ID)))
+          .encode()
+        )));
     Async async = context.async();
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
@@ -1072,6 +1129,38 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(6))
       .body("totalRecords", is(6));
     async.complete();
+  }
+
+  @Test
+  public void shouldReturnRecordsFromLocalAndCentralTenantsExcludeShadowRecordsByIdsListIfDeletedAndIncludeSharedParamsAreTrue(TestContext testContext) {
+    Record shadowRecord = JsonObject.mapFrom(record_2).copy().mapTo(Record.class)
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_3.getJobExecutionId())
+      .withState(Record.State.DELETED);
+
+    postSnapshots(testContext, snapshot_1, snapshot_3);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1, shadowRecord);
+    postRecords(CENTRAL_TENANT_ID, record_2, record_6);
+
+    List<String> externalIds = Stream.of(record_1, shadowRecord, record_2, record_6)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("deleted", true)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(3))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.snapshotId", hasItems(snapshot_1.getJobExecutionId(), snapshot_2.getJobExecutionId()))
+      .body("sourceRecords*.snapshotId", not(hasItem(shadowRecord.getSnapshotId())));
   }
 
   @Test

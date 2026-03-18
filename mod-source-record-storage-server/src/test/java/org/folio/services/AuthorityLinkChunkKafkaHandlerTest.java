@@ -50,6 +50,7 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.Subfield;
 import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.junit.After;
 import org.junit.Before;
@@ -92,6 +93,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     .withContent("test content");
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private RecordDao recordDao;
   private RecordService recordService;
   private Record record;
@@ -102,7 +105,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
 
     var async = context.async();
     var snapshot = new Snapshot()

@@ -317,7 +317,7 @@ public class RecordServiceImpl implements RecordService {
       });
   }
 
-  private Future<SourceRecordCollection> ensureSharedRecords(SourceRecordCollection sourceRecordCollection,
+  private Future<SourceRecordCollection> ensureSharedRecords(SourceRecordCollection localTenantRecords,
                                                              List<String> ids, IdType idType, RecordType recordType,
                                                              Boolean deleted, String tenantId,
                                                              Map<String, String> okapiHeaders) {
@@ -325,14 +325,14 @@ public class RecordServiceImpl implements RecordService {
     return consortiumConfigurationCache.get(connectionParams)
       .compose(consortiumConfigurationOptional -> {
         if (consortiumConfigurationOptional.isEmpty()) {
-          return Future.succeededFuture(sourceRecordCollection);
+          return Future.succeededFuture(localTenantRecords);
         }
         String centralTenantId = consortiumConfigurationOptional.get().getCentralTenantId();
         if (centralTenantId.equals(tenantId)) {
-          return Future.succeededFuture(sourceRecordCollection);
+          return Future.succeededFuture(localTenantRecords);
         }
         return recordDao.getSourceRecords(ids, idType, recordType, deleted, centralTenantId)
-          .map(centralTenantRecords -> mergeSourceRecordCollections(sourceRecordCollection, centralTenantRecords));
+          .map(centralTenantRecords -> mergeSourceRecordCollections(localTenantRecords, centralTenantRecords));
       });
   }
 

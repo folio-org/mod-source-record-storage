@@ -38,6 +38,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.Tables;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.util.OkapiConnectionParams;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.junit.After;
 import org.junit.Before;
@@ -61,6 +62,8 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private RecordDao recordDao;
   private RecordService recordService;
   private Record record;
@@ -78,7 +81,7 @@ public class QuickMarcKafkaHandlerTest extends AbstractLBServiceTest {
   public void setUp(TestContext context) {
     MockitoAnnotations.initMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
     Async async = context.async();
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

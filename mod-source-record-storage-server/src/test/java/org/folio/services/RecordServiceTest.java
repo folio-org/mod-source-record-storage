@@ -2230,6 +2230,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void getMarcSourceRecordsByListOfIds(TestContext context, Record.RecordType recordType,
                                                RecordType parsedRecordType) {
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
@@ -2243,7 +2244,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .map(Record::getMatchedId)
         .toList();
 
-      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, false, TENANT_ID, Map.of()).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, false, okapiHeaders).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -2291,6 +2292,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void getMarcSourceRecordsByListOfIdsThatAreDeleted(TestContext context, Record.RecordType recordType,
                                                              RecordType parsedRecordType) {
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     List<Record> records = TestMocks.getRecords().stream()
       .map(record -> {
         Record deletedRecord = new Record()
@@ -2326,7 +2328,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(recordType))
         .map(Record::getMatchedId)
         .toList();
-      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, false, TENANT_ID, Map.of()).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, false, okapiHeaders).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

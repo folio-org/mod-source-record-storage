@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.services.AbstractLBServiceTest.getFullModuleName;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -1231,7 +1232,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .header(RestVerticle.OKAPI_HEADER_TENANT, CENTRAL_TENANT_ID)
+      .header(OKAPI_HEADER_TENANT, CENTRAL_TENANT_ID)
       .queryParam("idType", IdType.INSTANCE)
       .queryParam("includeShared", true)
       .body(externalIds)

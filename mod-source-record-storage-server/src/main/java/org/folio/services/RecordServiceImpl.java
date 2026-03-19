@@ -308,7 +308,10 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, Boolean includeShared, String tenantId, Map<String, String> okapiHeaders) {
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType,
+                                                         Boolean deleted, Boolean includeShared,
+                                                         Map<String, String> okapiHeaders) {
+    String tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
     return recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId)
       .compose(sourceRecordCollection -> {
         if (Boolean.TRUE.equals(includeShared) && !MARC_HOLDING.equals(recordType)) {

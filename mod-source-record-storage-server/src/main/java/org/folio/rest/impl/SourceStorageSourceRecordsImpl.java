@@ -95,7 +95,7 @@ public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecord
                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        recordService.getSourceRecords(entity, toExternalIdType(idType), toRecordType(recordType), deleted, includeShared, tenantId, okapiHeaders)
+        recordService.getSourceRecords(entity, toExternalIdType(idType), toRecordType(recordType), deleted, includeShared, okapiHeaders)
           .map(GetSourceStorageSourceRecordsResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)

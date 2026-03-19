@@ -158,6 +158,14 @@ resourceTypes:
             - name: core.box
         example: true
         default: false
+      includeShared:
+        description: Indicates whether the endpoint should also search records on a central tenant and include them in the response
+        type: boolean
+        (ramltojaxrs.types):
+          plugins:
+            - name: core.box
+        example: true
+        default: false
     responses:
       200:
         body:

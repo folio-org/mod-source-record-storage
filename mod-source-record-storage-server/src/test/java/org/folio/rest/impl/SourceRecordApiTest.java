@@ -1,10 +1,16 @@
 package org.folio.rest.impl;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.services.AbstractLBServiceTest.getFullModuleName;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -16,8 +22,12 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
@@ -26,7 +36,13 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.dao.util.IdType;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -60,6 +76,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String FIRST_HRID = "hridFirst";
   private static final String SECOND_HRID = "hridSecond";
   private static final String THIRD_HRID = "hridThird";
+
+  private static final String CENTRAL_TENANT_ID = "consortium";
+  private static final String CONSORTIUM_ID = "consortiumIds";
 
   private static final RawRecord rawRecord;
   private static final ParsedRecord marcRecord;
@@ -234,15 +253,52 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withHoldingsHrid("12345"));
   }
 
+  @BeforeClass
+  public static void setUpBeforeClass(TestContext context) {
+    Async async = context.async();
+    String okapiUrl = "http://localhost:" + PORT;
+    TenantClient tenantClient = new TenantClient(okapiUrl, CENTRAL_TENANT_ID, OKAPI_TOKEN);
+
+    try {
+      tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), ar -> {
+        context.assertTrue(ar.succeeded());
+        if (ar.result().statusCode() == 204) {
+          async.complete();
+          return;
+        }
+        if (ar.result().statusCode() == 201) {
+          tenantClient.getTenantByOperationId(ar.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(resp -> {
+            context.assertTrue(resp.bodyAsJson(TenantJob.class).getComplete());
+            String error = resp.bodyAsJson(TenantJob.class).getError();
+            if (error != null) {
+              context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            }
+          }));
+        } else {
+          context.assertEquals("Failed to make post tenant. Received status code 400", ar.result().bodyAsString());
+        }
+        async.complete();
+      });
+    } catch (Exception e) {
+      context.fail(e);
+    }
+  }
+
   @Before
   public void setUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
+      .willReturn(WireMock.ok()
+        .withBody(new JsonObject()
+          .put("userTenants", JsonArray.of(
+            new JsonObject()
+              .put("centralTenantId", CENTRAL_TENANT_ID)
+              .put("consortiumId", CONSORTIUM_ID)))
+          .encode()
+        )));
+
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, CENTRAL_TENANT_ID)))
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -1072,6 +1128,161 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(6))
       .body("totalRecords", is(6));
     async.complete();
+  }
+
+  @Test
+  public void shouldReturnRecordsFromLocalAndCentralTenantsExcludeShadowRecordsByIdsListIfDeletedAndIncludeSharedParamsAreTrue(TestContext testContext) {
+    Record shadowRecord = JsonObject.mapFrom(record_2).copy().mapTo(Record.class)
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshot_3.getJobExecutionId())
+      .withState(Record.State.DELETED);
+
+    postSnapshots(testContext, snapshot_1, snapshot_3);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1, shadowRecord);
+    postRecords(CENTRAL_TENANT_ID, record_2, record_6);
+
+    List<String> externalIds = Stream.of(record_1, shadowRecord, record_2, record_6)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("deleted", true)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(3))
+      .body("totalRecords", is(3))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.snapshotId", hasItems(snapshot_1.getJobExecutionId(), snapshot_2.getJobExecutionId()))
+      .body("sourceRecords*.snapshotId", not(hasItem(shadowRecord.getSnapshotId())));
+  }
+
+  @Test
+  public void shouldReturnRecordsOnlyFromLocalTenantByIdsListIfIncludeSharedIsFalseOrAbsent(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1, record_4);
+    postRecords(CENTRAL_TENANT_ID, record_2);
+
+    List<String> externalIds = Stream.of(record_1, record_4, record_2)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+    List<String> expectedExternalIds = Stream.of(record_1, record_4)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(expectedExternalIds.toArray()))
+      .body("sourceRecords*.externalIdsHolder.instanceId",
+        not(hasItem(record_2.getExternalIdsHolder().getInstanceId())))
+      .body("sourceRecords*.recordId", hasItems(record_1.getMatchedId(), record_4.getMatchedId()))
+      .body("sourceRecords*.recordId", not(hasItem(record_2.getMatchedId())));
+  }
+
+  @Test
+  public void shouldReturnRecordOnlyFromLocalTenantByIdsListIfIncludeSharedIsTrueAndTenantIsNotInConsortium(TestContext testContext) {
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
+      .willReturn(WireMock.ok().withBody(new JsonObject().put("userTenants", JsonArray.of()).encode())));
+
+    postSnapshots(testContext, snapshot_1);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1);
+    postRecords(CENTRAL_TENANT_ID, record_2);
+
+    List<String> externalIds = Stream.of(record_1, record_2)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItem(record_1.getExternalIdsHolder().getInstanceId()))
+      .body("sourceRecords*.externalIdsHolder.instanceId",
+        not(hasItem(record_2.getExternalIdsHolder().getInstanceId())))
+      .body("sourceRecords*.recordId", hasItem(record_1.getMatchedId()))
+      .body("sourceRecords*.recordId", not(hasItem(record_2.getMatchedId())));
+  }
+
+  @Test
+  public void shouldReturnRecordsFromCentralTenantByIdsListIfCentralTenantSpecified() {
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
+    postRecords(CENTRAL_TENANT_ID, record_1, record_4);
+
+    List<String> externalIds = Stream.of(record_1, record_4)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .header(OKAPI_HEADER_TENANT, CENTRAL_TENANT_ID)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.recordId", hasItems(record_1.getMatchedId(), record_4.getMatchedId()));
+  }
+
+  @Test
+  public void shouldReturnMarcAuthorityRecordsFromLocalAndCentralTenantsByIdsListIfIncludeSharedParamsIsTrue(TestContext testContext) {
+    Record centralTenantRecord = new Record()
+      .withId(FIRST_UUID)
+      .withMatchedId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityId(UUID.randomUUID().toString())
+        .withAuthorityHrid("12345"));
+
+    postSnapshots(testContext, snapshot_4);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
+    postRecords(testContext, record_8);
+    postRecords(CENTRAL_TENANT_ID, centralTenantRecord);
+
+    List<String> externalIds = Stream.of(record_8, centralTenantRecord)
+      .map(r -> r.getExternalIdsHolder().getAuthorityId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("recordType", RecordType.MARC_AUTHORITY)
+      .queryParam("idType", IdType.AUTHORITY)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.authorityId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.recordId", hasItems(record_8.getMatchedId(), centralTenantRecord.getMatchedId()));
   }
 
   @Test

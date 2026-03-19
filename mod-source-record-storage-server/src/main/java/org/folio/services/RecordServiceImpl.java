@@ -7,7 +7,9 @@ import static org.folio.dao.util.RecordDaoUtil.RECORD_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordForeignKeys;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasId;
 import static org.folio.dao.util.RecordDaoUtil.ensureRecordHasSuppressDiscovery;
+import static org.folio.dao.util.RecordDaoUtil.getExternalId;
 import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
+import static org.folio.dao.util.RecordType.MARC_HOLDING;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
@@ -21,6 +23,7 @@ import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
@@ -33,9 +36,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -52,6 +58,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -73,6 +80,7 @@ import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
 import org.folio.rest.jaxrs.model.StrippedParsedRecordCollection;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.exceptions.DuplicateRecordException;
 import org.folio.services.exceptions.RecordUpdateException;
@@ -107,10 +115,15 @@ public class RecordServiceImpl implements RecordService {
   private static final String TAG_001 = "001";
 
   private final RecordDao recordDao;
+  private final ConsortiumConfigurationCache consortiumConfigurationCache;
+  private final Vertx vertx;
 
   @Autowired
-  public RecordServiceImpl(final RecordDao recordDao) {
+  public RecordServiceImpl(final RecordDao recordDao, ConsortiumConfigurationCache consortiumConfigurationCache,
+                           Vertx vertx) {
     this.recordDao = recordDao;
+    this.consortiumConfigurationCache = consortiumConfigurationCache;
+    this.vertx = vertx;
   }
 
   @Override
@@ -295,8 +308,65 @@ public class RecordServiceImpl implements RecordService {
   }
 
   @Override
-  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId) {
-    return recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId);
+  public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType,
+                                                         Boolean deleted, Boolean includeShared,
+                                                         Map<String, String> okapiHeaders) {
+    String tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    return recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId)
+      .compose(sourceRecordCollection -> {
+        if (Boolean.TRUE.equals(includeShared) && !MARC_HOLDING.equals(recordType)) {
+          return ensureSharedRecords(sourceRecordCollection, ids, idType, recordType, deleted, tenantId, okapiHeaders);
+        }
+        return Future.succeededFuture(sourceRecordCollection);
+      });
+  }
+
+  private Future<SourceRecordCollection> ensureSharedRecords(SourceRecordCollection localTenantRecords,
+                                                             List<String> ids, IdType idType, RecordType recordType,
+                                                             Boolean deleted, String tenantId,
+                                                             Map<String, String> okapiHeaders) {
+    OkapiConnectionParams connectionParams = OkapiConnectionParams.createSystemUserConnectionParams(okapiHeaders, vertx);
+    return consortiumConfigurationCache.get(connectionParams)
+      .compose(consortiumConfigurationOptional -> {
+        if (consortiumConfigurationOptional.isEmpty()) {
+          return Future.succeededFuture(localTenantRecords);
+        }
+        String centralTenantId = consortiumConfigurationOptional.get().getCentralTenantId();
+        if (tenantId.equals(centralTenantId)) {
+          return Future.succeededFuture(localTenantRecords);
+        }
+        return recordDao.getSourceRecords(ids, idType, recordType, deleted, centralTenantId)
+          .map(centralTenantRecords -> mergeSourceRecordCollections(localTenantRecords, centralTenantRecords));
+      });
+  }
+
+  private SourceRecordCollection mergeSourceRecordCollections(SourceRecordCollection localTenantRecords,
+                                                              SourceRecordCollection centralTenantRecords) {
+    Set<String> centralTenantExternalIds = centralTenantRecords.getSourceRecords().stream()
+      .map(this::extractExternalId)
+      .filter(Objects::nonNull)
+      .collect(Collectors.toUnmodifiableSet());
+
+    List<SourceRecord> nonShadowLocalTenantRecords = localTenantRecords.getSourceRecords().stream()
+      .filter(sourceRecord -> {
+        String externalId = extractExternalId(sourceRecord);
+        return externalId != null && !centralTenantExternalIds.contains(externalId);
+      })
+      .toList();
+
+    List<SourceRecord> combinedRecords = Stream.concat(
+      nonShadowLocalTenantRecords.stream(),
+      centralTenantRecords.getSourceRecords().stream()
+    ).toList();
+
+    return new SourceRecordCollection()
+      .withSourceRecords(combinedRecords)
+      .withTotalRecords(combinedRecords.size());
+  }
+
+  private String extractExternalId(SourceRecord sourceRecord) {
+    Record.RecordType recordType = Record.RecordType.valueOf(sourceRecord.getRecordType().name());
+    return getExternalId(sourceRecord.getExternalIdsHolder(), recordType);
   }
 
   @Override

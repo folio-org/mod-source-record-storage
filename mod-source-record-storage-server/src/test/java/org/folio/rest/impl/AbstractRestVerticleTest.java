@@ -93,6 +93,7 @@ public abstract class AbstractRestVerticleTest {
     vertx = Vertx.vertx(options);
 
     kafkaContainer.start();
+    setUpConsortiumConfigurationCache();
     //Property variables
     System.setProperty("kafka-host", kafkaContainer.getHost());
     System.setProperty("kafka-port", kafkaContainer.getFirstMappedPort() + "");
@@ -207,6 +208,11 @@ public abstract class AbstractRestVerticleTest {
       kafkaContainer.stop();
       async.complete();
     }));
+  }
+
+  private static void setUpConsortiumConfigurationCache() {
+    // set cache expiration time to 0 to avoid side effects between tests
+    System.setProperty("srs.consortium-configuration-cache.expiration.time.seconds", "0");
   }
 
   protected void postSnapshots(TestContext testContext, Snapshot... snapshots) {

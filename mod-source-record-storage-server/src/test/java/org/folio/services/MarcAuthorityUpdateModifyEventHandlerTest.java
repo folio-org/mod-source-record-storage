@@ -19,7 +19,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;

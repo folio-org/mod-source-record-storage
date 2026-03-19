@@ -41,6 +41,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
@@ -328,7 +329,7 @@ public class RecordServiceImpl implements RecordService {
           return Future.succeededFuture(localTenantRecords);
         }
         String centralTenantId = consortiumConfigurationOptional.get().getCentralTenantId();
-        if (centralTenantId.equals(tenantId)) {
+        if (tenantId.equals(centralTenantId)) {
           return Future.succeededFuture(localTenantRecords);
         }
         return recordDao.getSourceRecords(ids, idType, recordType, deleted, centralTenantId)
@@ -344,12 +345,17 @@ public class RecordServiceImpl implements RecordService {
       .collect(Collectors.toUnmodifiableSet());
 
     List<SourceRecord> nonShadowLocalTenantRecords = localTenantRecords.getSourceRecords().stream()
-      .filter(sourceRecord -> extractExternalId(sourceRecord) != null)
-      .filter(sourceRecord -> !centralTenantExternalIds.contains(extractExternalId(sourceRecord)))
+      .filter(sourceRecord -> {
+        String externalId = extractExternalId(sourceRecord);
+        return externalId != null && !centralTenantExternalIds.contains(externalId);
+      })
       .toList();
 
-    List<SourceRecord> combinedRecords = new ArrayList<>(nonShadowLocalTenantRecords);
-    combinedRecords.addAll(centralTenantRecords.getSourceRecords());
+    List<SourceRecord> combinedRecords = Stream.concat(
+      nonShadowLocalTenantRecords.stream(),
+      centralTenantRecords.getSourceRecords().stream()
+    ).toList();
+
     return new SourceRecordCollection()
       .withSourceRecords(combinedRecords)
       .withTotalRecords(combinedRecords.size());

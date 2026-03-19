@@ -36,6 +36,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.dao.util.IdType;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -293,13 +294,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
               .put("consortiumId", CONSORTIUM_ID)))
           .encode()
         )));
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, CENTRAL_TENANT_ID)))
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -1161,6 +1159,129 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(externalIds.toArray()))
       .body("sourceRecords*.snapshotId", hasItems(snapshot_1.getJobExecutionId(), snapshot_2.getJobExecutionId()))
       .body("sourceRecords*.snapshotId", not(hasItem(shadowRecord.getSnapshotId())));
+  }
+
+  @Test
+  public void shouldReturnRecordsOnlyFromLocalTenantByIdsListIfIncludeSharedIsFalseOrAbsent(TestContext testContext) {
+    postSnapshots(testContext, snapshot_1);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1, record_4);
+    postRecords(CENTRAL_TENANT_ID, record_2);
+
+    List<String> externalIds = Stream.of(record_1, record_4, record_2)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+    List<String> expectedExternalIds = Stream.of(record_1, record_4)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(expectedExternalIds.toArray()))
+      .body("sourceRecords*.externalIdsHolder.instanceId",
+        not(hasItem(record_2.getExternalIdsHolder().getInstanceId())))
+      .body("sourceRecords*.recordId", hasItems(record_1.getMatchedId(), record_4.getMatchedId()))
+      .body("sourceRecords*.recordId", not(hasItem(record_2.getMatchedId())));
+  }
+
+  @Test
+  public void shouldReturnRecordOnlyFromLocalTenantByIdsListIfIncludeSharedIsTrueAndTenantIsNotInConsortium(TestContext testContext) {
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
+      .willReturn(WireMock.ok().withBody(new JsonObject().put("userTenants", JsonArray.of()).encode())));
+
+    postSnapshots(testContext, snapshot_1);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
+    postRecords(testContext, record_1);
+    postRecords(CENTRAL_TENANT_ID, record_2);
+
+    List<String> externalIds = Stream.of(record_1, record_2)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(1))
+      .body("totalRecords", is(1))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItem(record_1.getExternalIdsHolder().getInstanceId()))
+      .body("sourceRecords*.externalIdsHolder.instanceId",
+        not(hasItem(record_2.getExternalIdsHolder().getInstanceId())))
+      .body("sourceRecords*.recordId", hasItem(record_1.getMatchedId()))
+      .body("sourceRecords*.recordId", not(hasItem(record_2.getMatchedId())));
+  }
+
+  @Test
+  public void shouldReturnRecordsFromCentralTenantByIdsListIfCentralTenantSpecified() {
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
+    postRecords(CENTRAL_TENANT_ID, record_1, record_4);
+
+    List<String> externalIds = Stream.of(record_1, record_4)
+      .map(r -> r.getExternalIdsHolder().getInstanceId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .header(RestVerticle.OKAPI_HEADER_TENANT, CENTRAL_TENANT_ID)
+      .queryParam("idType", IdType.INSTANCE)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.instanceId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.recordId", hasItems(record_1.getMatchedId(), record_4.getMatchedId()));
+  }
+
+  @Test
+  public void shouldReturnMarcAuthorityRecordsFromLocalAndCentralTenantsByIdsListIfIncludeSharedParamsIsTrue(TestContext testContext) {
+    Record centralTenantRecord = new Record()
+      .withId(FIRST_UUID)
+      .withMatchedId(FIRST_UUID)
+      .withSnapshotId(snapshot_1.getJobExecutionId())
+      .withRecordType(RecordType.MARC_AUTHORITY)
+      .withRawRecord(rawRecord)
+      .withParsedRecord(marcRecord)
+      .withOrder(0)
+      .withState(Record.State.ACTUAL)
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityId(UUID.randomUUID().toString())
+        .withAuthorityHrid("12345"));
+
+    postSnapshots(testContext, snapshot_4);
+    postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
+    postRecords(testContext, record_8);
+    postRecords(CENTRAL_TENANT_ID, centralTenantRecord);
+
+    List<String> externalIds = Stream.of(record_8, centralTenantRecord)
+      .map(r -> r.getExternalIdsHolder().getAuthorityId()).toList();
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("recordType", RecordType.MARC_AUTHORITY)
+      .queryParam("idType", IdType.AUTHORITY)
+      .queryParam("includeShared", true)
+      .body(externalIds)
+      .when()
+      .post(SOURCE_STORAGE_SOURCE_RECORDS_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("sourceRecords.size()", is(2))
+      .body("totalRecords", is(2))
+      .body("sourceRecords*.externalIdsHolder.authorityId", hasItems(externalIds.toArray()))
+      .body("sourceRecords*.recordId", hasItems(record_8.getMatchedId(), centralTenantRecord.getMatchedId()));
   }
 
   @Test

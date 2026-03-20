@@ -460,6 +460,25 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldRollbackAndCloseWhenStreamRecordsQueryFails(TestContext context) {
+    Async async = context.async();
+    Condition badCondition = DSL.field("nonexistent_column").eq("value");
+    List<OrderField<?>> orderFields = new ArrayList<>();
+    orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+
+    Flowable.range(0, 5)
+      .concatMapCompletable(ignored -> recordService
+        .streamRecords(badCondition, RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+        .ignoreElements()
+        .onErrorComplete())
+      .andThen(recordService
+        .streamRecords(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString("ee561342-3098-47a8-ab6e-0f3eba120b04")),
+          RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+        .ignoreElements())
+      .subscribe(async::complete, context::fail);
+  }
+
+  @Test
   public void shouldStreamMarcAuthorityRecordsBySnapshotId(TestContext context) {
     streamRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_AUTHORITY,
       Record.RecordType.MARC_AUTHORITY);

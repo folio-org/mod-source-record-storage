@@ -41,12 +41,17 @@ import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 import static org.jooq.impl.DSL.with;
 
+import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.reactivex.sqlclient.Pool;
+import io.vertx.reactivex.sqlclient.PreparedStatement;
+import io.vertx.reactivex.sqlclient.RowStream;
+import io.vertx.reactivex.sqlclient.SqlConnection;
+import io.vertx.reactivex.sqlclient.Transaction;
 import io.vertx.sqlclient.Row;
 
 import java.io.IOException;
@@ -64,6 +69,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
@@ -406,20 +412,7 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachedPool(tenantId)
-      .rxGetConnection()
-      .flatMapPublisher(conn -> conn.rxBegin()
-        .flatMapPublisher(tx -> conn.rxPrepare(sql)
-          .flatMapPublisher(pq -> pq.createStream(1)
-            .toFlowable()
-            .map(this::toRow)
-            .map(this::toRecord))
-          .doAfterTerminate(tx::commit)
-          .doOnError(error -> {
-            tx.rollback();
-            conn.close();
-          })
-          .doFinally(conn::close)));
+    return streamInTransaction(tenantId, sql, 1, row -> toRecord(toRow(row)));
   }
 
   private static void parseExpression(Expression expr, List<Expression> expressions) {
@@ -459,19 +452,7 @@ public class RecordDaoImpl implements RecordDao {
 
     String finalSql = with(cte).select().from(searchQuery).rightJoin(countQuery).on(trueCondition()).getSQL(ParamType.INLINED);
     LOG.trace("streamMarcRecordIds:: SQL : {}", finalSql);
-    return getCachedPool(tenantId)
-      .rxGetConnection()
-      .flatMapPublisher(conn -> conn.rxBegin()
-        .flatMapPublisher(tx -> conn.rxPrepare(finalSql)
-          .flatMapPublisher(pq -> pq.createStream(10000)
-            .toFlowable()
-            .map(this::toRow))
-          .doAfterTerminate(tx::commit)
-          .doOnError(error -> {
-            tx.rollback();
-            conn.close();
-          })
-          .doFinally(conn::close)));
+    return streamInTransaction(tenantId, finalSql, 10000, this::toRow);
   }
 
   private CommonTableExpression<Record1<UUID>> buildFilteredRecordsCTE(ParseLeaderResult parseLeaderResult,
@@ -1154,20 +1135,7 @@ public class RecordDaoImpl implements RecordDao {
       .limit(limit)
       .getSQL(ParamType.INLINED);
 
-    return getCachedPool(tenantId)
-      .rxGetConnection()
-      .flatMapPublisher(conn -> conn.rxBegin()
-        .flatMapPublisher(tx -> conn.rxPrepare(sql)
-          .flatMapPublisher(pq -> pq.createStream(1)
-            .toFlowable()
-            .map(this::toRow)
-            .map(this::toSourceRecord))
-          .doAfterTerminate(tx::commit)
-          .doOnError(error -> {
-            tx.rollback();
-            conn.close();
-          })
-          .doFinally(conn::close)));
+    return streamInTransaction(tenantId, sql, 1, row -> toSourceRecord(toRow(row)));
   }
 
   @Override
@@ -1624,8 +1592,109 @@ public class RecordDaoImpl implements RecordDao {
     return postgresClientFactory.getConnection(tenantId);
   }
 
+  private <T> Flowable<T> streamInTransaction(String tenantId, String sql, int fetchSize,
+                                              Function<io.vertx.reactivex.sqlclient.Row, T> mapper) {
+    return getCachedPool(tenantId)
+      .rxGetConnection()
+      .flatMapPublisher(conn -> conn.rxBegin()
+        .flatMapPublisher(tx -> conn.rxPrepare(sql)
+          .flatMapPublisher(stmt -> createStreamContext(conn, tx, stmt, fetchSize)
+            .flatMap(context -> context.flowable(mapper)))
+          // Handles prepare() failures directly, plus errors rethrown after createStreamContext()
+          // or StreamContext have already performed cleanup. Duplicate rollback/close attempts are
+          // tolerated because rollback/close errors are suppressed.
+          .onErrorResumeNext((Throwable error) -> rollbackTransactionAndClose(conn, tx)
+            .andThen(Flowable.error(error))))
+        // Catches begin failures (no transaction exists) and re-propagated errors from the
+        // inner chain (already cleaned up; close here is idempotent via onErrorComplete).
+        .onErrorResumeNext((Throwable error) -> conn.rxClose()
+          .onErrorComplete()
+          .andThen(Flowable.error(error))));
+  }
+
+  private Flowable<StreamContext> createStreamContext(SqlConnection conn, Transaction tx, PreparedStatement stmt, int fetchSize) {
+    try {
+      return Flowable.just(new StreamContext(conn, tx, stmt, stmt.createStream(fetchSize)));
+    } catch (RuntimeException error) {
+      return stmt.rxClose()
+        .onErrorComplete()
+        .andThen(rollbackTransactionAndClose(conn, tx))
+        .andThen(Flowable.<StreamContext>error(error));
+    }
+  }
+
+  private Completable rollbackTransactionAndClose(SqlConnection conn, Transaction tx) {
+    return tx.rxRollback()
+      .onErrorComplete()
+      .andThen(conn.rxClose().onErrorComplete());
+  }
+
   private Row toRow(io.vertx.reactivex.sqlclient.Row row) {
     return row.getDelegate();
+  }
+
+  private static final class StreamContext {
+
+    private static final Logger LOG = LogManager.getLogger();
+
+    private final SqlConnection connection;
+    private final Transaction transaction;
+    private final PreparedStatement statement;
+    private final RowStream<io.vertx.reactivex.sqlclient.Row> stream;
+    private final AtomicBoolean finished = new AtomicBoolean();
+
+    private StreamContext(SqlConnection connection, Transaction transaction, PreparedStatement statement,
+                          RowStream<io.vertx.reactivex.sqlclient.Row> stream) {
+      this.connection = connection;
+      this.transaction = transaction;
+      this.statement = statement;
+      this.stream = stream;
+    }
+
+    private <T> Flowable<T> flowable(Function<io.vertx.reactivex.sqlclient.Row, T> mapper) {
+      return stream.toFlowable()
+        .map(mapper::apply)
+        .concatWith(commitAndCloseOnce().andThen(Flowable.empty()))
+        .onErrorResumeNext((Throwable error) -> rollbackAndCloseOnce().andThen(Flowable.<T>error(error)))
+        .doOnCancel(() -> rollbackAndCloseOnce()
+          .subscribe(() -> {}, error -> LOG.warn("Error during cancel cleanup", error)));
+    }
+
+    private Completable commitAndCloseOnce() {
+      return Completable.defer(() -> {
+        if (!finished.compareAndSet(false, true)) {
+          return Completable.complete();
+        }
+        // Close on both paths — only one executes: error branch or success branch.
+        return transaction.rxCommit()
+          .onErrorResumeNext(error -> closeResources()
+            .andThen(Completable.error(error)))
+          .andThen(closeResources());
+      });
+    }
+
+    private Completable rollbackAndCloseOnce() {
+      return Completable.defer(() -> {
+        if (!finished.compareAndSet(false, true)) {
+          return Completable.complete();
+        }
+        // Stream close before rollback: the cursor must be quiesced before the
+        // owning transaction is rolled back. Cannot delegate to closeResources()
+        // because the rollback must be interleaved between stream and statement close.
+        return stream.rxClose()
+          .onErrorComplete()
+          .andThen(transaction.rxRollback().onErrorComplete())
+          .andThen(statement.rxClose().onErrorComplete())
+          .andThen(connection.rxClose().onErrorComplete());
+      });
+    }
+
+    private Completable closeResources() {
+      return stream.rxClose()
+        .onErrorComplete()
+        .andThen(statement.rxClose().onErrorComplete())
+        .andThen(connection.rxClose().onErrorComplete());
+    }
   }
 
   private Future<Optional<Record>> lookupAssociatedRecords(QueryExecutor queryExecutor, Optional<Record> record,

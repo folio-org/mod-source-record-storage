@@ -7,6 +7,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,6 +34,8 @@ import static org.apache.logging.log4j.Level.ERROR;
 import static org.apache.logging.log4j.Level.INFO;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
@@ -126,7 +129,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       eventPayload.getContext().put(CHUNK_ID_HEADER, chunkId);
       eventPayload.getContext().put(USER_ID_HEADER, userId);
-      populateWithPermissionsHeader(eventPayload, targetRecord);
+      populateWithCommonHeaders(eventPayload, targetRecord);
 
       OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
@@ -179,11 +182,19 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     }
   }
 
-  private void populateWithPermissionsHeader(DataImportEventPayload eventPayload,
-                                             KafkaConsumerRecord<String, byte[]> kafkaRecord) {
+  private void populateWithCommonHeaders(DataImportEventPayload eventPayload,
+                                         KafkaConsumerRecord<String, byte[]> kafkaRecord) {
     String permissions = extractHeaderValue(PERMISSIONS, kafkaRecord.headers());
-    if (permissions != null) {
+    if (StringUtils.isNotBlank(permissions)) {
       eventPayload.getContext().put(PERMISSIONS, permissions);
+    }
+    String requestId = extractHeaderValue(OKAPI_REQUEST_HEADER, kafkaRecord.headers());
+    if (StringUtils.isNotBlank(requestId)) {
+      eventPayload.getContext().put(OKAPI_REQUEST_HEADER, requestId);
+    }
+    String userId = extractHeaderValue(OKAPI_USER_HEADER, kafkaRecord.headers());
+    if (StringUtils.isNotBlank(userId)) {
+      eventPayload.getContext().put(OKAPI_USER_HEADER, userId);
     }
   }
 

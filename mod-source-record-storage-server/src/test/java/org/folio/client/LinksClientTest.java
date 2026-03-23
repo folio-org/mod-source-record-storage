@@ -75,11 +75,11 @@ public class LinksClientTest extends AbstractClientTest {
       context.assertEquals(linkDtoCollection.getTotalRecords(), actualLinkDtoCollection.getTotalRecords());
       List<Link> actualLinks = actualLinkDtoCollection.getLinks();
       context.assertEquals(links.size(), actualLinks.size());
-      context.assertEquals(links.get(0).getId(), actualLinks.get(0).getId());
-      context.assertEquals(links.get(0).getInstanceId(), actualLinks.get(0).getInstanceId());
-      context.assertEquals(links.get(0).getAuthorityId(), actualLinks.get(0).getAuthorityId());
-      context.assertEquals(links.get(0).getAuthorityNaturalId(), actualLinks.get(0).getAuthorityNaturalId());
-      context.assertEquals(links.get(0).getLinkingRuleId(), actualLinks.get(0).getLinkingRuleId());
+      context.assertEquals(links.getFirst().getId(), actualLinks.getFirst().getId());
+      context.assertEquals(links.getFirst().getInstanceId(), actualLinks.getFirst().getInstanceId());
+      context.assertEquals(links.getFirst().getAuthorityId(), actualLinks.getFirst().getAuthorityId());
+      context.assertEquals(links.getFirst().getAuthorityNaturalId(), actualLinks.getFirst().getAuthorityNaturalId());
+      context.assertEquals(links.getFirst().getLinkingRuleId(), actualLinks.getFirst().getLinkingRuleId());
 
       async.complete();
     });
@@ -147,12 +147,12 @@ public class LinksClientTest extends AbstractClientTest {
       context.assertTrue(result.isPresent());
       List<LinkingRuleDto> actualLinkingRules = result.get();
       context.assertEquals(linkingRules.size(), actualLinkingRules.size());
-      context.assertEquals(linkingRules.get(0).getId(), actualLinkingRules.get(0).getId());
-      context.assertEquals(linkingRules.get(0).getAuthorityField(), actualLinkingRules.get(0).getAuthorityField());
-      context.assertEquals(linkingRules.get(0).getAuthoritySubfields(), actualLinkingRules.get(0).getAuthoritySubfields());
-      context.assertEquals(linkingRules.get(0).getBibField(), actualLinkingRules.get(0).getBibField());
-      context.assertEquals(linkingRules.get(0).getSubfieldModifications(), actualLinkingRules.get(0).getSubfieldModifications());
-      context.assertEquals(linkingRules.get(0).getValidation(), actualLinkingRules.get(0).getValidation());
+      context.assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
+      context.assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
+      context.assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
+      context.assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
+      context.assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
+      context.assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
       async.complete();
     });
   }

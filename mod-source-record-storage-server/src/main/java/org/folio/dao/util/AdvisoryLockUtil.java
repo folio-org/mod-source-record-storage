@@ -1,7 +1,7 @@
 package org.folio.dao.util;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 
@@ -24,10 +24,10 @@ public class AdvisoryLockUtil {
    * @return future with {@code true} if lock successfully obtained, otherwise {@code false}
    * if the lock by specified keys is already obtained by another transaction.
    */
-  public static Future<Boolean> acquireLock(ReactiveClassicGenericQueryExecutor queryExecutor, int key1, int key2) {
-    return queryExecutor.findOneRow(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
+  public static Future<Boolean> acquireLock(QueryExecutor queryExecutor, int key1, int key2) {
+    return queryExecutor.execute(dsl -> dsl.select(DSL.field("{0}", Boolean.class,
       DSL.function(GET_LOCK_FUNCTION, SQLDataType.BOOLEAN, val(key1), val(key2))))
-    ).map(row -> row.getBoolean(0));
+    ).map(rowSet -> rowSet.iterator().next().getBoolean(0));
   }
 
 }

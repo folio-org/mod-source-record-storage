@@ -7,10 +7,12 @@ import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_DELETED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,8 +58,7 @@ public class RecordDomainEventPublisher {
       Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      var jsonContent = JsonObject.mapFrom(domainEventPayload);
-      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), jsonContent.encode(),
+      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), Json.encode(domainEventPayload),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
       LOG.warn("Exception during Record domain event sending", e);
@@ -107,6 +108,12 @@ public class RecordDomainEventPublisher {
 
     Optional.ofNullable(okapiHeaders.get(OKAPI_TOKEN_HEADER))
       .ifPresent(token -> headers.add(KafkaHeader.header(OKAPI_TOKEN_HEADER, token)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_USER_HEADER))
+      .ifPresent(userId -> headers.add(KafkaHeader.header(OKAPI_USER_HEADER, userId)));
+
+    Optional.ofNullable(okapiHeaders.get(OKAPI_REQUEST_HEADER))
+        .ifPresent(requestId -> headers.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId)));
 
     Optional.ofNullable(recordType)
       .map(Record.RecordType::value)

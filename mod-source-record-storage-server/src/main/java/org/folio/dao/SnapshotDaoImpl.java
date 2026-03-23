@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SnapshotCollection;
@@ -13,11 +14,6 @@ import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
-import org.folio.okapi.common.GenericCompositeFuture;
-
-import com.google.common.collect.Lists;
 
 import io.vertx.core.Future;
 
@@ -35,14 +31,14 @@ public class SnapshotDaoImpl implements SnapshotDao {
   @Override
   public Future<SnapshotCollection> getSnapshots(Condition condition, Collection<OrderField<?>> orderFields,
       int offset, int limit, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(txQE -> {
+    return getQueryExecutor(tenantId).transaction(queryExecutor -> {
       SnapshotCollection snapshotCollection = new SnapshotCollection();
-      return GenericCompositeFuture.all(Lists.newArrayList(
-        SnapshotDaoUtil.findByCondition(txQE, condition, orderFields, offset, limit)
+      return Future.all(
+        SnapshotDaoUtil.findByCondition(queryExecutor, condition, orderFields, offset, limit)
           .map(snapshots -> addSnapshots(snapshotCollection, snapshots)),
-        SnapshotDaoUtil.countByCondition(txQE, condition)
-          .map(totalRecords -> addTotalRecords(snapshotCollection,totalRecords))
-      )).map(res -> snapshotCollection);
+        SnapshotDaoUtil.countByCondition(queryExecutor, condition)
+          .map(totalRecords -> addTotalRecords(snapshotCollection, totalRecords))
+      ).map(res -> snapshotCollection);
     });
   }
 
@@ -69,7 +65,7 @@ public class SnapshotDaoImpl implements SnapshotDao {
     return SnapshotDaoUtil.delete(getQueryExecutor(tenantId), id);
   }
 
-  private ReactiveClassicGenericQueryExecutor getQueryExecutor(String tenantId) {
+  private PgPoolQueryExecutor getQueryExecutor(String tenantId) {
     return postgresClientFactory.getQueryExecutor(tenantId);
   }
 

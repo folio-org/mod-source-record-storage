@@ -76,7 +76,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
           LOG.debug("handlePayload:: No records found, recordId: '{}'", payloadRecord.getMatchedId());
           return Future.succeededFuture();
         }
-        LOG.warn("handlePayload:: Error during record deletion", throwable);
+        LOG.warn("handlePayload:: Error during record deletion recordId={}", payloadRecord.getId(), throwable);
         return Future.failedFuture(throwable);
       })
       .onSuccess(ar -> {

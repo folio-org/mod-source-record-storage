@@ -15,7 +15,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -63,7 +62,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
     List<String> migrations = migrationJobInitRq.getMigrations();
     return migrations.stream()
       .filter(migrationName -> jobRunners.stream().noneMatch(jobRunner -> jobRunner.getMigrationName().equals(migrationName)))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private Future<Boolean> checkMigrationsInProgress(String tenantId) {
@@ -80,7 +79,7 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   private Future<Void> runMigrations(AsyncMigrationJob asyncMigrationJob, String tenantId) {
     List<AsyncMigrationTaskRunner> runners = asyncMigrationJob.getMigrations().stream()
       .flatMap(migrationName -> jobRunners.stream().filter(runner -> migrationName.equals(runner.getMigrationName())))
-      .collect(Collectors.toList());
+      .toList();
 
     Future<Void> future = Future.succeededFuture();
     for (AsyncMigrationTaskRunner runner : runners) {

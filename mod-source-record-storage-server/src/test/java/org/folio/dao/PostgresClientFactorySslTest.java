@@ -100,8 +100,8 @@ class PostgresClientFactorySslTest {
     config(SERVER_PEM);
     Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
     PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(DSLContext::selectOne)
-      .onComplete(vtc.succeeding(count -> {
-        assertThat(count, is(1));
+      .onComplete(vtc.succeeding(rowSet -> {
+        assertThat(rowSet.size(), is(1));
         vtc.completeNow();
       }));
   }

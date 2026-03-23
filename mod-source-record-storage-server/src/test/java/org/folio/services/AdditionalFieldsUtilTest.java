@@ -362,7 +362,7 @@ public class AdditionalFieldsUtilTest {
     var subfields = get035SubfieldOclcValues(record, TAG_035).stream().map(Subfield::getData).toList();
     // then
     Assert.assertEquals(expectedSubfields.size(), subfields.size());
-    Assert.assertEquals(expectedSubfields.get(0), subfields.get(0));
+    Assert.assertEquals(expectedSubfields.getFirst(), subfields.getFirst());
   }
 
   @Test

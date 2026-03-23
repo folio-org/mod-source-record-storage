@@ -19,6 +19,7 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
+import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
@@ -35,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,7 +46,6 @@ import org.folio.MappingProfile;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.KafkaConfig;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -117,12 +119,12 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
           future.complete(dataImportEventPayload);
         })
         .onFailure(throwable -> {
-          LOG.warn(FAIL_MSG, eventType, throwable);
+          LOG.warn(FAIL_MSG + " jobExecutionId={}", eventType, jobExecutionId, throwable);
           dataImportEventPayload.setEventType(getNextEventType(dataImportEventPayload));
           future.completeExceptionally(throwable);
         });
     } catch (Exception e) {
-      LOG.warn(FAIL_MSG, eventType, e);
+      LOG.warn(FAIL_MSG + " jobExecutionId={}", eventType, jobExecutionId, e);
       future.completeExceptionally(e);
     }
     return future;
@@ -160,8 +162,18 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     );
 
     String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
-    if (recordId != null) {
+    if (StringUtils.isNotBlank(recordId)) {
       kafkaHeaders.add(KafkaHeader.header(RECORD_ID_HEADER, recordId));
+    }
+
+    String userId = eventPayload.getContext().get(USER_ID_HEADER);
+    if (StringUtils.isNotBlank(userId)) {
+      kafkaHeaders.add(KafkaHeader.header(USER_ID_HEADER, userId));
+    }
+
+    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
+    if (StringUtils.isNotBlank(requestId)) {
+      kafkaHeaders.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId));
     }
     return kafkaHeaders;
   }
@@ -200,7 +212,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     String userId = (String) dataImportEventPayload.getAdditionalProperties().get(USER_ID_HEADER);
 
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
-      LOG.warn(EVENT_HAS_NO_DATA_MSG);
+      LOG.warn(EVENT_HAS_NO_DATA_MSG + " jobExecutionId={}", dataImportEventPayload.getJobExecutionId());
       recordPromise.fail(new EventProcessingException(EVENT_HAS_NO_DATA_MSG));
     } else {
       Record record = Json.decodeValue(recordAsString, Record.class);
@@ -259,7 +271,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
         List<Future<Record>> futures = new ArrayList<>();
         recordCollection.getRecords()
           .forEach(record -> futures.add(recordService.updateRecord(record.withState(Record.State.OLD), okapiHeaders)));
-        GenericCompositeFuture.all(futures).onComplete(ar -> {
+        Future.all(futures).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete();
           } else {

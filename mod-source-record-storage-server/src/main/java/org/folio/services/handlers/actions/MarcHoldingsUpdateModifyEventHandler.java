@@ -35,6 +35,11 @@ public class MarcHoldingsUpdateModifyEventHandler extends AbstractUpdateModifyEv
   }
 
   @Override
+  protected boolean is003FieldRemovalNeeded() {
+    return true;
+  }
+
+  @Override
   public String getPostProcessingInitializationEventType() {
     return DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value();
   }

@@ -51,7 +51,6 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.exception.DuplicateEventException;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
@@ -133,7 +132,7 @@ public class RecordServiceImpl implements RecordService {
       LOG.error("saveRecord:: Record '{}' has invalid externalIdHolder or missing 001 field into parsed record", rec.getId());
       return Future.failedFuture(new BadRequestException(EXTERNAL_IDS_MISSING_ERROR));
     }
-    return recordDao.executeInTransaction(txQE -> SnapshotDaoUtil.findById(txQE, rec.getSnapshotId())
+    return recordDao.executeInTransaction(queryExecutor -> SnapshotDaoUtil.findById(queryExecutor, rec.getSnapshotId())
         .map(optionalSnapshot -> optionalSnapshot
           .orElseThrow(() -> new NotFoundException(format(SNAPSHOT_NOT_FOUND_TEMPLATE, rec.getSnapshotId()))))
         .compose(snapshot -> {
@@ -145,19 +144,19 @@ public class RecordServiceImpl implements RecordService {
         .compose(v -> setMatchedIdForRecord(rec, tenantId))
         .compose(r -> {
           if (Objects.isNull(r.getGeneration())) {
-            return recordDao.calculateGeneration(txQE, r);
+            return recordDao.calculateGeneration(queryExecutor, r);
           }
           return Future.succeededFuture(r.getGeneration());
         })
         .compose(generation -> {
           if (generation > 0) {
-            return recordDao.getRecordByMatchedId(txQE, rec.getMatchedId())
+            return recordDao.getRecordByMatchedId(queryExecutor, rec.getMatchedId())
               .compose(optionalMatchedRecord -> optionalMatchedRecord
-                .map(matchedRecord -> recordDao.saveUpdatedRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)),
+                .map(matchedRecord -> recordDao.saveUpdatedRecord(queryExecutor, ensureRecordForeignKeys(rec.withGeneration(generation)),
                   matchedRecord.withState(Record.State.OLD), okapiHeaders))
-                .orElseGet(() -> recordDao.saveRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders)));
+                .orElseGet(() -> recordDao.saveRecord(queryExecutor, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders)));
           } else {
-            return recordDao.saveRecord(txQE, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders);
+            return recordDao.saveRecord(queryExecutor, ensureRecordForeignKeys(rec.withGeneration(generation)), okapiHeaders);
           }
         }), tenantId)
       .recover(throwable -> {
@@ -176,7 +175,7 @@ public class RecordServiceImpl implements RecordService {
     List<Future<Record>> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(rec -> setMatchedIdsFutures.add(setMatchedIdForRecord(rec,
       okapiHeaders.get(OKAPI_TENANT_HEADER))));
-    return GenericCompositeFuture.all(setMatchedIdsFutures)
+    return Future.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded()
         ? recordDao.saveRecords(recordCollection, okapiHeaders)
         : Future.failedFuture(ar.cause()))
@@ -448,7 +447,7 @@ public class RecordServiceImpl implements RecordService {
             promise.complete(rec.withMatchedId(rec.getId()));
           }
         } else {
-          LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record");
+          LOG.warn("setMatchedIdFromExistingSourceRecord:: Error while retrieving source record recordId={}", rec.getId());
           promise.fail(ar.cause());
         }
       });
@@ -551,9 +550,7 @@ public class RecordServiceImpl implements RecordService {
       if (Objects.isNull(idsHolder) || StringUtils.isEmpty(getValueFromControlledField(marcRecord, TAG_001))) {
         return false;
       }
-      if (StringUtils.isEmpty(idsHolder.getInstanceId()) || StringUtils.isEmpty(idsHolder.getInstanceHrid())) {
-        return false;
-      }
+      return StringUtils.isNotEmpty(idsHolder.getInstanceId()) && StringUtils.isNotEmpty(idsHolder.getInstanceHrid());
     }
     return true;
   }

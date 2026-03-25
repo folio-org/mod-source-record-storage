@@ -1,10 +1,11 @@
-## 2025-mm-dd 5.11.0-SNAPSHOT
+## 2025-mm-dd 6.0.0-SNAPSHOT
 * [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
 * [MODSOURCE-941](https://folio-org.atlassian.net/browse/MODSOURCE-941) Remove relatedRecordVersion from parsedRecordDto and add generation field to source record
 * [MODSOURCE-745](https://folio-org.atlassian.net/browse/MODSOURCE-745) Subscribe to JobExecution cancellation and add cache
 * [MODSOURCE-747](https://folio-org.atlassian.net/browse/MODSOURCE-747) Do not process event if JobExecution status is Cancelled
 * [MODSOURCE-930](https://folio-org.atlassian.net/browse/MODSOURCE-930) Cannot update MARC authority record by created user
 * [MODSOURCE-962](https://folio-org.atlassian.net/browse/MODSOURCE-962) MARC Modifications fail for Updates
+* [MODSOURCE-957](https://folio-org.atlassian.net/browse/MODSOURCE-957) Remove quick-marc events handling logic
 * [MODSOURCE-964](https://folio-org.atlassian.net/browse/MODSOURCE-964) 003 is being deleted when overlaying a MARC authority record with Data Import
 * [MODSOURCE-936](https://folio-org.atlassian.net/browse/MODSOURCE-936) Upgrade module to Vert.x 5.0
 * [MODSOURCE-978](https://folio-org.atlassian.net/browse/MODSOURCE-978) Data Import page unusable due to infinite loading

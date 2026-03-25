@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.jooq.Condition;
 import org.jooq.Field;
@@ -39,7 +39,6 @@ import org.folio.rest.jaxrs.model.Record.State;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.rest.jooq.enums.RecordType;
-import org.folio.rest.jooq.tables.mappers.RowMappers;
 import org.folio.rest.jooq.tables.pojos.RecordsLb;
 import org.folio.rest.jooq.tables.records.RecordsLbRecord;
 
@@ -97,52 +96,53 @@ public final class RecordDaoUtil {
    * @param condition     condition
    * @return future with count
    */
-  public static Future<Integer> countByCondition(ReactiveClassicGenericQueryExecutor queryExecutor, Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectCount()
+  public static Future<Integer> countByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.execute(dsl -> dsl
+        .selectCount()
         .from(RECORDS_LB)
         .where(condition))
-      .map(row -> row.getInteger(0));
+      .map(rowSet -> rowSet.iterator().next().getInteger(0));
   }
 
   /**
-   * Searches for {@link Record} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Record} by {@link Condition} using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param condition     condition
    * @return future with optional Record
    */
-  public static Future<Optional<Record>> findByCondition(ReactiveClassicGenericQueryExecutor queryExecutor,
-                                                         Condition condition) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+  public static Future<Optional<Record>> findByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return queryExecutor.execute(dsl -> dsl.selectFrom(RECORDS_LB)
         .where(condition)
         .orderBy(RECORDS_LB.STATE.sort(SortOrder.ASC))
         .limit(1))
-      .map(RecordDaoUtil::toOptionalRecord);
+      .map(RecordDaoUtil::toSingleOptionalRecord);
   }
 
   /**
-   * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Record} by id using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param id            id
    * @return future with optional Record
    */
-  public static Future<Optional<Record>> findById(ReactiveClassicGenericQueryExecutor queryExecutor, String id) {
-    return queryExecutor.findOneRow(dsl -> dsl.selectFrom(RECORDS_LB)
+  public static Future<Optional<Record>> findById(QueryExecutor queryExecutor, String id) {
+    return queryExecutor.execute(dsl -> dsl
+        .selectFrom(RECORDS_LB)
         .where(RECORDS_LB.ID.eq(toUUID(id))))
-      .map(RecordDaoUtil::toOptionalRecord);
+      .map(RecordDaoUtil::toSingleOptionalRecord);
   }
 
   /**
-   * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link Record} to the db using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param record        record
    * @return future with updated Record
    */
-  public static Future<Record> save(ReactiveClassicGenericQueryExecutor queryExecutor, Record record) {
+  public static Future<Record> save(QueryExecutor queryExecutor, Record record) {
     RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    return queryExecutor.executeAny(dsl -> dsl.insertInto(RECORDS_LB)
+    return queryExecutor.execute(dsl -> dsl.insertInto(RECORDS_LB)
         .set(dbRecord)
         .onDuplicateKeyUpdate()
         .set(dbRecord)
@@ -151,15 +151,15 @@ public final class RecordDaoUtil {
   }
 
   /**
-   * Updates {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Updates {@link Record} to the db using {@link QueryExecutor}
    *
    * @param queryExecutor query executor
    * @param record        record to update
    * @return future of updated Record
    */
-  public static Future<Record> update(ReactiveClassicGenericQueryExecutor queryExecutor, Record record) {
+  public static Future<Record> update(QueryExecutor queryExecutor, Record record) {
     RecordsLbRecord dbRecord = toDatabaseRecord(record);
-    return queryExecutor.executeAny(dsl -> dsl.update(RECORDS_LB)
+    return queryExecutor.execute(dsl -> dsl.update(RECORDS_LB)
         .set(dbRecord)
         .where(RECORDS_LB.ID.eq(toUUID(record.getId())))
         .returning())
@@ -237,26 +237,30 @@ public final class RecordDaoUtil {
    * @return SourceRecord
    */
   public static SourceRecord toSourceRecord(Row row) {
-    RecordsLb pojo = RowMappers.getRecordsLbMapper().apply(row);
     SourceRecord sourceRecord = new SourceRecord();
-    if (Objects.nonNull(pojo.getId())) {
-      sourceRecord.withRecordId(pojo.getId().toString());
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.ID.getName()))) {
+      sourceRecord.withRecordId(row.getUUID(RECORDS_LB.ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getSnapshotId())) {
-      sourceRecord.withSnapshotId(pojo.getSnapshotId().toString());
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.SNAPSHOT_ID.getName()))) {
+      sourceRecord.withSnapshotId(row.getUUID(RECORDS_LB.SNAPSHOT_ID.getName()).toString());
     }
-    if (Objects.nonNull(pojo.getRecordType())) {
-      sourceRecord.withRecordType(SourceRecord.RecordType.valueOf(pojo.getRecordType().toString()));
+    if (Objects.nonNull(row.getValue(RECORDS_LB.RECORD_TYPE.getName()))) {
+      sourceRecord.withRecordType(row.get(SourceRecord.RecordType.class, RECORDS_LB.RECORD_TYPE.getName()));
     }
 
-    sourceRecord.withOrder(pojo.getOrder())
-      .withDeleted((Objects.nonNull(pojo.getState()) && State.valueOf(pojo.getState().toString()).equals(State.DELETED))
-        || DELETED_LEADER_RECORD_STATUS.contains(pojo.getLeaderRecordStatus()));
+    String leaderStatus = row.getString(RECORDS_LB.LEADER_RECORD_STATUS.getName());
+    State recordState = Arrays.stream(State.values())
+      .filter(s -> s.value().equals(row.getString(RECORDS_LB.STATE.getName())))
+      .findFirst()
+      .orElse(null);
+
+    sourceRecord.withOrder(row.getInteger(RECORDS_LB.ORDER.getName()))
+      .withDeleted((State.DELETED.equals(recordState)) || DELETED_LEADER_RECORD_STATUS.contains(leaderStatus));
 
     return sourceRecord
-      .withAdditionalInfo(toAdditionalInfo(pojo))
-      .withExternalIdsHolder(toExternalIdsHolder(pojo))
-      .withMetadata(toMetadata(pojo));
+      .withAdditionalInfo(toAdditionalInfo(row))
+      .withExternalIdsHolder(toExternalIdsHolder(row))
+      .withMetadata(toMetadata(row));
   }
 
   /**
@@ -291,8 +295,34 @@ public final class RecordDaoUtil {
    * @return Record
    */
   public static Record toRecord(Row row) {
-    RecordsLb pojo = RowMappers.getRecordsLbMapper().apply(row);
-    return asRecord(pojo);
+    Record recordDto = new Record();
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.ID.getName()))) {
+      recordDto.withId(row.getUUID(RECORDS_LB.ID.getName()).toString());
+    }
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.SNAPSHOT_ID.getName()))) {
+      recordDto.withSnapshotId(row.getUUID(RECORDS_LB.SNAPSHOT_ID.getName()).toString());
+    }
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.MATCHED_ID.getName()))) {
+      recordDto.withMatchedId(row.getUUID(RECORDS_LB.MATCHED_ID.getName()).toString());
+    }
+    if (Objects.nonNull(row.getString(RECORDS_LB.RECORD_TYPE.getName()))) {
+      recordDto.withRecordType(row.get(Record.RecordType.class, RECORDS_LB.RECORD_TYPE.getName()));
+    }
+    if (Objects.nonNull(row.getString(RECORDS_LB.STATE.getName()))) {
+      recordDto.withState(row.get(Record.State.class, RECORDS_LB.STATE.getName()));
+    }
+
+    recordDto
+      .withOrder(row.getInteger(RECORDS_LB.ORDER.getName()))
+      .withGeneration(row.getInteger(RECORDS_LB.GENERATION.getName()))
+      .withLeaderRecordStatus(row.getString(RECORDS_LB.LEADER_RECORD_STATUS.getName()))
+      .withDeleted(recordDto.getState().equals(State.DELETED)
+        || DELETED_LEADER_RECORD_STATUS.contains(recordDto.getLeaderRecordStatus()));
+
+    return recordDto
+      .withAdditionalInfo(toAdditionalInfo(row))
+      .withExternalIdsHolder(toExternalIdsHolder(row))
+      .withMetadata(toMetadata(row));
   }
 
   /**
@@ -337,31 +367,18 @@ public final class RecordDaoUtil {
       .withMetadata(toMetadata(pojo));
   }
 
-  //TODO: Update JOOQ versions, or replace RowMappers
-  // Since Vert.x v3.9.4 Row methods throws NoSuchElementException instead of returning null
-  // So RowMappers can't be used when not all columns where selected
   public static StrippedParsedRecord toStrippedParsedRecord(Row row) {
     RecordsLb pojo = new RecordsLb()
-      .setId(row.getUUID("id"))
-      .setRecordType(RecordType.valueOf(row.getString("record_type")))
-      .setExternalId(row.getUUID("external_id"))
-      .setState(RecordState.valueOf(row.getString("state")));
+      .setId(row.getUUID(RECORDS_LB.ID.getName()))
+      .setRecordType(RecordType.valueOf(row.getString(RECORDS_LB.RECORD_TYPE.getName())))
+      .setExternalId(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName()))
+      .setState(RecordState.valueOf(row.getString(RECORDS_LB.STATE.getName())));
 
     return new StrippedParsedRecord()
       .withId(pojo.getId().toString())
       .withRecordType(StrippedParsedRecord.RecordType.valueOf(pojo.getRecordType().toString()))
       .withRecordState(StrippedParsedRecord.RecordState.valueOf(pojo.getState().toString()))
       .withExternalIdsHolder(toExternalIdsHolder(pojo));
-  }
-
-  /**
-   * Convert database query result {@link Row} to {@link Optional} {@link Record}
-   *
-   * @param row query result row
-   * @return optional Record
-   */
-  public static Optional<Record> toOptionalRecord(Row row) {
-    return Objects.nonNull(row) ? Optional.of(toRecord(row)) : Optional.empty();
   }
 
   public static String getExternalId(ExternalIdsHolder externalIdsHolder, Record.RecordType recordType) {
@@ -649,7 +666,7 @@ public final class RecordDaoUtil {
     Condition condition = filterRecordByState(RecordState.ACTUAL.name());
     if (deleted == null) {
       condition = RECORDS_LB.STATE.in(RecordState.ACTUAL, RecordState.DELETED);
-    } else if (Boolean.TRUE.equals(deleted)) {
+    } else if (deleted) {
       condition = condition.or(filterRecordByState(RecordState.DELETED.name()))
         .or(filterRecordByState(RecordState.ACTUAL.name()).and(filterRecordByLeaderRecordStatus(DELETED_LEADER_RECORD_STATUS)));
     }
@@ -684,9 +701,9 @@ public final class RecordDaoUtil {
    * @return list of sort fields
    */
   @SuppressWarnings("squid:S1452")
-  public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy, Boolean forOffset) {
+  public static List<OrderField<?>> toRecordOrderFields(List<String> orderBy, boolean forOffset) {
     if (forOffset && orderBy.isEmpty()) {
-      return Arrays.asList(new OrderField<?>[]{RECORDS_LB.ID.asc()});
+      return List.of(RECORDS_LB.ID.asc());
     }
     return orderBy.stream()
       .map(order -> order.split(COMMA))
@@ -745,6 +762,14 @@ public final class RecordDaoUtil {
     return additionalInfo;
   }
 
+  private static AdditionalInfo toAdditionalInfo(Row row) {
+    AdditionalInfo additionalInfo = new AdditionalInfo();
+    if (Objects.nonNull(row.getBoolean(RECORDS_LB.SUPPRESS_DISCOVERY.getName()))) {
+      additionalInfo.withSuppressDiscovery(row.getBoolean(RECORDS_LB.SUPPRESS_DISCOVERY.getName()));
+    }
+    return additionalInfo;
+  }
+
   private static ExternalIdsHolder toExternalIdsHolder(RecordsLb pojo) {
     ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
     var externalIdOptional = Optional.ofNullable(pojo.getExternalId()).map(UUID::toString);
@@ -756,6 +781,28 @@ public final class RecordDaoUtil {
       externalIdOptional.ifPresent(externalIdsHolder::setHoldingsId);
       externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
     } else if (RecordType.MARC_AUTHORITY == pojo.getRecordType()) {
+      externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
+      externalHridOptional.ifPresent(externalIdsHolder::setAuthorityHrid);
+    }
+    return externalIdsHolder;
+  }
+
+  private static ExternalIdsHolder toExternalIdsHolder(Row row) {
+    ExternalIdsHolder externalIdsHolder = new ExternalIdsHolder();
+    var externalIdOptional = Optional.ofNullable(row.getUUID(RECORDS_LB.EXTERNAL_ID.getName())).map(UUID::toString);
+    var externalHridOptional = Optional.ofNullable(row.getString(RECORDS_LB.EXTERNAL_HRID.getName()));
+    Record.RecordType recordType = Arrays.stream(Record.RecordType.values())
+      .filter(t -> t.value().equals(row.getString(RECORDS_LB.RECORD_TYPE.getName())))
+      .findFirst()
+      .orElse(null);
+
+    if (Record.RecordType.MARC_BIB == recordType) {
+      externalIdOptional.ifPresent(externalIdsHolder::setInstanceId);
+      externalHridOptional.ifPresent(externalIdsHolder::setInstanceHrid);
+    } else if (Record.RecordType.MARC_HOLDING == recordType) {
+      externalIdOptional.ifPresent(externalIdsHolder::setHoldingsId);
+      externalHridOptional.ifPresent(externalIdsHolder::setHoldingsHrid);
+    } else if (Record.RecordType.MARC_AUTHORITY == recordType) {
       externalIdOptional.ifPresent(externalIdsHolder::setAuthorityId);
       externalHridOptional.ifPresent(externalIdsHolder::setAuthorityHrid);
     }
@@ -775,6 +822,23 @@ public final class RecordDaoUtil {
     }
     if (Objects.nonNull(pojo.getUpdatedDate())) {
       metadata.withUpdatedDate(Date.from(pojo.getUpdatedDate().toInstant()));
+    }
+    return metadata;
+  }
+
+  private static Metadata toMetadata(Row row) {
+    Metadata metadata = new Metadata();
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.CREATED_BY_USER_ID.getName()))) {
+      metadata.withCreatedByUserId(row.getUUID(RECORDS_LB.CREATED_BY_USER_ID.getName()).toString());
+    }
+    if (Objects.nonNull(row.getOffsetDateTime(RECORDS_LB.CREATED_DATE.getName()))) {
+      metadata.withCreatedDate(Date.from(row.getOffsetDateTime(RECORDS_LB.CREATED_DATE.getName()).toInstant()));
+    }
+    if (Objects.nonNull(row.getUUID(RECORDS_LB.UPDATED_BY_USER_ID.getName()))) {
+      metadata.withUpdatedByUserId(row.getUUID(RECORDS_LB.UPDATED_BY_USER_ID.getName()).toString());
+    }
+    if (Objects.nonNull(row.getOffsetDateTime(RECORDS_LB.UPDATED_DATE.getName()))) {
+      metadata.withUpdatedDate(Date.from(row.getOffsetDateTime(RECORDS_LB.UPDATED_DATE.getName()).toInstant()));
     }
     return metadata;
   }
@@ -802,7 +866,7 @@ public final class RecordDaoUtil {
     return qualifierCondition != null ? resultCondition.and(qualifierCondition) : resultCondition;
   }
 
-  private static Condition buildQualifierCondition(Field field, MatchField.QualifierMatch qualifier) {
+  private static Condition buildQualifierCondition(Field<?> field, MatchField.QualifierMatch qualifier) {
     if (qualifier == null) {
       return null;
     }

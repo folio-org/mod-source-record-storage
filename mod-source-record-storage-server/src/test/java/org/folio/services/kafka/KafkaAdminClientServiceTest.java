@@ -24,7 +24,6 @@ import io.vertx.kafka.admin.KafkaAdminClient;
 import io.vertx.kafka.admin.NewTopic;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.kafka.services.KafkaTopic;
@@ -39,7 +38,7 @@ import org.mockito.Mock;
 @RunWith(VertxUnitRunner.class)
 public class KafkaAdminClientServiceTest {
 
-  private final String STUB_TENANT = "foo-tenant";
+  private static final String STUB_TENANT = "foo-tenant";
   private KafkaAdminClient mockClient;
   private Vertx vertx;
   @Mock
@@ -138,9 +137,9 @@ public class KafkaAdminClientServiceTest {
   }
 
   private List<String> getTopicNames(ArgumentCaptor<List<NewTopic>> createTopicsCaptor) {
-    return createTopicsCaptor.getAllValues().get(0).stream()
+    return createTopicsCaptor.getAllValues().getFirst().stream()
       .map(NewTopic::getName)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private Future<Void> createKafkaTopicsAsync(KafkaAdminClient client) {

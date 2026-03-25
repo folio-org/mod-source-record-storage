@@ -16,6 +16,7 @@ import io.vertx.core.json.JsonObject;
 import java.nio.file.Path;
 
 import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.tools.utils.ModuleName;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -92,7 +93,8 @@ class ModuleIT {
       .withEnv("DB_DATABASE", "postgres")
       .withEnv("DB_SERVER_PEM", SERVER_PEM)
       .withEnv("KAFKA_HOST", "ourkafka")
-      .withEnv("KAFKA_PORT", "9092");
+      .withEnv("KAFKA_PORT", "9092")
+      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG");
 
   @BeforeAll
   static void beforeAll() {
@@ -115,11 +117,11 @@ class ModuleIT {
   @DisplayName("Test health check")
   void health() {
     // request without X-Okapi-Tenant
-    when().
-      get("/admin/health").
-    then().
-      statusCode(200).
-      body(is("\"OK\""));
+    when()
+      .get("/admin/health")
+      .then()
+      .statusCode(200)
+      .body(is("\"OK\""));
   }
 
   /**
@@ -135,11 +137,13 @@ class ModuleIT {
 
     var path = "/source-storage/records/85ce8fe9-8e89-48f9-bdcc-764b8cf5c968";
 
-    when().
-      get(path).
-    then().
-      statusCode(greaterThanOrEqualTo(400));
+    when()
+      .get(path)
+      .then()
+      .statusCode(greaterThanOrEqualTo(400));
 
+    // The test requires setting the module logging level to DEBUG because since RMB v36.0.0
+    // the expected message is logged at DEBUG level
     assertThat(mod.getLogs(), containsString("GET " + path));
   }
 
@@ -149,7 +153,7 @@ class ModuleIT {
     setTenant("install");
 
     JsonObject body = new JsonObject()
-        .put("module_to", "999999.0.0")
+        .put("module_to", ModuleName.getModuleName() + "-" + ModuleName.getModuleVersion())
         .put("parameters", new JsonArray()
           .add(new JsonObject().put("key", "loadReference").put("value", "true"))
           .add(new JsonObject().put("key", "loadSample").put("value", "true")));

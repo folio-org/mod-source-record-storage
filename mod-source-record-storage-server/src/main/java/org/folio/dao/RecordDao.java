@@ -1,6 +1,5 @@
 package org.folio.dao;
 
-import io.github.jklingsporn.vertx.jooq.classic.reactivepg.ReactiveClassicGenericQueryExecutor;
 import io.reactivex.Flowable;
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
@@ -11,6 +10,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import net.sf.jsqlparser.JSQLParserException;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
@@ -150,13 +150,13 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordById(String id, String tenantId);
 
   /**
-   * Searches for {@link Record} by id using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Record} by id using {@link QueryExecutor}
    *
-   * @param txQE query execution
-   * @param id   Record id
+   * @param queryExecutor query execution
+   * @param id            Record id
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordById(ReactiveClassicGenericQueryExecutor txQE, String id);
+  Future<Optional<Record>> getRecordById(QueryExecutor queryExecutor, String id);
 
   /**
    * Searches for {@link Record} by matchedId
@@ -168,13 +168,13 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordByMatchedId(String matchedId, String tenantId);
 
   /**
-   * Searches for {@link Record} by matchedId using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Record} by matchedId using {@link QueryExecutor}
    *
-   * @param txQE      query execution
-   * @param matchedId Record matchedId
+   * @param queryExecutor query execution
+   * @param matchedId     Record matchedId
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByMatchedId(ReactiveClassicGenericQueryExecutor txQE, String matchedId);
+  Future<Optional<Record>> getRecordByMatchedId(QueryExecutor queryExecutor, String matchedId);
 
   /**
    * Searches for {@link Record} by condition
@@ -186,13 +186,13 @@ public interface RecordDao {
   Future<Optional<Record>> getRecordByCondition(Condition condition, String tenantId);
 
   /**
-   * Searches for {@link Record} by {@link Condition} using {@link ReactiveClassicGenericQueryExecutor}
+   * Searches for {@link Record} by {@link Condition} using {@link QueryExecutor}
    *
-   * @param txQE      query executor
-   * @param condition query where condition
+   * @param queryExecutor query executor
+   * @param condition     query where condition
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByCondition(ReactiveClassicGenericQueryExecutor txQE, Condition condition);
+  Future<Optional<Record>> getRecordByCondition(QueryExecutor queryExecutor, Condition condition);
 
   /**
    * Saves {@link Record} to the db
@@ -204,13 +204,13 @@ public interface RecordDao {
   Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
 
   /**
-   * Saves {@link Record} to the db using {@link ReactiveClassicGenericQueryExecutor}
+   * Saves {@link Record} to the db using {@link QueryExecutor}
    *
-   * @param txQE   query executor
-   * @param record Record to save
+   * @param queryExecutor query executor
+   * @param recordDto     Record to save
    * @return future with saved Record
    */
-  Future<Record> saveRecord(ReactiveClassicGenericQueryExecutor txQE, Record record, Map<String, String> okapiHeaders);
+  Future<Record> saveRecord(QueryExecutor queryExecutor, Record recordDto, Map<String, String> okapiHeaders);
 
   /**
    * Saves {@link RecordCollection} to the db.
@@ -248,11 +248,11 @@ public interface RecordDao {
    * Increments generation in case a record with the same matchedId exists
    * and the snapshot it is linked to is COMMITTED before the processing of the current one started
    *
-   * @param txQE   query execution
-   * @param record Record
+   * @param queryExecutor query execution
+   * @param record        Record
    * @return future with generation
    */
-  Future<Integer> calculateGeneration(ReactiveClassicGenericQueryExecutor txQE, Record record);
+  Future<Integer> calculateGeneration(QueryExecutor queryExecutor, Record record);
 
   /**
    * Updates {@link ParsedRecord} in the db
@@ -285,12 +285,12 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by id of external entity which was created from desired record
    *
-   * @param txQE           query execution
+   * @param queryExecutor  query execution
    * @param externalId     external relation id
-   * @param idType external id type
+   * @param idType         external id type
    * @return future with optional {@link Record}
    */
-  Future<Optional<Record>> getRecordByExternalId(ReactiveClassicGenericQueryExecutor txQE, String externalId, IdType idType);
+  Future<Optional<Record>> getRecordByExternalId(QueryExecutor queryExecutor, String externalId, IdType idType);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
@@ -391,13 +391,13 @@ public interface RecordDao {
    * no data is overwritten as a result of update. Creates
    * new snapshot.
    *
-   * @param txQE      query execution
-   * @param newRecord new Record to create
-   * @param oldRecord old Record that has to be marked as "old"
-   * @param okapiHeaders okapi headers
+   * @param queryExecutor query execution
+   * @param newRecord     new Record to create
+   * @param oldRecord     old Record that has to be marked as "old"
+   * @param okapiHeaders  okapi headers
    * @return future with new "updated" Record
    */
-  Future<Record> saveUpdatedRecord(ReactiveClassicGenericQueryExecutor txQE, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
+  Future<Record> saveUpdatedRecord(QueryExecutor queryExecutor, Record newRecord, Record oldRecord, Map<String, String> okapiHeaders);
 
   /**
    * Change suppress from discovery flag for record by external relation id
@@ -418,7 +418,7 @@ public interface RecordDao {
    * @param tenantId tenant id
    * @return future with generic type
    */
-  <T> Future<T> executeInTransaction(Function<ReactiveClassicGenericQueryExecutor, Future<T>> action, String tenantId);
+  <T> Future<T> executeInTransaction(Function<QueryExecutor, Future<T>> action, String tenantId);
 
   /**
    * Search for non-existent mark bib ids in the system

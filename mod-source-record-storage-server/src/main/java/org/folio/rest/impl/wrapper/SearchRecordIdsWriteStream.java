@@ -1,7 +1,6 @@
 package org.folio.rest.impl.wrapper;
 
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
@@ -12,10 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.UUID;
 
 import static java.lang.String.format;
-
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
-
-import org.folio.rest.jooq.tables.RecordsLb;
 
 /**
  * The stream needed to build HTTP response following the pre-defined schema:
@@ -25,12 +21,13 @@ import org.folio.rest.jooq.tables.RecordsLb;
  * }
  */
 public class SearchRecordIdsWriteStream implements WriteStream<Row> {
+  private static final String EMPTY_RESPONSE = "{\n  \"records\" : [ ],\n  \"totalCount\" : 0\n}";
+  private static final String RESPONSE_BEGINNING = "{\n  \"records\" : [%s";
+  private static final String RESPONSE_ENDING = "],\n  \"totalCount\" : %s\n}";
+  private static final String COMMA = ",";
+  private static final String DOUBLE_QUOTE = "\"";
+
   private final HttpServerResponse delegate;
-  private final String emptyResponse = "{\n  \"records\" : [ ],\n  \"totalCount\" : 0\n}";
-  private final String responseBeginning = "{\n  \"records\" : [%s";
-  private final String responseEnding = "],\n  \"totalCount\" : %s\n}";
-  private final String COMMA = ",";
-  private final String DOUBLE_QUOTE = "\"";
   private int writeIndex = 0;
   private int totalCount = 0;
 
@@ -44,8 +41,8 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     this.totalCount = row.getInteger("count");
     if (writeIndex == 0) {
       this.writeIndex++;
-      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE;
-      return this.delegate.write(format(responseBeginning, id));
+      String id = externalUUID == null ? StringUtils.EMPTY : DOUBLE_QUOTE + externalUUID + DOUBLE_QUOTE;
+      return this.delegate.write(format(RESPONSE_BEGINNING, id));
     } else {
       this.writeIndex++;
       return this.delegate.write(COMMA + DOUBLE_QUOTE + externalUUID.toString() + DOUBLE_QUOTE);
@@ -53,20 +50,11 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   }
 
   @Override
-  public void write(Row row, Handler<AsyncResult<Void>> handler) {
-    throw new UnsupportedOperationException("The method is not supported");
-  }
-
-  @Override
-  public void end(Handler<AsyncResult<Void>> handler) {
+  public Future<Void> end() {
     if (this.writeIndex == 0) {
-      this.delegate.write(emptyResponse).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
+      return this.delegate.end(EMPTY_RESPONSE);
     } else {
-      this.delegate.write(format(responseEnding, totalCount)).onSuccess(ar -> {
-        this.delegate.end(handler);
-      });
+      return this.delegate.end(format(RESPONSE_ENDING, totalCount));
     }
   }
 
@@ -93,7 +81,4 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
     return this;
   }
 
-  public void close() {
-    this.delegate.close();
-  }
 }

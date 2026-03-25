@@ -18,7 +18,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -69,7 +68,6 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   private static final String SECOND_UUID = UUID.randomUUID().toString();
   private static final String THIRD_UUID = UUID.randomUUID().toString();
   private static final String FOURTH_UUID = UUID.randomUUID().toString();
-  private static final String FIFTH_UUID = UUID.randomUUID().toString();
   private static final String VALID_HRID = "12345";
   private static final String MARC_RECORD_HRID = "393893";
   private static final String HRID = "hrid00020";
@@ -153,30 +151,18 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid(MARC_RECORD_HRID))
     .withState(Record.State.ACTUAL);
-  private static Record record_5 = new Record()
-    .withId(FIFTH_UUID)
-    .withSnapshotId(snapshot_3.getJobExecutionId())
-    .withRecordType(RecordType.MARC_AUTHORITY)
-    .withRawRecord(rawRecord)
-    .withParsedRecord(marcRecord)
-    .withMatchedId(FIFTH_UUID)
-    .withOrder(0)
-    .withState(Record.State.ACTUAL);
 
   @Before
   public void setUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
+    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()))
+      .onComplete(save -> {
         if (save.failed()) {
           context.fail(save.cause());
         }
         async.complete();
       });
-    });
   }
 
   @Test
@@ -185,7 +171,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -208,7 +194,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.EDIFACT))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -498,7 +484,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -518,7 +504,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     List<Record> expected = TestMocks.getRecords().stream()
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -570,7 +556,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
           .withParsedRecord(parsedRecord)
           .withErrorRecord(errorRecord);
       })
-      .collect(Collectors.toList());
+      .toList();
 
     List<String> previousRecordIds = new ArrayList<>();
 
@@ -588,7 +574,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
       records = records.stream()
         .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
-        .collect(Collectors.toList());
+        .toList();
 
       RecordCollection recordCollection = new RecordCollection()
         .withRecords(records)
@@ -660,7 +646,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(snapshotId))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -698,7 +684,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Record> expected = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
       .withTotalRecords(expected.size());
@@ -956,7 +942,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Record> original = TestMocks.getRecords().stream()
       .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
       .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
-      .collect(Collectors.toList());
+      .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
       .withTotalRecords(original.size());
@@ -975,7 +961,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     async = testContext.async();
     List<Record> updated = original.stream()
       .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
-      .collect(Collectors.toList());
+      .toList();
     recordCollection
       .withRecords(updated)
       .withTotalRecords(updated.size());

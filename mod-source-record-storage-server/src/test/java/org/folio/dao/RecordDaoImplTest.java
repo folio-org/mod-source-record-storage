@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -174,7 +175,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
       context.assertEquals(1, ar.result().size());
-      context.assertEquals(record.getId(), ar.result().get(0).getId());
+      context.assertEquals(record.getId(), ar.result().getFirst().getId());
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
         .onComplete(v -> async.complete());
     });
@@ -214,7 +215,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
     // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
-      .transaction(txQE -> AdvisoryLockUtil.acquireLock(txQE, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
+      .transaction(queryExecutor -> AdvisoryLockUtil.acquireLock(queryExecutor, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
         .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID, 2)));
 
     future.onComplete(ar -> {

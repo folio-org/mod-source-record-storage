@@ -135,7 +135,10 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
               LOG.debug("handle:: Start removing 035 field with actual HRID for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
               remove035WithActualHrId(changedRecord, hrId);
-              remove003FieldIfNeeded(changedRecord, hrId);
+
+              if (is003FieldRemovalNeeded()) {
+                remove003FieldIfNeeded(changedRecord, hrId);
+              }
             }
             LOG.debug("handle:: Start increasing generation record for jobExecutionId: '{}', recordId: '{}' and changedRecordId '{}'", jobExecutionId, finalRecordId, changedRecord.getId());
             increaseGeneration(changedRecord);
@@ -235,6 +238,8 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected abstract EntityType modifiedEntityType();
 
   protected abstract EntityType getRelatedEntityType();
+
+  protected abstract boolean is003FieldRemovalNeeded();
 
   protected MappingDetail.MarcMappingOption getMarcMappingOption(MappingProfile mappingProfile) {
     return mappingProfile.getMappingDetails().getMarcMappingOption();

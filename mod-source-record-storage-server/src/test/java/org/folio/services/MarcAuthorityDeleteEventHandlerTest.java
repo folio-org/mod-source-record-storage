@@ -18,7 +18,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +56,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
   private Record record;
 
   @Before
-  public void before(TestContext testContext) throws IOException {
+  public void before(TestContext testContext) {
     MockitoAnnotations.openMocks(this);
     recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher));
     eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
@@ -105,6 +104,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordService.saveRecord(record, okapiHeaders)
       // when
+      .onFailure(context::fail)
       .onSuccess(ar -> eventHandler.handle(dataImportEventPayload)
         // then
         .whenComplete((eventPayload, throwable) -> {
@@ -113,9 +113,10 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           context.assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
           context.assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("AUTHORITY_RECORD_ID"));
           recordService.getRecordById(record.getId(), TENANT_ID)
-            .onSuccess(optionalDeletedRecord -> {
-              context.assertTrue(optionalDeletedRecord.isPresent());
-              Record deletedRecord = optionalDeletedRecord.get();
+            .onComplete(optionalDeletedRecordAr -> {
+              context.assertTrue(optionalDeletedRecordAr.succeeded());
+              context.assertTrue(optionalDeletedRecordAr.result().isPresent());
+              Record deletedRecord = optionalDeletedRecordAr.result().get();
               context.assertTrue(deletedRecord.getDeleted());
               context.assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
               async.complete();

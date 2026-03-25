@@ -1,7 +1,6 @@
 package org.folio.services.migrations;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,19 +42,15 @@ public class MarcIndexersVersionMigrationTaskRunner implements AsyncMigrationTas
       LOG.trace("executeScript:: Trying to execute script: '{}', migration jobId: '{}'", scriptPath, asyncMigrationJob.getId());
       InputStream scriptInputStream = TenantAPI.class.getClassLoader().getResourceAsStream(scriptPath);
       String script = IOUtils.toString(scriptInputStream, StandardCharsets.UTF_8);
-      Promise<Void> promise = Promise.promise();
 
-      postgresClientFactory.getCachedPool(tenantId).query(script).execute(rowsAr -> {
-        if (rowsAr.succeeded()) {
-          LOG.info("executeScript:: The script: '{}' successfully executed, migration jobId: '{}'", scriptPath, asyncMigrationJob.getId());
-          promise.complete();
-        } else {
-          LOG.error("executeScript:: Failed to execute script: '{}', migration jobId: '{}', cause: ",
-            scriptPath, asyncMigrationJob.getId(), rowsAr.cause());
-          promise.fail(rowsAr.cause());
-        }
-      });
-      return promise.future();
+      return postgresClientFactory.getCachedPool(tenantId)
+        .query(script)
+        .execute()
+        .<Void>mapEmpty()
+        .onSuccess(rows -> LOG.info("executeScript:: The script: '{}' successfully executed, migration jobId: '{}'",
+          scriptPath, asyncMigrationJob.getId()))
+        .onFailure(e -> LOG.error("executeScript:: Failed to execute script: '{}', migration jobId: '{}', cause: ",
+          scriptPath, asyncMigrationJob.getId(), e));
     } catch (Exception e) {
       LOG.error("executeScript:: Failed to run script '{}', migration jobId: '{}', cause: ", scriptPath, asyncMigrationJob.getId(), e);
       return Future.failedFuture(e);

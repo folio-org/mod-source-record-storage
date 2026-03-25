@@ -67,7 +67,7 @@ public class AuthorityDomainKafkaHandler implements AsyncRecordHandler<String, S
           log.debug("handle:: No records found [externalId: '{}', tenantId: '{}']", authorityId, tenantId);
           return Future.succeededFuture();
         }
-        var matchedId = recordCollection.getRecords().get(0).getMatchedId();
+        var matchedId = recordCollection.getRecords().getFirst().getMatchedId();
 
         return recordService.deleteRecordById(matchedId, IdType.RECORD, okapiHeaders);
       }).map(authorityId);

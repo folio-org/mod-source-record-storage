@@ -27,6 +27,7 @@ import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
 import org.folio.services.TenantDataProvider;
 import org.folio.services.TenantDataProviderImpl;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Field;
 import org.jooq.Table;
@@ -46,6 +47,8 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private RecordDao recordDao;
   private TenantDataProvider tenantDataProvider;
   private RecordService recordService;
@@ -58,7 +61,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Async async = context.async();
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     tenantDataProvider = new TenantDataProviderImpl(vertx);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
     marcIndexersVersionDeletionVerticle = new MarcIndexersVersionDeletionVerticle(recordDao, tenantDataProvider);
 
     String recordId = UUID.randomUUID().toString();

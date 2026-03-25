@@ -65,6 +65,7 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Condition;
 import org.jooq.OrderField;
@@ -90,6 +91,9 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   public RunTestOnContext rule = new RunTestOnContext();
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
+  @Mock
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
+
   private RecordDao recordDao;
 
   private RecordService recordService;
@@ -105,7 +109,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     marcRecord = new ParsedRecord()
       .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
     Async async = context.async();
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()).onComplete(save -> {
       if (save.failed()) {
@@ -1889,6 +1893,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void getMarcSourceRecordsByListOfIds(TestContext context, Record.RecordType recordType,
                                                RecordType parsedRecordType) {
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     List<Record> records = TestMocks.getRecords();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(records)
@@ -1902,7 +1907,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .map(Record::getMatchedId)
         .toList();
 
-      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, false, false, okapiHeaders).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }
@@ -1950,6 +1955,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   private void getMarcSourceRecordsByListOfIdsThatAreDeleted(TestContext context, Record.RecordType recordType,
                                                              RecordType parsedRecordType) {
     Async async = context.async();
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     List<Record> records = TestMocks.getRecords().stream()
       .map(rec -> {
         Record deletedRecord = new Record()
@@ -1985,7 +1991,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         .filter(r -> r.getRecordType().equals(recordType))
         .map(Record::getMatchedId)
         .toList();
-      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, TENANT_ID).onComplete(get -> {
+      recordService.getSourceRecords(ids, IdType.RECORD, parsedRecordType, true, false, okapiHeaders).onComplete(get -> {
         if (get.failed()) {
           context.fail(get.cause());
         }

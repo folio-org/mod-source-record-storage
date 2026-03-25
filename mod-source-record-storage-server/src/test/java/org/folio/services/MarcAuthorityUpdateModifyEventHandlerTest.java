@@ -61,6 +61,7 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcAuthorityUpdateModifyEventHandler;
@@ -166,8 +167,9 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
+    ConsortiumConfigurationCache consortiumConfigCache = new ConsortiumConfigurationCache(vertx, CACHE_EXPIRATION_TIME);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigCache, vertx);
     MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
     modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, null, mappingParametersCache, vertx);
 

@@ -8,6 +8,7 @@
 * [MODSOURCE-957](https://folio-org.atlassian.net/browse/MODSOURCE-957) Remove quick-marc events handling logic
 * [MODSOURCE-964](https://folio-org.atlassian.net/browse/MODSOURCE-964) 003 is being deleted when overlaying a MARC authority record with Data Import
 * [MODSOURCE-936](https://folio-org.atlassian.net/browse/MODSOURCE-936) Upgrade module to Vert.x 5.0
+* [MODSOURCE-978](https://folio-org.atlassian.net/browse/MODSOURCE-978) Data Import page unusable due to infinite loading
 
 ## 2025-03-13 5.10.0
 * [MODSOURMAN-1278](https://folio-org.atlassian.net/browse/MODSOURMAN-1278) Data import job stuck in progress with 99-100%

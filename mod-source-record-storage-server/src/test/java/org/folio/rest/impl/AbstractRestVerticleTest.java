@@ -15,6 +15,7 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.reactivex.core.Vertx;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
@@ -142,7 +143,8 @@ public abstract class AbstractRestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, "dummy-token");
+    TenantClient tenantClient =
+      new TenantClient(OKAPI_URL, TENANT_ID, "dummy-token", WebClient.create(vertx.getDelegate()));
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(res -> {

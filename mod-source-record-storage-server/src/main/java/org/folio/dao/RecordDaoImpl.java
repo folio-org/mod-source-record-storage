@@ -629,7 +629,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Optional<Record>> getRecordById(String id, String tenantId) {
-    return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordById(getQueryExecutor(tenantId), id));
+    return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordById(queryExecutor, id));
   }
 
   @Override

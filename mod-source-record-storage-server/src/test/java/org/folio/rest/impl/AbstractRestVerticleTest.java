@@ -15,6 +15,7 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.reactivex.core.Vertx;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
@@ -49,13 +50,13 @@ public abstract class AbstractRestVerticleTest {
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static String useExternalDatabase;
-  private static int okapiPort;
 
   static final String TENANT_ID = "diku";
 
   static final String SOURCE_STORAGE_RECORDS_PATH = "/source-storage/records";
   static final String SOURCE_STORAGE_SNAPSHOTS_PATH = "/source-storage/snapshots";
   static final String SOURCE_STORAGE_SOURCE_RECORDS_PATH = "/source-storage/source-records";
+  static final String USER_TENANTS_PATH = "/user-tenants";
 
   static final String RAW_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/rawMarcRecordContent.sample";
   static final String PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH = "src/test/resources/parsedMarcRecordContent.sample";
@@ -68,7 +69,7 @@ public abstract class AbstractRestVerticleTest {
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
-  private static final int PORT = NetworkUtils.nextFreePort();
+  protected static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
   private static final String MAX_POOL_SIZE = "50";
 
@@ -93,6 +94,7 @@ public abstract class AbstractRestVerticleTest {
     vertx = Vertx.vertx(options);
 
     kafkaContainer.start();
+    setUpConsortiumConfigurationCache();
     //Property variables
     System.setProperty("kafka-host", kafkaContainer.getHost());
     System.setProperty("kafka-port", kafkaContainer.getFirstMappedPort() + "");
@@ -100,8 +102,6 @@ public abstract class AbstractRestVerticleTest {
     System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
     System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
-    okapiPort = NetworkUtils.nextFreePort();
-    String okapiUrl = "http://localhost:" + okapiPort;
     useExternalDatabase = System.getProperty(
       "org.folio.source.storage.test.database",
       "embedded");
@@ -143,9 +143,10 @@ public abstract class AbstractRestVerticleTest {
         throw new Exception(message);
     }
 
-    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, "dummy-token");
+    TenantClient tenantClient =
+      new TenantClient(OKAPI_URL, TENANT_ID, "dummy-token", WebClient.create(vertx.getDelegate()));
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
-      .setConfig(new JsonObject().put("http.port", okapiPort));
+      .setConfig(new JsonObject().put("http.port", PORT));
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
@@ -184,7 +185,7 @@ public abstract class AbstractRestVerticleTest {
     String okapiUserId = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .setBaseUri("http://localhost:" + okapiPort)
+      .setBaseUri("http://localhost:" + PORT)
       .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
@@ -192,7 +193,7 @@ public abstract class AbstractRestVerticleTest {
 
     specWithoutUserId = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .setBaseUri("http://localhost:" + okapiPort)
+      .setBaseUri("http://localhost:" + PORT)
       .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_HEADER_TOKEN, OKAPI_TOKEN)
       .build();
@@ -211,6 +212,11 @@ public abstract class AbstractRestVerticleTest {
     }));
   }
 
+  private static void setUpConsortiumConfigurationCache() {
+    // set cache expiration time to 0 to avoid side effects between tests
+    System.setProperty("srs.consortium-configuration-cache.expiration.time.seconds", "0");
+  }
+
   protected void postSnapshots(TestContext testContext, Snapshot... snapshots) {
     Async async = testContext.async();
     for (Snapshot snapshot : snapshots) {
@@ -225,6 +231,19 @@ public abstract class AbstractRestVerticleTest {
     async.complete();
   }
 
+  protected void postSnapshots(String tenantId, Snapshot... snapshots) {
+    for (Snapshot snapshot : snapshots) {
+      RestAssured.given()
+        .spec(spec)
+        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .body(snapshot)
+        .when()
+        .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+  }
+
   protected void postRecords(TestContext testContext, Record... records) {
     Async async = testContext.async();
     for (Record record : records) {
@@ -237,6 +256,19 @@ public abstract class AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_CREATED);
     }
     async.complete();
+  }
+
+  protected void postRecords(String tenantId, Record... records) {
+    for (Record aRecord : records) {
+      RestAssured.given()
+        .spec(spec)
+        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .body(aRecord)
+        .when()
+        .post(SOURCE_STORAGE_RECORDS_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
   }
 
 }

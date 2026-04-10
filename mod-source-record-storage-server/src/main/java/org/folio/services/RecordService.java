@@ -12,7 +12,6 @@ import org.folio.dao.util.RecordType;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.ParsedRecordDto;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -67,11 +66,11 @@ public interface RecordService {
   /**
    * Saves record
    *
-   * @param record   record to save
+   * @param rec   record to save
    * @param okapiHeaders okapi headers
    * @return future with saved Record
    */
-  Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders);
+  Future<Record> saveRecord(Record rec, Map<String, String> okapiHeaders);
 
   /**
    * Saves collection of records
@@ -100,21 +99,21 @@ public interface RecordService {
   /**
    * Updates record with given id
    *
-   * @param record   record to update
+   * @param rec   record to update
    * @param okapiHeaders okapi headers
    * @return future with updated Record
    */
-  Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders);
+  Future<Record> updateRecord(Record rec, Map<String, String> okapiHeaders);
 
   /**
    * Updates record generation with given matched id
    *
    * @param matchedId   matched id
-   * @param record   record to update
+   * @param rec   record to update
    * @param okapiHeaders okapi headers
    * @return future with updated Record generation
    */
-  Future<Record> updateRecordGeneration(String matchedId, Record record, Map<String, String> okapiHeaders);
+  Future<Record> updateRecordGeneration(String matchedId, Record rec, Map<String, String> okapiHeaders);
 
   /**
    * Searches for {@link SourceRecord} by {@link Condition} and ordered by order fields with offset and limit
@@ -153,14 +152,16 @@ public interface RecordService {
   /**
    * Searches for {@link SourceRecord} where id in a list of ids defined by id type. i.e. INSTANCE or RECORD
    *
-   * @param ids            list of ids
-   * @param idType         id type
-   * @param recordType     record type
-   * @param deleted        filter by state DELETED or leader record status d, s, or x
-   * @param tenantId       tenant id
+   * @param ids           list of ids
+   * @param idType        id type
+   * @param recordType    record type
+   * @param deleted       filter by state DELETED or leader record status d, s, or x
+   * @param includeShared indicates whether to include records from central tenant
+   * @param okapiHeaders  okapi headers
    * @return future with {@link SourceRecordCollection}
    */
-  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted, String tenantId);
+  Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType, Boolean deleted,
+                                                  Boolean includeShared, Map<String, String> okapiHeaders);
 
   /**
    * Searches for source record by id via specific id type
@@ -186,11 +187,11 @@ public interface RecordService {
   /**
    * Updates {@link ParsedRecord} in the db
    *
-   * @param record   record dto from which {@link ParsedRecord} will be updated
+   * @param rec   record dto from which {@link ParsedRecord} will be updated
    * @param okapiHeaders okapi headers
    * @return future with updated ParsedRecord
    */
-  Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders);
+  Future<ParsedRecord> updateParsedRecord(Record rec, Map<String, String> okapiHeaders);
 
   /**
    * Update parsed records from collection of records and external relations ids in one transaction
@@ -248,17 +249,6 @@ public interface RecordService {
    * @return future with true if succeeded
    */
   Future<Void> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders);
-
-  /**
-   * Creates new updated Record with incremented generation linked to a new Snapshot, and sets OLD status to the "old" Record,
-   * no data is deleted as a result of the update
-   *
-   * @param parsedRecordDto parsed record DTO containing updates to parsed record
-   * @param snapshotId      snapshot id to which new Record should be linked
-   * @param okapiHeaders okapi headers
-   * @return future with updated Record
-   */
-  Future<Record> updateSourceRecord(ParsedRecordDto parsedRecordDto, String snapshotId, Map<String, String> okapiHeaders);
 
   /**
    * Find marc bib ids by incoming arrays from SRM and exclude all valid marc bib and return only marc bib ids,

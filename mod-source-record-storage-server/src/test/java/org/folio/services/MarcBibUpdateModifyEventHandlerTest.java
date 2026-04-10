@@ -82,6 +82,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
+import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.caches.LinkingRulesCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
@@ -254,7 +255,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     snapshotDao = new SnapshotDaoImpl(postgresClientFactory);
-    recordService = new RecordServiceImpl(recordDao);
+    ConsortiumConfigurationCache consortiumConfigCache = new ConsortiumConfigurationCache(vertx, CACHE_EXPIRATION_TIME);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigCache, vertx);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
     LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);

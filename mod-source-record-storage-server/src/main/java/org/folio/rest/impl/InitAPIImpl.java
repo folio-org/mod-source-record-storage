@@ -25,7 +25,6 @@ import org.folio.verticle.consumers.AuthorityLinkChunkConsumersVerticle;
 import org.folio.verticle.consumers.CancelledJobExecutionConsumersVerticle;
 import org.folio.verticle.consumers.DataImportConsumersVerticle;
 import org.folio.verticle.consumers.ParsedRecordChunkConsumersVerticle;
-import org.folio.verticle.consumers.QuickMarcConsumersVerticle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -50,9 +49,6 @@ public class InitAPIImpl implements InitAPI {
 
   @Value("${srs.kafka.DataImportConsumer.instancesNumber:1}")
   private int dataImportConsumerInstancesNumber;
-
-  @Value("${srs.kafka.QuickMarcConsumer.instancesNumber:1}")
-  private int quickMarcConsumerInstancesNumber;
 
   @Value("${srs.kafka.AuthorityLinkChunkConsumer.instancesNumber:1}")
   private int authorityLinkChunkConsumerInstancesNumber;
@@ -101,8 +97,6 @@ public class InitAPIImpl implements InitAPI {
         OptionalInt.of(dataImportConsumerInstancesNumber)),
       deployWorkerVerticle(vertx, ParsedRecordChunkConsumersVerticle.class,
         OptionalInt.of(parsedMarcChunkConsumerInstancesNumber)),
-      deployWorkerVerticle(vertx, QuickMarcConsumersVerticle.class,
-        OptionalInt.of(quickMarcConsumerInstancesNumber)),
       deployVerticle(vertx, CancelledJobExecutionConsumersVerticle.class, OptionalInt.of(1), EVENT_LOOP)
     ));
   }

@@ -419,6 +419,66 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
+  public void shouldCloseStreamRecordsTransactionWhenSubscriberCancels(TestContext context) {
+    Async async = context.async();
+    List<Record> records = TestMocks.getRecords();
+    RecordCollection recordCollection = new RecordCollection()
+      .withRecords(records)
+      .withTotalRecords(records.size());
+    saveRecords(recordCollection.getRecords()).onComplete(batch -> {
+      if (batch.failed()) {
+        context.fail(batch.cause());
+        return;
+      }
+      String snapshotId = "ee561342-3098-47a8-ab6e-0f3eba120b04";
+      Condition condition = RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString(snapshotId));
+      List<OrderField<?>> orderFields = new ArrayList<>();
+      orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+
+      List<Record> expected = records.stream()
+        .filter(r -> r.getRecordType().equals(Record.RecordType.MARC_BIB))
+        .filter(r -> r.getSnapshotId().equals(snapshotId))
+        .sorted(comparing(Record::getOrder))
+        .toList();
+
+      Flowable.range(0, 25)
+        .concatMapSingle(ignored -> recordService
+          .streamRecords(condition, RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+          .firstOrError())
+        .ignoreElements()
+        .andThen(recordService
+          .streamRecords(condition, RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+          .toList())
+        .subscribe(actual -> {
+          context.assertEquals(expected.size(), actual.size());
+          compareRecords(context, expected.get(0), actual.get(0));
+          compareRecords(context, expected.get(1), actual.get(1));
+          compareRecords(context, expected.get(2), actual.get(2));
+          async.complete();
+        }, context::fail);
+    });
+  }
+
+  @Test
+  public void shouldRollbackAndCloseWhenStreamRecordsQueryFails(TestContext context) {
+    Async async = context.async();
+    Condition badCondition = DSL.field("nonexistent_column").eq("value");
+    List<OrderField<?>> orderFields = new ArrayList<>();
+    orderFields.add(RECORDS_LB.ORDER.sort(SortOrder.ASC));
+
+    Flowable.range(0, 5)
+      .concatMapCompletable(ignored -> recordService
+        .streamRecords(badCondition, RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+        .ignoreElements()
+        .onErrorComplete())
+      .andThen(recordService
+        .streamRecords(RECORDS_LB.SNAPSHOT_ID.eq(UUID.fromString("ee561342-3098-47a8-ab6e-0f3eba120b04")),
+          RecordType.MARC_BIB, orderFields, 0, 10, TENANT_ID)
+        .ignoreElements())
+      .subscribe(async::complete, context::fail);
+  }
+
+  @Test
   public void shouldStreamMarcAuthorityRecordsBySnapshotId(TestContext context) {
     streamRecordsBySnapshotId(context, "ee561342-3098-47a8-ab6e-0f3eba120b04", RecordType.MARC_AUTHORITY,
       Record.RecordType.MARC_AUTHORITY);

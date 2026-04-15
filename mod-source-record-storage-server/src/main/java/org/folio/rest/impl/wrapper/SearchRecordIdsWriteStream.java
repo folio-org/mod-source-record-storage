@@ -1,6 +1,5 @@
 package org.folio.rest.impl.wrapper;
 
-import org.springframework.lang.Nullable;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
@@ -76,7 +75,7 @@ public class SearchRecordIdsWriteStream implements WriteStream<Row> {
   }
 
   @Override
-  public WriteStream<Row> drainHandler(@Nullable Handler<Void> handler) {
+  public WriteStream<Row> drainHandler(Handler<Void> handler) {
     delegate.drainHandler(handler);
     return this;
   }

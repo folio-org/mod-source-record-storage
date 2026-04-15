@@ -1,4 +1,4 @@
-## 2025-mm-dd 6.0.0-SNAPSHOT
+## 2026-04-15 6.0.0
 * [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
 * [MODSOURCE-941](https://folio-org.atlassian.net/browse/MODSOURCE-941) Remove relatedRecordVersion from parsedRecordDto and add generation field to source record
 * [MODSOURCE-745](https://folio-org.atlassian.net/browse/MODSOURCE-745) Subscribe to JobExecution cancellation and add cache
@@ -10,6 +10,11 @@
 * [MODSOURCE-936](https://folio-org.atlassian.net/browse/MODSOURCE-936) Upgrade module to Vert.x 5.0
 * [MODSOURCE-978](https://folio-org.atlassian.net/browse/MODSOURCE-978) Data Import page unusable due to infinite loading
 * [MODSOURCE-977](https://folio-org.atlassian.net/browse/MODSOURCE-977) Extend POST /source-storage/source-records to search on central tenant during call for member tenant
+* [MODSOURCE-985](https://folio-org.atlassian.net/browse/MODSOURCE-985) Remove unused InstancePostProcessingEventHandler
+* [MODSOURCE-955](https://folio-org.atlassian.net/browse/MODSOURCE-955) Fix MappingParameters snapshot was not found by jobExecutionId error
+* [MODSOURCE-950](https://folio-org.atlassian.net/browse/MODSOURCE-950) Upgraded docker maven plugin
+* [MODSOURCE-805](https://folio-org.atlassian.net/browse/MODSOURCE-805) Include Job Execution Identifiers In Logs
+* [MODSOURCE-804](https://folio-org.atlassian.net/browse/MODSOURCE-804) Include FOLIO Identifiers in Kafka Messages
 
 ## 2025-03-13 5.10.0
 * [MODSOURMAN-1278](https://folio-org.atlassian.net/browse/MODSOURMAN-1278) Data import job stuck in progress with 99-100%

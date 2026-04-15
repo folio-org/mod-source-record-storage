@@ -1,6 +1,6 @@
 package org.folio.rest.impl.wrapper;
 
-import io.vertx.codegen.annotations.Nullable;
+import org.springframework.lang.Nullable;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;

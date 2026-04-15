@@ -8,10 +8,8 @@ import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDI
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_HOLDING_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_ITEM_UPDATED;
@@ -47,10 +45,8 @@ public class DataImportConsumersVerticle extends AbstractConsumerVerticle<String
     DI_INVENTORY_HOLDING_MATCHED.value(),
     DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_INSTANCE_CREATED.value(),
-    DI_INVENTORY_INSTANCE_CREATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_INSTANCE_MATCHED.value(),
     DI_INVENTORY_INSTANCE_UPDATED.value(),
-    DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING.value(),
     DI_INVENTORY_ITEM_CREATED.value(),
     DI_INVENTORY_ITEM_MATCHED.value(),
     DI_INVENTORY_ITEM_UPDATED.value(),

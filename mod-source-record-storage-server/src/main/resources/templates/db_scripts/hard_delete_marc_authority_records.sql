@@ -6,21 +6,11 @@
 -- Requirements:
 -- Replace ${tenantId} placeholder with specific tenant id
 SET search_path TO ${tenantId}_mod_source_record_storage, ${tenantId}_mod_entities_links;
-WITH deleted_marc AS (
-    DELETE FROM marc_records_lb
-    WHERE id IN (
-        SELECT r.id
-        FROM records_lb r
-        WHERE r.record_type = 'MARC_AUTHORITY'
-          AND r.external_id IS NOT NULL
-          AND NOT EXISTS (
-                SELECT 1
-                FROM authority a
-                WHERE a.id = r.external_id
-              )
-    )
-    RETURNING id
-)
 DELETE FROM records_lb r
-USING deleted_marc dm
-WHERE r.id = dm.id;
+WHERE r.record_type = 'MARC_AUTHORITY'
+  AND r.external_id IS NOT NULL
+  AND NOT EXISTS (
+        SELECT 1
+        FROM authority a
+        WHERE a.id = r.external_id
+      );

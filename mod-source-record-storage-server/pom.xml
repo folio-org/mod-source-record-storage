@@ -22,19 +22,19 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>kafka</artifactId>
+      <artifactId>testcontainers-kafka</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>toxiproxy</artifactId>
+      <artifactId>testcontainers-toxiproxy</artifactId>
       <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
@@ -221,7 +221,7 @@
   </dependencies>
 
   <properties>
-    <testcontainers.version>1.21.0</testcontainers.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
     <basedir>${project.parent.basedir}</basedir>
     <ramlfiles_path>${project.parent.basedir}/ramls</ramlfiles_path>
     <jooq.version>3.16.19</jooq.version>

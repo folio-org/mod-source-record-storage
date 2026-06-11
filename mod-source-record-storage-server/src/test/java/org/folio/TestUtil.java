@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 
 public final class TestUtil {
 
-  private static final DockerImageName KAFKA_CONTAINER_NAME = DockerImageName.parse("apache/kafka-native:3.8.0");
+  private static final DockerImageName KAFKA_CONTAINER_NAME = DockerImageName.parse("apache/kafka-native:4.2.0");
 
   @SuppressWarnings("resource")
   public static KafkaContainer getKafkaContainer() {

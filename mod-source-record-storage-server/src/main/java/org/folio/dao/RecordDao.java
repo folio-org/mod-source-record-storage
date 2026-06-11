@@ -340,6 +340,15 @@ public interface RecordDao {
   Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId);
 
   /**
+   * Searches for {@link SourceRecord} by {@link Condition}
+   *
+   * @param queryExecutor  query execution
+   * @param condition query where condition
+   * @return return future with optional {@link SourceRecord}
+   */
+  Future<Optional<SourceRecord>> getSourceRecordByCondition(QueryExecutor queryExecutor, Condition condition);
+
+  /**
    * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
    *
    * @param id             id
@@ -349,6 +358,17 @@ public interface RecordDao {
    * @return return future with optional {@link SourceRecord}
    */
   Future<Optional<SourceRecord>> getSourceRecordByExternalId(String id, IdType idType, RecordState state, String tenantId);
+
+  /**
+   * Searches for {@link SourceRecord} by external entity which was created from desired record by specific type.
+   *
+   * @param queryExecutor  query execution
+   * @param id             id
+   * @param idType external id type on which source record will be searched
+   * @param state external record state on which source record will be searched
+   * @return return future with optional {@link SourceRecord}
+   */
+  Future<Optional<SourceRecord>> getSourceRecordByExternalId(QueryExecutor queryExecutor, String id, IdType idType, RecordState state);
 
   /**
    * Deletes in transaction all records associated with specified snapshot and snapshot itself

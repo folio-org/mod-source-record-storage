@@ -56,6 +56,7 @@ import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dao.util.executor.QueryExecutor;
 import org.folio.dataimport.util.OkapiConnectionParams;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.value.ListValue;
@@ -154,7 +155,7 @@ public class RecordServiceImpl implements RecordService {
           }
           return Future.succeededFuture();
         })
-        .compose(v -> setMatchedIdForRecord(rec, tenantId))
+        .compose(v -> setMatchedIdForRecord(queryExecutor, rec))
         .compose(r -> {
           if (Objects.isNull(r.getGeneration())) {
             return recordDao.calculateGeneration(queryExecutor, r);
@@ -476,18 +477,24 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private Future<Record> setMatchedIdForRecord(Record rec, String tenantId) {
-    String marcField999s = getFieldFromMarcRecord(rec, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
-    if (marcField999s != null) {
-      // Set matched id from 999$s marc field
-      LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, rec.getId());
-      return Future.succeededFuture(rec.withMatchedId(marcField999s));
+    Optional<Record> fastResult = tryGetMatchedIdFrom999(rec);
+    if (fastResult.isPresent()) {
+      return Future.succeededFuture(fastResult.get());
+    }
+    return recordDao.executeInTransaction(queryExecutor -> setMatchedIdForRecord(queryExecutor, rec), tenantId);
+  }
+
+  private Future<Record> setMatchedIdForRecord(QueryExecutor queryExecutor, Record rec) {
+    Optional<Record> fastResult = tryGetMatchedIdFrom999(rec);
+    if (fastResult.isPresent()) {
+      return Future.succeededFuture(fastResult.get());
     }
     Promise<Record> promise = Promise.promise();
     String externalId = RecordDaoUtil.getExternalId(rec.getExternalIdsHolder(), rec.getRecordType());
     IdType idType = getExternalIdType(rec.getRecordType());
 
     if (externalId != null && idType != null && rec.getState() == Record.State.ACTUAL) {
-      setMatchedIdFromExistingSourceRecord(rec, tenantId, promise, externalId, idType);
+      setMatchedIdFromExistingSourceRecord(queryExecutor, rec, promise, externalId, idType);
     } else {
       // Set matched id same as record id
       promise.complete(rec.withMatchedId(rec.getId()));
@@ -500,8 +507,18 @@ public class RecordServiceImpl implements RecordService {
     });
   }
 
-  private void setMatchedIdFromExistingSourceRecord(Record rec, String tenantId, Promise<Record> promise, String externalId, IdType idType) {
-    recordDao.getSourceRecordByExternalId(externalId, idType, RecordState.ACTUAL, tenantId)
+  private static Optional<Record> tryGetMatchedIdFrom999(Record rec) {
+    String marcField999s = getFieldFromMarcRecord(rec, TAG_999, INDICATOR, INDICATOR, SUBFIELD_S);
+    if (marcField999s != null) {
+      // Set matched id from 999$s marc field
+      LOG.debug("setMatchedIdForRecord:: Set matchedId: {} from 999$s field for record with id: {}", marcField999s, rec.getId());
+      return Optional.of(rec.withMatchedId(marcField999s));
+    }
+    return Optional.empty();
+  }
+
+  private void setMatchedIdFromExistingSourceRecord(QueryExecutor queryExecutor, Record rec, Promise<Record> promise, String externalId, IdType idType) {
+    recordDao.getSourceRecordByExternalId(queryExecutor, externalId, idType, RecordState.ACTUAL)
       .onComplete(ar -> {
         if (ar.succeeded()) {
           Optional<SourceRecord> sourceRecord = ar.result();

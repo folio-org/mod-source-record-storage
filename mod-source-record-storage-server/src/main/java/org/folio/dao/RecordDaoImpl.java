@@ -1163,22 +1163,30 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByExternalId(QueryExecutor queryExecutor, String externalId, IdType idType, RecordState state) {
+    Condition condition = buildConditionBasedOnState(externalId, idType, state);
+    return getSourceRecordByCondition(queryExecutor, condition);
+  }
+
+  @Override
   public Future<Optional<SourceRecord>> getSourceRecordByCondition(Condition condition, String tenantId) {
     return getQueryExecutor(tenantId)
-      .transaction(queryExecutor -> RecordDaoUtil.findByCondition(queryExecutor, condition)
-        .compose(optionalRecord -> {
-          if (optionalRecord.isPresent()) {
-            return lookupAssociatedRecords(queryExecutor, optionalRecord.get(), false)
-              .map(RecordDaoUtil::toSourceRecord)
-              .map(sourceRecord -> {
-                if (Objects.nonNull(sourceRecord.getParsedRecord())) {
-                  return Optional.of(sourceRecord);
-                }
-                return Optional.empty();
-              });
-          }
+      .transaction(queryExecutor -> getSourceRecordByCondition(queryExecutor, condition));
+  }
+
+  @Override
+  public Future<Optional<SourceRecord>> getSourceRecordByCondition(QueryExecutor queryExecutor, Condition condition) {
+    return RecordDaoUtil.findByCondition(queryExecutor, condition)
+      .compose(optionalRecord -> {
+        if (optionalRecord.isEmpty()) {
           return Future.succeededFuture(Optional.empty());
-        }));
+        }
+        return lookupAssociatedRecords(queryExecutor, optionalRecord.get(), false)
+          .map(RecordDaoUtil::toSourceRecord)
+          .map(sourceRecord -> Objects.nonNull(sourceRecord.getParsedRecord())
+            ? Optional.of(sourceRecord)
+            : Optional.<SourceRecord>empty());
+      });
   }
 
   @Override

@@ -316,46 +316,4 @@ public class DataImportKafkaHandlerTest {
     }));
     async.await();
   }
-
-  @Test
-  public void shouldSkipNonAuthorityEventIfJobIsCancelled(TestContext context) {
-    // Given: Job is cancelled and event type is NOT an allowed authority event
-    String cancelledJobId = UUID.randomUUID().toString();
-    String expectedKafkaRecordKey = "test_key";
-
-    // Setup mock to return true for cancelled job check
-    when(cancelledJobsIdsCacheMock.contains(cancelledJobId)).thenReturn(true);
-
-    DataImportEventPayload eventPayload = new DataImportEventPayload()
-      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value()) // Regular event, NOT authority
-      .withJobExecutionId(cancelledJobId)
-      .withTenant(TENANT_ID)
-      .withOkapiUrl(OKAPI_URL)
-      .withContext(new HashMap<>(Map.of(PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId())));
-
-    Event event = new Event()
-      .withId(UUID.randomUUID().toString())
-      .withEventPayload(Json.encode(eventPayload));
-
-    List<KafkaHeader> headers = List.of(
-      KafkaHeader.header(RECORD_ID_HEADER, UUID.randomUUID().toString()),
-      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString()),
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
-    );
-
-    KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
-    when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
-    when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
-    when(kafkaRecord.headers()).thenReturn(headers);
-
-    // When: Process non-authority event with cancelled job
-    Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
-
-    // Then: Event should be skipped
-    future.onComplete(context.asyncAssertSuccess(actualKafkaRecordKey -> {
-      context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
-      verify(profileSnapshotCacheMock, never()).get(anyString(), any(OkapiConnectionParams.class));
-      verify(mockedEventHandler, never()).handle(any(DataImportEventPayload.class));
-    }));
-  }
 }

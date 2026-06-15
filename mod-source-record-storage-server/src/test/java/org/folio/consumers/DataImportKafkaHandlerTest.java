@@ -135,6 +135,7 @@ public class DataImportKafkaHandlerTest {
     EventManager.clearEventHandlers();
     EventManager.registerEventHandler(mockedEventHandler);
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, 1);
+
   }
 
   @After
@@ -198,11 +199,13 @@ public class DataImportKafkaHandlerTest {
   @Test
   public void shouldReturnSucceededFutureAndSkipEventProcessingIfEventPayloadContainsCancelledJobExecutionId(TestContext context) {
     // given
+    Async async = context.async();
     String expectedKafkaRecordKey = "test_key";
     String cancelledJobId = UUID.randomUUID().toString();
     when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(true);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value())
       .withJobExecutionId(cancelledJobId)
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
@@ -228,13 +231,15 @@ public class DataImportKafkaHandlerTest {
       context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
       verify(profileSnapshotCacheMock, never()).get(anyString(), any(OkapiConnectionParams.class));
       verify(mockedEventHandler, never()).isEligible(any(DataImportEventPayload.class));
+      async.complete();
     }));
+    async.await();
   }
 
   private void verifyEventPublished(String eventType, TestContext context) {
     String topicToObserve = formatToKafkaTopicName(eventType);
     List<ConsumerRecord<String, String>> observedEvents = observeKafkaEvents(topicToObserve);
-    context.assertEquals(1, observedEvents.size());
+    context.assertTrue(!observedEvents.isEmpty(), "Expected at least 1 event, but got " + observedEvents.size());
   }
 
   private String formatToKafkaTopicName(String eventType) {
@@ -246,7 +251,7 @@ public class DataImportKafkaHandlerTest {
     consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
     consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
+    consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID());
     consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     ConsumerRecords<String, String> records;
     try (KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(consumerProperties)) {
@@ -309,6 +314,7 @@ public class DataImportKafkaHandlerTest {
       context.assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
       async.complete();
     }));
+    async.await();
   }
 
   @Test

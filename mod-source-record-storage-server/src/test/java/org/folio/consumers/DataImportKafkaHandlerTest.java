@@ -256,4 +256,100 @@ public class DataImportKafkaHandlerTest {
     return IteratorUtils.toList(records.iterator());
   }
 
+
+  @Test
+  public void shouldProcessAuthorityEventDespiteCancelledJob_DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING(TestContext context) {
+    // Given: Job is cancelled but event type is DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING
+    Async async = context.async();
+    String cancelledJobId = UUID.randomUUID().toString();
+    String expectedRecordId = UUID.randomUUID().toString();
+    String expectedChunkId = UUID.randomUUID().toString();
+    String expectedUserId = UUID.randomUUID().toString();
+
+    // Setup mock to return true for cancelled job check
+    when(cancelledJobsIdsCacheMock.contains(cancelledJobId)).thenReturn(true);
+
+    DataImportEventPayload eventPayload = new DataImportEventPayload()
+      .withEventType("DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING")
+      .withJobExecutionId(cancelledJobId)
+      .withCurrentNode(jobProfileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(EMPTY)
+      .withContext(new HashMap<>(Map.of(
+        PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId()
+      )));
+
+    Event event = new Event()
+      .withEventType("DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING")
+      .withId(UUID.randomUUID().toString())
+      .withEventPayload(Json.encode(eventPayload));
+
+    List<KafkaHeader> headers = List.of(
+      new KafkaHeaderImpl(RECORD_ID_HEADER, expectedRecordId),
+      new KafkaHeaderImpl(CHUNK_ID_HEADER, expectedChunkId),
+      new KafkaHeaderImpl(USER_ID_HEADER, expectedUserId),
+      new KafkaHeaderImpl(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+    );
+
+    KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
+    when(kafkaRecord.headers()).thenReturn(headers);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
+
+    // When: Process the authority event
+    Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
+
+    // Then: Event should be processed despite cancelled job
+    future.onComplete(context.asyncAssertSuccess(v -> {
+      ArgumentCaptor<DataImportEventPayload> payloadCaptor = ArgumentCaptor.forClass(DataImportEventPayload.class);
+      verify(mockedEventHandler).handle(payloadCaptor.capture());
+      DataImportEventPayload payload = payloadCaptor.getValue();
+      context.assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
+      context.assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
+      context.assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
+      async.complete();
+    }));
+  }
+
+  @Test
+  public void shouldSkipNonAuthorityEventIfJobIsCancelled(TestContext context) {
+    // Given: Job is cancelled and event type is NOT an allowed authority event
+    String cancelledJobId = UUID.randomUUID().toString();
+    String expectedKafkaRecordKey = "test_key";
+
+    // Setup mock to return true for cancelled job check
+    when(cancelledJobsIdsCacheMock.contains(cancelledJobId)).thenReturn(true);
+
+    DataImportEventPayload eventPayload = new DataImportEventPayload()
+      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value()) // Regular event, NOT authority
+      .withJobExecutionId(cancelledJobId)
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withContext(new HashMap<>(Map.of(PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId())));
+
+    Event event = new Event()
+      .withId(UUID.randomUUID().toString())
+      .withEventPayload(Json.encode(eventPayload));
+
+    List<KafkaHeader> headers = List.of(
+      KafkaHeader.header(RECORD_ID_HEADER, UUID.randomUUID().toString()),
+      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString()),
+      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+    );
+
+    KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
+    when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
+    when(kafkaRecord.headers()).thenReturn(headers);
+
+    // When: Process non-authority event with cancelled job
+    Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
+
+    // Then: Event should be skipped
+    future.onComplete(context.asyncAssertSuccess(actualKafkaRecordKey -> {
+      context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
+      verify(profileSnapshotCacheMock, never()).get(anyString(), any(OkapiConnectionParams.class));
+      verify(mockedEventHandler, never()).handle(any(DataImportEventPayload.class));
+    }));
+  }
 }

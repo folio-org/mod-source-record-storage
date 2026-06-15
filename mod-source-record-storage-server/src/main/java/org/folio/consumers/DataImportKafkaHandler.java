@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.String.format;
@@ -34,6 +35,7 @@ import static org.apache.logging.log4j.Level.ERROR;
 import static org.apache.logging.log4j.Level.INFO;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.*;
 import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
 import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
@@ -50,6 +52,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
   static final String CHUNK_ID_HEADER = "chunkId";
   static final String USER_ID_HEADER = "userId";
   static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
+
+  private static final Set<String> CANCELLED_JOB_ALLOWED_EVENTS = Set.of(
+    DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value(),
+    DI_INVENTORY_AUTHORITY_UPDATED.value());
 
   private final Vertx vertx;
   private final KafkaConfig kafkaConfig;
@@ -113,15 +120,16 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     String jobId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
     try {
       Promise<String> promise = Promise.promise();
-      if (cancelledJobsIdCache.contains(jobId)) {
-        LOGGER.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
-          targetRecord.topic(), jobId);
-        return Future.succeededFuture(targetRecord.key());
-      }
-
       DataImportEventPayload eventPayload = Json.decodeValue(
         DatabindCodec.mapper().readValue(targetRecord.value(), Event.class).getEventPayload(),
         DataImportEventPayload.class);
+
+      if (cancelledJobsIdCache.contains(jobId) && !CANCELLED_JOB_ALLOWED_EVENTS.contains(eventPayload.getEventType())) {
+        LOGGER.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}', " +
+            "eventType: '{}' because the job has been cancelled", targetRecord.topic(), jobId, eventPayload.getEventType());
+        return Future.succeededFuture(targetRecord.key());
+      }
+
       String jobExecutionId = eventPayload.getJobExecutionId();
       String[] debugInfo = {jobExecutionId, recordId, chunkId, userId};
       printLogInfo(Level.INFO, format("handle:: Data import event payload has been received with event type: %s", eventPayload.getEventType()), debugInfo);

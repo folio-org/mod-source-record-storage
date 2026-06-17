@@ -36,7 +36,6 @@ import static org.apache.logging.log4j.Level.INFO;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
 import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
@@ -57,8 +56,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
 
   private static final Set<String> CANCELLED_JOB_ALLOWED_EVENTS = Set.of(
     DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value(),
-    DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value(),
-    DI_INVENTORY_AUTHORITY_UPDATED.value());
+    DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING.value());
 
   private final Vertx vertx;
   private final KafkaConfig kafkaConfig;

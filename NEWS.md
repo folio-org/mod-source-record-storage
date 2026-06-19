@@ -1,3 +1,7 @@
+## 2026-06-19 v6.0.1
+* [MODSOURCE-987](https://folio-org.atlassian.net/browse/MODSOURCE-987) MARC authority record from a cancelled DI job appears in MARC authority search but cannot be opened
+* [MODSOURCE-1002](https://folio-org.atlassian.net/browse/MODSOURCE-1002) Fix timeout issues
+
 ## 2026-04-15 6.0.0
 * [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching
 * [MODSOURCE-941](https://folio-org.atlassian.net/browse/MODSOURCE-941) Remove relatedRecordVersion from parsedRecordDto and add generation field to source record

@@ -715,6 +715,9 @@ public class RecordDaoImpl implements RecordDao {
       return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
     }
 
+    // Store old records in a holder so we can access them later for publishing UPDATE events
+    List<Record> oldRecordsHolder = new ArrayList<>();
+
     return context.owner().executeBlocking(
       () -> {
         try (Connection connection = getConnection(tenantId)) {
@@ -727,6 +730,10 @@ public class RecordDaoImpl implements RecordDao {
               LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
               return new RecordsBatchResponse().withTotalRecords(0);
             }
+
+            // Store old records for later event publishing
+            oldRecordsHolder.addAll(records);
+
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
             var modifiedRecords = recordsModifier.apply(existingRecordsCollection);
 
@@ -768,11 +775,28 @@ public class RecordDaoImpl implements RecordDao {
           throw e;
         }
       }
-    )
-      .map(response -> {
+    ).map(response -> {
         LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
-        response.getRecords()
-          .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders));
+        // Use publishRecordUpdated instead of publishRecordCreated
+        // Pair old and new records for proper event publishing
+        var newRecords = response.getRecords();
+        if (!newRecords.isEmpty() && !oldRecordsHolder.isEmpty()) {
+          // Create a map of old records by matched ID for pairing
+          Map<String, Record> oldRecordsMap = oldRecordsHolder.stream()
+            .collect(Collectors.toMap(r -> r.getMatchedId() != null ? r.getMatchedId() : r.getId(),
+                                      Function.identity(), (existing, replacement) -> existing));
+          newRecords.forEach(newRecord -> {
+            String key = newRecord.getMatchedId() != null ? newRecord.getMatchedId() : newRecord.getId();
+            Record oldRecord = oldRecordsMap.get(key);
+            if (oldRecord != null) {
+              LOG.debug("saveRecordsByExternalIds:: Publishing UPDATE event for record: {}", key);
+              recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
+            } else {
+              LOG.warn("saveRecordsByExternalIds:: Could not find old record for new record with key: {}", key);
+              recordDomainEventPublisher.publishRecordCreated(newRecord, okapiHeaders);
+            }
+          });
+        }
         return response;
       })
       .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));

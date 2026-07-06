@@ -1496,7 +1496,7 @@ public class RecordDaoImpl implements RecordDao {
         .map(existingRecord -> insertOrUpdateRecord(queryExecutor, oldRecord)
           .compose(r -> insertOrUpdateRecord(queryExecutor, newRecord))
           .onSuccess(updatedRecord ->
-            recordDomainEventPublisher.publishRecordUpdated(existingRecord, updatedRecord, okapiHeaders)))
+            recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders)))
         .orElse(Future.failedFuture(new NotFoundException(format(RECORD_NOT_FOUND_TEMPLATE, oldRecord.getId())))));
   }
 

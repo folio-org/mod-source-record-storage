@@ -51,13 +51,16 @@ public class RecordDomainEventPublisher {
   }
 
   private void publishRecord(DomainEventPayload domainEventPayload, Map<String, String> okapiHeaders, SourceRecordDomainEventType eventType) {
+    LOG.debug("publishRecord:: Publishing {} event for record", eventType);
     if (!domainEventsEnabled || notValidForPublishing(domainEventPayload)) {
+      LOG.info("publishRecord:: Skipping publication - domainEventsEnabled: {}, isValid: {}", domainEventsEnabled, !notValidForPublishing(domainEventPayload));
       return;
     }
     try {
       Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
+      LOG.info("publishRecord:: Sending event to Kafka - recordId: {}, eventType: {}", key, eventType);
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), Json.encode(domainEventPayload),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
@@ -66,6 +69,9 @@ public class RecordDomainEventPublisher {
   }
 
   private boolean notValidForPublishing(DomainEventPayload domainEventPayload) {
+    LOG.debug("notValidForPublishing:: Checking - oldRecord: {}, newRecord: {}",
+      domainEventPayload.oldRecord() != null ? "NOT_NULL" : "NULL",
+      domainEventPayload.newRecord() != null ? "NOT_NULL" : "NULL");
     if (domainEventPayload.newRecord() == null && domainEventPayload.oldRecord() == null) {
       LOG.warn("Old and new records are null and won't be sent as domain event");
       return true;
@@ -78,19 +84,19 @@ public class RecordDomainEventPublisher {
 
   private static boolean notValidRecord(Record aRecord) {
     if (isNull(aRecord)) {
-      LOG.warn("Record is null and won't be sent as domain event");
+      LOG.warn("Record is null - REASON: aRecord is NULL");
       return true;
     }
     if (isNull(aRecord.getRecordType())) {
-      LOG.warn("Record [with id {}] contains no type information and won't be sent as domain event", aRecord.getId());
+      LOG.warn("Record [with id {}] contains no type information - REASON: getRecordType() returned null", aRecord.getId());
       return true;
     }
     if (isNull(aRecord.getParsedRecord())) {
-      LOG.warn("Record [with id {}] contains no parsed record and won't be sent as domain event", aRecord.getId());
+      LOG.warn("Record [with id {}] contains no parsed record - REASON: getParsedRecord() returned null", aRecord.getId());
       return true;
     }
     if (isNull(aRecord.getParsedRecord().getContent())) {
-      LOG.warn("Record [with id {}] contains no parsed record content and won't be sent as domain event",
+      LOG.warn("Record [with id {}] contains no parsed record content - REASON: getContent() returned null",
         aRecord.getId());
       return true;
     }

@@ -739,6 +739,10 @@ public class RecordDaoImpl implements RecordDao {
             }
 
             // Store old records for later event publishing
+            // Debug: log all records before storing old records
+            records.forEach(r -> LOG.debug("saveRecordsByExternalIds:: OLD record - ID: {}, matched_id: {}, generation: {}, state: {}, parsedRecord: {}",
+              r.getId(), r.getMatchedId(), r.getGeneration(), r.getState(), r.getParsedRecord() != null ? "present" : "null"));
+
             oldRecordsHolder.addAll(records);
 
             LOG.debug("saveRecordsByExternalIds:: Stored {} old records in holder", oldRecordsHolder.size());
@@ -748,7 +752,7 @@ public class RecordDaoImpl implements RecordDao {
 
             LOG.debug("saveRecordsByExternalIds:: Applied recordsModifier to records, modified count: {}", modifiedRecords.getTotalRecords());
             modifiedRecords.getRecords().forEach(r -> {
-              LOG.debug("  - Modified Record ID: {}, matched_id: {}, generation: {}", 
+              LOG.debug("  - Modified Record ID: {}, matched_id: {}, generation: {}",
                 r.getId(), r.getMatchedId(), r.getGeneration());
               if (r.getParsedRecord() != null && r.getParsedRecord().getContent() != null) {
                 LOG.debug("    ParsedRecord content updated");

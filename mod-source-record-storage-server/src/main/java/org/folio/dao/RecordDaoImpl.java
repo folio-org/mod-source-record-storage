@@ -741,7 +741,7 @@ public class RecordDaoImpl implements RecordDao {
             // Store old records for later event publishing
             // Debug: log all records before storing old records
             records.forEach(r -> LOG.debug("saveRecordsByExternalIds:: OLD record - ID: {}, matched_id: {}, generation: {}, state: {}, parsedRecord: {}",
-              r.getId(), r.getMatchedId(), r.getGeneration(), r.getState(), r.getParsedRecord() != null ? "present" : "null"));
+              r.getId(), r.getMatchedId(), r.getGeneration(), r.getState(), r.getParsedRecord() != null ? r.getParsedRecord().getFormattedContent() : "null"));
 
             oldRecordsHolder.addAll(records);
 

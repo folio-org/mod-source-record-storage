@@ -740,8 +740,20 @@ public class RecordDaoImpl implements RecordDao {
 
             // Store old records for later event publishing
             // Debug: log all records before storing old records
-            records.forEach(r -> LOG.debug("saveRecordsByExternalIds:: OLD record - ID: {}, matched_id: {}, generation: {}, state: {}, parsedRecord: {}",
-              r.getId(), r.getMatchedId(), r.getGeneration(), r.getState(), r.getParsedRecord() != null ? r.getParsedRecord().getFormattedContent() : "null"));
+            records.forEach(r -> LOG.debug(
+              "saveRecordsByExternalIds:: OLD record - id: {}, snapshotId: {}, matchedId: {}, generation: {}, "
+                + "recordType: {}, state: {}, order: {}, deleted: {}, leaderRecordStatus: {}, "
+                + "externalIdsHolder: {}, additionalInfo: {}, metadata: {}, "
+                + "rawRecord: {}, parsedRecord.id: {}, parsedRecord.formattedContent: {}, parsedRecord.content: {}, "
+                + "errorRecord: {}",
+              r.getId(), r.getSnapshotId(), r.getMatchedId(), r.getGeneration(),
+              r.getRecordType(), r.getState(), r.getOrder(), r.getDeleted(), r.getLeaderRecordStatus(),
+              r.getExternalIdsHolder(), r.getAdditionalInfo(), r.getMetadata(),
+              r.getRawRecord() != null ? r.getRawRecord().getId() : "null",
+              r.getParsedRecord() != null ? r.getParsedRecord().getId() : "null",
+              r.getParsedRecord() != null ? r.getParsedRecord().getFormattedContent() : "null",
+              r.getParsedRecord() != null ? r.getParsedRecord().getContent() : "null",
+              r.getErrorRecord() != null ? r.getErrorRecord().getId() : "null"));
 
             oldRecordsHolder.addAll(records);
 

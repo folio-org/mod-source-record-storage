@@ -832,8 +832,10 @@ public class RecordDaoImpl implements RecordDao {
             if (oldRecord != null) {
               LOG.debug("saveRecordsByExternalIds:: Publishing UPDATE event for record: {}", key);
               LOG.debug("    -> Publishing UPDATE event");
-              LOG.debug("       Old record - ID: {}, generation: {}", oldRecord.getId(), oldRecord.getGeneration());
-              LOG.debug("       New record - ID: {}, generation: {}", newRecord.getId(), newRecord.getGeneration());
+              LOG.debug("       Old record - ID: {}, generation: {}, parsedRecord.content: {}",
+                oldRecord.getId(), oldRecord.getGeneration(), oldRecord.getParsedRecord() != null ? oldRecord.getParsedRecord().getContent() : "null");
+              LOG.debug("       New record - ID: {}, generation: {}, parsedRecord.content: {}",
+                newRecord.getId(), newRecord.getGeneration(), newRecord.getParsedRecord() != null ? newRecord.getParsedRecord().getContent() : "null");
               recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
             } else {
               LOG.warn("saveRecordsByExternalIds:: Could not find old record for new record with key: {}", key);

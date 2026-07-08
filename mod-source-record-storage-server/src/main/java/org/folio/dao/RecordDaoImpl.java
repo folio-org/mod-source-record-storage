@@ -732,32 +732,10 @@ public class RecordDaoImpl implements RecordDao {
             var records = queryResult.fetch(this::toRecord);
 
             LOG.debug("saveRecordsByExternalIds:: Fetched {} old records from DB", records.size());
-            if (!records.isEmpty()) {
-              records.forEach(r -> LOG.debug("  - Record ID: {}, matched_id: {}, generation: {}, state: {}",
-                r.getId(), r.getMatchedId(), r.getGeneration(), r.getState()));
-            }
-
             if (CollectionUtils.isEmpty(records)) {
               LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
               return new RecordsBatchResponse().withTotalRecords(0);
             }
-
-            // Store old records for later event publishing
-            // Debug: log all records before storing old records
-            records.forEach(r -> LOG.debug(
-              "saveRecordsByExternalIds:: OLD record - id: {}, snapshotId: {}, matchedId: {}, generation: {}, "
-                + "recordType: {}, state: {}, order: {}, deleted: {}, leaderRecordStatus: {}, "
-                + "externalIdsHolder: {}, additionalInfo: {}, metadata: {}, "
-                + "rawRecord: {}, parsedRecord.id: {}, parsedRecord.formattedContent: {}, parsedRecord.content: {}, "
-                + "errorRecord: {}",
-              r.getId(), r.getSnapshotId(), r.getMatchedId(), r.getGeneration(),
-              r.getRecordType(), r.getState(), r.getOrder(), r.getDeleted(), r.getLeaderRecordStatus(),
-              r.getExternalIdsHolder(), r.getAdditionalInfo(), r.getMetadata(),
-              r.getRawRecord() != null ? r.getRawRecord().getId() : "null",
-              r.getParsedRecord() != null ? r.getParsedRecord().getId() : "null",
-              r.getParsedRecord() != null ? r.getParsedRecord().getFormattedContent() : "null",
-              r.getParsedRecord() != null ? r.getParsedRecord().getContent() : "null",
-              r.getErrorRecord() != null ? r.getErrorRecord().getId() : "null"));
 
             // Deep-clone old records via Jackson tree conversion so that later mutations
             // by recordsModifier do not affect the snapshot used for UPDATE events.
@@ -765,19 +743,9 @@ public class RecordDaoImpl implements RecordDao {
             for (Record r : records) {
               oldRecordsHolder.add(OBJECT_MAPPER.convertValue(r, Record.class));
             }
-            LOG.debug("saveRecordsByExternalIds:: Stored {} old records in holder", oldRecordsHolder.size());
 
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
             var modifiedRecords = recordsModifier.apply(existingRecordsCollection);
-
-            LOG.debug("saveRecordsByExternalIds:: Applied recordsModifier to records, modified count: {}", modifiedRecords.getTotalRecords());
-            modifiedRecords.getRecords().forEach(r -> {
-              LOG.debug("  - Modified Record ID: {}, matched_id: {}, generation: {}",
-                r.getId(), r.getMatchedId(), r.getGeneration());
-              if (r.getParsedRecord() != null && r.getParsedRecord().getContent() != null) {
-                LOG.debug("    ParsedRecord content updated");
-              }
-            });
 
             // validate snapshot
             var snapshotId = modifiedRecords.getRecords().getFirst().getSnapshotId();
@@ -801,12 +769,9 @@ public class RecordDaoImpl implements RecordDao {
             LOG.info("saveRecordsByExternalIds:: recordCollection: {}", modifiedRecords.getTotalRecords());
             persistDatabaseRecords(dsl, recordType, matchedIds, dbRecords, dbRawRecords, dbParsedRecords, dbErrorRecords);
 
-            LOG.debug("saveRecordsByExternalIds:: Persisted {} records to DB", dbRecords.size());
-
             // return result
             queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
             records = queryResult.fetch(this::toRecord);
-            LOG.debug("saveRecordsByExternalIds:: Re-fetched {} records from DB after persistence", records.size());
 
             return new RecordsBatchResponse()
               .withRecords(records)
@@ -823,36 +788,24 @@ public class RecordDaoImpl implements RecordDao {
       }
     ).map(response -> {
         LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
-        // Use publishRecordUpdated instead of publishRecordCreated
-        // Pair old and new records for proper event publishing
+        // This method only serves UPDATE flows (see AuthorityLinkChunkKafkaHandler),
+        // so every saved record has a pre-modification snapshot in oldRecordsHolder
+        // and must be published as an UPDATE event.
         var newRecords = response.getRecords();
-        if (!newRecords.isEmpty() && !oldRecordsHolder.isEmpty()) {
-          LOG.debug("saveRecordsByExternalIds:: Publishing events for {} new records, {} old records in holder",
-            newRecords.size(), oldRecordsHolder.size());
-          // Create a map of old records by matched ID for pairing
+        if (!newRecords.isEmpty()) {
           Map<String, Record> oldRecordsMap = oldRecordsHolder.stream()
             .collect(Collectors.toMap(r -> r.getMatchedId() != null ? r.getMatchedId() : r.getId(),
                                       Function.identity(), (existing, replacement) -> existing));
           newRecords.forEach(newRecord -> {
             String key = newRecord.getMatchedId() != null ? newRecord.getMatchedId() : newRecord.getId();
             Record oldRecord = oldRecordsMap.get(key);
-            LOG.debug("saveRecordsByExternalIds:: Processing record pair - key: {}", key);
-            if (oldRecord != null) {
-              LOG.debug("saveRecordsByExternalIds:: Publishing UPDATE event for record: {}", key);
-              LOG.debug("    -> Publishing UPDATE event");
-              LOG.debug("       Old record - ID: {}, generation: {}, parsedRecord.content: {}",
-                oldRecord.getId(), oldRecord.getGeneration(), oldRecord.getParsedRecord() != null ? oldRecord.getParsedRecord().getContent() : "null");
-              LOG.debug("       New record - ID: {}, generation: {}, parsedRecord.content: {}",
-                newRecord.getId(), newRecord.getGeneration(), newRecord.getParsedRecord() != null ? newRecord.getParsedRecord().getContent() : "null");
-              recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
-            } else {
-              LOG.warn("saveRecordsByExternalIds:: Could not find old record for new record with key: {}", key);
-              LOG.debug("    -> Publishing CREATE event (old record not found)");
-              recordDomainEventPublisher.publishRecordCreated(newRecord, okapiHeaders);
+            if (oldRecord == null) {
+              LOG.warn("saveRecordsByExternalIds:: No pre-modification snapshot for new record with key: {}, skipping event publication", key);
+              return;
             }
+            recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
           });
         }
-        LOG.debug("saveRecordsByExternalIds:: Completed successfully with {} event(s) published", newRecords.size());
         return response;
       })
       .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));

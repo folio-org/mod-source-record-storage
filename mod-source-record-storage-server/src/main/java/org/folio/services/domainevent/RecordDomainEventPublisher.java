@@ -60,7 +60,7 @@ public class RecordDomainEventPublisher {
       Record aRecord = domainEventPayload.newRecord() != null ? domainEventPayload.newRecord() : domainEventPayload.oldRecord();
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
-      LOG.info("publishRecord:: Sending event to Kafka - recordId: {}, eventType: {}", key, eventType);
+      LOG.debug("publishRecord:: Sending event to Kafka - recordId: {}, eventType: {}", key, eventType);
       kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), Json.encode(domainEventPayload),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {

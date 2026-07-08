@@ -739,7 +739,6 @@ public class RecordDaoImpl implements RecordDao {
 
             // Deep-clone old records via Jackson tree conversion so that later mutations
             // by recordsModifier do not affect the snapshot used for UPDATE events.
-            // convertValue avoids the intermediate byte[] serialization used before.
             for (Record r : records) {
               oldRecordsHolder.add(OBJECT_MAPPER.convertValue(r, Record.class));
             }

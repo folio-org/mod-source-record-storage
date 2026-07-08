@@ -41,6 +41,8 @@ import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 import static org.jooq.impl.DSL.with;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.vertx.core.Context;
@@ -99,6 +101,7 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.TenantUtil;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.value.ListValue;
 import org.folio.processing.value.MissingValue;
@@ -166,6 +169,7 @@ import org.springframework.stereotype.Component;
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
 
   private static final String CTE = "cte";
   private static final String FILTERED_RECORDS = "filtered_records";
@@ -755,8 +759,12 @@ public class RecordDaoImpl implements RecordDao {
               r.getParsedRecord() != null ? r.getParsedRecord().getContent() : "null",
               r.getErrorRecord() != null ? r.getErrorRecord().getId() : "null"));
 
-            oldRecordsHolder.addAll(records);
-
+            // Deep-clone old records via Jackson tree conversion so that later mutations
+            // by recordsModifier do not affect the snapshot used for UPDATE events.
+            // convertValue avoids the intermediate byte[] serialization used before.
+            for (Record r : records) {
+              oldRecordsHolder.add(OBJECT_MAPPER.convertValue(r, Record.class));
+            }
             LOG.debug("saveRecordsByExternalIds:: Stored {} old records in holder", oldRecordsHolder.size());
 
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());

@@ -41,6 +41,8 @@ import static org.jooq.impl.DSL.table;
 import static org.jooq.impl.DSL.trueCondition;
 import static org.jooq.impl.DSL.with;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.vertx.core.Context;
@@ -99,6 +101,7 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.TenantUtil;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.value.ListValue;
 import org.folio.processing.value.MissingValue;
@@ -166,6 +169,7 @@ import org.springframework.stereotype.Component;
 public class RecordDaoImpl implements RecordDao {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
 
   private static final String CTE = "cte";
   private static final String FILTERED_RECORDS = "filtered_records";
@@ -705,6 +709,7 @@ public class RecordDaoImpl implements RecordDao {
                                                                RecordType recordType,
                                                                RecordsModifierOperator recordsModifier,
                                                                Map<String, String> okapiHeaders) {
+    LOG.debug("saveRecordsByExternalIds:: Starting processing for external IDs: {}", externalIds);
     var condition = RecordDaoUtil.getExternalIdsCondition(externalIds,
         getExternalIdType(Record.RecordType.fromValue(recordType.name())))
       .and(RecordDaoUtil.filterRecordByDeleted(false));
@@ -715,6 +720,10 @@ public class RecordDaoImpl implements RecordDao {
       return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
     }
 
+    // Store pre-modification snapshots keyed by matchedId so we can pair them with new records
+    // for UPDATE event publication after the transaction commits.
+    Map<String, Record> oldRecordsByKey = new HashMap<>();
+
     return context.owner().executeBlocking(
       () -> {
         try (Connection connection = getConnection(tenantId)) {
@@ -723,10 +732,21 @@ public class RecordDaoImpl implements RecordDao {
             var queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
             var records = queryResult.fetch(this::toRecord);
 
+            LOG.debug("saveRecordsByExternalIds:: Fetched {} old records from DB", records.size());
             if (CollectionUtils.isEmpty(records)) {
               LOG.warn("saveRecordsByExternalIds:: No records returned from the fetch query");
               return new RecordsBatchResponse().withTotalRecords(0);
             }
+
+            // Deep-clone old records via Jackson tree conversion so that later mutations
+            // by recordsModifier do not affect the snapshot used for UPDATE events, and
+            // index them by matchedId in the same pass for O(1) pairing below.
+            // putIfAbsent: on the theoretical duplicate matchedId, the first clone wins.
+            for (Record r : records) {
+              Record clone = OBJECT_MAPPER.convertValue(r, Record.class);
+              oldRecordsByKey.putIfAbsent(recordKey(clone), clone);
+            }
+
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
             var modifiedRecords = recordsModifier.apply(existingRecordsCollection);
 
@@ -755,6 +775,7 @@ public class RecordDaoImpl implements RecordDao {
             // return result
             queryResult = readRecords(dsl, condition, recordType, 0, externalIds.size(), false, emptyList());
             records = queryResult.fetch(this::toRecord);
+
             return new RecordsBatchResponse()
               .withRecords(records)
               .withTotalRecords(records.size())
@@ -768,11 +789,20 @@ public class RecordDaoImpl implements RecordDao {
           throw e;
         }
       }
-    )
-      .map(response -> {
+    ).map(response -> {
         LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
-        response.getRecords()
-          .forEach(r -> recordDomainEventPublisher.publishRecordCreated(r, okapiHeaders));
+        // This method only serves UPDATE flows (see AuthorityLinkChunkKafkaHandler),
+        // so every saved record has a pre-modification snapshot in oldRecordsByKey
+        // and must be published as an UPDATE event.
+        response.getRecords().forEach(newRecord -> {
+          String key = recordKey(newRecord);
+          Record oldRecord = oldRecordsByKey.get(key);
+          if (oldRecord == null) {
+            LOG.warn("saveRecordsByExternalIds:: No pre-modification snapshot for new record with key: {}, skipping event publication", key);
+            return;
+          }
+          recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
+        });
         return response;
       })
       .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));
@@ -1940,6 +1970,15 @@ public class RecordDaoImpl implements RecordDao {
       recordDto.setErrorRecord(errorRecord);
     }
     return recordDto;
+  }
+
+  /**
+   * Key used to pair pre-modification and post-modification versions of the same logical record.
+   * matchedId is stable across generations; id is a per-version identifier used as a fallback
+   * only for the rare case where matchedId is not populated.
+   */
+  private static String recordKey(Record record) {
+    return record.getMatchedId() != null ? record.getMatchedId() : record.getId();
   }
 
   private Record toRecord(org.jooq.Record dbRecord) {

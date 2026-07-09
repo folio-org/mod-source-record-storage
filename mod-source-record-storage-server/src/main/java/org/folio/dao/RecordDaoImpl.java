@@ -720,8 +720,9 @@ public class RecordDaoImpl implements RecordDao {
       return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
     }
 
-    // Store old records in a holder so we can access them later for publishing UPDATE events
-    List<Record> oldRecordsHolder = new ArrayList<>();
+    // Store pre-modification snapshots keyed by matchedId so we can pair them with new records
+    // for UPDATE event publication after the transaction commits.
+    Map<String, Record> oldRecordsByKey = new HashMap<>();
 
     return context.owner().executeBlocking(
       () -> {
@@ -738,9 +739,12 @@ public class RecordDaoImpl implements RecordDao {
             }
 
             // Deep-clone old records via Jackson tree conversion so that later mutations
-            // by recordsModifier do not affect the snapshot used for UPDATE events.
+            // by recordsModifier do not affect the snapshot used for UPDATE events, and
+            // index them by matchedId in the same pass for O(1) pairing below.
+            // putIfAbsent: on the theoretical duplicate matchedId, the first clone wins.
             for (Record r : records) {
-              oldRecordsHolder.add(OBJECT_MAPPER.convertValue(r, Record.class));
+              Record clone = OBJECT_MAPPER.convertValue(r, Record.class);
+              oldRecordsByKey.putIfAbsent(recordKey(clone), clone);
             }
 
             var existingRecordsCollection = new RecordCollection().withRecords(records).withTotalRecords(records.size());
@@ -788,23 +792,17 @@ public class RecordDaoImpl implements RecordDao {
     ).map(response -> {
         LOG.debug("saveRecordsByExternalIds:: batch record save was successful");
         // This method only serves UPDATE flows (see AuthorityLinkChunkKafkaHandler),
-        // so every saved record has a pre-modification snapshot in oldRecordsHolder
+        // so every saved record has a pre-modification snapshot in oldRecordsByKey
         // and must be published as an UPDATE event.
-        var newRecords = response.getRecords();
-        if (!newRecords.isEmpty()) {
-          Map<String, Record> oldRecordsMap = oldRecordsHolder.stream()
-            .collect(Collectors.toMap(r -> r.getMatchedId() != null ? r.getMatchedId() : r.getId(),
-                                      Function.identity(), (existing, replacement) -> existing));
-          newRecords.forEach(newRecord -> {
-            String key = newRecord.getMatchedId() != null ? newRecord.getMatchedId() : newRecord.getId();
-            Record oldRecord = oldRecordsMap.get(key);
-            if (oldRecord == null) {
-              LOG.warn("saveRecordsByExternalIds:: No pre-modification snapshot for new record with key: {}, skipping event publication", key);
-              return;
-            }
-            recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
-          });
-        }
+        response.getRecords().forEach(newRecord -> {
+          String key = recordKey(newRecord);
+          Record oldRecord = oldRecordsByKey.get(key);
+          if (oldRecord == null) {
+            LOG.warn("saveRecordsByExternalIds:: No pre-modification snapshot for new record with key: {}, skipping event publication", key);
+            return;
+          }
+          recordDomainEventPublisher.publishRecordUpdated(oldRecord, newRecord, okapiHeaders);
+        });
         return response;
       })
       .onFailure(e -> LOG.warn("saveRecordsByExternalIds:: Error during batch record save", e));
@@ -1972,6 +1970,15 @@ public class RecordDaoImpl implements RecordDao {
       recordDto.setErrorRecord(errorRecord);
     }
     return recordDto;
+  }
+
+  /**
+   * Key used to pair pre-modification and post-modification versions of the same logical record.
+   * matchedId is stable across generations; id is a per-version identifier used as a fallback
+   * only for the rare case where matchedId is not populated.
+   */
+  private static String recordKey(Record record) {
+    return record.getMatchedId() != null ? record.getMatchedId() : record.getId();
   }
 
   private Record toRecord(org.jooq.Record dbRecord) {

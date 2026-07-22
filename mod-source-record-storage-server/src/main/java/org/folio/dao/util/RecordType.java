@@ -7,14 +7,10 @@ import static org.folio.rest.jooq.Tables.RECORDS_LB;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.UUID;
-
 import io.xlate.edi.stream.EDIStreamException;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
-import org.jooq.JSONB;
 import org.jooq.LoaderOptionsStep;
-import org.jooq.Record2;
 
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
@@ -48,7 +44,7 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+    public org.jooq.Record toDatabaseRecord2(ParsedRecord parsedRecord) {
       return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
 
@@ -80,7 +76,7 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+    public org.jooq.Record toDatabaseRecord2(ParsedRecord parsedRecord) {
       return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
   },
@@ -97,7 +93,7 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+    public org.jooq.Record toDatabaseRecord2(ParsedRecord parsedRecord) {
       return ParsedRecordDaoUtil.toDatabaseMarcRecord(parsedRecord);
     }
 
@@ -138,7 +134,7 @@ public enum RecordType implements ParsedRecordType {
     }
 
     @Override
-    public Record2<UUID, JSONB> toDatabaseRecord2(ParsedRecord parsedRecord) {
+    public org.jooq.Record toDatabaseRecord2(ParsedRecord parsedRecord) {
       return ParsedRecordDaoUtil.toDatabaseEdifactRecord(parsedRecord);
     }
 

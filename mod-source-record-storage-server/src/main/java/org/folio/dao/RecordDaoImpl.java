@@ -148,7 +148,6 @@ import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
-import org.jooq.Record2;
 import org.jooq.ResultQuery;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
@@ -762,7 +761,7 @@ public class RecordDaoImpl implements RecordDao {
             Set<UUID> matchedIds = new HashSet<>();
             List<RecordsLbRecord> dbRecords = new ArrayList<>();
             List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-            List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+            List<org.jooq.Record> dbParsedRecords = new ArrayList<>();
             List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
             List<String> errorMessages = validateAndExtractDatabasePersistRecords(modifiedRecords.getRecords(), recordType,
@@ -841,7 +840,7 @@ public class RecordDaoImpl implements RecordDao {
                                       Set<UUID> matchedIds,
                                       List<RecordsLbRecord> dbRecords,
                                       List<RawRecordsLbRecord> dbRawRecords,
-                                      List<Record2<UUID, JSONB>> dbParsedRecords,
+                                      List<org.jooq.Record> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
     LOG.info("persistDatabaseRecords:: dbRecords: {}", dbRecords.size());
     List<UUID> ids = new ArrayList<>();
@@ -916,7 +915,7 @@ public class RecordDaoImpl implements RecordDao {
     Set<UUID> matchedIds = new HashSet<>();
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-    List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+    List<org.jooq.Record> dbParsedRecords = new ArrayList<>();
     List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
     // make sure only one snapshot id
@@ -1040,7 +1039,7 @@ public class RecordDaoImpl implements RecordDao {
                                                                 Set<UUID> matchedIds,
                                                                 List<RecordsLbRecord> dbRecords,
                                                                 List<RawRecordsLbRecord> dbRawRecords,
-                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
+                                                                List<org.jooq.Record> dbParsedRecords,
                                                                 List<ErrorRecordsLbRecord> dbErrorRecords) {
     List<String> errorMessages = new ArrayList<>();
     records.stream()
@@ -1058,7 +1057,7 @@ public class RecordDaoImpl implements RecordDao {
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
             recordType.formatRecord(record);
-            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+            org.jooq.Record dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
             dbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record

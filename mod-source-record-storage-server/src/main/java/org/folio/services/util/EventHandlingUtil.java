@@ -126,19 +126,7 @@ public final class EventHandlingUtil {
   }
 
   public static Map<String, String> toOkapiHeaders(DataImportEventPayload eventPayload) {
-    var okapiHeaders = new HashMap<String, String>();
-    okapiHeaders.put(OKAPI_URL_HEADER, eventPayload.getOkapiUrl());
-    okapiHeaders.put(OKAPI_TENANT_HEADER, eventPayload.getTenant());
-    okapiHeaders.put(OKAPI_TOKEN_HEADER, eventPayload.getToken());
-    String userId = eventPayload.getContext().get(OKAPI_USER_HEADER);
-    if (StringUtils.isNotBlank(userId)) {
-      okapiHeaders.put(OKAPI_USER_HEADER, userId);
-    }
-    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
-    if (StringUtils.isNotBlank(requestId)) {
-      okapiHeaders.put(OKAPI_REQUEST_HEADER, requestId);
-    }
-    return okapiHeaders;
+    return RestUtil.extractHeaders(eventPayload);
   }
 
   public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders) {

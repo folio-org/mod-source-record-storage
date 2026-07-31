@@ -31,7 +31,9 @@ import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
  * 1. Validates the event payload
  * 2. Retrieves a matched record from the context
  * 3. Updates the existing record with 'deleted' = true
- * 4. If successfully updated - removes a matched record form event payload,
+ * 4. If successfully updated - moves a matched record in the event payload from the
+ * 'MATCHED_' key to the 'DELETED_' one, so that later handlers do not mistake it for a
+ * record that still exists while data import logs can still report what was removed,
  * and puts external record id to event payload,
  * else completes exceptionally and loggs a cause
  */
@@ -81,7 +83,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
       })
       .onSuccess(ar -> {
         payload.setEventType(getNextEventType());
-        payload.getContext().remove(getRecordKey());
+        payload.getContext().put(getDeletedRecordKey(), payload.getContext().remove(getRecordKey()));
         payload.getContext().put(getExternalRecordIdKey(), getExternalRecordId(payloadRecord.getExternalIdsHolder()));
         future.complete(payload);
       })
@@ -100,6 +102,11 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   /* Returns the string key under which a matched record put into event payload context */
   private String getRecordKey() {
     return "MATCHED_" + typeConnection.getMarcType();
+  }
+
+  /* Returns the string key under which the removed record is kept */
+  private String getDeletedRecordKey() {
+    return "DELETED_" + typeConnection.getMarcType();
   }
 
   /* Returns the string key under which an id of external record put into event payload context */
